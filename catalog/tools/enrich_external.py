@@ -37,6 +37,7 @@ import sys
 from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import art_policy as AP  # noqa: E402
 import otr_parse as P  # noqa: E402
 import series_about as SA  # noqa: E402
 from ia_lib import CACHE, EDITORIAL, OUT  # noqa: E402
@@ -44,6 +45,8 @@ from ia_lib import CACHE, EDITORIAL, OUT  # noqa: E402
 PD_CLASSES = {"PD-US-no notice", "PD-US-not renewed", "PD-US-expired",
               "PD-US-no notice advertisement", "PD-US-defective notice", "PD-US-1978-89"}
 RADIO_DRAMA = "Q2635894"      # mostly single plays; a weaker series signal
+EPISODE = "Q57608327"         # radio series episode: one broadcast, never a series' identity
+HUMAN = "Q5"
 YEAR_SLACK = 2
 
 
@@ -193,14 +196,34 @@ def titles_agree(a, b):
 
 # ---------------------------------------------------------------- Wikidata
 
+def load_items(cache=None):
+    """Every Wikidata item a series may match: the radio-class harvest (items.json.gz) and the items
+    H1 found by name (names.json.gz, harvest_ext_wikidata.py --names), each item once, with its
+    English article's short description as `shortdesc` where H1 read one."""
+    wd = os.path.join(cache or CACHE, "wikidata")
+    items = load(os.path.join(wd, "items.json.gz"), {}) or {}
+    names = load(os.path.join(wd, "names.json.gz"), {}) or {}
+    for q, it in (names.get("items") or {}).items():
+        items.setdefault(q, it)
+    sd = names.get("shortdesc") or {}
+    for it in items.values():
+        if it.get("enwiki") and sd.get(it["enwiki"]):
+            it["shortdesc"] = sd[it["enwiki"]]
+    return items
+
+
 def wd_years(it, cats=()):
-    """Year range from the item's dates, else from decade categories its enwiki
-    article sits in ("1940s American radio programs")."""
+    """Year range from the item's dates, else from its English article's own short description
+    (V10, owner 2026-11-19: the run years of the item's own sitelinked article are identity), else
+    from decade categories its enwiki article sits in ("1940s American radio programs")."""
     ys = [_year(v) for k in ("start", "end", "inception", "dissolved", "published")
           for v in it["props"].get(k, [])]
     ys = [y for y in ys if y]
     if ys:
         return (min(ys), max(ys)), "wikidata"
+    sd = AP.description_years(it.get("shortdesc")) if AP.radio_shortdesc(it.get("shortdesc")) else None
+    if sd and sd[0] < sd[1]:   # a run; one year ("1941 radio show") may be only its start
+        return sd, "enwiki_shortdesc"
     dec = [int(m.group(1)) for c in cats for m in [re.search(r"\b(19[0-9]0)s\b", c)] if m]
     if dec:
         return (min(dec), max(dec) + 9), "enwiki_decade_category"
@@ -217,7 +240,7 @@ def radio_program_category(cat):
         r"networks?\b(?! (radio )?programs)|episodes|seasons|characters|novels|comics|magazines?)", cat, re.I)
 
 
-def match_wikidata(idx, items, enwiki_radio):
+def match_wikidata(idx, items, enwiki_radio, labels=None):
     """Return ({key: evidence}, rejected Counter, ambiguous list).
 
     Names reach a series only by the `direct` route (its own name, key or an
@@ -225,9 +248,15 @@ def match_wikidata(idx, items, enwiki_radio):
     Radio evidence is a radio-program class (P31), or — only for an item with
     NO P31 at all — an enwiki article in a radio-program category; an item
     typed as something else (a TV series, a fictional character) never matches
-    on its category. Years must overlap (±2) when both sides have them; with
-    none on either side the match needs a strong class or category, the item's
-    label, and US origin or an American category. A tie is left ambiguous."""
+    on its category. H1 (R3b section 5.1): an item whose English article's own
+    short description names radio and years is radio evidence whatever its
+    class (art_policy.radio_shortdesc). Rule 2: an item that is a television or
+    film work (art_policy.screen_item, on its description, short description
+    and class labels) never matches. Years must overlap (±2) when both sides
+    have them; with none on either side the match needs a strong class or
+    category, the item's label, and US origin or an American category. A tie is
+    left ambiguous."""
+    labels = labels or {}
     american = {}
     for v in enwiki_radio.values():
         cats = [c for c in v.get("cats", []) if radio_program_category(c)]
@@ -237,10 +266,18 @@ def match_wikidata(idx, items, enwiki_radio):
     rejected = Counter()
     for q, it in items.items():
         rc = it.get("radio_class") or []
+        if rc and all(c == EPISODE for c in rc) or HUMAN in it["props"].get("instance_of", []):
+            rejected["episode_or_person"] += 1   # one broadcast's item, or a host (Long John Nebel)
+            continue
         strong = any(c != RADIO_DRAMA for c in rc)
         typed = bool(it["props"].get("instance_of"))
         in_cat = q in american and not typed
-        if not rc and not in_cat:
+        by_desc = AP.radio_shortdesc(it.get("shortdesc"))
+        if AP.screen_item(it.get("description"), it.get("shortdesc"),
+                          [labels.get(c) for c in it["props"].get("instance_of", [])], rc):
+            rejected["screen_work"] += 1
+            continue
+        if not rc and not in_cat and not by_desc:
             rejected["not_radio" if not typed else "typed_not_radio"] += 1
             continue
         names = [("label", it.get("label"))] + [("alias", a) for a in it.get("aliases", [])]
@@ -261,19 +298,19 @@ def match_wikidata(idx, items, enwiki_radio):
                       "radio_class": rc, "enwiki_category": american.get(q, [])[:3],
                       "country": country}
                 score = {"label": 2, "enwiki": 2, "alias": 1}[kind] - (1 if route == "otrr_alias" else 0)
-                score += 2 if strong else (1 if in_cat else 0)
+                score += 2 if strong else (1 if in_cat or by_desc else 0)
                 if wy[0] and oy[0]:
                     lo, hi = oy[0], oy[1] or oy[0]
                     if wy[0] <= hi + YEAR_SLACK and wy[1] >= lo - YEAR_SLACK:
                         ev["years"] = "overlap"
-                        score += 3 if ysrc == "wikidata" else 1
+                        score += 3 if ysrc in ("wikidata", "enwiki_shortdesc") else 1
                     else:
                         ev["years"] = "disagree"
                         rejected["years_disagree"] += 1
                         continue
                 else:
                     ev["years"] = "unknown"
-                    if not strong and not in_cat:
+                    if not strong and not in_cat and not by_desc:
                         rejected["radio_drama_no_years"] += 1
                         continue
                     if kind == "alias" or route == "otrr_alias" or not (in_cat or "Q30" in country
@@ -591,14 +628,15 @@ def main():
     db.executescript(DDL)
     idx = SeriesIndex(db)
     wd = os.path.join(CACHE, "wikidata")
-    items = load(os.path.join(wd, "items.json.gz"))
     absent = []
-    if items is None:
+    if not os.path.exists(os.path.join(wd, "items.json.gz")):
         absent.append("wikidata")
-        items = {}
+    names = load(os.path.join(wd, "names.json.gz"))
+    items = load_items()
     enw = load(os.path.join(wd, "enwiki_radio.json"), {})
     labels = load(os.path.join(wd, "labels.json.gz"), {})
-    matched, rejected, ambiguous = match_wikidata(idx, items, enw)
+    labels.update((names or {}).get("labels") or {})
+    matched, rejected, ambiguous = match_wikidata(idx, items, enw, labels)
     n_wd = write_wikidata(db, matched, items, labels, idx.in_db)
     about = load(os.path.join(CACHE, "wikipedia", "about.json"))
     n_about, about_why = write_about(db, matched, items, about, idx.years)
@@ -620,6 +658,11 @@ def main():
         "series_with_qid_in_db": len(set(matched) & idx.in_db),
         "otrr_logged_programs": len(idx.otrr), "otrr_logged_with_qid": len(set(matched) & idx.otrr),
         "radioechoes_series": len(idx.radioechoes), "radioechoes_with_qid": len(set(matched) & idx.radioechoes),
+        "wikidata_names_absent": names is None,   # H1 not harvested: the radio-class items alone
+        "series_with_qid_by_source": dict(Counter(
+            "names" if q in ((names or {}).get("items") or {}) else "radio_class" for q in
+            (ev["qid"] for ev in matched.values()))),
+        "series_years_source": dict(Counter(ev.get("wd_years_source") or "none" for ev in matched.values())),
         "series_with_qid_spine": q("SELECT COUNT(*) FROM series_wikidata w JOIN series s ON s.key=w.series_key WHERE s.in_spine=1"),
         "about_cache_absent": about is None,
         "series_about": n_about,

@@ -21,10 +21,13 @@ match carries it too:
 Library of Congress "no known restrictions" photographs and Smithsonian CC0
 portraits (Track F) are not here: RESEARCH.md §12 V2 and V4 are the owner's.
 """
+import json
 import math
+import os
 import re
 import urllib.parse
 
+import networks as NW
 import polish as PL
 
 SERVED_CLASSES = ("pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa")
@@ -323,17 +326,62 @@ IDENTITY_SERVED = ("title+years", "title+network")
 # slot takes a picture only with at least the slot's pixels): a smaller show image would be
 # refused by every tile, so it does not displace a star who can fill one.
 SHOW_MIN_SIDE = 160
-# A still of the program's television run is a different broadcast (Life of Riley's TV cast).
+# R3b section 5.2 rule 2: television, film and adaptations are refused, on the item and on the file.
+# A still of the program's television run is a different broadcast (Life of Riley's TV cast), and a
+# film trailer's frame is the film (Ann Sothern in "A Letter to Three Wives", served as Maisie's P18).
 TELEVISION = re.compile(r"\b(television|TV)\b", re.I)
-NETWORK_NAMES = {"columbiabroadcastingsystem": "cbs", "cbsradio": "cbs", "cbsradionetwork": "cbs",
-                 "nationalbroadcastingcompany": "nbc", "nbcred": "nbc", "nbcradio": "nbc", "nbcblue": "blue",
-                 "bluenetwork": "blue", "mutualbroadcastingsystem": "mutual", "mbs": "mutual",
-                 "americanbroadcastingcompany": "abc", "abcradio": "abc"}
+SCREEN = re.compile(r"\b(television|TV|films?|movies?|motion pictures?|trailers?|sitcoms?|telenovelas?)\b", re.I)
+RADIO = re.compile(r"\bradio\b", re.I)
 
 
-def network_key(name):
-    k = re.sub(r"[^a-z0-9]", "", (name or "").lower())
-    return NETWORK_NAMES.get(k, k)
+def screen_item(description=None, shortdesc=None, classes=(), radio_class=()):
+    """Rule 2 on the item: True when the Wikidata item is a television or film work, not the radio
+    program. An item with a radio-program class is never one (Cavalcade of America's single item is
+    both runs: it matches, and series_identity and the file's own words keep its TV stills off the
+    show). Otherwise its own description or its article's short description names the screen and
+    not radio, or its classes (P31 labels) are all screen classes with no radio-program class among them, unless
+    its own article's short description names radio with years and no screen (`radio_shortdesc`):
+    a class is a Wikidata editor's guess, the article is about the program (H1).
+    "Radio and television series" is still the radio one; "1949-1956 CBS television program" is not."""
+    if radio_class:
+        return False   # (also) the radio program; its images still face series_identity and rule 2 on the file
+    for text in (description, shortdesc):
+        if text and SCREEN.search(text) and not RADIO.search(text):
+            return True
+    if radio_shortdesc(shortdesc):
+        return False
+    labels = [c for c in classes or () if c]
+    return bool(labels) and not radio_class and all(SCREEN.search(c) for c in labels)
+
+
+def radio_shortdesc(text):
+    """H1 (R3b section 5.1): an English Wikipedia article whose own short description names radio and
+    years ('American radio drama (1942-1962)', '1940s American radio program') vouches for its
+    Wikidata item as a radio program, whatever the item's class. One that also names the screen
+    ('American radio and television series') does not: rule 2."""
+    t = text or ""
+    return bool(RADIO.search(t)) and description_years(t) is not None and not SCREEN.search(t)
+
+
+# R3b section 5.2 rule 7: an organization matches by its QID, never by its name. "Blue" and "Mutual"
+# are words before they are networks, and MBS Radio is Japan's Mainichi Broadcasting System.
+def _network_qids():
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "editorial", "network_qids.json")
+    with open(path, encoding="utf-8") as f:
+        table = json.load(f)
+    return {k: {r["qid"] for r in rows} for k, rows in table.items() if not k.startswith("_")}
+
+
+NETWORK_QIDS = _network_qids()
+
+
+def network_qids(our_networks):
+    """The Wikidata items that are any of our networks, by networks.py's spelling and by its fold."""
+    out = set()
+    for n in our_networks or ():
+        for k in {NW.canonical_network(n), NW.fold_network(n)}:
+            out |= NETWORK_QIDS.get(k, set())
+    return out
 
 
 YEAR_SLACK = 2
@@ -341,21 +389,26 @@ YEAR_SLACK = 2
 
 def description_years(text):
     """The years an item's own description names ('radio Western drama series (1952-1961)',
-    'from the mid-1980s'), as (first, last), or None."""
+    'from the mid-1980s', "1920's", an abbreviated end as in '(1933-55)'), as (first, last), or None."""
     ys = []
-    for m in re.finditer(r"\b(19\d\d|20[0-2]\d)(s)?\b", text or ""):
+    for m in re.finditer(r"\b(19\d\d|20[0-2]\d)('?s)?(?:\s*[-\u2013]\s*(\d\d)\b(?!\d))?", text or ""):
         y = int(m.group(1))
         ys += [y, y + 9] if m.group(2) else [y]
+        if m.group(3):
+            end = y // 100 * 100 + int(m.group(3))
+            ys.append(end if end >= y else end + 100)
     return (min(ys), max(ys)) if ys else None
 
 
 def series_identity(evidence, our_networks, broadcasters, description=None):
-    """'title+years' when the Wikidata item's years (its own dates, its article's decade
-    category, or the years its own description names) overlap ours within YEAR_SLACK,
-    'title+network' when one of its broadcasters is one of our networks, else 'title' (refused).
-    evidence: series_wikidata.match_evidence as a dict."""
+    """Rule 1 (R3b section 5.2, DECISIONS 017): a title is never enough. 'title+years' when the
+    Wikidata item's years (its own dates, its article's short description or decade category, or the
+    years its own description names) overlap ours within YEAR_SLACK; 'title+network' when one of its
+    broadcasters, by QID (rule 7), is one of our networks; 'television' when its own description says
+    it is the screen work (rule 2); else 'title' (refused).
+    evidence: series_wikidata.match_evidence as a dict; broadcasters: the item's P449 QIDs."""
     evidence = evidence or {}
-    if TELEVISION.search(description or "") and not re.search(r"\bradio\b", description or "", re.I):
+    if TELEVISION.search(description or "") and not RADIO.search(description or ""):
         return "television"   # its own description says it is the TV program (The Goldbergs, 1949-1956)
     if evidence.get("years") == "overlap":
         return "title+years"
@@ -363,8 +416,7 @@ def series_identity(evidence, our_networks, broadcasters, description=None):
     dy = description_years(description)
     if ours and dy and dy[0] <= max(ours) + YEAR_SLACK and dy[1] >= min(ours) - YEAR_SLACK:
         return "title+years"
-    ours = {network_key(n) for n in our_networks or []}
-    if ours & {network_key(b) for b in broadcasters or []}:
+    if network_qids(our_networks) & set(broadcasters or ()):
         return "title+network"
     return "title"
 
@@ -387,15 +439,48 @@ def run_dates(con):
     return out
 
 
+def file_in_run(date_field, file, first_date=None, last_date=None):
+    """Rule 3 (R3b section 5.2): the file's own date (its page's date field, else a year in its name)
+    lies inside the run, YEAR_SLACK either side; an undated file is not refused here. Bob Barker's
+    1958 headshot is the TV Truth or Consequences, and a 1914 photograph of the Hill Top House hotel
+    predates the soap opera's first broadcast (1939)."""
+    fy, last, first = file_year(date_field) or file_year(file), file_year(last_date), file_year(first_date)
+    if fy and last and fy > last + YEAR_SLACK:
+        return False
+    return not (fy and first and fy < first - YEAR_SLACK)
+
+
+def show_people(con, min_episodes=3):
+    """{series key: [names]}: the people a program's records mark (series_marks; the cast and
+    presenters of its matched Wikidata item) or credit on at least `min_episodes` of its episodes
+    (episode_credits), the names rule 4 accepts in a file."""
+    tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    out = {}
+    if {"series_marks", "people"} <= tables:
+        for k, n in con.execute("SELECT m.series_key, p.name FROM series_marks m JOIN people p ON p.id = m.person_id"):
+            out.setdefault(k, []).append(n)
+    if "series_wikidata" in tables:   # the program's own Wikidata record: its cast and presenters
+        for k, cast, creators in con.execute("SELECT series_key, cast_members, creators FROM series_wikidata"):
+            for r in json.loads(cast or "[]") + [c for c in json.loads(creators or "[]") if c.get("role") == "presenter"]:
+                if r.get("label"):
+                    out.setdefault(k, []).append(r["label"])
+    if "episode_credits" in tables:
+        for k, n in con.execute(
+                "SELECT e.series_key, c.name FROM episode_credits c JOIN episodes e ON e.id = c.episode_id "
+                "WHERE c.name IS NOT NULL GROUP BY e.series_key, c.name "
+                "HAVING COUNT(DISTINCT c.episode_id) >= ?", (min_episodes,)):
+            out.setdefault(k, []).append(n)
+    return out
+
+
 def show_served(identity, source, cls, author, width, height, file, categories=(), date_field=None,
                 last_date=None, first_date=None, own_work=False, died=None):
-    """True when this (series match, file) may lead the show: the match is more than a title,
-    the file came from one of the show's own records, its license class is one portraits are
-    served under (credited when required), it is big enough for a show tile, its own page does
-    not say it is from television, is not an own work dated after its star's death (served), and its own date (its page's date field, else a year in its
-    name) lies inside the run (YEAR_SLACK either side): Bob Barker's 1958 headshot is the TV
-    Truth or Consequences, and a 1914 photograph of the Hill Top House hotel, reached through a
-    Commons depicts statement, predates the soap opera's first broadcast (1939)."""
+    """True when this (series match, file) may lead the show: the match is more than a title (rule
+    1), the file came from one of the show's own records, its license class is one portraits are
+    served under (credited when required), it is big enough for a show tile, its own name and
+    categories do not say it is from television or film (rule 2), it is not an own work dated after
+    its star's death, and its own date lies inside the run (rule 3). Whether the file names the show
+    at all is rule 4, `names_the_show`, which each builder applies beside this."""
     if identity not in IDENTITY_SERVED or source not in SHOW_RANK or cls not in PREFER:
         return False
     if cls in NEEDS_CREDIT and NO_AUTHOR.match(author or ""):
@@ -404,12 +489,41 @@ def show_served(identity, source, cls, author, width, height, file, categories=(
         return False
     if implausible_own_work(own_work, date_field, died):
         return False   # died: the earliest death among the people the program's record marks
-    fy, last, first = file_year(date_field) or file_year(file), file_year(last_date), file_year(first_date)
-    if fy and last and fy > last + YEAR_SLACK:
+    if not file_in_run(date_field, file, first_date, last_date):
         return False
-    if fy and first and fy < first - YEAR_SLACK:
+    words = " ".join([file or ""] + list(categories or []))
+    if TELEVISION.search(words):
         return False
-    return not TELEVISION.search(" ".join([file or ""] + list(categories or [])))
+    # A film's name in a radio publicity photo's categories is the picture the broadcast adapted
+    # (Lux Radio Theatre's Bogart and Bacall, "To Have and Have Not (film)"): it is refused only
+    # when nothing on the file says radio (a trailer frame, a lobby card).
+    return not (SCREEN.search(words) and not RADIO.search(words))
+
+
+PERSON_MIN = 6        # a person's name, letters only, long enough not to sit inside an ordinary word
+PUBLICITY = re.compile(r"\bpublicity\b", re.I)
+
+
+def names_the_show(file, categories, series_name, people=(), own_category=None, networks=()):
+    """Rule 4 (R3b section 5.2): a topic is not a show. A show image needs, in the file's own name or
+    its categories, the program's name, the name of a person the program's records mark or credit
+    (`people`), the program's own Commons category (its item's P373), or a publicity category of one
+    of the program's networks ("CBS Radio publicity photos"). Ceiling Unlimited's P18 is a B-17 in
+    flight and Hello Americans' is a map of the Americas: each depicts the subject, not the program."""
+    cats = list(categories or ())
+    fold = lambda t: _nt(t).replace("theatre", "theater")   # Lux Radio Theatre is Lux Radio Theater
+    hay = [fold(h) for h in [file or ""] + cats]
+    name = fold(series_name) if series_name else ""
+    if len(name) >= TITLE_MIN and any(name in h for h in hay):
+        return True
+    if own_category and any(c.split(":", 1)[-1] == own_category for c in cats):
+        return True
+    for p in people or ():
+        n = _nt(p)
+        if len(n) >= PERSON_MIN and any(n in h for h in hay):
+            return True
+    nets = {_nt(n) for n in networks or () if n}
+    return any(PUBLICITY.search(c) and any(n and n in _nt(c) for n in nets) for c in cats)
 
 
 def pick_show(rows, series_name=None):

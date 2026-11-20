@@ -196,7 +196,26 @@ none on the web), never as a skip. Segment times are never estimated.
   `last_date`, `networks`, `episodes` (served count), `canonical_episodes` (what
   the logs say aired), `kind_summary`, `star` (§3.3a, or NULL), `sort_name` (below),
   `downloads` (below), `picture`, `picture_kind`, `picture_source` (§3.3a; all
-  three NULL together), `year_counts` (below), `about_text`, `about_source`, `about_url` (below).
+  three NULL together), `year_counts` (below), `about_text`, `about_source`, `about_url` (below),
+  `network`, `network_source` (below).
+- **`series.network`** and **`network_source`** (added 2026-11-19, Decision 081; additive,
+  `schemaVersion` stays 1): the one primary network a series aired on, the name the label's rim
+  sets in our type (never a logo). Computed once by `catalog/tools/networks.py primary_network`
+  over the series' served, dated broadcasts that name a network (`episodes.network`): each is
+  folded to the network it was part of on its air date (NBC Red, NBC Pacific: NBC; CBS Pacific:
+  CBS; Mutual-Don Lee, Mutual Pacific: Mutual; NBC Blue, Blue, ABC Blue and ABC are NBC before
+  1942-01-08, Blue until 1945-06-14, ABC from 1945-06-15; "ABC" before the split stays ABC,
+  Australia's), the network heard on most of them wins, a tie goes to the one heard first, and
+  `network_source` is `episodes`. With none dated, the first network of `series.networks` that
+  names one (`logs`). Only these are networks: NBC, CBS, Mutual, ABC, Blue, AFRS, AFRTS, BBC, CBC,
+  CBCF, NPR, Springbok, WOR, WCBS, Don Lee Network, Michigan Radio (`networks.PRIMARY`);
+  "Syndicated", "Various", "Australian", a station, a producer or a sponsor names none. Both NULL
+  together. Each output computes its own over its own rows (the clean-only web over the clean
+  episodes). The web carries it as `network` on the series index (`SERIES_FIELDS`) and as
+  `network` and `networkSource` on the series page. Clients never parse `networks` for this (R3a
+  §3.4). `meta.counts.seriesNetwork` is how many series carry one. Guarded in
+  `tests/test_networks.py` (fixtures for every fold; over a projection: a primary network or NULL,
+  set together, source `episodes` or `logs`).
 - **`series.about_text`**, **`about_source`**, **`about_url`** (added 2026-11-09, catalog DECISIONS 030;
   additive, `schemaVersion` stays 1): what the show is, in its English Wikipedia article's own words. The
   article's lead as plain text, paragraphs separated by a blank line (`\n\n`), whole paragraphs up to about 900
@@ -346,10 +365,20 @@ images, 2,364 people, 305 series with a star, 24,894 episodes with one.
   that are less recognizable."*):
   1. `show`: the show's own image. The series' Wikidata item (catalog
      `enrich_external.py`) must be matched on more than its title: `title+years`
-     (the item's own dates, its article's decade category, or the years its own
-     description names, "radio Western drama series (1952-1961)", overlap ours, ±2) or
-     `title+network` (its broadcaster is one of our networks); a title alone is
-     refused. The file comes from the item's own record, in this order of
+     (the item's own dates, the run years its own English article's short description
+     names, "American radio drama (1942-1962)" (V10, owner 2026-11-19; the evidence
+     records `wd_years_source: enwiki_shortdesc`), its article's decade category, or the
+     years its own description names, "radio Western drama series (1952-1961)", overlap
+     ours, ±2) or `title+network` (one of its broadcasters, P449, is one of our networks
+     by QID, `catalog/editorial/network_qids.json`, each row with its source: R3b §5.2
+     rule 7, so Japan's MBS Radio is not Mutual); a title alone is refused. The items a
+     series may match are the radio-program class harvest plus H1 (R3b §5.1,
+     `harvest_ext_wikidata.py --names`): every served series name looked up as a label,
+     alias or English article title (The/no-The, &/and, the radio qualifiers) in VALUES
+     batches, kept when the item has a radio-program class or its article's own short
+     description names radio and years. An item that is a television or film work (its
+     description, its article's short description or all its classes say so, R3b §5.2
+     rule 2, `art_policy.screen_item`) never matches. The file comes from the item's own record, in this order of
      `picture_source`: `wikidata:P18` (image), `wikidata:P154` (logo),
      `wikidata:P3383` (poster), `wikidata:P2716` (collage), `wikidata:P6802`
      (related image), `commons:P180` (a Commons file whose Structured Data depicts
@@ -361,7 +390,15 @@ images, 2,364 people, 305 series with a star, 24,894 episodes with one.
      page's date field, else a year in its name) lies inside the run, ±2 years of the
      earliest logged broadcast (`first_broadcast`, else our first episode) and our last
      episode, whatever its source: a "depicts" statement on a 1914 photograph of a hotel
-     is not the 1939 soap opera named for it. archive.org items'
+     is not the 1939 soap opera named for it (rule 3, `art_policy.file_in_run`). A film,
+     a trailer or a lobby card in its name or categories is refused too (rule 2), unless the
+     file also says radio (a radio publicity photo of the stars of the film a broadcast
+     adapted); television is refused even beside radio. And the file must name the program
+     (rule 4, `art_policy.names_the_show`): its own name or categories carry the program's
+     name, a person its records mark (OTRRpedia's marks, its Wikidata item's cast and
+     presenters) or credit on 3 or more episodes, its
+     item's own Commons category, or a publicity category of one of its networks; a P18
+     that depicts the subject (a bomber, a map) is not the show. archive.org items'
      own cover art is not a source: its only rights statement is the uploader's
      license for the item (catalog DECISIONS 002). `art_policy.show_served`.
   2. `star`: `series.star` when chosen by recognizability: a person the

@@ -65,6 +65,33 @@ check("guard catches typos", sorted(N.near_misses(typos)),
 check("canonical folding clears the guard", N.near_misses(
     collections.Counter({N.canonical_network(k): 1 for k in typos})), [])
 
+# series.network: one primary network per series (Decision 081), folded by the date it aired.
+for raw, date, want in [
+    ("NBC Red", "1938-05-01", "NBC"), ("NBC Pacific", None, "NBC"), ("CBS Pacific", "1947-01-01", "CBS"),
+    ("Mutual-Don Lee", "1940-02-02", "Mutual"), ("Mutual Pacific", None, "Mutual"),
+    ("NBC Blue", "1939-06-01", "NBC"), ("NBC Blue", "1943-03-01", "Blue"), ("NBC Blue", None, "NBC"),
+    ("Blue", "1941-12-31", "NBC"), ("Blue", "1942-01-08", "Blue"), ("Blue", "1945-06-14", "Blue"),
+    ("Blue", "1945-06-15", "ABC"), ("Blue", None, "Blue"), ("ABC Blue", "1944-11-01", "Blue"),
+    ("ABC", "1944-02-01", "Blue"), ("ABC", "1950-02-01", "ABC"), ("ABC", "1936-02-01", "ABC"),
+    ("Bllue", "1943-01-01", "Blue"), ("Syndicated", "1950-01-01", None), ("Various", None, None),
+    ("Australian", None, None), ("possible Blue", None, None), ("AFRS", "1944-01-01", "AFRS"),
+]:
+    check(f"fold {raw} {date}", N.fold_network(raw, date), want)
+check("primary: the network heard most",
+      N.primary_network([("1940-01-01", "NBC Red"), ("1941-01-01", "NBC Blue"), ("1950-01-01", "CBS")]),
+      ("NBC", "episodes"))
+check("primary: Blue by date, so a show that moved NBC to Blue to ABC counts each",
+      N.primary_network([("1941-01-01", "Blue"), ("1943-01-01", "Blue"), ("1944-01-01", "Blue"), ("1946-01-01", "Blue")]),
+      ("Blue", "episodes"))
+check("primary: a tie goes to the network heard first",
+      N.primary_network([("1950-01-01", "CBS"), ("1949-01-01", "Mutual")]), ("Mutual", "episodes"))
+check("primary: not a network is never primary",
+      N.primary_network([("1950-01-01", "Syndicated"), ("1950-02-01", "Syndicated")], ["Syndicated", "Mutual"]),
+      ("Mutual", "logs"))
+check("primary: undated falls back to the series' list, most first",
+      N.primary_network([], ["NBC Red", "CBS"]), ("NBC", "logs"))
+check("primary: nothing names a network", N.primary_network(None, ["Various"]), (None, None))
+
 # The guard over the projection.
 real = os.environ.get("PROJECTION") or os.path.join(HERE, "..", "out", "publish", "ear-drama.sqlite")
 if os.path.exists(real):
@@ -80,6 +107,20 @@ if os.path.exists(real):
     check("projection: no network within edit distance 2 of another unless listed distinct",
           sorted(N.near_misses(counts)), [])
     print(f"  projection: {len(counts)} distinct network strings")
+    scols = {r[1] for r in d.execute("PRAGMA table_info(series)")}
+    if {"network", "network_source"} <= scols:
+        rows = d.execute("SELECT network, network_source FROM series").fetchall()
+        check("projection: series.network is a primary network or NULL",
+              sorted({n for n, _ in rows if n is not None and n not in N.PRIMARY}), [])
+        check("projection: series.network and network_source are set together",
+              sum(1 for n, src in rows if (n is None) != (src is None)), 0)
+        check("projection: network_source is episodes or logs",
+              sorted({src for _, src in rows if src not in (None, "episodes", "logs")}), [])
+        check("projection: some series name a network", any(n for n, _ in rows), True)
+        print(f"  projection: {sum(1 for n, _ in rows if n)} of {len(rows)} series name a primary network")
+    else:
+        check("projection: series carries network and network_source", sorted(scols & {"network", "network_source"}),
+              ["network", "network_source"])
 elif os.environ.get("PROJECTION"):
     check("the projection named by PROJECTION exists", False, True)
 else:

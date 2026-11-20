@@ -110,7 +110,7 @@ web app follows today.
 - **§4.2 Home** (Decision 075; research R2 Concept B) answers what this is
   by playing it, then names the three jobs, then offers rows each filled by
   one published data rule. No sentence explains the app; no blurb; every
-  heading is a verb or the name of the rule that fills it. Top to bottom:
+  heading is a verb or the name of the rule that fills it. Top to bottom (as amended by §4.2r):
   1. **The heading row**: the app's name, **Ear Drama**, as the page
      title (the tab and the sidebar say Home; the page says what this is,
      2026-11-15 review, `docs/research/design/R2-design-review.md` F1), and a **Surprise** button (icon and
@@ -220,6 +220,40 @@ web app follows today.
     ... `mostDownloaded` is "Most downloaded" ... each `genreFirsts` is an
     episode list headed by the published genre name"; Home opened on the
     day board, with no Play and no way to record.
+- **§4.2r Home reads as one thing** (Decision 081, owner 2026-11-19: *"the home screen ... still
+  reads like a long list of items that feel unrelated ... The goal is to have the home view feel
+  more cohesive and inviting from the moment that you open the app."*; ruling: "Home: all of R3a
+  §4.1"). Binding over the item list below wherever they differ; research
+  `docs/research/design/R3a-visual-cohesion.md` §4.1-4.2. Built in Round 3 V5.
+  1. **One lead object.** On the air (item 2) is the hero: the board of the show on the air, full
+     column width, its window at tier L (the show's picture, else its label with the evening's
+     year ticked on the dial, §6.4r), the kicker "● On the air · Tonight in 19xx", the show's name
+     in page-title type, the event line (episode · N min in), **Listen live** (ink), **All
+     stations**. Nothing else on the first screen is as large. When nothing is on, the doors lead.
+  2. **The dial under the hero.** The eight genre stations (`stations.json`) as one row of S-tier
+     labels, each on its genre's board with the genre's name and what is on now as a caption;
+     a press tunes in. It takes over the Listen door's job.
+  3. **Doors get quieter.** Item 4 becomes two ghost buttons with icons in one row, **Find a
+     show** and **Record a play**, not bordered blocks.
+  4. **One art system in every rail.** Every window on Home is a graded picture or a label, the
+     show tile's 200-unit window in every rail (Start a show, By length, Stories in parts, Made
+     here): one size, one rhythm.
+  5. **A show at most once per Home.** Rows are drawn in order and a series already shown higher
+     up is skipped; no rail opens on the show of the rail above. Deterministic from the
+     published shelves and their order, the same on every platform, and named in the catalog
+     contract beside `byLength`.
+  6. **Two inks per screen.** The day board's stacked chart (item 8) draws its bars in onBoard
+     with the genre marks only in the legend keys (or moves whole to Browse); Today's scene
+     (item 7) is a **wide card at the grammar's size**: the drama board as the window (the script
+     page), and title, author, voices and minutes beside it on the page ground, not a full-width
+     slab.
+  7. **Rhythm L, S, M, L, M, S**: hero (L), dial (S), Start a show (M), Today's scene (L), By
+     length (M), voices (S), This day in radio (L), Made here (M). Never two L objects adjacent;
+     at most one L per screen height at 375 px.
+  8. **Framing from data only.** Headings stay verbs or rule names; a rail's facts come from data;
+     the hero's era is drawn (the dial tick), never written. No blurbs, no "Because you listened".
+  `tools/web_fit_home.py` gains two checks: the hero is the largest window on the first screen,
+  and no rail opens on the show of the rail above.
 - **§4.3 Browse** (was Series, Decision 068) lists the radio series. The
   plays moved to Record (§4.15, Decision 075); a play is still found by
   Search. Its filters are visible controls in one row, as Archive Watch's
@@ -1202,6 +1236,29 @@ web app follows today.
 - **§6.3 Safari layout.** `body { height: 100dvh; display: flex;
   flex-direction: column; overflow: hidden }`, `main` is the one scroll
   container. No `viewport-fit=cover`, no `position: fixed` overlays.
+- **§6.4r The label is the default art** (Decision 081, owner 2026-11-19, ruling "label art C on
+  every platform"; research R3a §3.4). Binding over §6.4 to §6.4f wherever they name the
+  typographic card, the title block or the initial as the art of something without a picture:
+  that art is now **the label**, a flat transcription disc drawn from the item's own published
+  fields, in the window, on the window's board, with the picture's mount, radius and edge (never a
+  shadow, frame or caption a picture would not have). A served picture that passes the size floor
+  always wins; the label never sits beside or over a picture of the same object; ranking never
+  looks at pictures. Per kind: **series**: board = genre, run arc on the fixed 1930-1962 dial from
+  `first`/`last` (none when undated, clamped with a square cap outside the dial), monogram
+  (`API.monogram`) on the center label, and at tier L the rim "network · decade" from
+  `series.network` (contract §3.3) in our type; **episode**: its show's disc with the episode's
+  date block text (or "No." and its number) on the label, so Now Playing, Continue, the mini
+  player and the lock screen show each broadcast's own art; **genre station / Tonight in 19xx**:
+  the station's board with the evening's year as one tick; **finished ear drama** (user made): the
+  same disc with one rim segment per speaking part in its `partHue`, sized by its share of lines,
+  the play's monogram, no arc, rim "Recorded · month year" at L; never an uploaded picture;
+  **person without a portrait**: a round window, initials inside one groove ring, an arc of their
+  credit years at L; **stage play**: the script page as today plus 1-4 voice-band rules at its
+  foot; **network or sponsor**: a name in our type, never a logo. Tiers: S (below 96 px: disc,
+  label, arc), M (dial ticks, grooves), L (from 320 px: rim text). Geometry is the `art.label`
+  tokens (`design-tokens.json`), and `API.labelSpec(series, episode?)` is a pure function with
+  golden cases shared with Swift and Kotlin; nothing on the label is hashed or invented. Built in
+  Round 3 V3.
 - **§6.4 Art is a served portrait, else the typographic card** (R11,
   Decision 069, contract §3.3a). A picture comes only from the catalog: a
   person's portrait the projection serves, or a card drawn from data (the

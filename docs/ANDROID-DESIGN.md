@@ -353,6 +353,14 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     the window when it is present. Not on a TV.
   - *Replaced* (2026-11-14): "a `LazyColumn` of shelves ... Continue
     listening, then Following ..., then the published shelves in order".
+- **§4.1r Home reads as one thing** (Decision 081, owner 2026-11-19: *"the home screen ... still reads like a long list of items that feel unrelated ... The goal is to have the home view feel more cohesive and inviting from the moment that you open the app."*; rulings: "Home: all of R3a §4.1", "label art C on every platform"). Binding over §4.1 wherever they differ; the shared
+  rules are WEB-DESIGN §4.2r 1-8 (one lead object, the dial of genre stations under it, two quiet
+  doors, one art system and one window size in every rail, a show at most once per Home, two inks
+  per screen, rhythm L S M L M S, framing from data only). Android's idiom: the hero is the On the air board
+  at full width, its window at tier L, **Listen live** a filled ink button; the dial is a `LazyRow`
+  of S-tier labels; the doors are two `TextButton`s with Material Symbols in one row. On Google TV
+  the hero and the dial follow tvOS-DESIGN §4.1r (focus does the work; the label never adds focus
+  chrome a picture would not). Built in Round 3 V6.
 - **§4.2 Browse** (was Series) lists radio series; the plays moved to
   Record (§4.9a, Decision 075), so the Kind chip and every clause below
   about plays in Browse are replaced. A Kind chip (Any kind, Series, Plays) and a "Has a script"
@@ -939,6 +947,17 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   `success` when a download finishes; `error` when "Download failed",
   the player's problem line, a plays refusal line, or "Tonight could not
   load." appears.
+
+- **§6.r The label is the default art** (Decision 081; the shared rule is WEB-DESIGN §6.4r, R3a
+  §3.4). Wherever this doc names the typographic card, the title block or the initial as the art
+  of something without a picture, that art is now **the label**: a flat transcription disc drawn
+  natively (Compose `Canvas`) from the same `labelSpec` goldens as the web (`cross-platform-determinism`):
+  genre board, a run arc on the 1930-1962 dial, the monogram or the episode's date on the label,
+  network · decade on the rim at tier L from `series.network`; a finished ear drama's part-hue rim;
+  a person's groove ring; a play's script page with voice-band rules. A picture that passes the
+  size floor always wins, and the two never share an object's slot. Networks and sponsors are names
+  in our type, never logos; user-made ear dramas never take an uploaded picture. The media notification and Android Auto show the episode's label as the session art. Built in
+  Round 3 V4.
 
 ## §7 States and accessibility
 

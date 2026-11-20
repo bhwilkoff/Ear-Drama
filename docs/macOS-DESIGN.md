@@ -165,6 +165,10 @@ only here:
   "Sort: Popular" by default, in a `safeAreaBar` under the toolbar.
 - **§4.1 The transcript opens a window** from Detail, the transport bar,
   or the Controls menu (§2.2), never a sheet.
+- **§4.1r Home reads as one thing** (Decision 081, owner 2026-11-19: *"the home screen ... still reads like a long list of items that feel unrelated ... The goal is to have the home view feel more cohesive and inviting from the moment that you open the app."*; rulings: "Home: all of R3a §4.1", "label art C on every platform"). The shared rules are WEB-DESIGN §4.2r 1-8 and
+  iOS-DESIGN §4.1r; the Mac differs only in being a `WidePage` (§4.0a): the hero spans the page's
+  first column at tier L with the dial of genre stations under it, and rails keep the show tile's
+  one window size at every window width (more tiles, never bigger ones). Built in Round 3 V6.
 - **§4.2 Downloads** are the same background `URLSession`, the same
   series Download menu (in the toolbar), and the same Downloads place
   pushed from Library's row as iOS (`docs/iOS-DESIGN.md` §4.3, §4.6,
@@ -372,6 +376,17 @@ only here:
   (Decision 060).
 - **§6.3 Icons are SF Symbols**; every icon-only button has a `.help`
   tooltip and an accessibility label.
+
+- **§6.r The label is the default art** (Decision 081; the shared rule is WEB-DESIGN §6.4r, R3a
+  §3.4). Wherever this doc names the typographic card, the title block or the initial as the art
+  of something without a picture, that art is now **the label**: a flat transcription disc drawn
+  natively (SwiftUI `Canvas`) from the same `labelSpec` goldens as the web (`cross-platform-determinism`):
+  genre board, a run arc on the 1930-1962 dial, the monogram or the episode's date on the label,
+  network · decade on the rim at tier L from `series.network`; a finished ear drama's part-hue rim;
+  a person's groove ring; a play's script page with voice-band rules. A picture that passes the
+  size floor always wins, and the two never share an object's slot. Networks and sponsors are names
+  in our type, never logos; user-made ear dramas never take an uploaded picture. Now Playing in Control Center shows the episode's label. Built in
+  Round 3 V4.
 
 ## §7 States and accessibility
 

@@ -43,6 +43,7 @@ import episode_scripts as ES
 from audit_audio_rights import pd_published_year
 import arcs as ARCS
 import forwarding as FW
+import networks as NW
 
 SCHEMA_VERSION = 1
 SERVED = ("keep_clean", "keep_unclaimed")
@@ -68,7 +69,7 @@ CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre_source TEXT, first_date TEXT, last_date TEXT,
     networks TEXT, episodes INTEGER NOT NULL, star TEXT, sort_name TEXT NOT NULL, downloads INTEGER,
     picture INTEGER, picture_kind TEXT, picture_source TEXT, raw_name TEXT, year_counts TEXT,
-    about_text TEXT, about_source TEXT, about_url TEXT);
+    about_text TEXT, about_source TEXT, about_url TEXT, network TEXT, network_source TEXT);
 CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT,
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
     no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0,
@@ -457,11 +458,12 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                 genre, gsrc = kept_genre[key]
             pic = pictures.get(key, (None, None, None))
             shown_as = shown_name.get(key) or name
-            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                       (key, shown_as, genre, gsrc, first, last, nets, per_series[key], stars.get(key),
                        sort_name(shown_as), None) + pic + (name if name and shown_as != name else None,
                                                            year_counts(years_of.get(key))) +
-                      about.get(key, (None, None, None)))
+                      about.get(key, (None, None, None)) +
+                      NW.primary_network(nets_of.get(key), json.loads(nets) if nets else None))
     for pid, name, birth, death in s.execute("SELECT id, name, birth, death FROM people"):
         if pid in people_rows:
             d.execute("INSERT INTO people VALUES (?,?,?,?,?)",
@@ -501,6 +503,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     counts["scripts"] = d.execute("SELECT COUNT(*) FROM episodes WHERE script IS NOT NULL").fetchone()[0]
     counts["scriptLinks"] = d.execute("SELECT COUNT(*) FROM episodes WHERE script_url IS NOT NULL").fetchone()[0]
     counts["seriesAbout"] = d.execute("SELECT COUNT(*) FROM series WHERE about_text IS NOT NULL").fetchone()[0]
+    counts["seriesNetwork"] = d.execute("SELECT COUNT(*) FROM series WHERE network IS NOT NULL").fetchone()[0]
     counts["aliases"] = d.execute("SELECT COUNT(*) FROM episode_aliases").fetchone()[0]
     counts["tombstones"] = d.execute("SELECT COUNT(*) FROM episode_tombstones").fetchone()[0]
     counts["seriesAliases"] = d.execute("SELECT COUNT(*) FROM series_key_aliases").fetchone()[0]
@@ -1026,14 +1029,21 @@ def served_show_images(s, series_keys):
         deaths = AP.earliest_death(s.execute(
             "SELECT m.series_key, w.death FROM series_marks m JOIN people_wikidata w ON w.person_id = m.person_id"))
     own = "own_work" if "own_work" in {r[1] for r in s.execute("PRAGMA table_info(series_art)")} else "0"
+    names = dict(s.execute("SELECT key, name FROM series"))
+    nets = {k: json.loads(n) if n else [] for k, n in s.execute("SELECT key, networks FROM series")} \
+        if "networks" in {r[1] for r in s.execute("PRAGMA table_info(series)")} else {}
+    p373 = dict(s.execute("SELECT series_key, commons_category FROM series_wikidata")) \
+        if "series_wikidata" in tables else {}
+    people = AP.show_people(s)
     for sk, file, src, identity, cls, template, author, w, h, face, cats, when, own_work in s.execute(
             f"SELECT series_key, file, source, identity, license_class, template, author, width, height, face, "
             f"categories, date_field, {own} FROM series_art"):
-        if sk in series_keys and AP.show_served(identity, src, cls, author, w, h, file, json.loads(cats or "[]"),
+        cats = json.loads(cats or "[]")
+        if sk in series_keys and AP.show_served(identity, src, cls, author, w, h, file, cats,
                                                 when, *reversed(run.get(sk, (None, None))), own_work,
-                                                deaths.get(sk)):
+                                                deaths.get(sk)) and \
+                AP.names_the_show(file, cats, names.get(sk), people.get(sk, ()), p373.get(sk), nets.get(sk)):
             rows.setdefault(sk, []).append((file, src, cls, template, author, w, h, AP.face_text(AP.face_list(face))))
-    names = dict(s.execute("SELECT key, name FROM series"))
     return {sk: AP.pick_show(r, names.get(sk)) for sk, r in rows.items()}
 
 

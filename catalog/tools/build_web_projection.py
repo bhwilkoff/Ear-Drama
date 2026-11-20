@@ -53,6 +53,7 @@ import build_projection as P
 import fetch_transcripts as T
 import shelves as SH
 import arcs as ARCS
+import networks as NW
 
 SCHEMA_VERSION = 1
 SHARD_MASK = 0xFFF
@@ -66,8 +67,10 @@ SHELF_SERIES = 12
 # as an art array), pictureKind ("show", "star", "person") and pictureSource; all null for the board.
 # years: the run histogram (contract section 3.3 `series.year_counts`) over the web's own episodes, as
 # [first year, count, count, ...], one count per year to the last dated one; null when none is dated.
+# network: the one primary network (contract section 3.3 `series.network`, networks.primary_network) over the web's
+# own episodes; null when none names one. Clients never parse `networks`.
 SERIES_FIELDS = ["key", "name", "genre", "first", "last", "episodes", "networks", "star", "art", "sortName", "scripts",
-                 "downloads", "picture", "pictureKind", "pictureSource", "years"]
+                 "downloads", "picture", "pictureKind", "pictureSource", "years", "network"]
 # A served image (art_policy.py): url takes ?width=; credit is set only where the license requires one.
 # grade: [k, o], the linear levels a monochrome picture takes in a repeated slot (contract section 3.3a), or null.
 ART_FIELDS = ["url", "width", "height", "credit", "evidence", "face", "grade"]
@@ -204,9 +207,12 @@ def build(src, out, include_unclaimed=False, transcripts=None):
     for e in eps.values():
         by_series.setdefault(e[1], []).append(e)
     series = {}
+    primary = {}
     for key, name, genre, first, last, nets in s.execute(
             "SELECT key, name, genre, first_date, last_date, networks FROM series"):
         if key in by_series:
+            primary[key] = NW.primary_network([(e[2], e[11]) for e in by_series[key] if e[2] and e[11]],
+                                              json.loads(nets) if nets else None)
             star = series_star.get(key)
             series[key] = [key, name, genre, first, last, len(by_series[key]),
                            ", ".join(json.loads(nets)) if nets else None,
@@ -231,6 +237,7 @@ def build(src, out, include_unclaimed=False, transcripts=None):
         row.extend(series_pic.get(k, (None, None, None)))
         hist = P.year_counts([e[2] for e in by_series[k]])
         row.append([int(v) for v in hist.split(",")] if hist else None)
+        row.append(primary[k][0])
     arc_rows = {}
     if {"arcs", "arc_parts"} <= tables:
         for aid, sk, eid in s.execute("SELECT a.id, a.series_key, p.episode_id FROM arcs a JOIN arc_parts p "
@@ -263,7 +270,8 @@ def build(src, out, include_unclaimed=False, transcripts=None):
         page = {
             "key": key, "name": meta[1], "genre": meta[2], "first": meta[3], "last": meta[4],
             "networks": meta[6], "star": meta[7], "art": meta[8], "picture": meta[12], "pictureKind": meta[13],
-            "pictureSource": meta[14], "years": meta[15], "seasons": seasons, "fields": EPISODE_FIELDS,
+            "pictureSource": meta[14], "years": meta[15], "network": meta[16], "networkSource": primary[key][1],
+            "seasons": seasons, "fields": EPISODE_FIELDS,
             "episodes": [[e[0], e[2], e[3], e[4], e[5], e[8], e[7], recs[e[0]][0][0]] + lt(e[0]) for e in rows]}
         if key in series_about:
             page["about"] = series_about[key]
