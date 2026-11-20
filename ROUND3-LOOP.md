@@ -328,3 +328,8 @@ privacy words) is folded in when it arrives, never waited on.
   dropped play_orphan_objects: 0 rows); READ_ROOMS/TAKE_RELAY Durable Objects and limiters live;
   checked: health 200, unknown room 404, pairing code 201, /v1/plays/consent 401 (auth, as before).
   Duo launch check running (the iOS stand-in); push of ~20 commits follows if it passes.
+- **2026-11-20, tick 21**: Duo launch check passed (all four doors, no crash; frame read: hero photo,
+  dial letters, two doors). PUSHED 21 commits (559a33a, 1.0.148): everything since V7 ports is now
+  on main (TestFlight builds from here). Running: cache Release cut + catalog publish (Sonnet,
+  per the push-everything-live ruling), fix sweep (Sonnet, 11 items). Next: T7 bench (Worker is
+  live), then V8 audit.
