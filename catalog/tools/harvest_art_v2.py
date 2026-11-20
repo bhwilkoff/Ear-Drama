@@ -457,12 +457,9 @@ def phase_liveness(files, live, today=None):
 
 def served_files(con):
     """Every file this stage's output may serve: the served show images and the plays' pictures."""
-    out = [f for (f,) in con.execute("SELECT DISTINCT file FROM series_art WHERE served = 1")]
-    for rec in rj("plays.json.gz", {}).values():
-        e = rec.get("edition") or {}
-        if e.get("id"):
-            out.append(play_page_url(e))
-    return sorted(set(out))
+    import play_art
+    return sorted(set(f for (f,) in con.execute("SELECT DISTINCT file FROM series_art WHERE served = 1"))
+                  | set(play_art.liveness_files()))
 
 
 def play_page_url(e):

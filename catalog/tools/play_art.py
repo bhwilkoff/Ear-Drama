@@ -137,3 +137,22 @@ def served_files(ctx=None):
             if p[k]:
                 out.add(urllib.parse.unquote(p[k]["evidence"].rsplit("File:", 1)[-1]).replace("_", " "))
     return sorted(out)
+
+
+def liveness_files(ctx=None):
+    """What H9 checks for the plays: every Commons file a work or an author record offers that passes
+    `play_image_served`'s class and size tests, and each edition's title-page image URL."""
+    ctx = ctx or load()
+    out = set()
+    for rec in ctx["plays"].values():
+        for key in ("work", "author"):
+            for fn in (rec.get(key) or {}).get("files") or []:
+                fv = _facts(fn, ctx["files"])
+                if AP.is_picture(fn) and AP.play_image_served(fv.get("class"), fv.get("author"), fv.get("width"),
+                                                              fv.get("height"), True):
+                    out.add(fn.replace("_", " "))
+        e = rec.get("edition") or {}
+        if rec.get("edition_v") == 2 and e.get("id"):
+            out.add(page_url(e))
+    return sorted(out)
+

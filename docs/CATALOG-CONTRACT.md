@@ -573,6 +573,17 @@ a timeout is never a death) with the day, in `.cache/art_v2/liveness.json.gz`, r
 one leads (the picture, hero, gallery and the play pictures), so a deleted Commons file falls back, never to a
 broken box. A file never checked is presumed alive.
 
+**Measured** (2026-11-19, catalog-2026-11-10's data plus the V2 harvests, 4,842 series, 803 plays). Series: a
+show image leads 68 (was 34; sources: P18 27, `commons:name` 28, `commons:category` 9, `commons:enwiki` 4); of the
+300 with most episodes 43 (was 23); 23 have a hero and 23 a gallery; 311 series wear any picture (was 293); the
+random 100 gain one show image and the news and documentary 40 none (the long tail has no free picture: R3b
+section 4.1).
+Plays: 394 of 803 carry a picture (176 title pages, 275 author portraits, 48 led by a work image); of the 508
+single-play texts 277. By eye: 12 of 12 title pages, 6 of 6 portraits and 6 of 6 work images read were right; 29 of
+30 new series images (the one wrong: a television still of The Great Gildersleeve in the program's own Commons
+category, a gallery image). 668 served files (series images, play work images and portraits, title pages) checked live, none gone: the fallback
+is proven by the guards, not yet seen on a real deletion.
+
 **Guards** (`catalog/tests/test_art_v2.py`, each broken once): the name rule (a caption match, an undated hit, a
 hit outside the run, a one-word name without radio, a television file, an audio file), the lead-image rule (a
 non-free lead, a file off Commons), hero (portrait, narrow, source order), gallery (no repeats, at most 6,
