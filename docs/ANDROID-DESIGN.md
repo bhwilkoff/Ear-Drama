@@ -394,6 +394,8 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   V8 (2026-11-20): this holds on the episode page too (its Play row had been a separate item, and Play's first focus scrolled the
   board's top under the bar), and on a TV a wide plate is at most 30% of the screen's height (`ItemLead.window(plateMax)`), so the
   name and the buttons stay on the first screen (Lux Radio Theater's 2:1 hero had filled it).
+  A plate so capped (under 70% of the board's width, `ItemLead.cappedPlate`) stands left of the words, as an upright picture
+  does, never alone at the top with an empty band beside it (V8 follow-up, 2026-11-20).
 - **§4.3 A series page** shows years and count, then Follow (Following
   once followed, a tonal button), then its broadcast seasons as
   `FilterChip`s, a segmented scope and never a push, the oldest selected

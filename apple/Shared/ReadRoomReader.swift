@@ -27,7 +27,7 @@ final class RoomReaderModel {
     @ObservationIgnored private var started = false
 
     init(session: ReadSession, script: PlayScript, store: ProductionStore, publishing: (any RoomPublishing)?,
-         audio: @escaping () -> LiveAudio = { StudioDoor.current.stub ? StubLiveAudio() : EngineLiveAudio() }) {
+         audio: @escaping () -> LiveAudio = { StudioDoor.current.stub ? StubLiveAudio(speaking: true) : EngineLiveAudio() }) {
         self.session = session
         self.script = script
         self.store = store
@@ -57,10 +57,23 @@ final class RoomReaderModel {
         guard !started else { return }
         started = true
         recorder.resume()
+        await openDoors()
         if let snap = snapshot, snap.kind == "class", let classID = snap.classID, let publishing,
            (try? await publishing.under13(classID: classID)) == true {
             recorder.setOneMic(true)
         }
+    }
+
+    /// DEBUG doors APP_START_READ_PART / APP_START_READ_RECORD: claim a part and arm Record without a person's taps (T7b).
+    private func openDoors() async {
+        #if DEBUG
+        let doors = LaunchDoors.current
+        if let part = doors.readPart {
+            send(["type": "claim", "part": part.hasPrefix("role:") ? part : PartID.role(part).rawValue])
+            try? await Task.sleep(for: .seconds(1))
+        }
+        if doors.readRecord { await recorder.arm { true } }
+        #endif
     }
 
     func end() {

@@ -77,6 +77,9 @@ data class LaunchDoors(
     val startReadRoom: String? = null,
     val startSeat: String? = null,
     val startScreen: Boolean = false,
+    /** `appname_start_read_part`: a role name (or `role:NAME`) claimed once the reader is in the room; `appname_start_read_record` then arms Record (use with `appname_studio_stub`). */
+    val startReadPart: String? = null,
+    val startReadRecord: Boolean = false,
     /** `appname_start_read_pair`: the TV's pairing screen (Show a reading). */
     val startReadPair: Boolean = false,
 ) {
@@ -116,6 +119,8 @@ data class LaunchDoors(
         const val EXTRA_START_READ_ROOM = "appname_start_read_room"
         const val EXTRA_START_SEAT = "appname_start_seat"
         const val EXTRA_START_SCREEN = "appname_start_screen"
+        const val EXTRA_START_READ_PART = "appname_start_read_part"
+        const val EXTRA_START_READ_RECORD = "appname_start_read_record"
         const val EXTRA_START_READ_PAIR = "appname_start_read_pair"
         const val EXTRA_READ_DIAG = "appname_read_diag"
 
@@ -140,6 +145,8 @@ data class LaunchDoors(
                 startReadRoom = extras[EXTRA_START_READ_ROOM]?.toString()?.takeIf { it.isNotBlank() },
                 startSeat = extras[EXTRA_START_SEAT]?.toString()?.takeIf { it.isNotBlank() },
                 startScreen = extras[EXTRA_START_SCREEN].let { it == true || it == "1" || it == "true" },
+                startReadPart = extras[EXTRA_START_READ_PART]?.toString()?.takeIf { it.isNotBlank() },
+                startReadRecord = extras[EXTRA_START_READ_RECORD].let { it == true || it == "1" || it == "true" },
                 startReadPair = extras[EXTRA_START_READ_PAIR].let { it == true || it == "1" || it == "true" },
             )
         }
@@ -153,6 +160,12 @@ data class LaunchDoors(
 object StudioDoor {
     @Volatile var stub = false
     @Volatile var phase: String? = null
+}
+
+/** DEBUG doors `appname_start_read_part` / `_read_record`, set once by MainActivity; the room bar reads them once. Never set in release. */
+object ReadRoomDoor {
+    @Volatile var part: String? = null
+    @Volatile var record = false
 }
 
 /** Set by the Along door when it opens a drama: the page presses Listen once, then clears it. Never set in release. */

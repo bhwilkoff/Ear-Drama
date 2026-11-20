@@ -161,6 +161,13 @@ const ReadUI = (() => {
     if (door) { input.value = door.classCode; form.requestSubmit(); }
   }
 
+  /** DEBUG doors `?read-part=<role name>` (claim it once in the room) and `?read-record=1` (then arm Record; the bench's stub microphone), local pages only. */
+  function roomDoor() {
+    if (typeof location === 'undefined' || !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return {};
+    const p = params();
+    return { part: p.get('read-part') || null, record: p.get('read-record') === '1' };
+  }
+
   /** The `?seat=<class code>:<seat id or label>` door picks that name without a person at the form; local pages only, so no shared link carries one. */
   function seatDoor() {
     if (typeof location === 'undefined' || !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return null;
@@ -261,8 +268,12 @@ const ReadUI = (() => {
         engine: (o) => RecordingSession.create({ ...o, audio: LiveAudio.create({ muted: muted() }), voice: StandInVoice.create({ muted: true }),
           announce: async () => { const live = document.getElementById('live'); if (live) live.textContent = 'Your line'; } }),
         onChange: () => paint('rec'),
+        diag: (line) => { if (params().get('readdiag') === '1') console.log('[readdiag]', 'rec', line, 'at', Date.now(), 'offset', session.state().offset); },
       });
       rr.resume();
+      const door = roomDoor();
+      if (door.part) send({ type: 'claim', part: door.part.startsWith('role:') ? door.part : `role:${door.part}` });
+      if (door.record) setTimeout(() => rr.arm(), door.part ? 1000 : 0);
       // One microphone is the default for an under-13 class (§12.10 item 6): no child's voice leaves a device.
       const s0 = session.state().snap;
       if (s0 && s0.kind === 'class' && s0.class_id && s0.you && s0.you.receives) {

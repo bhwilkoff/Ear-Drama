@@ -12,6 +12,12 @@ object ItemLead {
     /** Past this board width (dp) the window stands beside the words (Home's hero, 560); under it, across the top. */
     const val BESIDE_FROM = 560f
 
+    /** A plate narrower than this share of the board stands beside the words, not alone over them (a TV's capped plate). */
+    const val PLATE_SPAN_MIN = 0.7f
+
+    /** True when a plate is capped so far under the board's width that it stands left of the words like an upright picture. */
+    fun cappedPlate(frame: Window, width: Float): Boolean = frame.plate && width >= BESIDE_FROM && frame.width < width * PLATE_SPAN_MIN
+
     /** The window's column beside the words, and the tallest an upright picture stands (dp). */
     const val COLUMN = 320f
     const val UPRIGHT_HEIGHT = 400f

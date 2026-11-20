@@ -53,6 +53,15 @@ class ItemLeadTest {
         assertEquals(440f, ItemLead.window(pic("w", 1600, 800), 960f).height, 0.01f)
     }
 
+    /** V8 follow-up: a TV's capped plate stands beside the words; a full-width plate, and any phone's, stays over them. */
+    @Test fun aCappedPlateStandsBesideTheWordsAndAFullOneDoesNot() {
+        val capped = ItemLead.window(pic("w", 1600, 800), 960f, plateMax = 216f)
+        assertTrue(ItemLead.cappedPlate(capped, 960f))
+        assertTrue("an uncapped plate spans the board", !ItemLead.cappedPlate(ItemLead.window(pic("w", 1600, 800), 960f), 960f))
+        assertTrue("a phone's plate spans the column", !ItemLead.cappedPlate(ItemLead.window(pic("w", 1600, 800), 390f), 390f))
+        assertTrue("an upright picture is no plate", !ItemLead.cappedPlate(ItemLead.window(pic("u", 600, 900), 960f), 960f))
+    }
+
     @Test fun anUploadTaggedTitleGivesWayToTheBroadcastDate() {
         fun ep(title: String?, date: String?, num: Int? = null) = EpisodeRow("s|${date ?: ""}", "s", "Suspense", date, null, num, title, null)
         val own = { r: EpisodeRow -> r.title ?: "" }

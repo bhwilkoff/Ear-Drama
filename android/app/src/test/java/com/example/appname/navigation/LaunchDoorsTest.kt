@@ -53,6 +53,17 @@ class LaunchDoorsTest {
         assertEquals(emptyList<InboxRequest>(), LaunchDoors.from(mapOf("appname_start_read_pair" to "1"), debug = false).requests())
     }
 
+    /** T7b: the claim and Record doors read their extras in a debug build and are empty in release. */
+    @Test
+    fun theReadRoomPartAndRecordDoors() {
+        val extras = mapOf<String, Any?>("appname_start_read_part" to "POLLY", "appname_start_read_record" to "1")
+        val doors = LaunchDoors.from(extras, debug = true)
+        assertEquals("POLLY", doors.startReadPart)
+        assertEquals(true, doors.startReadRecord)
+        assertEquals(LaunchDoors(), LaunchDoors.from(extras, debug = false))
+        assertEquals(null, LaunchDoors.from(mapOf("appname_start_read_part" to ""), debug = true).startReadPart)
+    }
+
     /** Decision 075: five tabs; Stations and Surprise are Home pushes, and the old names still open. */
     @Test
     fun tabsAreActionsAndOldNamesStillOpen() {

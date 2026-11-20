@@ -155,6 +155,11 @@ final class ReadRoomRecorder {
     private func startRecording(_ line: String, credit: Bool) {
         recording = line
         justDid = line
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["APP_READ_DIAG"] == "1" {
+            print("[readdiag] rec \(line) at \(Date().timeIntervalSince1970 * 1000) offset \((link as? ReadSession)?.clockOffsetMS ?? .nan)")
+        }
+        #endif
         Task { await record(line, credit: credit) }
     }
 

@@ -125,7 +125,10 @@ fun ItemHeadBoard(
             else if (first != null || last != null || !years.isNullOrEmpty()) RunStrip(first, last, ink, height = h, years = years, markYear = markYear)
         }
         val card = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ground)
-        if (beside && !frame.plate) {
+        // A plate a TV capped to 30% of the screen's height is much narrower than the board: it stands left of the words
+        // like an upright picture, never alone at the top with an empty band beside it (V8 follow-up, Google TV 2026-11-20).
+        val cappedPlate = ItemLead.cappedPlate(frame, maxWidth.value)
+        if (beside && (!frame.plate || cappedPlate)) {
             Row(card.heightIn(min = frame.height.dp)) {
                 window()
                 Column(

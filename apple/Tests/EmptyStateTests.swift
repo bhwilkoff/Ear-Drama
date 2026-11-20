@@ -17,6 +17,15 @@ struct EmptyStateTests {
         #expect(LaunchDoors.from(environment: [:], arguments: []).along == nil)
     }
 
+    /// T7b: the read room's claim and Record doors read their variables; "1" arms Record, anything else does not.
+    @Test func readRoomPartAndRecordDoors() {
+        let doors = LaunchDoors.from(environment: ["APP_START_READ_PART": "POLLY", "APP_START_READ_RECORD": "1"], arguments: [])
+        #expect(doors.readPart == "POLLY")
+        #expect(doors.readRecord)
+        #expect(LaunchDoors.from(environment: ["APP_START_READ_PART": "", "APP_START_READ_RECORD": "0"], arguments: []).readPart == nil)
+        #expect(!LaunchDoors.from(environment: ["APP_START_READ_RECORD": "0"], arguments: []).readRecord)
+    }
+
     /// The reset door erases the listening lists and nothing else, and only when asked.
     @Test func resetUserStateDoorErasesTheListsOnlyWhenAsked() throws {
         let defaults = try #require(UserDefaults(suiteName: "reset-door-test"))

@@ -257,14 +257,41 @@ struct StudioDoor {
     }()
 }
 
-/// Opens no microphone and plays nothing: room tone and every take come back empty, so nothing is written.
+/// Opens no microphone and plays nothing: room tone and every take come back empty, so nothing is written. With `speaking`
+/// (a read room's DEBUG doors, T7b) every capture after the room tone "speaks" a quiet synthetic tone for 1.5 s and then falls
+/// silent, so the line-end detector ends the take and the take is a real one to send; the tone is never played.
 final class StubLiveAudio: LiveAudio {
+    private let speaking: Bool
+    nonisolated(unsafe) private var captures = 0
+    nonisolated(unsafe) private var heard: [Float] = []
+    nonisolated(unsafe) private var task: Task<Void, Never>?
+
+    init(speaking: Bool = false) { self.speaking = speaking }
+
     func outputRoute() -> AudioRoute { .headphones }
     func start(echoCancelled: Bool) throws {}
     func play(_ cue: CueAudio) async {}
-    func beginCapture(_ onChunk: @escaping @MainActor @Sendable ([Float]) -> Void) {}
-    func endCapture() -> MicrophoneCapture { MicrophoneCapture(samples: [], sampleRate: TakeAudio.sampleRate) }
-    func stop() {}
+    func beginCapture(_ onChunk: @escaping @MainActor @Sendable ([Float]) -> Void) {
+        captures += 1
+        heard = []
+        task?.cancel()
+        guard speaking, captures > 1 else { return }
+        task = Task { @MainActor [weak self] in
+            for n in 0..<150 {
+                if Task.isCancelled { return }
+                let loud = n >= 10 && n < 85
+                let chunk = (0..<960).map { i -> Float in loud ? 0.12 * sin(2 * Float.pi * 160 * Float(n * 960 + i) / 48_000) : 0 }
+                self?.heard += chunk
+                onChunk(chunk)
+                try? await Task.sleep(for: .milliseconds(20))
+            }
+        }
+    }
+    func endCapture() -> MicrophoneCapture {
+        task?.cancel()
+        return MicrophoneCapture(samples: speaking && captures > 1 ? heard : [], sampleRate: TakeAudio.sampleRate)
+    }
+    func stop() { task?.cancel() }
 }
 
 final class SilentStandIn: StandInVoice {

@@ -848,6 +848,19 @@ Reports go to `docs/research/data/t7/<tag>-report.json` (and per-device delays),
   scratchpad may hold a `copy.py` that shadows the stdlib for scripts run from there; a Screen Time limit covers the iPhone
   while the app underneath keeps logging, so logs pass and frames are blind; the Apple TV needs `atvremote ... turn_on`
   (pyatv) before a launch, "System is asleep" otherwise; a locked iPad refuses install and launch.
+- T7-lite (`--tests T7`, its own run: it puts the room in record mode): every reader claims one of the script's biggest parts
+  through the T7b doors and arms Record on a stub microphone, the leader presses a run of lines, and the bench counts, per line,
+  which devices opened their microphone (`[readdiag] rec <line> at <ms> offset <ms>`): exactly the holder, or nobody for an
+  unclaimed part. The leader holds the pickup in the background (`collect`) and the takes that arrive are compared with the lines
+  the take-making devices recorded. Doors: Apple `APP_START_READ_PART=<role name>` + `APP_START_READ_RECORD=1` + `APP_STUDIO_STUB=1`;
+  Android `appname_start_read_part`, `appname_start_read_record`, `appname_studio_stub`; web `?read-part=NAME&read-record=1` (local
+  pages only; the bench's `getUserMedia` stub). Apple's stub returns an empty take, so an Apple device opens its microphone but
+  sends no take.
+- T6 on touch: the Pixel is swiped with `adb input swipe` and tapped with `adb input tap` at the button's uiautomator bounds; the
+  web reader with Chrome's own touch gesture synthesis (`Input.synthesizeScrollGesture`, `Input.dispatchTouchEvent`). The open
+  Duo needs its display on for `tools/ios_uitest.py`; a dark Duo is reported blind.
+- T10 to T12 (teacher class, shared-device seats, under-13) need a signed-in teacher: not run against production (no accounts are
+  made there). They run on the Worker's own suites and `js/read.test.js`; a live run needs a local `wrangler dev` with a test JWKS.
 - T8 on the Pixel switches airplane mode on and off from a device-side script, because wireless adb dies with the radio.
 
 ---
