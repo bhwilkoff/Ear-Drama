@@ -208,6 +208,66 @@ def strip_series_code(title, series_name):
     return title
 
 
+SMALL_JOIN = {"a", "an", "and", "at", "by", "for", "in", "of", "on", "the", "to", "with"}
+LABEL_NUMBER = re.compile(r"^([A-Za-z]{2,8})\s*(?:#\d{1,4}[a-z]?|Season\s*\d{1,2})\b[\s,.:\u2013-]*")
+LABEL_DATE_CODE = re.compile(r"^([A-Za-z]{1,8})\s?(?:\d{8}|\d{6})\b(?:\s*\(\d{1,3}\)|\s+\d{1,3}\b(?=\s+[A-Za-z]))?[\s,.:\u2013-]*")
+BARE_NUMBER = re.compile(r"^#\d{1,4}\b[\s,.:\u2013-]*")
+RUN_ON_NUMBER = re.compile(r"(?<=[a-z]{3})\d{3}$")
+AUDITION_FRAME = re.compile(r"^([A-Za-z]{2,5}\s+[A-Za-z]+)\s*-\s*([^-]{3,}?)\s*-\s*([A-Za-z ]+?)\s+audition$", re.I)
+
+
+def _label_of(series_name):
+    """What an upload may call its series in front of a number: the initials, with a small word either spelled or
+    abbreviated ("AbyM" for Adventures by Morse, "AwtL" for Abroad with the Lockharts), one word of the name
+    ("Gildersleeve", "AFRS"), compared without case."""
+    words = re.findall(r"[A-Za-z]+", re.sub(r"['\u2019]", "", series_name or ""))
+    words = [w for w in words if w]
+    if len(words) >= 2:
+        shapes = [r"(?:%s|%s)" % (w.lower(), w[0].lower()) if w.lower() in SMALL_JOIN else w[0].lower() for w in words]
+        if words[0].lower() in ("the", "a", "an"):
+            shapes = shapes[1:] if len(shapes) > 1 else shapes
+        full = re.compile("(?:%s)$" % "".join(shapes))
+        big = [w[0].lower() for w in words if w.lower() not in SMALL_JOIN]
+        short = {"".join(big[:k]) for k in range(2, len(big) + 1)}
+    else:
+        full, short = None, set()
+    first = {w.lower() for w in words if len(w) >= 3 and w.lower() not in SMALL_JOIN}
+
+    def is_label(tok):
+        t = tok.lower()
+        return bool((full and full.match(t)) or t in short or t in first)
+    return is_label
+
+
+def strip_upload_label(title, series_name):
+    """An uploader's label in front of a title, removed by class: the series' initials, or a word of its name, then a
+    "#" number ("AbyM #001 The City of the Dead", "AwtL #007 ...", "AFRS #76, Guest ..."), a "Season 05" tag, or a six
+    or eight digit date code ("AC400320 - Lion Hunting", "AA 19431008 Andys New Wife", "Clock 461110 (02) The Actor");
+    a bare "#35" number; a three-digit catalog number run onto the last word ("Whos on First288"). The words that
+    are left are the title; when none are, the caller composes from the record's data."""
+    t = (title or "").strip()
+    is_label = _label_of(series_name)
+    for pat in (LABEL_NUMBER, LABEL_DATE_CODE):
+        m = pat.match(t)
+        if m and is_label(m.group(1)) and readable_title(t[m.end():]) and re.match(r"[A-Za-z]", t[m.end():]):
+            return strip_upload_label(t[m.end():], series_name) if pat is LABEL_NUMBER else t[m.end():].strip()
+    m = BARE_NUMBER.match(t)
+    if m and readable_title(t[m.end():]) and re.match(r"[A-Za-z]", t[m.end():]):
+        return t[m.end():].strip()
+    if len(t.split()) >= 2:
+        t = RUN_ON_NUMBER.sub("", t)
+    return t
+
+
+def strip_audition_frame(title, series_name):
+    """"CBS Forecast-The Lodger-Suspense audition" in Suspense: a network and program tag, the title, then the
+    series and the word audition. The tags go; the title and the word the upload gave stay."""
+    m = AUDITION_FRAME.match(title or "")
+    if m and name_tokens(m.group(3)) == name_tokens(series_name or "") and BROADCASTERS.match(m.group(1).split()[0].upper()):
+        return f"{m.group(2).strip()} (audition)"
+    return title
+
+
 # P-12 (DECISIONS 033): a shelf or date code an upload put in front of a title ("67073A-Billy Williams", "460507 249.5 A
 # Day at Camp"), alone or behind the series' own name ("Crime Does Not Pay-500529-34-Imported Headaches", "The
 # Brownstone Theater 45-02-21the Lion and the Mouse"); and a collector's credit where a title should be ("Tom C. Miller
@@ -255,7 +315,9 @@ def episode_text(shown, series_name, tags=()):
         t = f"{t[m.end():].strip()} ({m.group(1)})"
     t = XX_LEAD.sub("", t)
     t = strip_catalog_code(t, series_name)
+    t = strip_upload_label(t, series_name)
     t = strip_series_code(t, series_name)
+    t = strip_audition_frame(t, series_name)
     t = series_possessive(t, series_name)
     m = TAIL_TAG.search(t)
     if m and m.group(1) in tags and m.start() > 0:
