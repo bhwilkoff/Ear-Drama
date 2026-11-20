@@ -259,3 +259,11 @@ privacy words) is folded in when it arrives, never waited on.
   code refuses cleanly, no crash logs; Duo unavailable); T4 pushed (f107c97, 1.0.143). For T5: map a
   missing room to its own "not found" state instead of "could not be reached". Running: V2, V7, V6
   (Sonnet, Home ports).
+- **2026-11-19, tick 12**: V7 web merged and pushed (1542712, 1.0.144): item pages wear Home's
+  hero (series hero/picture/label, gallery when 2+, episode's own label, recordings closed, person,
+  play title page); frames read. Decided from rules: page heads graded (match Home), gallery shown
+  ungraded (uniform-imagery-design); person credit rows keep date blocks. Queued: web_fit_actions.py
+  pins a retired episode (tests never pin catalog contents: pick from data); a catalog display_text
+  batch after V2 (upload tags "AbyM #001", "AC400320 - ...", "Dimaggio397", "CBS Forecast-..."). V7
+  ports to Apple/Android after V6. Running: V2, V6, T5 (Opus: record in the room, room inside the
+  existing reader on Apple/Android, TV pairing route, not-found state, stand-in voice, adult names).
