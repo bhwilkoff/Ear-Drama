@@ -640,7 +640,7 @@ private struct SeriesScreen_tvOS: View {
         return ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: TV.rowGap) {
                 TVHero(kicker: kicker, title: series.name, facts: SeriesHead.facts(series), genre: series.genre,
-                       art: series.windowArt, years: series.yearCounts) {
+                       art: series.lead, years: series.yearCounts, label: series.labelItem) {
                     // §4.3: Play is the first focus stop; only the focused control is bright.
                     if let first = resume ?? episodes.first?.id {
                         Button {
@@ -705,7 +705,9 @@ private struct PersonScreen_tvOS: View {
                                facts: [page.person.years, PersonRowLabel.count(page.episodes.count),
                                        groups.count > 1 ? countText(groups.count, "show", "shows") : nil],
                                genre: nil, art: page.person.art, round: true,
-                               years: PersonShows.yearCounts(page.episodes)) {
+                               years: PersonShows.yearCounts(page.episodes),
+                               label: LabelItem(kind: .person, name: page.person.name, first: PersonShows.span(page.episodes).first,
+                                                last: PersonShows.span(page.episodes).last)) {
                             if page.episodes.count > 1 {
                                 Button {
                                     newestFirst.toggle()
@@ -788,16 +790,16 @@ private struct EpisodeScreen_tvOS: View {
     private func content(_ detail: EpisodeDetail) -> some View {
         let episode = detail.episode
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
-        let lead = Grammar.leadPicture(series: show, credits: detail.credits, star: detail.star)
         let genre = show?.genre ?? episode.seriesGenre
         let onAir = Grammar.onAirOf(detail.credits)
         return ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: TV.rowGap) {
-                TVHero(kicker: episode.seriesName, title: episode.displayTitle,
+                TVHero(kicker: episode.seriesName, title: ItemLead.episodeTitle(episode),
                        facts: Grammar.episodeFacts(date: episode.airDate.map { AirDate.display($0) }, network: episode.network,
                                                    sponsor: detail.sponsor, length: nil, season: episode.season,
                                                    title: episode.title, number: episode.number),
-                       genre: genre, art: lead, pictureName: episode.seriesName) {
+                       genre: genre, art: nil, pictureName: episode.seriesName, years: show?.yearCounts,
+                       markYear: episode.airDate.flatMap { Int($0.prefix(4)) }, label: episode.labelItem(series: show)) {
                     // tvOS auto-focuses Play on Detail (an inversion of the
                     // iOS rule, which never steals focus).
                     Button {

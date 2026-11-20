@@ -176,6 +176,11 @@ only here:
   tiles (right-click a tile for Unfollow), History, Downloads, Ear dramas, each with its empty caption. A download is played, never
   exported.
 - **D3-8** (D3-8, 2026-10-30) Stations, Surprise, Search's people and a person's page follow WEB-DESIGN §6.4f in this platform's idiom: the same views as iOS-DESIGN's D3-8 note, in the detail column at the readable measure; hover and the pointer are the platform's own.
+- **§4.3g Item pages wear Home's hero** (Decision 081, Round 3 V7; owner, 2026-11-19: *"We need to continue making the app more visually appealing, both from the home screen perspective ... and the individual item perspective."*). As iOS-DESIGN §4.3g in the Mac's idiom: the same
+  `ItemHeadBoard` heads a series, episode, person, play and ear drama page inside the `WidePage`, always at the 320 pt
+  beside-the-words column (a window is never narrower than 560 pt) or, for a wide picture, as a plate; the buttons sit under the
+  board, not on it; the gallery row is 200 pt tall and scrolls with the trackpad; a caption's credit opens the evidence in the
+  default browser.
 - **§4.3 Stations** is iOS's `RadioScreen` (`docs/iOS-DESIGN.md` §4.9) in
   the detail column: the same stations row (Tonight, then each genre
   station, each with what is on now and Listen live), slots, times, gaps,

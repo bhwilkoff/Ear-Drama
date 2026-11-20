@@ -259,12 +259,18 @@ struct PlayScriptScreen: View {
 /// A play's page: the head board, Record This, the parts, the rights line (D3-6).
 struct PlayPageBody: View {
     let script: PlayScript
+    /// The published title page and author's portrait (R3b §5.5 `play.titlePage`, `play.authorArt`); a play carries
+    /// neither until the pipeline does, and its head is then its opening drawn as a page (WEB-DESIGN §6.4g).
+    var titlePage: Artwork? = nil
+    var authorArt: Artwork? = nil
 
     var body: some View {
+        let lead = ItemLead.playLead(titlePage: titlePage, authorArt: authorArt)
         VStack(alignment: .leading, spacing: Spacing.s4) {
-            HeadBoard(kicker: PlayHead.kicker(script), name: script.title, genre: PlayScript.boardGenre, art: nil,
-                      first: nil, last: nil, facts: PlayHead.facts(script),
-                      credits: script.authorLineWithYears, castScript: script)
+            ItemHeadBoard(kicker: ItemKicker.text(PlayHead.kicker(script)), name: script.title, genre: PlayScript.boardGenre, art: lead,
+                          label: script.pageLabel, facts: PlayHead.facts(script), credits: script.authorLineWithYears,
+                          cast: CastSummary(script: script),
+                          customWindow: ItemLead.shown(lead) == nil ? { side in AnyView(PlayOpeningWindow(script: script, side: side)) } : nil)
             ActionRow {
                 StartEarDramaButton(script: script)
                 ReadButton(scriptID: script.id)
@@ -280,6 +286,24 @@ struct PlayPageBody: View {
         }
         .padding(Spacing.s4)
         .modifier(ReadableColumn())
+    }
+}
+
+/// A play's opening drawn as a page at tier L (WEB-DESIGN §6.4g): the first speeches in body type on the script's ground, the
+/// voice bands at its foot. Words are the script's own.
+struct PlayOpeningWindow: View {
+    let script: PlayScript
+    let side: CGFloat
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            LabelView(item: script.pageLabel, side: side)
+            ScenePage(opening: script.opening(n: 4), hue: { SceneScript.hue(script, $0) }, current: nil, lines: 2)
+                .padding(.bottom, side * 0.18)
+        }
+        .frame(width: side, height: side, alignment: .topLeading)
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .accessibilityLabel("The opening")
     }
 }
 

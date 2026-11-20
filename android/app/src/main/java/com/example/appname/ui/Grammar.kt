@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.example.appname.data.ItemLead
 import com.example.appname.data.Artwork
 import com.example.appname.data.Grade
 import com.example.appname.data.SeriesRow
@@ -218,6 +219,8 @@ fun RunStrip(
     modifier: Modifier = Modifier,
     height: Dp = 18.dp,
     years: List<Int>? = null,
+    /** An episode's page marks its own year: that year's bar at full ink, the rest at 45 % (WEB-DESIGN §6.4g). */
+    markYear: Int? = null,
 ) {
     val bars = remember(years) { runBars(years) }
     val span = remember(first, last, bars) { if (bars == null) runSpan(first, last) else null }
@@ -234,7 +237,7 @@ fun RunStrip(
                     bars.forEach { b ->
                         val h = maxOf(2.dp.toPx(), room * b.height.toFloat())
                         drawRect(
-                            color,
+                            if (ItemLead.dimmed(b.from, markYear)) color.copy(alpha = 0.45f) else color,
                             Offset((b.from * size.width).toFloat(), size.height - line - h),
                             Size(maxOf(1f, ((b.to - b.from) * size.width).toFloat() - 0.5.dp.toPx()), h),
                         )

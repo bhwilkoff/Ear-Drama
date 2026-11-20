@@ -443,6 +443,19 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   set (contract §3.1). A play row is its title, then its author and
   part count, and pushes the play's page (`PlayRoute.script`). An empty
   result offers Clear Filters.
+- **§4.3g Item pages wear Home's hero** (Decision 081, Round 3 V7; owner, 2026-11-19: *"We need to continue making the app more visually appealing, both from the home screen perspective ... and the individual item perspective."* Shared rules: WEB-DESIGN §6.4g 1-7, binding over
+  R11d's head-board sizes on these pages; skills `artwork-presentation-design`, `uniform-imagery-design`). The series, episode,
+  person, play and finished ear drama pages open on `ItemHeadBoard`: the window at tier L across the board's top on a phone and a
+  320 pt column beside the words from 560 pt (the open Duo and an iPad), the words in Home's order, then the strip. A picture
+  keeps its own shape (`ItemLead.window`): a wide one is a plate over the words, an upright or square one stands where the
+  label would, never cropped, graded as everywhere, its credit under the board; a series' `lead` is a wide `hero`, else its
+  picture, else the label; a person's is the portrait, else the groove-ring label in a round window; a play's is `titlePage`,
+  else `authorArt`, else its opening drawn as a page (`PlayOpeningWindow`); a finished ear drama keeps its part-color disc. An
+  episode's head is its own dated label with the title as the heading, the show a kicker link, and its year at full ink on the
+  show's strip (`markYear`); the show's picture is a grammar row under the actions, opening the series. The copies are one closed
+  **Recordings** disclosure (the default copy chosen inside). `series.gallery` draws as one row of whole, ungraded pictures at
+  160 pt only from two evidenced pictures (`ItemLead.gallery`), each captioned with its credit or its source's site, linked.
+  The board is one `Layout`, measured from its proposal, so it is the same height wherever it is drawn. Built in Round 3 V7.
 - **§4.3 A series page** carries Follow / Following as the toolbar's
   primary action (the web's verb and words; a plus, then a checkmark once
   followed), with the selection haptic on change. It writes

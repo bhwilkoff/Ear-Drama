@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,6 +27,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.example.appname.ui.revealWhole
+import com.example.appname.ui.HeadWindow
+import com.example.appname.data.ItemLead
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +58,6 @@ import com.example.appname.radio.DialEntry
 import com.example.appname.radio.HomeLive
 import com.example.appname.ui.EventLine
 import com.example.appname.ui.LabelArt
-import com.example.appname.ui.PictureWindow
 import com.example.appname.ui.formatAirDate
 import com.example.appname.data.headNameStep
 import com.example.appname.ui.nameStyle
@@ -69,7 +74,6 @@ import java.time.Instant
 
 /** Past a phone's column the window stands beside the words, 320 dp, as on the web. */
 private val BesideFrom = 560.dp
-private val HeroWindow = 320.dp
 
 /**
  * The hero: the board of the show on the air, its window (the show's picture, else its label with the evening's year
@@ -97,14 +101,15 @@ fun OnAirHero(
     val label = (series?.labelItem() ?: LabelItem(LabelKind.Series, episode.series, genre)).copy(tickYear = on.tickYear)
     val t = MaterialTheme.typography
     BoxWithConstraints(modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
-        val beside = maxWidth >= BesideFrom
+        // A picture keeps its own shape and fills its window (a wide one is a plate over the words); the label stands in for
+        // none, a failed load or one under the size floor. Google TV Home drew a wide photo small inside a square window.
+        var failed by remember(series?.windowArt) { mutableStateOf(false) }
+        val shown = if (failed) null else ItemLead.shown(series?.windowArt)
+        val frame = ItemLead.window(shown, maxWidth.value)
+        val beside = maxWidth >= BesideFrom && !frame.plate
         val open = Modifier.clickable(onClickLabel = "Open episode") { onOpenEpisode(episode.id) }
         val window = @Composable {
-            PictureWindow(
-                series?.windowArt, episode.series, genre,
-                (if (beside) Modifier.size(HeroWindow) else Modifier.fillMaxWidth().aspectRatio(1f)).then(open),
-                label = label,
-            )
+            Box(open) { HeadWindow(shown, label, false, frame, null) { failed = true } }
         }
         val words = @Composable { m: Modifier ->
             Column(m, verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
@@ -156,7 +161,7 @@ fun OnAirHero(
                 }
             }
         }
-        val card = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ground)
+        val card = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ground).revealWhole()
         if (beside) {
             Row(card, verticalAlignment = Alignment.CenterVertically) {
                 window()

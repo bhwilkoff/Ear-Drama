@@ -178,6 +178,13 @@ The only shapes; a new one needs a new rule.
   bar names the section, so the screen draws no title, as every tvOS tab. In A to Z a letter starts
   the list at that letter and the row marks which: scroll on the TV follows focus, so a `scrollTo`
   is undone at once, and a letter's tiles may not be drawn to take focus.
+- **§4.3g Item pages wear Home's hero at ten feet** (Decision 081, Round 3 V7; owner, 2026-11-19: *"We need to continue making the app more visually appealing, both from the home screen perspective ... and the individual item perspective."* Shared rules: WEB-DESIGN §6.4g). `TVHero`
+  already heads Home, a series, an episode and a person; V7 changes what its window holds: a picture at its own shape, never
+  cropped (460 pt tall, up to 760 wide, so a wide photo is a plate that fills its window, not a small print inside a square), the
+  label otherwise (round for a person, the show's run and network for a series), and an episode's own dated label with the show's
+  year at full ink on the strip, the show card under the buttons carrying the show's picture. Focus does the work: the hero's
+  buttons are in the first screen (window 460 plus the margin is under 1080 pt), so focus moving to them scrolls nothing; no
+  picture, credit or label takes focus. A series' gallery and a play's page are not drawn on the TV (no Read door on a TV).
 - **§4.3 A series page** is the hero (genre and at most two networks, the name, the years and
   count and "With" the show's star, the run strip on the show's own years), then Play (the first focus stop: the episode in
   progress as Resume, else the first episode), Follow / Following (`FollowedSeries`, synced) and the

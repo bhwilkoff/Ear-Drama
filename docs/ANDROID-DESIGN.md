@@ -382,6 +382,15 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   (`seriesDecades`). Every facet is counted against the others'
   selection through the one clause the list uses (`facetClause`), so no
   choice offered yields zero rows (web §4.3, §10.5).
+- **§4.3g Item pages wear Home's hero** (Decision 081, Round 3 V7; owner, 2026-11-19: *"We need to continue making the app more visually appealing, both from the home screen perspective ... and the individual item perspective."* Shared rules: WEB-DESIGN §6.4g 1-7). `ItemHeadBoard`
+  heads the series, episode, person, play and ear drama pages: the window at tier L across the board's top on a phone and 320 dp
+  beside the words from 560 dp (a tablet, a TV), a picture at its own shape through `ItemLead.window` (wide a plate, upright
+  beside the words), never cropped, graded; the label (round for a person) otherwise; an episode's head is its dated label with its
+  year at full ink on the show's strip and the show's picture a row under the actions; the copies are one collapsed
+  **Recordings** row; `series.gallery` is a `LazyRow` of whole pictures, ungraded, drawn only from two evidenced ones.
+  **TV: focus does the work.** The head and its buttons are one list item wrapped in `revealWhole()`, so a D-pad move to a button
+  asks the list to reveal the whole board, never only the button (Google TV Home scrolled the hero's top off screen, 2026-11-19);
+  Home's hero draws its photo through the same window, at its own shape, where a wide photo had sat small inside a square window.
 - **§4.3 A series page** shows years and count, then Follow (Following
   once followed, a tonal button), then its broadcast seasons as
   `FilterChip`s, a segmented scope and never a push, the oldest selected

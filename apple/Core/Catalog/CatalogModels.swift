@@ -160,8 +160,15 @@ nonisolated struct SeriesRow: Hashable, Sendable, Identifiable {
     var yearCounts: [Int]? = nil
     /// The key the A to Z order sorts on, for Browse's letter index; nil where the catalog has none.
     var sortName: String? = nil
+    /// The landscape show image and the further pictures (R3b §5.5 `series.hero`, `series.gallery`); empty on a
+    /// catalog that predates them, and the page falls back to the picture, then the label.
+    var hero: Artwork? = nil
+    var gallery: [Artwork] = []
 
     var id: String { key }
+
+    /// The picture that leads the series page (WEB-DESIGN §6.4g): a wide hero, else the window's picture; nil is the label.
+    var lead: Artwork? { ItemLead.seriesLead(hero: hero, picture: windowArt) }
 
     /// What the window draws: the published picture, else the star's portrait an older catalog carries.
     var windowArt: Artwork? { picture ?? face?.art }

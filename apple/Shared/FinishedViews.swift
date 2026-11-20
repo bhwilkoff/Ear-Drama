@@ -195,10 +195,20 @@ struct FinishedDramaScreen: View {
         let script = FinishedTiles.script(for: play)
         return ScrollView {
             VStack(alignment: .leading, spacing: Spacing.s4) {
+                #if os(tvOS)
                 HeadBoard(kicker: script.map { "Ear drama \u{00B7} \($0.kind == "radio" ? "Radio play" : "Stage play")" } ?? "Ear drama",
                           name: play.title, genre: PlayScript.boardGenre, art: nil, first: nil, last: nil,
                           facts: [script?.authorLineWithYears, FinishedDramas.dateLine(play)] as [String?],
                           credits: FinishedDramas.creditLine(play.credits, limit: 4), castScript: script)
+                #else
+                ItemHeadBoard(kicker: ItemKicker.text(script.map { "Ear drama \u{00B7} \($0.kind == "radio" ? "Radio play" : "Stage play")" } ?? "Ear drama"),
+                              name: play.title, genre: PlayScript.boardGenre,
+                              label: script?.dramaLabel(title: play.title, published: play.publishedISO)
+                                  ?? LabelItem(kind: .drama, name: play.title, finished: play.publishedISO),
+                              facts: [script?.authorLineWithYears, FinishedDramas.dateLine(play)] as [String?],
+                              credits: FinishedDramas.creditLine(play.credits, limit: 4),
+                              cast: script.map(CastSummary.init(script:)))
+                #endif
                 ActionRow {
                     Button {
                         if listen.isActive { listen.stop() } else { Task { await start(play) } }
