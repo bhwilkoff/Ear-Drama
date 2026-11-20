@@ -70,7 +70,8 @@ def run(con):
     for key, otrr, re_tag, lv in con.execute("SELECT key, genres_otrr, genre, is_librivox FROM series"):
         existing[key] = G.genre_of(json.loads(otrr) if otrr else None, re_tag, bool(lv))[0]
     nets = {k: json.loads(n) if n else [] for k, n in con.execute("SELECT key, networks FROM series")}
-    wd = L.read_json(WD) if os.path.exists(WD) else {}
+    import enrich_external as EX
+    wd = EX.load_items()   # the radio-class items and those H1 found by name
 
     served = set()
     files = collections.defaultdict(lambda: collections.defaultdict(set))   # series -> archive id -> file names
@@ -88,7 +89,7 @@ def run(con):
     for key, qid, ev, bc, genre_json in con.execute(
             "SELECT series_key, qid, match_evidence, broadcaster, genre FROM series_wikidata WHERE in_db = 1"):
         g, labels = wikidata_genre(genre_json)
-        identity = AP.series_identity(json.loads(ev or "{}"), nets.get(key), [b.get("label") for b in json.loads(bc or "[]")],
+        identity = AP.series_identity(json.loads(ev or "{}"), nets.get(key), [b.get("qid") for b in json.loads(bc or "[]")],
                                       (wd.get(qid) or {}).get("description"))
         if g and identity in AP.IDENTITY_SERVED:
             wikidata[key] = (g, labels)

@@ -1,6 +1,7 @@
 """Wikidata (CC0) series and episode items for radio, harvested whole, matched later.
 
     python3 tools/harvest_ext_wikidata.py
+    python3 tools/harvest_ext_wikidata.py --names [--db out/radio-catalog.sqlite]   # H1, after a build
 
 Rather than ask Wikidata one name at a time for ~9,000 names, this pulls every
 item whose class (P31) is radio program Q1555508 or a subclass and that has an
@@ -15,10 +16,14 @@ Writes, under .cache/wikidata/:
   enwiki_radio.json {enwiki title: {qid, cats}}  (category evidence)
   labels.json.gz    {qid: en label} for values (networks, people, genres)
   failed.json       requests that could not be read
-Exits non-zero when nothing was read.
+  names.json.gz     --names (H1, R3b section 5.1): {hits: {qid: [names that reached it]},
+                    items: {qid: slim entity} for radio items the class harvest missed,
+                    shortdesc: {enwiki title: its own short description}, labels}
+Exits non-zero when nothing was read (--names: when any request failed).
 """
 import json
 import os
+import re
 import sys
 import urllib.parse
 
@@ -212,7 +217,207 @@ def enwiki_crawl():
     return pages
 
 
+# ---------------------------------------------------------------- H1: wider identity (R3b section 5.1)
+
+SMALL = {"a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into", "of", "on", "or", "the", "to",
+         "with"}
+QUALIFIERS = ("", " (radio program)", " (radio series)", " (radio drama)", " (radio show)", " (radio)",
+              " (radio serial)", " (radio play)")
+HUMAN, DISAMBIGUATION = "Q5", "Q4167410"
+
+
+def smart_title(name):
+    """'The Adventures Of Paul Temple' as a label is written: 'The Adventures of Paul Temple'."""
+    words = (name or "").split()
+    return " ".join(w if i == 0 or w.lower() not in SMALL else w.lower() for i, w in enumerate(words))
+
+
+def label_variants(name):
+    """The exact English labels a series may carry on Wikidata: its name as we hold it and as a label
+    is cased, with and without a leading The (and OTRR's trailing ', The' moved to the front), with &
+    and 'and' each way. Nothing that drops a content word."""
+    n = re.sub(r"\s+", " ", name or "").strip()
+    m = re.match(r"^(.*),\s*(The|A|An)$", n, re.I)
+    bases = {n} | ({f"{m.group(2).title()} {m.group(1)}"} if m else set())
+    out = set()
+    for b in list(bases):
+        for v in (b, smart_title(b)):
+            for w in (v, re.sub(r"\s*&\s*", " and ", v), re.sub(r"\s+and\s+", " & ", v, flags=re.I)):
+                out.add(w)
+                out.add(w[4:] if w.lower().startswith("the ") else "The " + w)
+    return sorted(v for v in out if 3 <= len(v) <= 150 and not v.isdigit())
+
+
+def title_variants(name):
+    """English Wikipedia article titles a series may have: its cased name, alone and with the
+    radio qualifiers enwiki disambiguates with ('Suspense (radio drama)')."""
+    out = set()
+    for b in {smart_title(name), smart_title(re.sub(r"^(.*),\s*(The|A|An)$", r"\2 \1", name or "", flags=re.I))}:
+        b = re.sub(r"\s+", " ", b).strip()
+        if len(b) >= 3:
+            out |= {b[0].upper() + b[1:] + q for q in QUALIFIERS}
+    return sorted(out)
+
+
+def _lit(s):
+    return json.dumps(s, ensure_ascii=False) + "@en"
+
+
+def label_hits(strings, batch=300):
+    """{qid: [strings]}: items whose English label or alias is one of `strings`, in VALUES batches."""
+    out = {}
+    strings = sorted(set(strings))
+    for i in range(0, len(strings), batch):
+        vals = " ".join(_lit(s) for s in strings[i:i + batch])
+        rows = _sparql_raw(f"""SELECT ?x ?name WHERE {{ VALUES ?name {{ {vals} }}
+          {{ ?x rdfs:label ?name }} UNION {{ ?x skos:altLabel ?name }} }}""")
+        if rows is None:
+            print(f"  labels {i}: FAILED", file=sys.stderr)
+            continue
+        for b in rows:
+            q = _v(b["x"])
+            if q[:1] == "Q":
+                out.setdefault(q, set()).add(b["name"]["value"])
+        print(f"  labels {i + batch}/{len(strings)}: {len(out)} items", flush=True)
+    return {q: sorted(v) for q, v in out.items()}
+
+
+def sitelink_hits(titles, batch=300):
+    """{enwiki title: qid}: the Wikidata item each existing English article is about (sitelinks)."""
+    out = {}
+    titles = sorted(set(titles))
+    for i in range(0, len(titles), batch):
+        vals = " ".join(_lit(t) for t in titles[i:i + batch])
+        rows = _sparql_raw(f"""SELECT ?item ?name WHERE {{ VALUES ?name {{ {vals} }}
+            ?a schema:name ?name ; schema:isPartOf <https://en.wikipedia.org/> ; schema:about ?item }}""")
+        if rows is None:
+            print(f"  titles {i}: FAILED", file=sys.stderr)
+            continue
+        for b in rows:
+            out[b["name"]["value"]] = _v(b["item"])
+        print(f"  titles {i + batch}/{len(titles)}: {len(out)} articles", flush=True)
+    return out
+
+
+def light_facts(qids, batch=300):
+    """{qid: {"classes": [P31], "description", "enwiki"}} for the items a name reached."""
+    out = {}
+    qids = sorted(set(qids))
+    for i in range(0, len(qids), batch):
+        vals = " ".join("wd:" + q for q in qids[i:i + batch])
+        rows = _sparql_raw(f"""SELECT ?x ?c ?d ?en WHERE {{ VALUES ?x {{ {vals} }}
+          OPTIONAL {{ ?x wdt:P31 ?c }}
+          OPTIONAL {{ ?x schema:description ?d FILTER(lang(?d)="en") }}
+          OPTIONAL {{ ?en schema:about ?x ; schema:isPartOf <https://en.wikipedia.org/> }} }}""")
+        if rows is None:
+            print(f"  facts {i}: FAILED", file=sys.stderr)
+            continue
+        for b in rows:
+            q = _v(b["x"])
+            e = out.setdefault(q, {"classes": [], "description": None, "enwiki": None})
+            if "c" in b and _v(b["c"]) not in e["classes"]:
+                e["classes"].append(_v(b["c"]))
+            if "d" in b:
+                e["description"] = b["d"]["value"]
+            if "en" in b:
+                e["enwiki"] = urllib.parse.unquote(b["en"]["value"].rsplit("/wiki/", 1)[1]).replace("_", " ")
+    return out
+
+
+def shortdescs(titles, batch=50):
+    """{enwiki title: its own short description, or None}: the article's wikibase-shortdesc page
+    property, read through the Action API 50 titles a call (redirects followed back to the asked title)."""
+    out = {}
+    titles = sorted(set(titles))
+    for i in range(0, len(titles), batch):
+        chunk = titles[i:i + batch]
+        d = wm.call(wm.EN_API, {"action": "query", "prop": "pageprops", "ppprop": "wikibase-shortdesc",
+                                "titles": "|".join(chunk), "redirects": 1, "format": "json", "formatversion": 2},
+                    cache_dir="wikidata/enwiki_shortdesc")
+        if d is None:
+            print(f"  shortdesc {i}: FAILED", file=sys.stderr)
+            continue
+        back = {t: t for t in chunk}
+        for k in ("normalized", "redirects"):
+            for r in d.get("query", {}).get(k, []):
+                back[r["to"]] = back.get(r["from"], r["from"])
+        for p in d.get("query", {}).get("pages", []):
+            asked = back.get(p.get("title"), p.get("title"))
+            out[asked] = (p.get("pageprops") or {}).get("wikibase-shortdesc")
+        if i % 1000 == 0:
+            print(f"  shortdesc {i + len(chunk)}/{len(titles)}", flush=True)
+    return out
+
+
+def names_phase(db_path):
+    """H1: every served series name looked up on Wikidata in VALUES batches (labels and aliases, and
+    English article titles with the radio qualifiers), the items found classed, their articles'
+    short descriptions read, and the radio ones (a radio-program class, or a short description that
+    names radio and years) fetched whole. Writes .cache/wikidata/names.json.gz; enrich_external.py
+    matches them under the same rules as the radio-class harvest."""
+    import sqlite3
+    import art_policy as AP
+    import enrich_external as EX
+    db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    idx = EX.SeriesIndex(db)
+    keys = sorted(idx.known & idx.in_db)
+    names = sorted({idx.name[k] for k in keys if idx.name.get(k)})
+    print(f"H1: {len(names)} series names", flush=True)
+    by_label = label_hits({v for n in names for v in label_variants(n)})
+    by_title = sitelink_hits({t for n in names for t in title_variants(n)})
+    hits = {q: set(v) for q, v in by_label.items()}
+    for t, q in by_title.items():
+        hits.setdefault(q, set()).add(t)
+    have = EX.load(os.path.join(DIR, "items.json.gz"), {}) or {}
+    classes = set(radio_classes() or [])
+    if not classes:
+        print("could not read the class tree", file=sys.stderr)
+        sys.exit(2)
+    facts = light_facts(hits)
+    # Our names reach these: read the short description of each one's article that is not a person
+    # or a disambiguation page, and of every radio-class item that reaches a name with no dates (V10).
+    ask = set()
+    for q, f in facts.items():
+        if f["enwiki"] and not ({HUMAN, DISAMBIGUATION} & set(f["classes"])):
+            ask.add(f["enwiki"])
+    for q, it in have.items():
+        dated = any(it["props"].get(k) for k in ("start", "end", "inception", "dissolved", "published"))
+        nm = [it.get("label"), it.get("enwiki")] + list(it.get("aliases") or [])
+        if it.get("enwiki") and not dated and any(idx.routes(n) for n in nm if n):
+            ask.add(it["enwiki"])
+    sd = shortdescs(ask)
+    keep = set()
+    for q, f in facts.items():
+        rc = classes & set(f["classes"])
+        if q in have:
+            continue
+        if HUMAN in f["classes"] or (rc and rc <= {EPISODE}):
+            continue   # a person, or one broadcast's item
+        if rc or AP.radio_shortdesc(sd.get(f["enwiki"])):
+            keep.add(q)
+    print(f"H1: {len(hits)} items reached by name, {len(keep)} new radio items, {len(sd)} short descriptions",
+          flush=True)
+    items = get_items(keep)
+    for q, it in items.items():
+        it["radio_class"] = sorted(classes & set(it["props"].get("instance_of", [])))
+        it["found_by"] = sorted(hits.get(q, ()))
+    refs = {v for it in items.values() for vs in it["props"].values() for v in vs
+            if isinstance(v, str) and v[:1] == "Q" and v[1:].isdigit()}
+    old = EX.load(os.path.join(DIR, "labels.json.gz"), {}) or {}
+    labels = get_labels(refs - set(old))
+    write_json(os.path.join(DIR, "names.json.gz"), {
+        "names": len(names), "hits": {q: sorted(v) for q, v in sorted(hits.items())},
+        "items": items, "shortdesc": sd, "labels": labels, "failed": wm.FAILED}, gz=True)
+    print(f"H1: wrote {len(items)} items, {len(labels)} labels, failed {len(wm.FAILED)}")
+    if wm.FAILED:
+        sys.exit(1)
+
+
 def main():
+    if "--names" in sys.argv:
+        from ia_lib import OUT
+        db = sys.argv[sys.argv.index("--db") + 1] if "--db" in sys.argv else os.path.join(OUT, "radio-catalog.sqlite")
+        return names_phase(db)
     os.makedirs(DIR, exist_ok=True)
     classes = radio_classes()
     if not classes:

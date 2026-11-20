@@ -1,6 +1,6 @@
 ---
 name: artwork-presentation-design
-description: Use when designing how images of MIXED, unknown, or uncontrolled aspect ratios appear in one slot (a page header, a hero band, Now Playing art, a detail figure, a tile, an avatar), on any platform. Carries the rule that the slot takes the image's shape rather than the image the slot's, the decision tree by aspect ratio and slot, when a crop is allowed and where its focal point is computed (once in the pipeline, never per device), matting and framing as an archival print, dominant-color fields, the typographic card as default art, and the anti-patterns (blur-and-bars, center crops of faces, filled boxes on light pages). Triggers on aspect ratio, portrait vs landscape, hero image, header image, artwork slot, letterbox, pillarbox, blurred background, "black bars", object-fit, ContentScale, crop, focal point, face crop, smart crop, Now Playing art, artist page, poster, photo caption, image credit, "make it more visual".
+description: Use when designing how images of MIXED, unknown, or uncontrolled aspect ratios appear in one slot (a page header, a hero band, Now Playing art, a detail figure, a tile, an avatar), on any platform. Carries the rule that the slot takes the image's shape rather than the image the slot's, the decision tree by aspect ratio and slot, when a crop is allowed and where its focal point is computed (once in the pipeline, never per device), matting and framing as an archival print, dominant-color fields, the data-drawn mark (a label from the item's own facts) as default art, and the anti-patterns (blur-and-bars, center crops of faces, filled boxes on light pages). Triggers on aspect ratio, portrait vs landscape, hero image, header image, artwork slot, letterbox, pillarbox, blurred background, "black bars", object-fit, ContentScale, crop, focal point, face crop, smart crop, Now Playing art, artist page, poster, photo caption, image credit, "make it more visual".
 ---
 
 # Artwork Presentation Design
@@ -71,12 +71,12 @@ the same image (`cross-platform-parity-discipline`).
 
 | Slot | Upright | Square | Wide | No image |
 |---|---|---|---|---|
-| **Page header** (a person, a show, an item) | Beside the heading, height-bounded, width from its aspect; caption under it (the label) | Beside, as upright, a little smaller | A plate: full column width at its own aspect, height capped; if the cap binds, the width shrinks and the plate sits at the start, never centered in a filled band | The typographic card: the heading set large on the content's own hue |
+| **Page header** (a person, a show, an item) | Beside the heading, height-bounded, width from its aspect; caption under it (the label) | Beside, as upright, a little smaller | A plate: full column width at its own aspect, height capped; if the cap binds, the width shrinks and the plate sits at the start, never centered in a filled band | The data-drawn mark (§9) at its largest tier beside the heading, which stays in its own slot |
 | **Hero band on a dark, full-screen, lean-back surface** (TV) | Whole, beside the copy; the scene ground may be the art's dominant color | As upright | Sharp and full-bleed only when the image was composed wide | Category accent field |
-| **Now Playing / large single art** | Bounded square; the image fitted inside at its own aspect, the box shrunk to it, centered on the page ground | Fills the square | Full width, shorter than the square | Square typographic card |
-| **Row tile, grid cell** (small, repeated) | Crop to a square, anchored at the focal point (else top third for a portrait) | Fills | Crop at the focal point; without one, prefer the letter tile over a blind center crop of a wide group photo | Initial on the hue |
+| **Now Playing / large single art** | Bounded square; the image fitted inside at its own aspect, the box shrunk to it, centered on the page ground | Fills the square | Full width, shorter than the square | The data-drawn mark (§9), square, the item's own (an episode's date, not its show's letter) |
+| **Row tile, grid cell** (small, repeated) | Crop to a square, anchored at the focal point (else top third for a portrait) | Fills | Crop at the focal point; without one, prefer the letter tile over a blind center crop of a wide group photo | The mark at its smallest tier (monogram and arc) |
 | **Avatar** (round, 24 to 64) | Crop at the face box, else top-anchored | Fills | Face box required; else no avatar, keep the empty slot | Empty slot, aligned |
-| **Lock screen, system media art** | The system crops to square: hand it the best square (focal-point crop, or the fitted image on a quiet ground rendered once) | As is | As upright | The card rendered to an image |
+| **Lock screen, system media art** | The system crops to square: hand it the best square (focal-point crop, or the fitted image on a quiet ground rendered once) | As is | As upright | The mark rendered to an image |
 
 ### 4. Crop only small repeated slots, and only at a known focal point
 
@@ -129,13 +129,43 @@ caption type, linked to the source page where links open. Whose face it
 is goes in the caption when the heading does not already say so. Never
 put text over a photograph you did not compose: its contrast is unknown.
 
-### 9. No image is a designed state
+### 9. No image is a designed state: draw the item from its own data
 
-With no image, draw a card from data (the name, one fact line, on the
-content's hue) at the slot's shape. Never a stock photo, a silhouette,
-a gray box or a generic icon: those say "missing", and a missing
-picture of a real person is better than a wrong one
-(`evidence-gated-catalog-curation`).
+With no image, draw the item from its data at the slot's shape. The
+default is a **data-drawn mark in one object family** (Ear Drama's
+**label**, Decision 081, 2026-11-19, R3a §3.4: a flat transcription disc
+whose board is the genre, whose arc on a fixed dial is the years it ran,
+whose center label is the monogram or the episode's date, and whose rim
+names the network and decade at large sizes), not a typographic card.
+The rules that make such a mark work:
+
+- **Every mark is a fact the catalog holds.** No hash-seeded pattern, no
+  invented era: an undated item draws no arc, an honest blank.
+- **One family for every kind**, varied only by what the data supports:
+  an episode is its show's mark with its own date (so the lock screen
+  and Continue show each broadcast, not one letter per show); user-made
+  work wears its cast's part colors and no dates (told apart from the
+  archive without words or red); a person is a round window with the
+  initials in one ring; a kind with no shared data (a stage play) keeps
+  its own drawn page and adds the one variable it has.
+- **Two-tone, like a graded photo on its board**, so pictures and marks
+  in one rail read as one set; same window, mount, radius and edge.
+  It never gets a shadow, frame or caption the picture does not.
+- **A picture that passes the size floor always wins**; the mark is
+  never placed beside or over a picture of the same object, and ranking
+  never looks at which items have pictures.
+- **Tiers by size**: the smallest tier keeps only what reads at 56 px;
+  detail (dial ticks, rim text) appears only where it is legible.
+- **One pure spec function, goldens on every stack**; the drawing stays
+  native (SVG, SwiftUI `Canvas`, Compose `Canvas`).
+- **Organizations are names in your type, never logos** (trademark is a
+  separate question from copyright).
+
+The typographic card (the name, one fact line, on the content's hue)
+remains only where a project has no data to draw from beyond the name.
+Never a stock photo, a silhouette, a gray box or a generic icon: those
+say "missing", and a missing picture of a real person is better than a
+wrong one (`evidence-gated-catalog-curation`).
 
 ### 10. Verify with the extremes
 

@@ -94,3 +94,72 @@ def near_misses(counts):
             if edit_distance(common.casefold(), rare.casefold()) <= 2 and frozenset((common, rare)) not in DISTINCT:
                 out.append((rare, common))
     return out
+
+
+# ---------------------------------------------------------------- one primary network per series
+
+# series.network (contract section 3.3, Decision 081): the one network a series' label names on its
+# rim. The episodes' own networks stay as the witnesses wrote them; only this primary folds the
+# parts of one network together, by the date it aired. NBC Red, NBC Pacific and their variants are
+# NBC; CBS Pacific is CBS; Mutual-Don Lee and Mutual Pacific are Mutual. NBC's Blue network was run
+# apart from NBC from 8 January 1942 (the Blue Network Company) and took the name ABC on 15 June 1945
+# (enwiki "Blue Network", "American Broadcasting Company"), so NBC Blue, Blue, ABC Blue and ABC are
+# NBC before the split, Blue between, ABC after. Undated, each keeps its own name's network.
+BLUE_SPLIT = "1942-01-08"
+ABC_NAMED = "1945-06-15"
+FOLD = {
+    "NBC Red": "NBC", "NBC Pacific": "NBC", "NBC Red West Coast": "NBC", "NBC Pacific Coast": "NBC",
+    "RCA/NBC": "NBC", "CBS Pacific": "CBS", "CBS-Don Lee": "CBS", "Columbia": "CBS",
+    "Columbia Broadcasting System": "CBS", "Mutual-Don Lee": "Mutual", "Mutual Pacific": "Mutual",
+    "Mutual Broadcasting System": "Mutual", "MBS": "Mutual", "ABC Pacific": "ABC", "ABC Entertainment": "ABC",
+    "ABC Information": "ABC",
+}
+# The Blue family: its network before the split, between, after; and undated. "ABC" before the
+# split keeps its name (None): a 1930s ABC is Australia's, not the Blue network.
+BLUE = {"NBC Blue": ("NBC", "Blue", "ABC", "NBC"), "Blue": ("NBC", "Blue", "ABC", "Blue"),
+        "ABC Blue": ("NBC", "Blue", "ABC", "ABC"), "ABC": (None, "Blue", "ABC", "ABC")}
+# A primary network is one of these; anything else a log wrote in the network column ("Syndicated",
+# "Various", "Australian", a station, a producer, a sponsor) is not a network and names none.
+PRIMARY = {"NBC", "CBS", "Mutual", "ABC", "Blue", "AFRS", "AFRTS", "BBC", "CBC", "CBCF", "NPR", "Springbok",
+           "WOR", "WCBS", "Don Lee Network", "Michigan Radio"}
+
+
+def fold_network(name, date=None):
+    """The network `name` was part of on `date` ('YYYY-MM-DD', or None), or None when it names none."""
+    n = canonical_network(name)
+    if n is None:
+        return None
+    n = FOLD.get(n, n)
+    if n in BLUE:
+        before, between, after, undated = BLUE[n]
+        if not date:
+            n = undated
+        elif date < BLUE_SPLIT:
+            n = before or n
+        elif date < ABC_NAMED:
+            n = between
+        else:
+            n = after
+    return n if n in PRIMARY else None
+
+
+def primary_network(dated, listed=None):
+    """(network, source) for one series, or (None, None).
+
+    dated: (air_date, network) for the series' served broadcasts that name one. The network heard on
+    most of them wins ('episodes'); a tie goes to the one heard first, then the name. With none, the
+    first network in the series' `networks` list (the run histories and Goldin's log, most first)
+    that names a primary network ('logs'). Clients never parse `networks` (R3a section 3.4)."""
+    count, first = {}, {}
+    for d, n in dated or ():
+        f = fold_network(n, d)
+        if f:
+            count[f] = count.get(f, 0) + 1
+            first[f] = min(first.get(f, d or "9999"), d or "9999")
+    if count:
+        return min(count, key=lambda n: (-count[n], first[n], n)), "episodes"
+    for n in listed or ():
+        f = fold_network(n)
+        if f:
+            return f, "logs"
+    return None, None

@@ -162,6 +162,16 @@ The only shapes; a new one needs a new rule.
   shows as tiles, the day strip with its legend on one line, Most downloaded, Most heard voices, New
   ear dramas. A shelf of nothing draws nothing, so one episode in progress is the hero, not a lone
   card beside an empty screen.
+- **§4.1r Home reads as one thing at ten feet** (Decision 081, owner 2026-11-19: *"the home screen ... still reads like a long list of items that feel unrelated ... The goal is to have the home view feel more cohesive and inviting from the moment that you open the app."*; rulings: "Home: all of R3a §4.1", "label art C on every platform"). The shared rules are WEB-DESIGN §4.2r
+  1-8. This doc keeps its own idiom and states the **deliberate differences**: focus does the work,
+  so only the focused object is bright and the label never gains a ring, shadow or lift a picture
+  would not; the hero is the ten-foot scene (`ten-foot-detail-design` §1): when something is on the
+  air it leads, its picture or its tier-L label filling the art area on a full-bleed dark board,
+  the title in its own slot at the left, Listen live the first focus stop (otherwise §4.1's hero
+  rule stands); the dial of genre stations is one focus row of S-tier labels directly under the
+  hero; there are no doors (the tab bar navigates and the TV records nothing). A show at most once
+  per Home and one window size per row hold as on every platform; the rim (network · decade) reads
+  at the hero's size. Built in Round 3 V6.
 - **§4.2 Browse** (was Series) is Shows, Voices and Ear dramas at natural width, then one line: the
   count, then Genre and Sort as menus (Popular by default, A to Z, Most episodes, Oldest first;
   Popular as `docs/iOS-DESIGN.md` §4.2), By decade and the singles switch; then the tiles. The tab
@@ -413,6 +423,17 @@ The only shapes; a new one needs a new rule.
   path. No dismissal store, no reset.
 - **§7.4 VoiceOver.** Each card reads as one element; the Detail and Now
   Playing headers are combined; every control carries a label.
+
+- **§7.r The label is the default art** (Decision 081; the shared rule is WEB-DESIGN §6.4r, R3a
+  §3.4). Wherever this doc names the typographic card, the title block or the initial as the art
+  of something without a picture, that art is now **the label**: a flat transcription disc drawn
+  natively (SwiftUI `Canvas`) from the same `labelSpec` goldens as the web (`cross-platform-determinism`):
+  genre board, a run arc on the 1930-1962 dial, the monogram or the episode's date on the label,
+  network · decade on the rim at tier L from `series.network`; a finished ear drama's part-hue rim;
+  a person's groove ring; a play's script page with voice-band rules. A picture that passes the
+  size floor always wins, and the two never share an object's slot. Networks and sponsors are names
+  in our type, never logos; user-made ear dramas never take an uploaded picture. The ten-foot hero draws it at full size; Top Shelf uses the rendered label. Built in
+  Round 3 V4.
 
 ## §8 Values
 

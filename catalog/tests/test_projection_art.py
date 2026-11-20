@@ -170,13 +170,21 @@ def retrace_shows(projection, source):
     p.close()
     s = sqlite3.connect(f"file:{source}?mode=ro", uri=True)
     ok = set()
-    if "series_art" in {r[0] for r in s.execute("SELECT name FROM sqlite_master")}:
+    tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master")}
+    if "series_art" in tables:
         run = AP.run_dates(s)
+        names = dict(s.execute("SELECT key, name FROM series"))
+        people = AP.show_people(s)
+        p373 = dict(s.execute("SELECT series_key, commons_category FROM series_wikidata")) \
+            if "series_wikidata" in tables else {}
+        nets = {k: json.loads(n) if n else [] for k, n in s.execute("SELECT key, networks FROM series")}
         for k, file, src, identity, cls, author, w, h, cats, when in s.execute(
                 "SELECT series_key, file, source, identity, license_class, author, width, height, categories, "
                 "date_field FROM series_art"):
-            if AP.show_served(identity, src, cls, author, w, h, file, json.loads(cats or "[]"), when,
-                              *reversed(run.get(k, (None, None)))):
+            cats = json.loads(cats or "[]")
+            if AP.show_served(identity, src, cls, author, w, h, file, cats, when,
+                              *reversed(run.get(k, (None, None)))) and \
+                    AP.names_the_show(file, cats, names.get(k), people.get(k, ()), p373.get(k), nets.get(k)):
                 ok.add((k, AP.evidence_url(file)))
     s.close()
     return sorted(published - ok)
@@ -474,14 +482,32 @@ with tempfile.TemporaryDirectory() as tmp:
 # --- the picture that leads a show (contract section 3.3a) ------------------------------
 YEARS, NET = {"years": "overlap"}, {"years": "unknown"}
 check("identity: the title with overlapping years", AP.series_identity(YEARS, ["CBS"], []), "title+years")
-check("identity: the title with the network", AP.series_identity(NET, ["Mutual"], ["Mutual Broadcasting System"]),
+check("identity: the title with the network, by QID (rule 7)", AP.series_identity(NET, ["Mutual"], ["Q3034218"]),
       "title+network")
-check("control: a title alone is no identity", AP.series_identity(NET, ["CBS"], ["NBC"]), "title")
+check("identity: a folded network's QID (NBC Red is NBC)", AP.series_identity(NET, ["NBC Red"], ["Q13974"]),
+      "title+network")
+check("control: a title alone is no identity", AP.series_identity(NET, ["CBS"], ["Q13974"]), "title")
+# Rule 7 (R3b section 5.2): organizations match by QID, not by name. MBS Radio is Japan's Mainichi
+# Broadcasting System; a name rule read "MBS" as Mutual. Seen to fail 2026-11-19 with network_qids
+# replaced by a name compare that folds MBS to Mutual (the art_policy NETWORK_NAMES it replaced).
+check("control: MBS Radio (Q11231233) is not Mutual", AP.series_identity(NET, ["Mutual"], ["Q11231233"]), "title")
+check("control: ABC Radio National (Q7280922, Australia) is not ABC",
+      AP.series_identity(NET, ["ABC"], ["Q7280922"]), "title")
+check("control: a broadcaster's name is not its QID", AP.series_identity(NET, ["Mutual"], ["Mutual Broadcasting System"]),
+      "title")
+check("rule 7: every network QID row carries its source page",
+      sorted(k for k, rows in json.load(open(os.path.join(os.path.dirname(__file__), "..", "editorial",
+                                                           "network_qids.json"))).items()
+             if not k.startswith("_") and any(r.get("source") != "https://www.wikidata.org/wiki/" + r["qid"]
+                                              for r in rows)), [])
 check("control: a title with no network or years is no identity", AP.series_identity({}, [], []), "title")
 GUN = {"years": "unknown", "our_years": [1949, 1961]}
 check("identity: the years the item's own description names",
       AP.series_identity(GUN, [], [], "American radio Western drama series (1952-1961)"), "title+years")
 check("identity: a decade in the description", AP.description_years("drama from the mid-1980s"), (1980, 1989))
+check("years: an abbreviated end ('1933–55')", AP.description_years("American radio program (1933–55)"), (1933, 1955))
+check("years: a decade written 1920's", AP.description_years("1920's WGN Chicago radio series"), (1920, 1929))
+check("control: two full years are not read as an abbreviation", AP.description_years("radio (1952-1961)"), (1952, 1961))
 check("control: a description's years that miss ours are no identity",
       AP.series_identity(GUN, [], [], "radio drama (1975-1980)"), "title")
 check("control: a description without years is no identity", AP.series_identity(GUN, [], [], "radio soap opera"),
@@ -520,6 +546,60 @@ check("control: an item its own description calls a television program is no ide
       AP.series_identity(YEARS, ["CBS"], ["CBS"], "1949-1956 CBS television program"), "television")
 check("identity: a radio and television series is still the radio one",
       AP.series_identity(YEARS, [], [], "Radio and television series"), "title+years")
+# Rule 2 on the item (R3b section 5.2): the television or film twin never matches. Seen to fail
+# 2026-11-19 with screen_item returning False (the Gunsmoke TV fixture matched) and with radio_shortdesc
+# ignoring SCREEN ("American radio and television series" vouched for an item).
+check("rule 2: Gunsmoke's television twin is a screen work",
+      AP.screen_item("American Western television series (1955-1975)", None, ["television series"], []), True)
+check("rule 2: an item typed only as a film is a screen work", AP.screen_item(None, None, ["film"], []), True)
+check("rule 2: a film trailer still is refused on the file",
+      AP.show_served(*SHOW[:6], "Ann Sothern in A Letter to Three Wives trailer.jpg",
+                     ["A Letter to Three Wives (trailer screenshots)"]), False)
+check("rule 2: a lobby card is the film", AP.show_served(*SHOW[:6], "Look Who's Laughing lobby card.jpg",
+      ["1941 films of the United States", "Fibber McGee and Molly"]), False)
+check("control: a radio publicity photo of an adapted film's stars is the broadcast",
+      AP.show_served(*SHOW[:6], "Lauren Bacall & Humphrey Bogart Lux Radio Theatre.jpg",
+                     ["CBS Radio publicity photos", "To Have and Have Not (film)"]), True)
+check("control: television is refused even beside radio",
+      AP.show_served(*SHOW[:6], "Riley cast.jpg", ["1949 in radio", "The Life of Riley (TV series)"]), False)
+check("control: Gunsmoke the radio program is not",
+      AP.screen_item("American radio Western drama series (1952-1961)", None, ["radio program"], ["Q1555508"]), False)
+check("control: a radio-program class keeps an item typed television too",
+      AP.screen_item(None, None, ["television series", "radio program"], ["Q1555508"]), False)
+check("control: 'radio and television series' is still the radio one",
+      AP.screen_item("radio and television series", None, [], []), False)
+# H1: an article's own short description that names radio and years vouches for its item.
+check("H1: a short description with radio and years", AP.radio_shortdesc("American radio drama (1942–1962)"), True)
+check("H1: a decade short description", AP.radio_shortdesc("1940s American radio program"), True)
+check("control: radio with no years does not vouch", AP.radio_shortdesc("American radio program"), False)
+check("control: years with no radio do not vouch", AP.radio_shortdesc("American comedy film (1949)"), False)
+check("control: radio and television does not vouch (rule 2)",
+      AP.radio_shortdesc("American radio and television series (1949–1957)"), False)
+# Rule 3: the file's own date sits inside the run. Seen to fail 2026-11-19 with file_in_run returning True.
+check("rule 3: a 1914 photograph is not a 1937-1953 soap opera",
+      AP.file_in_run("1914", "Hill Top House, Harpers Ferry, WV.jpg", "1937-01-01", "1953-12-15"), False)
+check("rule 3: a file dated after the run", AP.file_in_run(None, "Bob Barker 1958.jpg", None, "1952-07-29"), False)
+check("control: a file dated inside the run", AP.file_in_run("1948", "x.jpg", "1937-01-01", "1953-12-15"), True)
+check("control: an undated file is not refused by rule 3", AP.file_in_run(None, "x.jpg", "1937-01-01", None), True)
+# Rule 4: a topic is not a show. Seen to fail 2026-11-19 with names_the_show returning True (the
+# B-17 and the map of the Americas passed).
+check("rule 4: Ceiling Unlimited's B-17 depicts the subject",
+      AP.names_the_show("Boeing B-17D in flight.jpg", ["Boeing B-17D"], "Ceiling Unlimited", ["Orson Welles"]), False)
+check("rule 4: Hello Americans' map of the Americas",
+      AP.names_the_show("Americas (orthographic projection).svg", ["Maps of the Americas"], "Hello Americans"), False)
+check("rule 4: a publicity category of another network does not vouch",
+      AP.names_the_show("Unnamed 1947.jpg", ["NBC Radio publicity photos"], "Suspense", [], None, ["CBS"]), False)
+check("rule 4: the program's name in the file", AP.names_the_show(
+    "Margaret Brayton Paul McGrath A Date With Judy 1941.JPG", [], "A Date With Judy"), True)
+check("rule 4: a credited person in the categories", AP.names_the_show(
+    "Studio publicity Mercedes McCambridge.JPG", ["Mercedes McCambridge"], "Defense Attorney", ["Mercedes McCambridge"]),
+    True)
+check("rule 4: the program's own Commons category", AP.names_the_show(
+    "Cast 1944.JPG", ["Category:Aldrich Family radio"], "The Aldrich Family", [], "Aldrich Family radio"), True)
+check("rule 4: Theatre and Theater are one name", AP.names_the_show(
+    "Cast photo.jpg", ["Lux Radio Theatre"], "Lux Radio Theater"), True)
+check("rule 4: the program's network's publicity category", AP.names_the_show(
+    "Unnamed 1947.jpg", ["CBS Radio publicity photos"], "Suspense", [], None, ["CBS"]), True)
 check("pick_show: the item's own image before a depicts file",
       AP.pick_show([("a.jpg", "commons:P180", "pd_us"), ("b.jpg", "wikidata:P18", "cc_by")])[0], "b.jpg")
 check("pick_show: in one source, a file whose name names the show first",
@@ -604,7 +684,11 @@ with tempfile.TemporaryDirectory() as tmp:
         ("benny", "Q1", "Benny title card.png", "wikidata:P154", "title", "pd_us", "PD-US", None, 800, 600, None, "[]",
          None, 0, ""),
         ("benny", "Q1", "Benny cast 1946.jpg", "commons:category", "title+years", "pd_us", "PD-US", None, 900, 700,
-         "0.1,0.2,0.6,0.3", "[]", "1946", 1, ""),
+         "0.1,0.2,0.6,0.3", '["The Jack Benny Program"]', "1946", 1, ""),
+        # Rule 4: the item's own P18 outranks a category file, but it depicts the star's home town, not the
+        # program. Seen to fail 2026-11-19 with the builder's names_the_show call removed (Waukegan led).
+        ("benny", "Q1", "Waukegan Illinois 1940.jpg", "wikidata:P18", "title+years", "pd_us", "PD-US", None, 900, 700,
+         None, '["Waukegan, Illinois"]', "1940", 0, ""),
         ("benny", "Q1", "Benny unknown.jpg", "wikidata:P18", "title+years", "unknown", None, None, 900, 700, None, "[]",
          None, 0, ""),
         ("benny", "Q1", "Benny 1960 special.jpg", "wikidata:P18", "title+years", "pd_us", "PD-US", None, 900, 700, None,

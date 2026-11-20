@@ -1,0 +1,54 @@
+{
+  "_about": "R3b section 5.2 rule 7 (Decision 081): an organization matches by its Wikidata QID, never its name. Each key is a network as catalog/tools/networks.py spells it; each row is a Wikidata item that is that network (or its radio arm), with the label Wikidata gave it and the item's page as its source. Read 2026-11-19 from the broadcaster (P449) values of the radio items in .cache/wikidata/items.json.gz (catalog-2026-11-10) and their labels.json.gz. Words are not networks: MBS Radio (Q11231233) is Japan's Mainichi Broadcasting System, not Mutual; ABC Radio National (Q7280922) is Australia's ABC. Neither is listed.",
+  "NBC": [
+    {"qid": "Q13974", "label": "NBC", "source": "https://www.wikidata.org/wiki/Q13974"}
+  ],
+  "NBC Blue": [
+    {"qid": "Q13974", "label": "NBC", "source": "https://www.wikidata.org/wiki/Q13974"},
+    {"qid": "Q3334260", "label": "Blue Network", "source": "https://www.wikidata.org/wiki/Q3334260"}
+  ],
+  "Blue": [
+    {"qid": "Q3334260", "label": "Blue Network", "source": "https://www.wikidata.org/wiki/Q3334260"}
+  ],
+  "ABC Blue": [
+    {"qid": "Q3334260", "label": "Blue Network", "source": "https://www.wikidata.org/wiki/Q3334260"},
+    {"qid": "Q169889", "label": "American Broadcasting Company", "source": "https://www.wikidata.org/wiki/Q169889"}
+  ],
+  "ABC": [
+    {"qid": "Q169889", "label": "American Broadcasting Company", "source": "https://www.wikidata.org/wiki/Q169889"}
+  ],
+  "CBS": [
+    {"qid": "Q43380", "label": "CBS", "source": "https://www.wikidata.org/wiki/Q43380"},
+    {"qid": "Q1022995", "label": "CBS Radio", "source": "https://www.wikidata.org/wiki/Q1022995"},
+    {"qid": "Q18336099", "label": "CBS Radio Network", "source": "https://www.wikidata.org/wiki/Q18336099"},
+    {"qid": "Q2931046", "label": "CBS News Radio", "source": "https://www.wikidata.org/wiki/Q2931046"}
+  ],
+  "Mutual": [
+    {"qid": "Q3034218", "label": "Mutual Broadcasting System", "source": "https://www.wikidata.org/wiki/Q3034218"}
+  ],
+  "BBC": [
+    {"qid": "Q1191294", "label": "BBC Radio", "source": "https://www.wikidata.org/wiki/Q1191294"},
+    {"qid": "Q3631716", "label": "BBC Home Service", "source": "https://www.wikidata.org/wiki/Q3631716"},
+    {"qid": "Q4347264", "label": "BBC Light Programme", "source": "https://www.wikidata.org/wiki/Q4347264"},
+    {"qid": "Q423289", "label": "BBC World Service", "source": "https://www.wikidata.org/wiki/Q423289"},
+    {"qid": "Q30135263", "label": "BBC Overseas Service", "source": "https://www.wikidata.org/wiki/Q30135263"},
+    {"qid": "Q795598", "label": "BBC Radio 4", "source": "https://www.wikidata.org/wiki/Q795598"},
+    {"qid": "Q795578", "label": "BBC Radio 2", "source": "https://www.wikidata.org/wiki/Q795578"},
+    {"qid": "Q749608", "label": "BBC Radio 3", "source": "https://www.wikidata.org/wiki/Q749608"}
+  ],
+  "CBC": [
+    {"qid": "Q461761", "label": "Canadian Broadcasting Corporation", "source": "https://www.wikidata.org/wiki/Q461761"},
+    {"qid": "Q13940", "label": "CBC Radio", "source": "https://www.wikidata.org/wiki/Q13940"},
+    {"qid": "Q20042673", "label": "CBC Radio", "source": "https://www.wikidata.org/wiki/Q20042673"},
+    {"qid": "Q5009037", "label": "CBC Radio One", "source": "https://www.wikidata.org/wiki/Q5009037"}
+  ],
+  "NPR": [
+    {"qid": "Q671510", "label": "NPR", "source": "https://www.wikidata.org/wiki/Q671510"}
+  ],
+  "Springbok": [
+    {"qid": "Q2313870", "label": "Springbok Radio", "source": "https://www.wikidata.org/wiki/Q2313870"}
+  ],
+  "WOR": [
+    {"qid": "Q3564763", "label": "WOR", "source": "https://www.wikidata.org/wiki/Q3564763"}
+  ]
+}

@@ -412,6 +412,15 @@ device. Audit frames: `build/qa/duo-audit/` (local).
     the cast's device voices, never kept) and **Read**. Record's second block
     is the same card. Play tiles show the index row's `opening` as a page in
     the window when it is present. Same rules on iPad and Mac.
+- **§4.1r Home reads as one thing** (Decision 081, owner 2026-11-19: *"the home screen ... still reads like a long list of items that feel unrelated ... The goal is to have the home view feel more cohesive and inviting from the moment that you open the app."*; rulings: "Home: all of R3a §4.1", "label art C on every platform"). Binding over §4.1 wherever they differ; the shared
+  rules are WEB-DESIGN §4.2r 1-8 (one lead object, the dial of genre stations under it, two quiet
+  doors, one art system and one window size in every rail, a show at most once per Home, two inks
+  per screen, rhythm L S M L M S, framing from data only). The phone's idiom: the hero is the On the
+  air board at full width with its window at tier L and **Listen live** as the ink button; the dial
+  is a horizontally scrolling row of S-tier labels that tunes in on a tap (`selection` haptic);
+  the doors are two borderless buttons with SF Symbols in one row. At regular width (the open
+  Duo, an iPad, §3.6) the hero keeps one column's width beside the dial and Continue, never
+  stretched past its tier. Built in Round 3 V6.
 - **§4.2 Browse** (was Series) is a `List` of radio series (the plays
   moved to Record, §4.14, Decision 075: the Kind chip goes, and so does
   every sentence below about plays in Browse), under a horizontally scrolling row of capsule chips,
@@ -1164,6 +1173,17 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   `success` when a download finishes, `error` when the player's error
   line or "Download failed" appears. `tools/test_apple_design_rules.py`
   fails on a feedback call that skips the mapping.
+
+- **§6.r The label is the default art** (Decision 081; the shared rule is WEB-DESIGN §6.4r, R3a
+  §3.4). Wherever this doc names the typographic card, the title block or the initial as the art
+  of something without a picture, that art is now **the label**: a flat transcription disc drawn
+  natively (SwiftUI `Canvas`) from the same `labelSpec` goldens as the web (`cross-platform-determinism`):
+  genre board, a run arc on the 1930-1962 dial, the monogram or the episode's date on the label,
+  network · decade on the rim at tier L from `series.network`; a finished ear drama's part-hue rim;
+  a person's groove ring; a play's script page with voice-band rules. A picture that passes the
+  size floor always wins, and the two never share an object's slot. Networks and sponsors are names
+  in our type, never logos; user-made ear dramas never take an uploaded picture. Now Playing and the lock screen show each episode's own label. Built in
+  Round 3 V4.
 
 ## §7 States and accessibility
 

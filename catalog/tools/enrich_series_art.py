@@ -10,7 +10,7 @@ rebuilds only its own tables and reads the caches only (no network):
   series_art            one row per (series, candidate show image): the series' Wikidata item,
                         how the series was matched to it (art_policy.series_identity), where the
                         file came from, its license class read again from its Commons page, size,
-                        face box, and whether art_policy.show_served passes it
+                        face box, and whether art_policy.show_served and names_the_show pass it
   series_marks          the people the program's own OTRRpedia record marks as its star (title
                         role, star, host: art_policy.marks_star), with the character as written
   wikipedia_sitelinks   {qid: Wikipedias with an article}, for people and series
@@ -79,14 +79,21 @@ def series_art_rows(con, items, depicts, files, trackd, marks=()):
         deaths = AP.earliest_death((k, d) for k, pid, _c in marks for (d,) in con.execute(
             "SELECT death FROM people_wikidata WHERE person_id = ? AND death IS NOT NULL", (pid,)))
     nets = {k: json.loads(n) if n else [] for k, n in con.execute("SELECT key, networks FROM series")}
+    names = dict(con.execute("SELECT key, name FROM series"))
+    people = AP.show_people(con)   # series_marks is rebuilt after this: this run's marks are added below
+    pname = dict(con.execute("SELECT id, name FROM people"))
+    for k, pid, _c in marks:
+        if pname.get(pid):
+            people.setdefault(k, []).append(pname[pid])
     run = AP.run_dates(con)
-    wd = _rj(os.path.join(CACHE, "wikidata", "items.json.gz"), {})
+    import enrich_external as EX
+    wd = EX.load_items()
     rows = []
     for key, qid, ev, bc, cat in con.execute(
             "SELECT series_key, qid, match_evidence, broadcaster, commons_category FROM series_wikidata "
             "WHERE in_db = 1 ORDER BY series_key"):
         identity = AP.series_identity(json.loads(ev or "{}"), nets.get(key),
-                                      [b.get("label") for b in json.loads(bc or "[]")],
+                                      [b.get("qid") for b in json.loads(bc or "[]")],
                                       (wd.get(qid) or {}).get("description"))
         for f, src in candidates(qid, cat, items, depicts, trackd):
             fv = dict(files.get(f) or files.get(f.replace(" ", "_")) or {})
@@ -98,7 +105,8 @@ def series_art_rows(con, items, depicts, files, trackd, marks=()):
             cls = fv.get("class", "unread")
             served = AP.show_served(identity, src, cls, fv.get("author"), fv.get("width"), fv.get("height"), f, cats,
                                     fv.get("date_field"), *reversed(run.get(key, (None, None))),
-                                    bool(fv.get("own_work")), deaths.get(key))
+                                    bool(fv.get("own_work")), deaths.get(key)) and \
+                AP.names_the_show(f, cats, names.get(key), people.get(key, ()), cat, nets.get(key))
             rows.append((key, qid, f, src, identity, cls, fv.get("template"), fv.get("author"),
                          fv.get("width"), fv.get("height"), AP.face_text(fv.get("face")), json.dumps(cats), fv.get("date_field"),
                          int(served), AP.evidence_url(f), int(bool(fv.get("own_work")))))

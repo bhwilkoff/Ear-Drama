@@ -95,6 +95,8 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md` and 046-065 in `doc
 - 077: Audio starts without reading the whole file; Play on the loaded episode resumes it
 - 078: Kokoro voices: phonemes built in the catalog; apps first; the web on WebGPU only (answered 2026-11-15)
 - 079: A first take needs no account; empty productions stay out of sight; Today's scene everywhere (answered 2026-11-15)
+- 080: At regular width Now Playing stands beside what plays next; closing the Duo never stops a take (answered 2026-11-16)
+- 081: Drawn label art for everything without a picture, and a Home that reads as one thing (owner 2026-11-19)
 - 082: Reading together: read rooms, classes that own productions, takes that pass through (owner 2026-11-19)
 
 ---
@@ -682,6 +684,65 @@ Core (`RecordingSession`, the `LiveAudio` engine), never in a view: a re-layout
 starts and stops nothing, and the engine rebuilds its tap into the same capture when
 the hardware reconfigures. PARITY rows "Now Playing beside its queue" and "Folding
 during a take". Android foldables and tablets may mirror both later (⏳).
+
+## 081: Drawn label art for everything without a picture, and a Home that reads as one thing (owner 2026-11-19)
+
+**Rule**: anything with no real picture that passes the size floor is drawn as **the label**
+(R3a §3.4, option C): a flat transcription disc made only from the item's own data. The board is
+the genre, an arc on a fixed 1930-1962 dial is the years it ran (no arc when undated, never an
+invented era), the center label is the monogram (on an episode, its air date or number), and at
+large sizes the rim names the primary network and the decade in our own type. A finished ear
+drama wears the same disc with its cast's part hues around the rim and no arc; a person without
+a portrait is a round window with the initials inside one groove ring; a stage play keeps its
+script page and adds 1-4 voice-band rules. A real picture always wins over the label, the two are
+never shown for the same object side by side, and ranking never looks at pictures. Networks and
+sponsors appear as names in our type, never as logos. User-made ear dramas get the drawn label
+only, never an uploaded picture. Home follows all eight rules of R3a §4.1: On the air is the one
+lead object (tier L, the evening's year ticked on the dial) with the genre stations as a row of
+small labels under it; the doors become two quiet ghost buttons (Find a show, Record a play);
+every rail uses one window size and one art system; a show appears at most once per Home, and no
+rail opens on the show of the rail above; two inks per screen (the day board's bars in onBoard,
+or moved to Browse; Today's scene a wide card at the grammar's size, not a full-width slab);
+rhythm L, S, M, L, M, S, never two large objects adjacent; framing from data only. The data
+plane publishes the label's one new input, `series.network` (one normalized primary network with
+its source, `catalog/tools/networks.py primary_network`); clients never parse `networks`.
+
+**Why**: the owner, 2026-11-19 (ROUND3-LOOP.md): *"We need to continue making the app more
+visually appealing, both from the home screen perspective (which still reads like a long list of
+items that feel unrelated) and the individual item perspective. We have very few images that
+represent only a few Ear Dramas ... We also can design default (or programatically generated)
+designs that could take the place of images that don't exist (or don't yet exist, anyway). The
+goal is to have the home view feel more cohesive and inviting from the moment that you open the
+app."* Rulings the same day: label art C on every platform; Home all of R3a §4.1; network and
+sponsor names in type, never logos (trademarks, R3a §1.4); user ear dramas the drawn label only.
+R3a measured why: 81% of shows (1,059 of 1,311) have no picture and today's default art carries
+one fact (the initials), so a wall of shows reads as one repeated placeholder, and Home showed
+five visual vocabularies with the loudest one not the lead. Every product that sounds cohesive
+bought it with one system, not more pictures (Penguin, Blue Note, NYPL's generated covers). Of
+the three options, only the label gives each episode its own image (lock screen, Continue) and
+marks user-made work as different without words or red, and every mark on it is a fact the
+catalog holds, so the art teaches era, length of run and network at a glance. Option A (a title
+card) carries words the tile already shows; option B (a hash-seeded motif) is chance dressed as
+meaning.
+
+**How to apply**: binding design docs first (WEB-DESIGN §4.2 and §6, iOS-, macOS-, tvOS- and
+ANDROID-DESIGN Home and art sections, the `artwork-presentation-design` skill's default-art
+section), then Round 3 V1-V8 in order: the pipeline's `series.network` and wider identity (V1),
+`art.label` tokens in `design-tokens.json` and a pure `labelSpec` with the same goldens on web,
+Swift and Kotlin (`cross-platform-determinism`; drawing stays native: SVG, SwiftUI `Canvas`,
+Compose `Canvas`), then Home, then Detail. The label is computed from published fields only; no
+hash, no client-side network parsing, no invented dates. tvOS keeps its own idiom: focus does the
+work and the hero fills the ten-foot art area; the label never takes focus chrome a picture would
+not. The Home de-duplication is deterministic from the published shelves and their order, the
+same on every platform, and named in the catalog contract. PARITY rows: label art, Home
+composition, series hero and gallery, play title page.
+
+**Who was in the room, who gains, who pays**: the owner chose from R3a's three options and
+eight rules; listeners gain a Home and pages where every show says something true about itself,
+and the 81% of shows without a picture stop looking like placeholders; makers' finished ear
+dramas get their own mark. The cost is a drawn system kept identical on three stacks (goldens on
+each), one more pipeline field, and a skeuomorphic object whose arc stays blank on the half of
+shows that are undated until the date work fills them.
 
 ## 082: Reading together: read rooms, classes that own productions, takes that pass through (owner 2026-11-19)
 

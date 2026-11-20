@@ -202,6 +202,33 @@ def main():
     f += ok("wikidata (control): a radio-drama play with no years is refused", "dragnet" not in m)
     f += ok("wikidata: two radio items with the same dates are duplicates, one is taken and the other named",
             m.get("gunsmoke", {}).get("qid") == "Q801" and m["gunsmoke"].get("wikidata_duplicates") == ["Q802"])
+    # --- H1 (R3b section 5.1) and rule 2 on the item. Seen to fail 2026-11-19 with match_wikidata's
+    # screen_item refusal removed (the Gunsmoke TV twin, untyped as radio, vouched by its article,
+    # matched) and with radio_shortdesc's evidence ignored (Q1100 never matched).
+    h1 = {
+        # typed only as a TV series on Wikidata, but its article's own short description says radio with years
+        "Q1100": dict(item("Q1100", "Dragnet", rc=()), shortdesc="American radio police procedural (1949–1957)"),
+        # the screen twin: typed and described as the TV series, though the article its sitelink names
+        # reads as the radio run: without rule 2 the article would vouch for it on title + years
+        "Q1200": dict(item("Q1200", "Gunsmoke", rc=()),
+                      description="American Western television series (1955-1975)",
+                      shortdesc="American radio Western drama (1952–1961)"),
+        # one broadcast's item and a radio host are never a series' identity
+        "Q1300": item("Q1300", "Escape", rc=("Q57608327",), start="1950-01-01"),
+        "Q1400": dict(item("Q1400", "The Shadow", rc=()), shortdesc="New York talk radio host (1911–1978)"),
+    }
+    m2, rej2, _ = E.match_wikidata(idx, h1, {}, {"Q5398426": "television series"})
+    f += ok("H1: an item its article's short description calls a dated radio program matches",
+            m2.get("dragnet", {}).get("qid") == "Q1100")
+    f += ok("V10: the article's run years are the identity's years, with their source",
+            m2.get("dragnet", {}).get("wd_years") == [1949, 1957]
+            and m2["dragnet"].get("wd_years_source") == "enwiki_shortdesc" and m2["dragnet"]["years"] == "overlap")
+    f += ok("rule 2 (control): the television twin never matches, whatever its article says",
+            "gunsmoke" not in m2 and rej2["screen_work"] == 1)
+    h1["Q1400"]["props"]["instance_of"] = ["Q5"]
+    m3, rej3, _ = E.match_wikidata(idx, h1, {}, {})
+    f += ok("H1 (control): an episode item or a person never matches, whatever its article says",
+            "escape" not in m3 and "theshadow" not in m3 and rej3["episode_or_person"] == 2)
     f += ok("titles: one letter apart agree", E.titles_agree("The Thirteenth Truck", "The Thirteenth Trunk") == 1)
     f += ok("titles (control): different stories disagree",
             E.titles_agree("MessageFromTheHills", "Revenge on the Shadow") == 0)
