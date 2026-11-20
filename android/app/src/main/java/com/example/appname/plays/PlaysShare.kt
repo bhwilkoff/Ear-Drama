@@ -66,7 +66,13 @@ data class SharedTake(
     val peak: Float = 0f,
     val bleed: Boolean = false,
     @SerialName("user_id") val userId: String? = null,
+    /** The class seat that made it (a take recorded at home), else null. */
+    val seat: String? = null,
 )
+
+/** The teacher's review of a take (a class production the caller directs): `approved` or `again`, with a note only that seat sees. */
+@Serializable
+data class SharedReview(val state: String, val note: String? = null)
 
 @Serializable
 data class SharedMember(
@@ -114,6 +120,7 @@ data class SharedRecord(
     /** The owner's R2 switch (P1): false means uploads are off. */
     val uploads: Boolean = true,
     val credits: List<SharedCredit> = emptyList(),
+    val reviews: Map<String, SharedReview> = emptyMap(),
 )
 
 /** `GET /consent`: the owner's words, shown as they arrive. */

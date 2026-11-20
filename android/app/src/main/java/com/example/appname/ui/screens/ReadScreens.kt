@@ -440,11 +440,26 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
     var showCode by remember { mutableStateOf(false) }
     var choosing by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
+    var waiting by remember { mutableStateOf<List<com.example.appname.plays.ClassReviewItem>>(emptyList()) }
+    var reviewScripts by remember { mutableStateOf<Map<String, PlayScript>>(emptyMap()) }
+    var recordScripts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    val heard = remember { com.example.appname.plays.MixPlayback() }
+    DisposableEffect(heard) { onDispose { heard.stop() } }
+    val transport = remember { com.example.appname.plays.PlaysApi(container.accounts.worker) }
+    /** The seats' chosen takes with no review, read from each class production's record (the Worker merges them). */
+    suspend fun loadReviews() {
+        val records = progress?.productions.orEmpty().mapNotNull { p -> runCatching { transport.get(p.id) }.getOrNull() }
+        val scripts = reviewScripts.toMutableMap()
+        records.forEach { r -> if (r.scriptID !in scripts) container.plays.script(r.scriptID)?.takeIf { it.revision == r.scriptRevision }?.let { scripts[r.scriptID] = it } }
+        reviewScripts = scripts
+        recordScripts = records.associate { it.id to it.scriptID }
+        waiting = com.example.appname.plays.ClassReview.queue(records) { rec, line -> scripts[rec.scriptID]?.lines?.indexOfFirst { it.id == line } ?: -1 }
+    }
     // Relay across time (PLAYS-DESIGN §12.11): while this page is open the teacher's app holds each production's pickup, so
     // takes recorded at home pass through; the progress list moves on every arrival.
     val inbox = remember(id) {
         com.example.appname.plays.ClassInbox(container.plays.store, com.example.appname.plays.PlaysApi(container.accounts.worker), scope,
-            { sid, rev -> container.plays.script(sid)?.takeIf { it.revision == rev } }, onArrival = { scope.launch { try { progress = wire.progress(id) } catch (e: CancellationException) { throw e } catch (_: Exception) {} } })
+            { sid, rev -> container.plays.script(sid)?.takeIf { it.revision == rev } }, onArrival = { scope.launch { try { progress = wire.progress(id); loadReviews() } catch (e: CancellationException) { throw e } catch (_: Exception) {} } })
     }
     DisposableEffect(inbox) { onDispose { inbox.release() } }
 
@@ -454,6 +469,7 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
             progress = wire.progress(id)
             failure = null
             progress?.productions.orEmpty().forEach { p -> runCatching { wire.production(p.id) }.getOrNull()?.let { inbox.hold(p.id, it.scriptID, it.scriptRevision) } }
+            loadReviews()
         } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }
     }
     fun act(work: suspend () -> Unit) { scope.launch { try { work(); attempt += 1 } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) } } }
@@ -484,6 +500,29 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
             OutlinedTextField(paste, { paste = it }, label = { Text("Paste names, one a line") }, minLines = 2, modifier = Modifier.fillMaxWidth())
             Button(onClick = { val t = paste; paste = ""; act { wire.addSeats(id, t) } }, enabled = paste.isNotBlank()) { Text("Add names") }
             Button(onClick = { choosing = true }) { Text("Start a reading") }
+            if (waiting.isNotEmpty()) {
+                SectionHeader("Review")
+                waiting.forEach { item ->
+                    val line = reviewScripts[recordScripts[item.pid]]?.lines?.firstOrNull { it.id == item.take.lineID }
+                    val local = container.plays.store.findShared(item.pid)
+                    val take = local?.take(item.take.id)
+                    com.example.appname.ui.screens.ClassReviewRow(
+                        item = item, seatLabel = detail?.seats.orEmpty().firstOrNull { it.id == item.take.seat }?.label ?: "A seat",
+                        partTitle = com.example.appname.plays.PartID(item.take.part).title, words = line?.spokenText.orEmpty(), canPlay = take != null,
+                        onPlay = { if (local != null && take != null) scope.launch { runCatching { heard.stop(); heard.load(container.plays.store.takeFile(local, take)); heard.toggle() } } },
+                        onDecide = { state, note ->
+                            scope.launch {
+                                try {
+                                    wire.review(item.pid, item.take.id, state, note)
+                                    waiting = waiting.filterNot { it.id == item.id }
+                                    failure = null
+                                    progress = wire.progress(id)
+                                } catch (e: CancellationException) { throw e } catch (e: ReadFailure) { failure = ReadCore.refusal(e.code) } catch (_: Exception) { failure = ReadCore.refusal("error") }
+                            }
+                        },
+                    )
+                }
+            }
             progress?.productions.orEmpty().forEach { p ->
                 SectionHeader(p.title)
                 p.seats.forEach { row ->
