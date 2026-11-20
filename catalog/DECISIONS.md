@@ -1449,3 +1449,35 @@ add a rule only with a fixture case in `tests/test_play_phonemes.py` and only if
 lexicon knows the result. Review the top of `phonemes-report.json` after each library refresh. A new
 dictionary or guesser is a new third-party data dependency: its license is checked first, and nothing
 GPL runs, even at build time.
+
+## 039 — More real pictures: two new show sources, a hero, a gallery, play pictures, and liveness (Round 3 V2)
+*Date: 2026-11-19*
+
+A show image may now come from the lead image of its English article (`commons:enwiki`, only when Wikipedia's
+own `page_image_free` names it and its Commons page reads) or from a Commons file whose own title or
+categories carry the program's name and whose own date lies inside the run (`commons:name`). Neither
+changes a rule: both pass `show_served`, `names_the_show`, the license classes and the television/film
+refusal like every other source, and rank after the item's own records. The pipeline publishes up to one
+`hero` (landscape, 600 px or wider), up to six `gallery` images, and `art.source`/`art.tie` for every image;
+plays carry a work image, a pre-1931 edition's title page and a dated author portrait in the library index.
+
+**Why**: the owner asked for hero images and posters as Archive Watch has them (2026-11-19). R3b measured that
+the picture universe for old-time radio is thin and mostly already served, so the lever is the identity rule
+and the file's own name and date, not a looser license. The name hit has no Wikidata item to vouch for it,
+so the file must vouch for itself: it is about the program (its title opens with the name, or a category
+is the program; a program's name inside a longer one is not it), it has a date of its own inside the run
+(an undated hit says nothing about which broadcast it shows), and it says radio in its own title or
+categories. The last is the twin rule: Gunsmoke, Father Knows Best, The Twilight Zone, Burns and Allen have
+a television run whose stills carry the same name, stars, plain "publicity photos" category and a date inside
+the run. The first version of this rule (name anywhere, radio only for short names) put television stills and
+a different program ("Radio Theater" for Lux Radio Theatre, "Music" for a photograph of a tenor) among the
+96 name hits it admitted (about a third of the first 30 listed, by their titles, categories and dates); the
+three rules above leave 36, and the 30 read by eye afterwards held none of either kind. A series whose matched
+item is the television work gets no name hit.
+
+**How to apply**: a new source goes in `SHOW_SOURCES` after the existing ones with a predicate in
+`art_policy.py`, a fixture test and a broken control in `tests/test_art_v2.py`, and the builder re-checks it
+from source rows (`served_show_rows`, `retrace_shows`). A served file is hot-linked, never mirrored; the
+liveness phase (`harvest_art_v2.py --phase liveness`, a HEAD on a 14-day TTL) records `gone` for a 404 or 410
+only, and the builder drops a gone candidate so the next one leads. Network and sponsor logos, magazine
+pages and undated person matches are not served (owner rulings 2026-11-19).

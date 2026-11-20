@@ -69,7 +69,8 @@ CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre_source TEXT, first_date TEXT, last_date TEXT,
     networks TEXT, episodes INTEGER NOT NULL, star TEXT, sort_name TEXT NOT NULL, downloads INTEGER,
     picture INTEGER, picture_kind TEXT, picture_source TEXT, raw_name TEXT, year_counts TEXT,
-    about_text TEXT, about_source TEXT, about_url TEXT, network TEXT, network_source TEXT);
+    about_text TEXT, about_source TEXT, about_url TEXT, network TEXT, network_source TEXT,
+    hero INTEGER, gallery TEXT);
 CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT,
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
     no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0,
@@ -88,8 +89,10 @@ CREATE TABLE voices (person_id TEXT PRIMARY KEY, rank INTEGER NOT NULL, name TEX
 -- width (a client appends ?width=); credit is the line a CC BY / BY-SA image must carry;
 -- face ("x,y,w,h", normalized, top-left origin) is where a small crop centers (contract §3.3a);
 -- grade ("k,o") is the linear levels a monochrome picture takes in a repeated slot, NULL for the identity.
+-- source and tie (contract section 3.3c): where the file was found and how it is tied to what it stands for.
 CREATE TABLE art (id INTEGER PRIMARY KEY, url TEXT NOT NULL, width INTEGER, height INTEGER,
-    license TEXT NOT NULL, author TEXT, credit TEXT, evidence_url TEXT NOT NULL, face TEXT, grade TEXT);
+    license TEXT NOT NULL, author TEXT, credit TEXT, evidence_url TEXT NOT NULL, face TEXT, grade TEXT,
+    source TEXT, tie TEXT);
 CREATE TABLE credits (episode_id TEXT NOT NULL, person_id TEXT NOT NULL, role TEXT, character TEXT);
 -- Forwarding ids (forwarding.py, contract §3.5): an id that left forwards to the served episode
 -- now holding its default copy, or is tombstoned when none does; cumulative across publishes.
@@ -166,7 +169,7 @@ def grade_of(measured, url, width, height, face):
 
 
 def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=None, previous=None,
-          forwarding_from=None, art_grades=None):
+          forwarding_from=None, art_grades=None, liveness=None):
     """`loudness` is the measurement cache (measure_loudness.py), id -> result; only
     a usable measurement of the episode's default copy URL is published.
     `transcripts` is the transcript cache (fetch_transcripts.py), id -> entry: a text
@@ -337,11 +340,13 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                 credits_by_ep[eid].append(row)
             people_rows.setdefault(pid, name)
 
-    portraits = served_portraits(s, people_rows, same)   # person id -> art row id, rows written to `art`
+    live = liveness or {}
+    portraits = served_portraits(s, people_rows, same, live)   # person id -> art row id, rows written to `art`
     for aid, (file, cls, template, author, w, h, face) in enumerate(portraits["rows"], 1):
-        d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?,?)", (
+        d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
             aid, AP.image_url(file), w, h, cls, AP.clean_author(author) if AP.license_name(cls, template) else None,
-            AP.credit(cls, template, author), AP.evidence_url(file), face, grade_of(art_grades, AP.image_url(file), w, h, face)))
+            AP.credit(cls, template, author), AP.evidence_url(file), face, grade_of(art_grades, AP.image_url(file), w, h, face),
+            AP.SERVED_VIA, "name+dated person"))
     faces = set(portraits["by_person"])
     series_of = dict(s.execute("SELECT id, series_key FROM episodes"))
     credited_by_series = {}
@@ -349,7 +354,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         credited_by_series.setdefault(series_of.get(eid), {})[eid] = [(p, r) for p, _n, r, _c in creds]
     marks, sitelinks = star_evidence(s, same)
     served_series = {series_of[e] for e in served if e in series_of}
-    show_images = served_show_images(s, served_series)
+    show_rows = served_show_rows(s, served_series, live)
+    show_images = {sk: AP.pick_show(r, names.get(sk)) for sk, r in show_rows.items()}
     face_of = {sk: AP.series_face(credited_by_series.get(sk, {}), faces, marks.get(sk, ()), sitelinks)
                for sk in show_images}
     face_of.update(AP.assign_faces({sk: (credited_by_series.get(sk, {}), marks.get(sk, ()))
@@ -359,15 +365,30 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     # The series' picture (contract section 3.3a): its show image, else its star's portrait.
     file_ids = {AP.image_url(r[0]): i for i, r in enumerate(portraits["rows"], 1)}
     next_id = len(portraits["rows"]) + 1
-    pictures = {}
-    for sk, (file, src, cls, template, author, w, h, face) in sorted(show_images.items()):
+
+    def art_id(row):
+        """The `art` row of a show image, written once (contract section 3.3c: with its source and its tie)."""
+        nonlocal next_id
+        file, src, cls, template, author, w, h, face, tie = row
         url = AP.image_url(file)
         if url not in file_ids:
-            d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?,?)", (
+            d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
                 next_id, url, w, h, cls, AP.clean_author(author) if AP.license_name(cls, template) else None,
-                AP.credit(cls, template, author), AP.evidence_url(file), face, grade_of(art_grades, url, w, h, face)))
+                AP.credit(cls, template, author), AP.evidence_url(file), face, grade_of(art_grades, url, w, h, face),
+                src, tie))
             file_ids[url], next_id = next_id, next_id + 1
-        pictures[sk] = (file_ids[url], "show", src)
+        return file_ids[url]
+
+    pictures, heroes, galleries = {}, {}, {}
+    for sk, row in sorted(show_images.items()):
+        pictures[sk] = (art_id(row), "show", row[1])
+        rows = show_rows[sk]
+        hero = AP.pick_hero(rows)
+        if hero:
+            heroes[sk] = art_id(hero)
+        gallery = AP.pick_gallery(rows, {row[0]} | ({hero[0]} if hero else set()))
+        if gallery:
+            galleries[sk] = json.dumps([art_id(g) for g in gallery])
     for sk, f in face_of.items():
         if f and sk not in pictures:
             pictures[sk] = (portraits["by_person"][f[0]], f[1], f[2])
@@ -458,12 +479,13 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                 genre, gsrc = kept_genre[key]
             pic = pictures.get(key, (None, None, None))
             shown_as = shown_name.get(key) or name
-            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                       (key, shown_as, genre, gsrc, first, last, nets, per_series[key], stars.get(key),
                        sort_name(shown_as), None) + pic + (name if name and shown_as != name else None,
                                                            year_counts(years_of.get(key))) +
                       about.get(key, (None, None, None)) +
-                      NW.primary_network(nets_of.get(key), json.loads(nets) if nets else None))
+                      NW.primary_network(nets_of.get(key), json.loads(nets) if nets else None) +
+                      (heroes.get(key), galleries.get(key)))
     for pid, name, birth, death in s.execute("SELECT id, name, birth, death FROM people"):
         if pid in people_rows:
             d.execute("INSERT INTO people VALUES (?,?,?,?,?)",
@@ -1014,10 +1036,12 @@ def star_evidence(s, same=None):
     return marks, sitelinks
 
 
-def served_show_images(s, series_keys):
-    """{series key: (file, source, cls, template, author, width, height, face)}: the one show image
-    art_policy serves for each series (show_served, then pick_show), checked again here from the
-    source rows. A source without series_art (a fixture, an older build) serves none."""
+def served_show_rows(s, series_keys, live=None):
+    """{series key: [(file, source, cls, template, author, width, height, face, tie)]}: every show image
+    art_policy serves for each series (show_served and names_the_show, and for a Commons name hit
+    name_hit_served again), checked again here from the source rows, none whose file a liveness check found
+    gone (H9). The picture, hero and gallery are chosen from these. A source without series_art (a
+    fixture, an older build) serves none."""
     tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     if "series_art" not in tables:
         return {}
@@ -1039,15 +1063,23 @@ def served_show_images(s, series_keys):
             f"SELECT series_key, file, source, identity, license_class, template, author, width, height, face, "
             f"categories, date_field, {own} FROM series_art"):
         cats = json.loads(cats or "[]")
-        if sk in series_keys and AP.show_served(identity, src, cls, author, w, h, file, cats,
+        if sk in series_keys and AP.alive(live, file) and AP.show_served(identity, src, cls, author, w, h, file, cats,
                                                 when, *reversed(run.get(sk, (None, None))), own_work,
                                                 deaths.get(sk)) and \
-                AP.names_the_show(file, cats, names.get(sk), people.get(sk, ()), p373.get(sk), nets.get(sk)):
-            rows.setdefault(sk, []).append((file, src, cls, template, author, w, h, AP.face_text(AP.face_list(face))))
-    return {sk: AP.pick_show(r, names.get(sk)) for sk, r in rows.items()}
+                AP.names_the_show(file, cats, names.get(sk), people.get(sk, ()), p373.get(sk), nets.get(sk)) and \
+                (src != AP.NAME_SOURCE or AP.name_hit_served(file, cats, when, names.get(sk), *run.get(sk, (None, None)))):
+            rows.setdefault(sk, []).append((file, src, cls, template, author, w, h, AP.face_text(AP.face_list(face)),
+                                            identity))
+    return rows
 
 
-def served_portraits(s, people, same=None):
+def served_show_images(s, series_keys, live=None):
+    """{series key: the one show image}: pick_show over served_show_rows."""
+    names = dict(s.execute("SELECT key, name FROM series"))
+    return {sk: AP.pick_show(r, names.get(sk)) for sk, r in served_show_rows(s, series_keys, live).items()}
+
+
+def served_portraits(s, people, same=None, live=None):
     """The portraits art_policy serves for the people this projection carries:
     {"rows": [(file, cls, template, author, width, height, face)], "by_person": {pid: art id}}.
     A source without the people tables (a fixture, an older build) serves none."""
@@ -1080,7 +1112,7 @@ def served_portraits(s, people, same=None):
             f"SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, a.template, w.basis, "
             f"{own}, {dated}, {died}, {faces} FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
         pid = (same or {}).get(pid, pid)
-        if pid not in people:
+        if pid not in people or not AP.alive(live, file):   # H9: a file found gone falls back to the next
             continue
         px = AP.fill_px(*dims.get(file, (None, None)), AP.face_list(focus.get(file)))
         if AP.served(basis, cls, usable, via, author, own_work, when, died):
@@ -1146,9 +1178,11 @@ def main():
     grades = a.art_grade or os.path.join(ia.CACHE, "art_grade.json")
     if a.art_grade and not os.path.exists(a.art_grade):
         raise SystemExit(f"--art-grade {a.art_grade} does not exist (omit the flag to build without grades)")
+    live_path = os.path.join(ia.CACHE, "art_v2", "liveness.json.gz")
     meta = build(a.db, db, a.clean_only, load_loudness(a.loudness) if a.loudness else None,
                  T.load(a.transcripts) if a.transcripts else None, previous=previous,
-                 forwarding_from=forwarding_from, art_grades=ia.read_json(grades) if os.path.exists(grades) else None)
+                 forwarding_from=forwarding_from, art_grades=ia.read_json(grades) if os.path.exists(grades) else None,
+                 liveness=ia.read_json(live_path) if os.path.exists(live_path) else None)
     floor = 1_000 if a.clean_only else MIN_EPISODES
     if meta["counts"]["episodes"] < floor:
         raise SystemExit(f"refusing to publish: {meta['counts']['episodes']} episodes is below the floor of {floor}")
