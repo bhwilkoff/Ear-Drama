@@ -135,7 +135,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
   Apple TV (focus does the work), Pixel, Google TV.
 - [x] **V7 Detail pages (Opus web, Sonnet ports).** Series, episode, person, play pages with R3a §4.3:
   hero or label, gallery when there is one, an episode's own label, the recordings section quieter.
-- [ ] **V8 Visual audit on every device (Opus).** Every screen touched, light and dark, the 56 px
+- [x] **V8 Visual audit on every device (Opus).** Every screen touched, light and dark, the 56 px
   row tile on the iPhone 12 and the Duo, a TV hero across the room; faults fixed on every platform.
 
 ### Track T: reading together
@@ -167,7 +167,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
   full-recording upload; failure states R3c §6.
 - [x] **T6 Relay across time (Sonnet).** Assigned parts at home; takes wait on the student's device
   and pass through when the teacher's app is present; teacher progress list.
-- [ ] **T7 The bench (Sonnet, then Opus for failures).** Launch doors on every platform
+- [x] **T7 The bench (Sonnet, then Opus for failures).** Launch doors on every platform
   (`APP_START_READ_ROOM`, `APP_START_SEAT`, `APP_START_SCREEN` and twins); one orchestrator opens a
   room on a staging Worker across iPhone 12, Duo, iPad, Mac (only when the owner is away), Apple TV,
   Pixel, both Google TVs, Safari and Chrome; T4 cursor-delay gate (p95 under 300 ms on the socket);
@@ -356,3 +356,14 @@ privacy words) is folded in when it arrives, never waited on.
   T6 Back to the line inconclusive (needs real touch: tap tier); T7-lite Record not automatable yet
   (no door to claim a part and press Record): build doors/UITests for it. Skipped: iPad (locked),
   Android TV 10.0.0.139 (adb unreachable). People still needed: H1-H4 (owner).
+- **2026-11-20, tick 26**: V8 merged (1.0.151; macOS 538, Android 647, web 25, 0 warnings):
+  11 faults, 7 fixed everywhere (hero tick through rim text; one primary network everywhere;
+  Google TV hero cap + episode focus; iOS Continue heading, that-night tile heights, short-run
+  strips). docs/research/design/V8-AUDIT.md. Frames read (GTV Lux, Duo home end). Open -> final
+  batches: (a) catalog display_text batch 2 ("(Repeat of # 122)", "#84 on list", titles repeating
+  the show name, missing apostrophes "Elizabeths"/"Whos"); (b) sweep: Google TV plate now leaves an
+  empty band right of a capped picture (rebalance), dial names truncate at 1440, Duo Record "Plays"
+  indent, web_fit_library intermittent (harness defect), web_fit_cast stale vs 079, reader/cast gates
+  need --data in worktrees; (c) T7b: door/UITest to claim a part + Record in a room; tap tier for
+  Back to the line and teacher flows (T6, T10-T12). Not seen on a device yet: Apple class review +
+  Takes foot (needs iPhone/iPad). "Season" in the episode head stays (binding WEB-DESIGN §6.4d).
