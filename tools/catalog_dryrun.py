@@ -86,7 +86,7 @@ def main():
         if os.path.abspath(work) in (ROOT, os.path.dirname(ROOT)) or not os.path.isdir(work):
             sys.exit(f"refusing to empty {work}")
         shutil.rmtree(work)
-    os.makedirs(work)
+    os.makedirs(work, exist_ok=not a.workdir)
     copy_tree(work)
     stale = [p for p in ("catalog/out", "catalog/dist", "catalog/.cache", "live") if os.path.exists(os.path.join(work, p))]
     if stale:
