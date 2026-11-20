@@ -125,6 +125,13 @@ const ClassUI = (() => {
         if (my !== token) return;
         try { p.rec = await API.plays.get(p.id); } catch { p.rec.takes = [...(p.rec.takes || []), take]; }
         if (my === token) paintReview();
+        try {
+          const fresh = await API.plays.progress(id);
+          if (my !== token) return;
+          for (const q of productions) { const f = (fresh.productions || []).find((x) => x.id === q.id); if (f) q.seats = f.seats; }
+          const old = body.querySelector('#cl-plays');
+          if (old) old.replaceWith(playsBox(cls, productions, offline, redraw));
+        } catch { /* the next arrival or a reload shows the counts */ }
       });
     }
   }
@@ -228,7 +235,7 @@ const ClassUI = (() => {
         redraw();
       } catch (err) { console.error(err); line.textContent = say(err); make.disabled = false; }
     } }, sel, make);
-    return h.el('section', { class: 'block', 'aria-labelledby': 'cl-plays-h' },
+    return h.el('section', { class: 'block', id: 'cl-plays', 'aria-labelledby': 'cl-plays-h' },
       h.el('h2', { class: 'section-header', id: 'cl-plays-h' }, 'Plays'),
       rows.length ? h.el('ul', { class: 'cl-plays' }, rows) : h.el('p', { class: 'caption' }, 'No play yet.'), form, line);
   }

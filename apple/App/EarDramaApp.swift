@@ -210,14 +210,24 @@ struct RootView: View {
     @Environment(AudioPlayer.self) private var player
     @Environment(AccountStore.self) private var account
     @Environment(\.scenePhase) private var scenePhase
+    #if os(iOS) || os(macOS)
+    @Environment(PlaysLibrary.self) private var plays
+    #endif
 
     var body: some View {
         platformRoot
             .tint(Color.brandSecondary)
             .task { await catalog.start() }
             .task { await account.start() }
+            #if os(iOS) || os(macOS)
+            .task { await plays.relay.kick() }
+            #endif
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await catalog.refresh() } }
+                #if os(iOS) || os(macOS)
+                // Relay across time: takes waiting for a receiver are tried again when the app comes forward.
+                if phase == .active { Task { await plays.relay.kick() } }
+                #endif
                 // Signed in, the app syncs when it comes to the front and when
                 // it leaves (iOS-DESIGN §4.10); signed out, this does nothing.
                 if phase != .inactive { Task { await account.sync() } }

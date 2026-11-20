@@ -113,6 +113,16 @@ class AppContainer(context: Context, scope: CoroutineScope) {
         )
     }
 
+    /** Relay across time (PLAYS-DESIGN §12.11): the one sender for the takes on this device waiting for a receiver. */
+    val relay: com.example.appname.plays.RelayHub by lazy {
+        com.example.appname.plays.RelayHub(
+            plays.store, scope,
+            com.example.appname.plays.WorkerSeat(accounts.worker), PlaysApi(accounts.worker), com.example.appname.plays.WorkerMemberReceiver(accounts.worker),
+            com.example.appname.plays.KeystoreSeatVault(File(context.noBackupFilesDir, "seats")),
+            { accounts.account.value?.userId },
+        )
+    }
+
     /** Plays that need no account: an invite read and the finished ear dramas (owner, 2026-10-29). */
     val openPlays: OpenPlaysApi by lazy { OpenPlaysApi(accounts.worker) }
 

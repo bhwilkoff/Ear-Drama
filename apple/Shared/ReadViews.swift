@@ -94,6 +94,7 @@ struct ReadRoomScreen: View {
                     .accessibilityIdentifier("read-name")
                 Button("Join") { Task { await join() } }.disabled(joining)
                     .accessibilityIdentifier("read-join")
+                PushLink(value: Route.parts) { Text("Your Parts") }
             }
             if let failure { Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError) }
         }
@@ -264,6 +265,7 @@ struct ClassPageScreen: View {
     @State private var showCode = false
     @State private var choosing = false
     @State private var starting = false
+    @State private var inbox: ClassInbox?
 
     private let wire = WorkerReadClass(api: .shared)
 
@@ -302,7 +304,7 @@ struct ClassPageScreen: View {
                     Section(p.title) {
                         ForEach(p.seats) { row in
                             let lines = row.parts.reduce(0) { $0 + $1.lines }
-                            let done = row.parts.reduce(0) { $0 + $1.approved }
+                            let done = row.parts.reduce(0) { $0 + $1.recorded }
                             HStack {
                                 Text(verbatim: row.label).font(TypeRamp.body)
                                 Spacer()
@@ -317,6 +319,7 @@ struct ClassPageScreen: View {
         .navigationTitle(detail?.name ?? "Class")
         .task { await load() }
         .refreshable { await load() }
+        .onDisappear { inbox?.release() }
         .sheet(isPresented: $choosing) { playPicker }
     }
 
@@ -332,7 +335,24 @@ struct ClassPageScreen: View {
             async let p = wire.progress(id)
             (detail, progress) = try await (d, p)
             failure = nil
+            holdPickups()
         } catch let f as ReadFailure { failure = ReadCore.refusal(f.code) } catch { failure = ReadCore.refusal("error") }
+    }
+
+    /// Relay across time (PLAYS-DESIGN §12.11): while this page is open the teacher's app holds each production's pickup, so
+    /// takes recorded at home pass through; the progress list moves on every arrival.
+    private func holdPickups() {
+        let box = inbox ?? ClassInbox(store: plays.store, script: { id, rev in await plays.script(id: id, revision: rev) })
+        if inbox == nil {
+            box.onArrival = { Task { @MainActor in progress = try? await wire.progress(id) } }
+            inbox = box
+        }
+        for p in progress?.productions ?? [] {
+            Task {
+                guard let info = try? await wire.production(p.id) else { return }
+                box.hold(p.id, scriptID: info.scriptID, revision: info.scriptRevision)
+            }
+        }
     }
 
     private var playPicker: some View {

@@ -24,7 +24,9 @@ enum PlaysShare {
 
     /// Members who hold a chosen take: each consents for their own recording (Decision 059).
     static func performers(_ rec: SharedRecord) -> [SharedRecord.Member] {
+        // A maker with no account is credited by the name they gave; they have not agreed and cannot here (PLAYS-DESIGN §12.11).
         rec.members.filter { $0.performer == true }
+            + rec.credits.map { SharedRecord.Member(userID: "credit:" + $0.name, displayName: $0.name, director: false, performer: true, consented: false) }
     }
 
     /// A performer who is not the director, in a complete play, who has not agreed yet.
@@ -182,7 +184,7 @@ enum PlaysShare {
         chosenOfMine(local, script, rec, me).filter(\.bleed).count
     }
 
-    private static func chosenOfMine(_ local: Production, _ script: PlayScript, _ rec: SharedRecord,
+    static func chosenOfMine(_ local: Production, _ script: PlayScript, _ rec: SharedRecord,
                                      _ me: String?) -> [Take] {
         let onServer = Set(rec.takes.map(\.id))
         return ownParts(rec, me).flatMap { part in

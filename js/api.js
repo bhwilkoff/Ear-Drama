@@ -1618,6 +1618,11 @@ const API = (() => {
       seatList: (code) => account.anon('POST', `${P}/seat/list`, { body: { code } }),
       seatClaim: (code, seat, move) => account.anon('POST', `${P}/seat/claim`, { body: { code, seat, ...(move ? { move: true } : {}) } }),
       seatHome: (key) => account.anon('GET', `${P}/seat`, { headers: { 'x-seat-key': key } }),
+      /** Relay across time (§12.11): is the teacher's app here, and the take itself, passed through to it. */
+      seatReceiver: (key, pid) => account.anon('GET', `${P}/seat/productions/${encodeURIComponent(pid)}/receiver`, { headers: { 'x-seat-key': key } }),
+      seatSend: (key, pid, takeId, bytes, meta) => account.anon('PUT', `${P}/seat/productions/${encodeURIComponent(pid)}/takes/${encodeURIComponent(takeId)}`,
+        { raw: bytes, headers: { 'x-seat-key': key, 'content-type': 'audio/wav', 'x-take': JSON.stringify(meta) }, timeout: 180000 }),
+      receiver: (pid) => c('GET', `${at(pid)}/receiver`),
       seatChoose: (key, pid, takeId) => account.anon('POST', `${P}/seat/productions/${encodeURIComponent(pid)}/chosen`,
         { headers: { 'x-seat-key': key }, body: { take_id: takeId } }),
     };

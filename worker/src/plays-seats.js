@@ -25,7 +25,7 @@ import { json, limited, problem, readJson } from "./http.js";
 import { randomToken, sha256Hex } from "./jwt.js";
 import { nameRefusal } from "./plays-names.js";
 import { cleanAssignments, MAX_SEATS } from "./read-protocol.js";
-import { chooseStatements, createProduction, normalizeClassCode, parseTakeMeta, production, receiveTake, takeOut, touch } from "./plays.js";
+import { chooseStatements, createProduction, normalizeClassCode, parseTakeMeta, production, receiveTake, receiverOf, takeOut, touch } from "./plays.js";
 import { partOf } from "./plays-relay.js";
 
 export const SEAT_KEY_HEADER = "x-seat-key";
@@ -395,6 +395,10 @@ export async function handleSeat(url, request, env, ip) {
   if (await limited(env.SEAT_LIMITER, `${seat.class_id}:${seat.id}`)) return problem(429, "rate_limited");
   if (!a && m === "GET") return seatHome(env, seat);
   if (a === "productions" && b && c === "takes" && d && seg.length === 4 && m === "PUT") return seatTake(request, env, seat, b, d, now);
+  if (a === "productions" && b && c === "receiver" && seg.length === 3 && m === "GET") {
+    const { p, error } = await seatProduction(env, seat, b);
+    return error || json(await receiverOf(env, p));
+  }
   if (a === "productions" && b && c === "chosen" && seg.length === 3 && m === "POST") return seatChoose(request, env, seat, b, now);
   return problem(404, "not_found");
 }

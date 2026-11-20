@@ -86,6 +86,7 @@ const ReadUI = (() => {
     document.body.classList.toggle('read-screen', screen);
     h.setTitle(screen ? 'Screen' : 'Read together');
     if (screen && raw.toLowerCase() === 'pair') { pairScreen(body, my); return; }
+    if (raw.toLowerCase() === 'parts') { PartsUI.render(body, h); return; }
     if (!code) { body.replaceChildren(page(h.el('p', { class: 'body refusal', role: 'alert' }, R.refusal('bad_code')))); return; }
     body.replaceChildren(h.stateBox('loading'));
     session.resume(code).then((back) => {
@@ -135,7 +136,8 @@ const ReadUI = (() => {
     const done = () => { if (my === token) follow(body, my, screen); };
     body.replaceChildren(page(
       h.el('h1', { class: 'section-header rr-h', tabindex: '-1' }, screen ? 'Screen' : 'Read together'),
-      codeBlock(code), nameRow, h.el('div', { class: 'actions' }, go), slot, line));
+      codeBlock(code), nameRow, h.el('div', { class: 'actions' }, go), slot, line,
+      screen ? null : h.el('a', { class: 'btn btn-ghost', href: '?read-room=parts' }, 'Your parts')));
   }
 
   /** A class room: the class code, then the class's names (no account, no typing a name). */

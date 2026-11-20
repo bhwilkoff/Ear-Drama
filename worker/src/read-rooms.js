@@ -159,7 +159,9 @@ const engine = {
     const refusal = P.recordRefusal(world.room, world.cast, me, line);
     if (refusal) return { error: refusal };
     const who = P.whoReads(world.room, world.cast, world.members, line, now);
-    return { ok: true, part: who.part, seat: world.room.kind === "class" ? me.seat : null, member: me.id, ...relayOf(world.room) };
+    // An adult room's reader has no account: the take is credited to the name they gave on joining, never to the leader (§12.11).
+    const credit = world.room.kind === "class" ? null : me.name || "A reader";
+    return { ok: true, part: who.part, seat: world.room.kind === "class" ? me.seat : null, member: me.id, credit, ...relayOf(world.room) };
   },
 
   /** The room's receiving device asks for the next take (the leader's, or a class's teacher's). */
@@ -205,6 +207,13 @@ async function createInput(request, env) {
       if (!p || p.class_id !== body.class_id || p.script_id !== body.script_id) return { response: problem(404, "no_such_production") };
       body.assignments = await assignmentRows(env, body.production_id);
     }
+  }
+  if (body.kind !== "class" && body.production_id !== undefined) {
+    // An adult production's room is its director's: only they attach one, so no stranger writes takes into a production (§12.11).
+    const auth = await authenticate(request, env);
+    if (auth.error) return { response: auth.error };
+    const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT user_id, class_id, script_id FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
+    if (!p || p.class_id || p.user_id !== auth.userId || p.script_id !== body.script_id) return { response: problem(404, "no_such_production") };
   }
   const input = {
     kind: body.kind,
@@ -658,7 +667,7 @@ async function roomTake(request, env, code, takeId, now) {
   if (await limited(env.PLAY_UPLOAD_LIMITER, `read:${code}:${check.member}`)) return problem(429, "rate_limited");
   if (meta.part !== undefined && meta.part !== check.part) return problem(422, "line_is_another_part", check.part);
   const room = { ...meta, capture: "room" };
-  const who = { userId: null, seatId: check.seat, sender: `read:${code}:${check.member}`, direct: false, member: check.member };
+  const who = { userId: null, seatId: check.seat, sender: `read:${code}:${check.member}`, direct: false, member: check.member, credit: check.credit };
   if (!check.production_id) return passThrough(env, request, check.relay, takeId, room, check.part, who);
   const p = await production(env, check.production_id);
   if (!p) return refuse("no_such_room");

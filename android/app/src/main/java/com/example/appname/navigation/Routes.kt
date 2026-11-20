@@ -55,6 +55,8 @@ sealed interface Route : NavKey {
     /** The teacher's class page and its casting board (PLAYS-DESIGN §12.4). Not on a TV. */
     @Serializable data class ClassPage(val id: String) : Route
     @Serializable data class ClassCasting(val classId: String, val productionId: String) : Route
+    /** A seat's parts at home and each take's state (PLAYS-DESIGN §12.11). Not on a TV. */
+    @Serializable data object Parts : Route
     /** The recorder before the studio moved into the reader (S3): no door opens it any more; [part] is the raw `PartID`. */
     @Serializable data class Recording(val production: String, val part: String, val line: String? = null) : Route
 }

@@ -23,7 +23,25 @@ val ShareJson = Json { ignoreUnknownKeys = true; encodeDefaults = false; explici
 
 /** `share.json` beside `production.json`: the Worker's id for this production and the consent version agreed to. */
 @Serializable
-data class ShareLink(val pid: String, val consented: String? = null)
+data class ShareLink(
+    val pid: String,
+    val consented: String? = null,
+    /** A seat's production at home (Relay across time, PLAYS-DESIGN §12.11): the class and name. The seat key lives in the Keystore vault, never here. */
+    val seat: SeatLink? = null,
+    /** The lines this seat holds (the Worker's casting, kept so the queue works offline). */
+    val assignments: List<ReadSnapshot.AssignmentRow> = emptyList(),
+    /** Takes that passed through to the receiver, so "Sent" reads the same offline. */
+    val sent: List<String> = emptyList(),
+    /** Takes the Worker refused for good, by its code; they stay on the device and are not sent again. */
+    val refused: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+data class SeatLink(val classId: String, val label: String)
+
+/** A maker with no account, credited by the name they gave (PLAYS-DESIGN §12.11): each must consent in person. */
+@Serializable
+data class SharedCredit(val name: String, val lines: Int = 0, val consented: Boolean = false)
 
 @Serializable
 data class SharedPart(
@@ -95,6 +113,7 @@ data class SharedRecord(
     val archive: SharedArchive? = null,
     /** The owner's R2 switch (P1): false means uploads are off. */
     val uploads: Boolean = true,
+    val credits: List<SharedCredit> = emptyList(),
 )
 
 /** `GET /consent`: the owner's words, shown as they arrive. */
@@ -280,7 +299,9 @@ object PlaysShare {
     fun canPublish(rec: SharedRecord, script: PlayScript, me: String?): Boolean =
         isDirector(rec, me) && rec.archive == null && complete(rec, script)
 
-    fun performers(rec: SharedRecord): List<SharedMember> = rec.members.filter { it.performer }
+    fun performers(rec: SharedRecord): List<SharedMember> = rec.members.filter { it.performer } +
+        // A maker with no account is credited by the name they gave; they have not agreed and cannot here (PLAYS-DESIGN §12.11).
+        rec.credits.map { SharedMember("credit:${it.name}", it.name, director = false, performer = true, consented = false) }
 
     /** A performer who is not the director, in a complete play, who has not agreed yet. */
     fun needsMyConsent(rec: SharedRecord, script: PlayScript, me: String?): Boolean =

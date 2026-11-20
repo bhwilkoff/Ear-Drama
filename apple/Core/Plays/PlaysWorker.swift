@@ -10,6 +10,20 @@ import Foundation
 nonisolated struct ProductionShare: Codable, Equatable, Sendable {
     var pid: String
     var consented: String?
+    /// A seat's production at home (Relay across time, PLAYS-DESIGN §12.11): the class and name. The seat key itself lives in
+    /// the Keychain, never here.
+    var seat: SeatLink?
+    /// The lines this seat holds (the Worker's casting, kept so the queue works offline).
+    var assignments: [ReadSnapshot.Assignment]?
+    /// Takes that passed through to the receiver, so "Sent" reads the same offline.
+    var sent: [String]?
+    /// Takes the Worker refused for good, by its code; they stay on the device and are not sent again.
+    var refused: [String: String]?
+}
+
+nonisolated struct SeatLink: Codable, Equatable, Sendable {
+    var classID: String
+    var label: String
 }
 
 /// The production record as the Worker merges it (GET /productions/:pid).
@@ -74,9 +88,13 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
     var archive: Archive?
     /// The owner's switch (P1): false while the take store is off.
     var uploads: Bool?
+    /// Makers with no account, credited by the name they gave (PLAYS-DESIGN §12.11): each must consent in person.
+    var credits: [Credit] = []
+
+    struct Credit: Codable, Equatable, Sendable { var name: String; var lines: Int; var consented: Bool? }
 
     enum CodingKeys: String, CodingKey {
-        case id, scriptID, scriptRevision, title, parts, takes, chosen, director, members, next, archive, uploads
+        case id, scriptID, scriptRevision, title, parts, takes, chosen, director, members, next, archive, uploads, credits
         case hiddenTakes = "hidden_takes"
     }
 
@@ -113,6 +131,7 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
         hiddenTakes = try c.decodeIfPresent(Int.self, forKey: .hiddenTakes) ?? 0
         archive = try c.decodeIfPresent(Archive.self, forKey: .archive)
         uploads = try c.decodeIfPresent(Bool.self, forKey: .uploads)
+        credits = try c.decodeIfPresent([Credit].self, forKey: .credits) ?? []
     }
 
     func part(_ id: PartID) -> Part { parts[id.rawValue] ?? Part(status: .open) }

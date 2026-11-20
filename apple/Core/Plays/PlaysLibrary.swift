@@ -27,6 +27,7 @@ final class PlaysLibrary {
     private(set) var fromLibrary = false
     let store: ProductionStore
 
+    @ObservationIgnored private var hub: RelayHub?
     @ObservationIgnored private let fetch: Fetch
     @ObservationIgnored private let cache: URL
     @ObservationIgnored private let bundled: @Sendable () -> CastableLibrary?
@@ -39,6 +40,14 @@ final class PlaysLibrary {
         self.fetch = fetch
         self.cache = cache
         self.bundled = bundled
+    }
+
+    /// Relay across time (PLAYS-DESIGN §12.11): the one sender for the takes on this device waiting for a receiver.
+    var relay: RelayHub {
+        if let hub { return hub }
+        let h = RelayHub(store: store)
+        hub = h
+        return h
     }
 
     func load() async {
