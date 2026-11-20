@@ -259,36 +259,6 @@ struct YearStrip: View {
     @State private var stripWidth: CGFloat = 0
 }
 
-/// The legend: a mark and a name for each genre seen.
-struct GenreLegend: View {
-    let genres: [String]
-
-    #if os(tvOS)
-    private let column: CGFloat = 270, mark: CGFloat = 20
-    #else
-    private let column: CGFloat = 112, mark: CGFloat = 10
-    #endif
-
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: column), spacing: Spacing.s2, alignment: .leading)],
-                  alignment: .leading, spacing: Spacing.s1) {
-            ForEach(genres, id: \.self) { g in
-                HStack(spacing: Spacing.s1) {
-                    Rectangle().fill(genreFill(g)).frame(width: mark, height: mark)
-                    #if os(tvOS)
-                    Text(verbatim: GenreDisplay.name(g)).lineLimit(2)
-                    #else
-                    Text(verbatim: GenreDisplay.name(g)).lineLimit(1).minimumScaleFactor(0.8)
-                    #endif
-                }
-            }
-        }
-        .font(TypeRamp.caption)
-        .foregroundStyle(Color.brandTextMuted)
-        .accessibilityHidden(true)
-    }
-}
-
 /// "This day in radio": the date, what survives, and the years strip.
 struct DayBoard: View {
     let model: HomeDay
