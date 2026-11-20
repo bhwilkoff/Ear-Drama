@@ -1618,7 +1618,11 @@ WEB-DESIGN §4.17 to §4.19 hold the web's idiom; what the other ports need to k
    `capture: "room"`. The reader taps **Start recording** once per room (the microphone permission
    and five seconds of room tone); there is no headphones gate, because no device plays during a
    take (§12.3). The take ended, the device sends `line-done` and the cursor moves to the next held
-   line. Every other device shows who is reading ("Ann is reading", "Lucy is reading") and, while
+   line. It sends it whatever the cursor is by then: when the leader moved the cursor during the
+   take, the line is still marked done and the cursor stays where the leader put it, so the line
+   does not open a microphone again when the cursor comes back; only the leader's **Again** reopens
+   a done line (T7c, 2026-11-20: a press racing a take had reopened lines, two takes of one line).
+   Every other device shows who is reading ("Ann is reading", "Lucy is reading") and, while
    a take records, **Quiet while others record** (a refusal-class instruction).
 2. **Where a take goes.** Each take joins the device's **outbox**, kept with its local room
    production (one per room code), and is sent with `PUT /v1/read/{code}/takes/{id}`. `201`

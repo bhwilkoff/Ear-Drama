@@ -356,7 +356,8 @@ const ReaderCore = (() => {
     const out = () => ({ turn: following && now !== null, back: !following && now !== null });
     return {
       line(id) { now = id; return out(); },
-      away() { following = false; },
+      /** Stops the turning; the return is offered at once while a line is heard (§2.11 rule 3). */
+      away() { following = false; return out(); },
       back() { following = true; return now; },
       get following() { return following; },
     };

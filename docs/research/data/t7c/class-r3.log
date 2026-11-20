@@ -1,0 +1,44 @@
+[T10] ok   a test teacher signs in through the shared client {"answer": true}
+[T10] ok   the Classes box shows for a signed-in teacher 
+[T10] ok   Make a class (13 and over) {"class_id": "eb1cdf53-7ae3-45e5-a247-4895f9c75b4a", "code": "GPRTC6FT"}
+[T10] ok   the class page opens 
+[T10] ok   25 seats from a pasted list {"seats": 25}
+[T10] ok   a class production of a castable play {"script": "gut-7364", "production": "3BE3E918-7A20-444F-BD90-69CFC15D4494"}
+[T10] ok   cast with Fill evenly and Save 
+[T10] ok   Start a reading {"room": "Y6AEHG"}
+[T10] ok   the teacher switches the reading to Record 
+[T10] ok   seat Ada joins on the second device; its lines are tinted {"lines": 62, "first": "L0008"}
+[T10] ok   the teacher's Next reaches the seat's first line {"line": "L0008"}
+[T10] ok   the seat's microphone opens on its line, once 
+[T10] FAIL the take arrives: the Worker holds its row in the class production {"takes": 0, "status": 404}
+[T10] FAIL the take is in the class page's Review {"rows": null}
+[T10] FAIL Approve, then Again on the next take: the Worker's reviews say so {"approve_pressed": false, "again_pressed": false, "reviews": null}
+[T11] ok   a test teacher signs in through the shared client {"answer": true}
+[T11] ok   the Classes box shows for a signed-in teacher 
+[T11] ok   Make a class (13 and over) {"class_id": "98366114-d98b-406f-8829-2891e062a95b", "code": "RFACXJVN"}
+[T11] ok   the class page opens 
+[T11] ok   4 seats from a pasted list {"seats": 4}
+[T11] ok   a class production of a castable play {"script": "gut-7364", "production": "DCFD2DD5-E7D8-455A-8A2D-570C44C5A53A"}
+[T11] ok   cast with Fill evenly and Save 
+[T11] ok   Start a reading {"room": "S674ZZ"}
+[T11] FAIL the teacher switches the reading to Record 
+[T11] ok   seat Ada joins on the second device; its lines are tinted {"lines": 62, "first": "L0008"}
+[T11] ok   note: the join page did not draw in 20 s; navigated once more 
+[T11] ok   seat Ben joins on the second device; its lines are tinted {"lines": 62, "first": "L0008"}
+[T11] FAIL as seat B: none of seat A's lines are tinted {"overlap": ["L0008", "L0009", "L0011", "L0013", "L0015"]}
+[T11] FAIL as seat B: seat A's name is not on the page 
+[T11] ok   as seat B: no take of seat A's is counted on this device {"rec_row": ""}
+[T12] ok   a test teacher signs in through the shared client {"answer": true}
+[T12] ok   the Classes box shows for a signed-in teacher 
+[T12] ok   Make a class (under 13) {"class_id": "eec84e93-cf21-44ed-aed0-167ecf03dc21", "code": "ZXMZMM20"}
+[T12] ok   the class page opens 
+[T12] ok   3 seats from a pasted list {"seats": 3}
+[T12] ok   a class production of a castable play {"script": "gut-7364", "production": "FFA82921-A6B9-4DB7-A298-64969E0A28F2"}
+[T12] ok   cast with Fill evenly and Save 
+[T12] ok   Start a reading {"room": "VDJPGA"}
+[T12] ok   the teacher switches the reading to Record 
+[T12] ok   seat Ada joins on the second device; its lines are tinted {"lines": 66, "first": "L0008"}
+[T12] ok   the seat's microphone opened on its line 
+[T12] FAIL the take stays on the seat's device {"takes_on_device": 0}
+[T12] ok   no take reaches the Worker or the teacher {"worker_takes": 0, "status": 404}
+[class] 36 of 43 steps ok; worker stopped; report /Users/bhwilkoff/Documents/GitHub/Ear-Drama/.claude/worktrees/agent-af3ac18c70afc809c/docs/research/data/t7c/class-r3.json

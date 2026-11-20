@@ -76,6 +76,11 @@ class ReadRecord(
     private var stopped = false
     private var watcher: Job? = null
 
+    /** `[readdiag]` lines for the record state machine (DEBUG door appname_read_diag): take start and end, line-done, justDid. */
+    private inline fun trace(words: () -> String) {
+        if (com.example.appname.navigation.LaunchDoors.diag) println("[readdiag] ${words()}")
+    }
+
     private fun snap(): ReadSnapshot? = session.state.value.snapshot
     private fun partOf(line: String): String? = cast.firstOrNull { it.first == line }?.second
     private fun codeOf(e: Throwable): String = (e as? ReadFailure)?.code ?: if (e is java.io.IOException) "offline" else "error"
@@ -137,6 +142,7 @@ class ReadRecord(
         justDid = line
         _state.update { it.copy(recording = line) }
         if (com.example.appname.navigation.LaunchDoors.diag) println("[readdiag] rec $line at ${System.currentTimeMillis().toDouble()} offset ${session.state.value.clockOffsetMs}")
+        trace { "take $line start gen ${before.cursorGen}" }
         val part = partOf(line)
         val take = if (part == null) null else try {
             engine().record(line, PartID(part))
@@ -152,6 +158,7 @@ class ReadRecord(
             return
         }
         val now = snap() ?: before
+        trace { "take $line end cursor ${now.cursor} gen ${now.cursorGen} done ${if (line in now.done) 1 else 0}" }
         if (credit) {
             val members = now.members.map { ReadCore.Member(it.id, it.role, it.seat, 0.0, if (it.live) 0.0 else Double.NEGATIVE_INFINITY, it.name) }
             val reads = ReadCore.whoReads(now.room, cast, members, line, 0.0)
@@ -175,8 +182,11 @@ class ReadRecord(
         } else {
             _state.update { it.copy(outbox = it.outbox + take.id) }
             saveOutbox()
-            if (now.cursor == line) {
-                try { session.send(message("type" to "line-done", "line" to line, "base" to now.cursorGen)) } catch (e: CancellationException) { throw e } catch (_: Exception) { }
+            // Sent even when the leader has moved the cursor away: the take exists, so the line is done and its microphone
+            // does not open again when the cursor comes back (T7c; the Worker leaves the cursor where the leader put it).
+            trace { "line-done $line base ${now.cursorGen} sent" + if (now.cursor == line) "" else " cursor ${now.cursor}" }
+            try { session.send(message("type" to "line-done", "line" to line, "base" to now.cursorGen)) } catch (e: CancellationException) { throw e } catch (e: Exception) {
+                trace { "line-done $line refused ${codeOf(e)}" }
             }
             flush()
         }
@@ -272,7 +282,9 @@ class ReadRecord(
     fun onSnapshot() {
         val s = snap() ?: return
         if (stopped) return
+        val had = justDid
         justDid = ReadCore.settleJustDid(s, justDid)
+        if (had != null && justDid == null) trace { "justDid $had cleared cursor ${s.cursor} gen ${s.cursorGen} recording ${_state.value.recording ?: "-"}" }
         if (s.ended) { dropPickup(); return }
         val recording = s.mode == "record"
         if (recording && s.you?.receives == true) holdPickup() else if (_state.value.receiving) dropPickup()

@@ -33,6 +33,30 @@ const REFRESH_TTL_MS = 60 * 24 * 60 * 60 * 1000;
 const ISSUER = "eardrama-worker";
 const AUDIENCE = "eardrama";
 
+/**
+ * The local bench's sign-in (tools/class_bench.py): `LOCAL_TEST_JWKS`, a JSON key set passed only to a local
+ * `wrangler dev --var`, stands in for both providers' published keys so a test teacher can sign in with a token the
+ * bench minted. It is never in wrangler.toml. A Worker that has it and answers any host but this machine or the
+ * home network refuses every request (`testAuthRefused`, checked first in index.js), so a deploy that carried it
+ * would sign nobody in with a test key: it would answer nothing at all.
+ */
+export function testKeys(env) {
+  if (!env.LOCAL_TEST_JWKS) return undefined;
+  try {
+    const set = JSON.parse(env.LOCAL_TEST_JWKS);
+    return Array.isArray(set.keys) ? set.keys : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/;
+
+/** True when the test keys are set and the request reached a host that is not this machine or the home network. */
+export function testAuthRefused(env, url) {
+  return !!env.LOCAL_TEST_JWKS && !LOCAL_HOST.test(url.hostname);
+}
+
 export function audiences(env, provider) {
   return String(env[PROVIDERS[provider].audiencesVar] || "")
     .split(",")
@@ -92,6 +116,7 @@ export async function handleSignIn(provider, request, env) {
       jwksUrl: PROVIDERS[provider].jwksUrl,
       issuers: PROVIDERS[provider].issuers,
       audiences: audiences(env, provider),
+      keys: testKeys(env),
     });
   } catch (e) {
     if (e instanceof TokenError) {

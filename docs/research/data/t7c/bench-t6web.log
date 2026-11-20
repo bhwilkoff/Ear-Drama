@@ -1,0 +1,5 @@
+[bench] web1     ok
+[bench] room JMFNGC (leader socket=True)
+[T6] {'web1': {'following_at_start': True, 'back_button_shown_after_scroll': True, 'following_after_back': True, 'lit_line_in_view': True}}
+[bench] teardown web1     OK chrome gone
+[bench] report docs/research/data/t7c/t6web-report.json

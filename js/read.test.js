@@ -609,6 +609,39 @@ async function main() {
     L.rr.detach(); A.rr.detach();
   });
 
+  test('T7c: a take that ends after the leader moved the cursor marks its line done; the cursor coming back opens no second microphone', async () => {
+    const { w, lead, L, ann } = await recordingRoom();
+    L.rr.detach();
+    // An engine whose take ends only when the test says, so the leader can move the cursor during it.
+    const opens = [];
+    let finish = null;
+    const store = vm.runInContext('PlayStore.open(PlayStore.memoryBackend())', ann.ctx);
+    await store.load();
+    const RR = vm.runInContext('ReadRecord', ann.ctx);
+    const cast = RSCRIPT.lines.map((l) => [l.id, l.kind === 'speech' ? `role:${l.role}` : l.kind === 'direction' ? 'directions' : 'sound']);
+    const rr = RR.make({
+      api: ann.api, store, session: ann.session, script: RSCRIPT, cast, timers: w.timers_,
+      engine: () => ({ started: true, phase: { kind: 'ready' }, async begin() {}, stopListening() {}, end() {},
+        recordInRoom: (line) => { opens.push(line); return new Promise((done) => { finish = () => done({ id: `t${opens.length}`, lineID: line, part: 'role:LUCY', file: 'x.wav', frames: 1, sampleRate: 48000 }); }); } }),
+    });
+    await rr.arm();
+    await lead.session.send({ type: 'cursor', line: 'l2', base: lead.session.state().snap.cursor_gen });
+    await w.advance(1500);
+    eq(opens, ['l2'], 'Ann\'s microphone opened for her line');
+    await lead.session.send({ type: 'cursor', line: 'l1', base: lead.session.state().snap.cursor_gen });
+    await w.advance(1500);
+    eq(ann.session.state().snap.cursor, 'l1', 'Ann\'s device saw the leader move the cursor during her take');
+    finish();
+    await w.advance(1500);
+    const s = lead.session.state().snap;
+    ok(s.done.includes('l2'), 'the line is done although the cursor had moved away');
+    eq(s.cursor, 'l1', 'the cursor stays where the leader put it');
+    await lead.session.send({ type: 'cursor', line: 'l2', base: lead.session.state().snap.cursor_gen });
+    await w.advance(3000);
+    eq(opens, ['l2'], 'the cursor back on line 2 opens no second microphone');
+    rr.detach();
+  });
+
   test('One microphone: the leader\'s device records the line at the cursor whoever holds it and moves on; nothing is sent', async () => {
     const { w, server, lead, L, A, leadLog, annLog } = await recordingRoom();
     L.rr.setOneMic(true);

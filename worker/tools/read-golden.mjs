@@ -124,6 +124,8 @@ add("applyMessage", [world(record, classMembers), "d1", { type: "line-done", lin
 add("applyMessage", [world({ ...record, cursor: "l6", cursor_gen: 3 }, classMembers), "d2", { type: "line-done", line: "l6", base: 3 }, T + 1000], "lines nobody holds are skipped");
 add("applyMessage", [world(record, classMembers), "d2", { type: "line-done", line: "l2", base: 0 }, T + 1000], "only the line's reader ends it");
 add("applyMessage", [world({ ...record, cursor: "l3", cursor_gen: 1, done: ["l2"] }, classMembers), "d1", { type: "line-done", line: "l2", base: 0 }, T + 1000], "a repeated line-done changes nothing");
+add("applyMessage", [world({ ...record, cursor: "l1", cursor_gen: 2 }, classMembers), "d1", { type: "line-done", line: "l2", base: 1 }, T + 1000], "a take that ends after the leader moved the cursor away marks its line done; the cursor stays (T7c)");
+add("applyMessage", [world({ ...record, cursor: "l2", cursor_gen: 3 }, classMembers), "d1", { type: "line-done", line: "l2", base: 1 }, T + 1000], "the line at the cursor from an old generation is stale");
 add("applyMessage", [world({ ...record, cursor: "l3", cursor_gen: 1, done: ["l2"] }, classMembers), "teacher", { type: "again", line: "l2", base: 1 }, T + 1000], "Again re-arms a line");
 add("applyMessage", [world(klass, classMembers), "teacher", { type: "lead", to: "d1" }, T + 1000], "a teacher hands the lead to a seat");
 add("applyMessage", [world(klass, classMembers), "teacher", { type: "lead", to: "tv" }, T + 1000], "a screen never leads");

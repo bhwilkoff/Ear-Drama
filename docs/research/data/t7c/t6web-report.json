@@ -1,0 +1,68 @@
+{
+ "tag": "t6web",
+ "base": "https://eardrama-api.benwilkoff.workers.dev",
+ "script": "gut-7364",
+ "devices": {
+  "web1": {
+   "what": "Chrome headless, muted, reader",
+   "role": "reader",
+   "skip": null
+  }
+ },
+ "tests": {
+  "T5": {
+   "members": [
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    }
+   ],
+   "devices": {
+    "web1": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": null,
+     "log_tail": [
+      "1795181358556 [readdiag] lit L0001 gen 0 at 1795181358548 offset",
+      "1795181358556 [readdiag] clock offset 66.5 samples 1",
+      "1795181358785 [readdiag] transport socket"
+     ]
+    }
+   },
+   "room_members": 2,
+   "started": 1
+  },
+  "T6": {
+   "web1": {
+    "following_at_start": true,
+    "back_button_shown_after_scroll": true,
+    "following_after_back": true,
+    "lit_line_in_view": true
+   }
+  }
+ },
+ "site": "http://127.0.0.1:49389",
+ "room": {
+  "code": "JMFNGC",
+  "transport": "socket",
+  "leader_socket": true,
+  "leader_offset": {
+   "rtt": 14,
+   "offset": -1
+  }
+ },
+ "teardown": {
+  "web1": {
+   "gone": true,
+   "detail": "chrome gone"
+  }
+ }
+}

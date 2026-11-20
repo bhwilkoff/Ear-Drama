@@ -364,14 +364,22 @@ export function applyCursor(room, cast, memberId, msg, now) {
  * RECORD MODE: the reader whose line it is ends it (their take ended on its
  * silence or their tap). The line is marked done and the cursor moves to the
  * next line someone holds; lines nobody holds are skipped and stay open.
+ * A take that ends after the leader moved the cursor away still made a take:
+ * its line is marked done and the cursor stays where the leader put it, so
+ * the line does not open a microphone again when the cursor comes back (T7c:
+ * the leader's press racing a take reopened the line, two takes of one line).
+ * The leader's Again reopens a done line on purpose.
  */
 function lineDone(room, cast, members, member, msg, now) {
   if (room.mode !== "record") return { error: "not_recording" };
   const i = msg ? indexOf(cast, msg.line) : -1;
   if (i < 0) return { error: "no_such_line" };
   if (!holds(room, cast, member, i)) return { error: "not_your_line" };
-  if (room.done.includes(msg.line) && msg.line !== room.cursor) return { room, changed: false };
-  if (msg.line !== room.cursor || msg.base !== room.cursor_gen) return { error: "stale", detail: room.cursor_gen };
+  if (msg.line !== room.cursor) {
+    if (room.done.includes(msg.line)) return { room, changed: false };
+    return { room: { ...room, done: [...room.done, msg.line], generation: room.generation + 1, touched_at: now }, changed: true };
+  }
+  if (msg.base !== room.cursor_gen) return { error: "stale", detail: room.cursor_gen };
   let next = i;
   for (let j = i + 1; j < cast.length; j++) {
     if (held(room, cast, j)) {

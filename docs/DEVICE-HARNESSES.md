@@ -859,8 +859,42 @@ Reports go to `docs/research/data/t7/<tag>-report.json` (and per-device delays),
 - T6 on touch: the Pixel is swiped with `adb input swipe` and tapped with `adb input tap` at the button's uiautomator bounds; the
   web reader with Chrome's own touch gesture synthesis (`Input.synthesizeScrollGesture`, `Input.dispatchTouchEvent`). The open
   Duo needs its display on for `tools/ios_uitest.py`; a dark Duo is reported blind.
-- T10 to T12 (teacher class, shared-device seats, under-13) need a signed-in teacher: not run against production (no accounts are
-  made there). They run on the Worker's own suites and `js/read.test.js`; a live run needs a local `wrangler dev` with a test JWKS.
+- T7 trace (T7c): `--tests T7` also writes `<tag>-T7-trace.json` (the leader's presses with the cursor each left, every snapshot
+  the leader's socket saw, every device's `[readdiag]` record lines: `take <line> start gen <g>`, `take <line> end cursor <c> gen <g>
+  done <0|1>`, `line-done <line> base <g> sent [cursor <c>]` or `refused <code>`, `justDid <line> cleared cursor <c>`), and
+  `python3 tools/read_bench_trace.py <trace> [--repeats]` merges them into one timeline on the host clock. The leader presses lines
+  from its own counter, not from the cursor, so after a reader's take has moved the cursor on, its press drags the cursor back: the
+  stress that found T7c (a take that ended with the cursor elsewhere was never marked done, and the line opened again).
+- `--local-worker PORT` runs the Worker in this tree (`tools/local_worker.py`: `wrangler dev --local` on a fresh D1, reachable on
+  the home network, `READ_DIAG=1` so it prints `[readdiag] worker <type> by <member> line <l> base <b> at cursor <c> gen <g> -> ...`
+  to `<tag>-worker.log`) and points every device at it: Android `--es appname_worker_url http://<Mac>:PORT`, Apple
+  `APP_WORKER_URL=http://<Mac>:PORT`, web `?worker=http://localhost:PORT`. All three doors are DEBUG or local-page only and take
+  plain http to a private address only. This is how a protocol change runs on the real devices before anyone deploys it.
+
+## Class bench
+
+`tools/class_bench.py` runs T10 to T12 (R3c section 8) on the web: the teacher flows need a signed-in teacher, and production
+has no test accounts. It starts `tools/local_worker.py --test-auth`: a key pair made for the run (`tools/local_worker_keys.mjs`),
+its public set passed to `wrangler dev --var LOCAL_TEST_JWKS:...`, the private key in the scratch directory for that run only. The
+Worker refuses every request whose host is not this machine or the home network while it carries a test key set (worker/src/auth.js
+`testAuthRefused`, held by worker/test/auth.test.js and two mutants), so a deploy that carried one would answer nothing. The test
+teacher signs in through the shared client's own `API.account.signIn` with a minted token. Two headless Chrome profiles are the
+teacher's device and a seat's (the read bench's `getUserMedia` stub; muted; nothing plays).
+
+```bash
+python3 tools/class_bench.py                  # T10, T11, T12; exit 1 on any failed step
+python3 tools/class_bench.py --tests T12
+```
+
+- T10: make a class, paste 25 names, make a class production, Fill evenly and Save, Start a reading, switch to Record; a seat joins
+  by the `?seat=<class code>:<name>` door, its microphone opens on its line once, the take's row reaches the Worker, the take is in
+  Review, Approve and Again are pressed and the Worker's reviews say so.
+- T11: the seat device leaves and joins as another seat: none of the first seat's lines tinted, its name not shown, none of its
+  takes counted on the device.
+- T12: an under-13 class without school consent: the seat's take stays on its device and none reaches the Worker.
+- Steps are judged from the DOM and the Worker's answers; the report is `docs/research/data/t7c/class-<tag>.json`, frames
+  `docs/research/design/img/t7c/`. Not covered: the Pixel and the Apple clients' class pages (they need a signed-in teacher on a
+  device; the doors above can point them at the local Worker, but no native test sign-in exists).
 - T8 on the Pixel switches airplane mode on and off from a device-side script, because wireless adb dies with the radio.
 
 ---

@@ -123,6 +123,15 @@ data class LaunchDoors(
         const val EXTRA_START_READ_RECORD = "appname_start_read_record"
         const val EXTRA_START_READ_PAIR = "appname_start_read_pair"
         const val EXTRA_READ_DIAG = "appname_read_diag"
+        const val EXTRA_WORKER_URL = "appname_worker_url"
+        private val BENCH_HOST = Regex("""^http://(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|localhost|127\.0\.0\.1):\d+$""")
+
+        /**
+         * DEBUG `appname_worker_url=http://<this Mac on the home network>:<port>`: the read bench's local `wrangler dev`
+         * (tools/read_bench.py --base, tools/class_bench.py). Plain http to a private address only. Set once by MainActivity
+         * before the Worker client is made; null in a release build.
+         */
+        @Volatile var workerUrl: String? = null
 
         /** DEBUG `appname_read_diag`: the read session prints its transport, cursor delay and clock offset. Set once by MainActivity. */
         @Volatile var diag = false
@@ -131,6 +140,7 @@ data class LaunchDoors(
         fun from(extras: Map<String, Any?>, debug: Boolean): LaunchDoors {
             if (!debug) return LaunchDoors()
             diag = extras[EXTRA_READ_DIAG].let { it == true || it == "1" || it == "true" }
+            workerUrl = extras[EXTRA_WORKER_URL]?.toString()?.takeIf { BENCH_HOST.matches(it) }
             return LaunchDoors(
                 startTab = extras[EXTRA_START_TAB]?.toString(),
                 startItem = extras[EXTRA_START_ITEM]?.toString(),

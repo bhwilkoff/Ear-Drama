@@ -541,7 +541,7 @@ const Reader = (() => {
     if (!on) paintDock(st, null);
   }
   /** A touch on the text stops the read-along turning the page. */
-  function away(st) { st.fol.away(); }
+  function away(st) { paintBack(st, st.fol.away().back); }
   function paintBack(st, on) { if (st.backBtn) st.backBtn.hidden = !on; }
 
   /** "Read along" (PLAYS-DESIGN §2.11): the production's listen-through, the reader following each line heard. */

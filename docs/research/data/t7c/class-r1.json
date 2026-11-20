@@ -1,0 +1,48 @@
+{
+ "tag": "r1",
+ "worker": "http://localhost:8799",
+ "site": "http://127.0.0.1:61238",
+ "tests": {
+  "T10": {
+   "seat_logs": []
+  },
+  "T11": {},
+  "T12": {}
+ },
+ "steps": [
+  {
+   "test": "T10",
+   "step": "a test teacher signs in through the shared client",
+   "ok": true,
+   "answer": true
+  },
+  {
+   "test": "T10",
+   "step": "the Classes box shows for a signed-in teacher",
+   "ok": false
+  },
+  {
+   "test": "T11",
+   "step": "a test teacher signs in through the shared client",
+   "ok": true,
+   "answer": true
+  },
+  {
+   "test": "T11",
+   "step": "the Classes box shows for a signed-in teacher",
+   "ok": false
+  },
+  {
+   "test": "T12",
+   "step": "a test teacher signs in through the shared client",
+   "ok": true,
+   "answer": true
+  },
+  {
+   "test": "T12",
+   "step": "the Classes box shows for a signed-in teacher",
+   "ok": false
+  }
+ ],
+ "worker_stopped": true
+}

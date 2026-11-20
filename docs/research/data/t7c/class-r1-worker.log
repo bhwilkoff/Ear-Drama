@@ -1,0 +1,92 @@
+
+ ⛅️ wrangler 4.152.0 (update available 4.165.0)
+───────────────────────────────────────────────
+Your Worker has access to the following bindings:
+Binding                                                                   Resource                  Mode
+env.READ_ROOMS (ReadRoom)                                                 Durable Object            local
+env.TAKE_RELAY (TakeRelay)                                                Durable Object            local
+env.DB (eardrama)                                                         D1 Database               local
+env.EVERY_IP_LIMITER (600 requests/60s)                                   Rate Limit                local
+env.AUTH_LIMITER (30 requests/60s)                                        Rate Limit                local
+env.USER_LIMITER (120 requests/60s)                                       Rate Limit                local
+env.ROOM_LIMITER (300 requests/60s)                                       Rate Limit                local
+env.ROOM_CREATE_LIMITER (10 requests/60s)                                 Rate Limit                local
+env.ROOM_JOIN_LIMITER (20 requests/60s)                                   Rate Limit                local
+env.ROOM_MEMBER_LIMITER (60 requests/60s)                                 Rate Limit                local
+env.PLAY_UPLOAD_LIMITER (30 requests/60s)                                 Rate Limit                local
+env.PLAY_JOIN_LIMITER (20 requests/60s)                                   Rate Limit                local
+env.OPEN_READ_LIMITER (60 requests/60s)                                   Rate Limit                local
+env.TAKEDOWN_LIMITER (3 requests/60s)                                     Rate Limit                local
+env.READ_IP_LIMITER (3000 requests/60s)                                   Rate Limit                local
+env.READ_JOIN_LIMITER (60 requests/60s)                                   Rate Limit                local
+env.READ_MEMBER_LIMITER (120 requests/60s)                                Rate Limit                local
+env.READ_CREATE_LIMITER (10 requests/60s)                                 Rate Limit                local
+env.SEAT_JOIN_LIMITER (60 requests/60s)                                   Rate Limit                local
+env.SEAT_LIMITER (120 requests/60s)                                       Rate Limit                local
+env.APPLE_AUDIENCES ("app.eardrama,app.eardrama.signin")                  Environment Variable      local
+env.GOOGLE_AUDIENCES ("1083349339355-hmed22o33qemdc3dfhbqhkt...")         Environment Variable      local
+env.ALLOWED_ORIGINS ("https://eardrama.org,https://www.eard...")          Environment Variable      local
+env.APPLE_TEAM_ID ("")                                                    Environment Variable      local
+env.APPLE_KEY_ID ("")                                                     Environment Variable      local
+env.SESSION_SECRET ("(hidden)")                                           Environment Variable      local
+env.READ_DIAG ("(hidden)")                                                Environment Variable      local
+env.LOCAL_TEST_JWKS ("(hidden)")                                          Environment Variable      local
+
+⎔ Starting local server...
+Wrangler detected this dev session is running in an AI agent.
+The Local Explorer API is available at http://127.0.0.1:8799/cdn-cgi/local/explorer/api
+Useful routes:
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/workers - local Workers and bindings
+  POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/scheduled?worker=<name> - invoke a Worker's scheduled handler; cron is required (see the OpenAPI schema for the full request)
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/storage/kv/namespaces - KV namespaces
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/d1/database - D1 databases
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/r2/buckets - R2 buckets
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/workers/durable_objects/namespaces - Durable Object namespaces
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/workflows - Workflows
+  POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/observability/query - run a read-only SQL query (SELECT/WITH only) over captured request traces and console logs. Tables: spans, logs (read attributes via json(attributes)). Example:
+    curl -X POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/observability/query -H 'Content-Type: application/json' -d '{"sql":"SELECT service, name, outcome, duration_ms FROM spans WHERE parent_id IS NULL LIMIT 20"}'
+  POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/observability/clear - clear all captured traces and logs
+If the routes above don't cover what you need, fetch the full OpenAPI schema (large - use only as a last resort):
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api - OpenAPI schema
+[wrangler:info] Ready on http://0.0.0.0:8799
+[wrangler:info] - http://127.0.0.1:8799
+[wrangler:info] - http://10.0.0.90:8799
+[wrangler:info] GET /v1/plays/finished 200 OK (151ms)
+[wrangler:info] OPTIONS /v1/auth/apple 204 No Content (14ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (130ms)
+[wrangler:info] OPTIONS /v1/plays/productions 204 No Content (4ms)
+[wrangler:info] GET /v1/plays/productions 200 OK (9ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (4ms)
+[wrangler:info] OPTIONS /v1/sync/merge 204 No Content (2ms)
+[wrangler:info] OPTIONS /v1/auth/refresh 204 No Content (2ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (3ms)
+[wrangler:info] POST /v1/sync/merge 200 OK (2ms)
+[wrangler:info] GET /v1/plays/productions 200 OK (7ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (5ms)
+[wrangler:info] GET /v1/sync 200 OK (3ms)
+[wrangler:info] GET /v1/plays/finished 200 OK (109ms)
+[wrangler:info] OPTIONS /v1/auth/apple 204 No Content (5ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (37ms)
+[wrangler:info] OPTIONS /v1/plays/productions 204 No Content (6ms)
+[wrangler:info] GET /v1/plays/productions 200 OK (9ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (5ms)
+[wrangler:info] OPTIONS /v1/sync/merge 204 No Content (1ms)
+[wrangler:info] OPTIONS /v1/auth/refresh 204 No Content (2ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (4ms)
+[wrangler:info] POST /v1/sync/merge 200 OK (2ms)
+[wrangler:info] GET /v1/plays/productions 200 OK (6ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (7ms)
+[wrangler:info] GET /v1/sync 200 OK (6ms)
+[wrangler:info] GET /v1/plays/finished 200 OK (313ms)
+[wrangler:info] OPTIONS /v1/auth/apple 204 No Content (4ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (25ms)
+[wrangler:info] OPTIONS /v1/plays/productions 204 No Content (5ms)
+[wrangler:info] GET /v1/plays/productions 200 OK (15ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (5ms)
+[wrangler:info] OPTIONS /v1/sync/merge 204 No Content (2ms)
+[wrangler:info] OPTIONS /v1/auth/refresh 204 No Content (3ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (12ms)
+[wrangler:info] POST /v1/sync/merge 200 OK (5ms)
+[wrangler:info] GET /v1/plays/productions 200 OK (8ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (4ms)
+[wrangler:info] GET /v1/sync 200 OK (4ms)

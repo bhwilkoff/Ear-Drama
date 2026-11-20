@@ -1,0 +1,27 @@
+[T10] ok   a test teacher signs in through the shared client {"answer": true}
+[T10] FAIL the Classes box shows for a signed-in teacher 
+[T11] ok   a test teacher signs in through the shared client {"answer": true}
+[T11] ok   the Classes box shows for a signed-in teacher 
+[T11] ok   Make a class (13 and over) {"class_id": "fd416ffe-03b3-4816-9e3e-8105300ff94c", "code": "VJN1K7CA"}
+[T11] ok   the class page opens 
+[T11] ok   4 seats from a pasted list {"seats": 4}
+[T11] ok   a class production of a castable play {"script": "gut-7364", "production": "2D5FB454-A594-4449-B36E-AB335D72EF80"}
+[T11] ok   cast with Fill evenly and Save 
+[T11] ok   Start a reading {"room": "60THX6"}
+[T11] ok   the teacher switches the reading to Record 
+[T11] FAIL seat Ada joins on the second device; its lines are tinted {"lines": 0, "first": null}
+[T11] FAIL seat Ben joins on the second device; its lines are tinted {"lines": 0, "first": null}
+[T11] ok   as seat B: none of seat A's lines are tinted {"overlap": []}
+[T11] ok   as seat B: seat A's name is not on the page 
+[T11] ok   as seat B: no take of seat A's is counted on this device {"rec_row": ""}
+[T12] ok   a test teacher signs in through the shared client {"answer": true}
+[T12] ok   the Classes box shows for a signed-in teacher 
+[T12] ok   Make a class (under 13) {"class_id": "01b0647d-ad54-487b-875c-4f0e6bc5ee8e", "code": "KV8HRK65"}
+[T12] ok   the class page opens 
+[T12] ok   3 seats from a pasted list {"seats": 3}
+[T12] ok   a class production of a castable play {"script": "gut-7364", "production": "4C904CA4-B1FF-4BEB-AE5A-E1800CF5C91B"}
+[T12] ok   cast with Fill evenly and Save 
+[T12] ok   Start a reading {"room": "K59GB6"}
+[T12] ok   the teacher switches the reading to Record 
+[T12] FAIL seat Ada joins on the second device; its lines are tinted {"lines": 0, "first": null}
+[class] 22 of 26 steps ok; worker stopped; report /Users/bhwilkoff/Documents/GitHub/Ear-Drama/.claude/worktrees/agent-af3ac18c70afc809c/docs/research/data/t7c/class-r2.json

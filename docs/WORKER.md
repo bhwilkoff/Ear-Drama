@@ -335,7 +335,8 @@ the room opened join the next room.
 | `GET /v1/read/pair/{pair_code}` | the TV (`x-pair-key`) | | `{ paired: false, expires_at }` until a leader attaches it, then the room's snapshot with `member_key` (the TV joined as its screen, past a lock) and the pairing is gone; `404 no_such_pair`, `410 pair_expired` |
 | `POST /v1/read/{code}/pair` | the leader or the owner | `{ code }`: the TV's pairing code, normalized as a room code | `{ paired: true }`; `403 leader_only`, `404 no_such_pair` (none, or used), `410 pair_expired`; READ_JOIN_LIMITER per address |
 
-Messages: `cursor { line, base }`, `line-done { line, base }`, `again { line,
+Messages: `cursor { line, base }`, `line-done { line, base }` (the holder's take ended; a line that is no longer the
+cursor is marked done and the cursor stays, T7c), `again { line,
 base }`, `mode { mode }`, `claim { part }`, `release { part }`, `lead { to }`,
 `lock { locked }`, `read-open { open }` (the leader's "Read open parts", carried in the snapshot as `read_open`; the screen obeys it), `seat { seat, seat_key, move? }`, `ping { t0 }` (answered `pong {
 t0, server_time }`), `end`. Refusals: `leader_only`, `stale` (with the current

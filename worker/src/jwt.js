@@ -87,7 +87,8 @@ export function clearJwksCache() {
   jwksCache.clear();
 }
 
-async function keyFor(url, kid) {
+async function keyFor(url, kid, given) {
+  if (given) return importRsa(given.find((k) => k.kid === kid));
   let entry = jwksCache.get(url);
   if (!entry || Date.now() - entry.fetchedAt > JWKS_TTL_MS) entry = await fetchJwks(url);
   let jwk = entry.keys.find((k) => k.kid === kid);
@@ -97,6 +98,10 @@ async function keyFor(url, kid) {
     entry = await fetchJwks(url);
     jwk = entry.keys.find((k) => k.kid === kid);
   }
+  return importRsa(jwk);
+}
+
+function importRsa(jwk) {
   if (!jwk || jwk.kty !== "RSA") throw new TokenError("unknown_key");
   return crypto.subtle.importKey(
     "jwk",
@@ -110,14 +115,15 @@ async function keyFor(url, kid) {
 /**
  * Verify a provider's RS256 identity token.
  * @param {string} token
- * @param {{ jwksUrl: string, issuers: string[], audiences: string[] }} rules
+ * @param {{ jwksUrl: string, issuers: string[], audiences: string[], keys?: object[] }} rules  `keys` in place of the
+ *   provider's published set: only the local bench's test keys (auth.js testKeys), never in production
  * @returns the payload, or throws TokenError
  */
 export async function verifyIdentityToken(token, rules, nowMs = Date.now()) {
   const { header, payload, signed, sig } = split(token);
   if (header.alg !== "RS256") throw new TokenError("bad_alg");
   if (typeof header.kid !== "string" || !header.kid) throw new TokenError("no_kid");
-  const key = await keyFor(rules.jwksUrl, header.kid);
+  const key = await keyFor(rules.jwksUrl, header.kid, rules.keys);
   const ok = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, sig, signed);
   if (!ok) throw new TokenError("bad_signature");
   if (!rules.issuers.includes(payload.iss)) throw new TokenError("bad_issuer");

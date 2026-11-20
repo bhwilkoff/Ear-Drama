@@ -1,0 +1,13 @@
+[bench] local Worker http://localhost:8799 (devices: http://10.0.0.90:8799)
+[bench] pixel    ok
+[bench] duo      ok
+[bench] web1     ok
+[bench] room K32A3R (leader socket=True)
+[T7] claims {'pixel': 'CAMPBELL', 'duo': 'ROBERTS', 'web1': 'MRS. ROBERTS'}
+[bench] duo      no [readdiag] after join
+[T7] exactly one: 11, missed: 5, wrong/extra: 0, repeated: 0; takes 22 arrived of 11 expected
+[bench] teardown pixel    OK gone (pidof empty)
+[bench] teardown duo      OK not running
+[bench] teardown web1     OK chrome gone
+[bench] local Worker stopped
+[bench] report docs/research/data/t7c/after1-report.json

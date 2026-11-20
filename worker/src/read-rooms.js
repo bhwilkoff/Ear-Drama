@@ -135,10 +135,18 @@ const engine = {
     return { world: { ...w, room, members }, member, key, changed: true };
   },
 
-  /** A member's message: settle, apply, settle. `changed` means every member gets a new snapshot. */
-  send(world, memberId, msg, now) {
+  /**
+   * A member's message: settle, apply, settle. `changed` means every member gets a new snapshot.
+   * `diag` (the READ_DIAG var, set only in a local `wrangler dev`) logs each cursor-moving message and its result.
+   */
+  send(world, memberId, msg, now, diag = false) {
     const before = P.settle(world.room, world.members, now);
     const r = P.applyMessage({ room: before.room, cast: world.cast, members: before.members }, memberId, msg, now);
+    if (diag && msg && msg.type !== "ping") {
+      const was = before.room;
+      const got = r.error ? `refused ${r.error}` : `cursor ${r.room.cursor} gen ${r.room.cursor_gen} done ${r.room.done.length}`;
+      console.log(`[readdiag] worker ${msg.type} by ${memberId} line ${msg.line ?? "-"} base ${msg.base ?? "-"} at cursor ${was.cursor} gen ${was.cursor_gen} -> ${got}`);
+    }
     if (r.error) return r;
     const after = P.settle(r.room, r.members, now);
     return { world: { ...world, room: after.room, members: after.members }, changed: r.changed || before.changed || after.changed, reply: r.reply };
@@ -319,7 +327,7 @@ export class ReadRoom extends DurableObject {
 
   /** Applies a member's message and fans the result out; the caller gets its reply or refusal. */
   async apply(memberId, msg, now) {
-    const r = engine.send(this.refresh(this.world, now), memberId, msg, now);
+    const r = engine.send(this.refresh(this.world, now), memberId, msg, now, this.env.READ_DIAG === "1");
     if (r.error) return r;
     // A socket member's presence is its open socket, so a ping writes nothing.
     if (r.changed) {
@@ -600,7 +608,7 @@ const d1 = {
     if (auth.error) return refuse(auth.error);
     const guarded = await engine.guard(env, loaded.world, msg);
     if (guarded) return refuse(guarded);
-    const r = await d1.update(env, code, now, async (world) => engine.send(world, auth.me.id, msg, now));
+    const r = await d1.update(env, code, now, async (world) => engine.send(world, auth.me.id, msg, now, env.READ_DIAG === "1"));
     if (r.error) return refuse(r.error, r.detail);
     const out = r.world.room.ended ? { ended: true } : snapshot(r.world, auth.me.id, now);
     return json(r.reply ? { ...out, reply: r.reply } : out);

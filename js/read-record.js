@@ -23,7 +23,7 @@ const ReadRecord = (() => {
   /** Refusals that mean "try again later": the take stays in the outbox. */
   const LATER = new Set(['nobody_receiving', 'one_take_at_a_time', 'offline', 'error', 'rate_limited', 'timeout', 'not_configured', 'not_delivered']);
 
-  function make({ api, store, session, script, cast, core = ReadCore, plays = PlaysCore, engine, timers = globalThis, onChange = () => {}, diag = () => {} }) {
+  function make({ api, store, session, script, cast, core = ReadCore, plays = PlaysCore, engine, timers = globalThis, onChange = () => {}, diag = () => {}, trace = () => {} }) {
     const st = {
       code: null, localId: null, outbox: [], sending: false, recording: null, justDid: null, armed: false,
       oneMic: false, receiving: false, arrived: 0, lastError: null, failed: null,
@@ -77,11 +77,11 @@ const ReadRecord = (() => {
     function stop() { if (rec) rec.stopListening(); }
 
     async function record(line, { credit = false } = {}) {
-      const s = snap();
-      const base = s.cursor_gen;
+      const base = snap().cursor_gen;
       st.justDid = line;
       st.recording = line;
       diag(line);
+      trace('take', line, 'start gen', base);
       changed();
       const e = await engineFor();
       let take = null;
@@ -94,6 +94,7 @@ const ReadRecord = (() => {
       if (stopped) return;
       if (!take) { st.justDid = null; changed(); return; }
       const now = snap();
+      trace('take', line, 'end cursor', now.cursor, 'gen', now.cursor_gen, 'done', (now.done || []).includes(line) ? 1 : 0);
       if (credit) {
         // One microphone: the take is already here. A room with a production writes the director's own row.
         const reads = core.whoReads(core.roomOf(now), cast, (now.members || []).map((m) => ({ ...m, seen_at: 0 })), line, 0);
@@ -107,7 +108,10 @@ const ReadRecord = (() => {
       } else {
         st.outbox.push(take.id);
         await saveOutbox();
-        if (now.cursor === line) session.send({ type: 'line-done', line, base: now.cursor_gen === base ? base : now.cursor_gen }).catch(() => {});
+        // Sent even when the leader has moved the cursor away: the take exists, so the line is done and its microphone
+        // does not open again when the cursor comes back (T7c; the Worker leaves the cursor where the leader put it).
+        trace('line-done', line, 'base', now.cursor_gen, 'sent', now.cursor === line ? '' : `cursor ${now.cursor}`);
+        session.send({ type: 'line-done', line, base: now.cursor_gen }).catch((err) => trace('line-done', line, 'refused', codeOf(err)));
         flush();
       }
       changed();
@@ -201,7 +205,9 @@ const ReadRecord = (() => {
     function onSnapshot() {
       const s = snap();
       if (!s || stopped) return;
+      const had = st.justDid;
       st.justDid = core.settleJustDid(s, st.justDid);
+      if (had && !st.justDid) trace('justDid', had, 'cleared cursor', s.cursor, 'gen', s.cursor_gen, 'recording', st.recording || '-');
       if (s.ended) { dropPickup(); return; }
       const recording = s.mode === 'record';
       if (recording && s.you && s.you.receives) holdPickup(); else if (st.receiving) dropPickup();

@@ -1,0 +1,304 @@
+
+ ⛅️ wrangler 4.152.0 (update available 4.165.0)
+───────────────────────────────────────────────
+Your Worker has access to the following bindings:
+Binding                                                                   Resource                  Mode
+env.READ_ROOMS (ReadRoom)                                                 Durable Object            local
+env.TAKE_RELAY (TakeRelay)                                                Durable Object            local
+env.DB (eardrama)                                                         D1 Database               local
+env.EVERY_IP_LIMITER (600 requests/60s)                                   Rate Limit                local
+env.AUTH_LIMITER (30 requests/60s)                                        Rate Limit                local
+env.USER_LIMITER (120 requests/60s)                                       Rate Limit                local
+env.ROOM_LIMITER (300 requests/60s)                                       Rate Limit                local
+env.ROOM_CREATE_LIMITER (10 requests/60s)                                 Rate Limit                local
+env.ROOM_JOIN_LIMITER (20 requests/60s)                                   Rate Limit                local
+env.ROOM_MEMBER_LIMITER (60 requests/60s)                                 Rate Limit                local
+env.PLAY_UPLOAD_LIMITER (30 requests/60s)                                 Rate Limit                local
+env.PLAY_JOIN_LIMITER (20 requests/60s)                                   Rate Limit                local
+env.OPEN_READ_LIMITER (60 requests/60s)                                   Rate Limit                local
+env.TAKEDOWN_LIMITER (3 requests/60s)                                     Rate Limit                local
+env.READ_IP_LIMITER (3000 requests/60s)                                   Rate Limit                local
+env.READ_JOIN_LIMITER (60 requests/60s)                                   Rate Limit                local
+env.READ_MEMBER_LIMITER (120 requests/60s)                                Rate Limit                local
+env.READ_CREATE_LIMITER (10 requests/60s)                                 Rate Limit                local
+env.SEAT_JOIN_LIMITER (60 requests/60s)                                   Rate Limit                local
+env.SEAT_LIMITER (120 requests/60s)                                       Rate Limit                local
+env.APPLE_AUDIENCES ("app.eardrama,app.eardrama.signin")                  Environment Variable      local
+env.GOOGLE_AUDIENCES ("1083349339355-hmed22o33qemdc3dfhbqhkt...")         Environment Variable      local
+env.ALLOWED_ORIGINS ("https://eardrama.org,https://www.eard...")          Environment Variable      local
+env.APPLE_TEAM_ID ("")                                                    Environment Variable      local
+env.APPLE_KEY_ID ("")                                                     Environment Variable      local
+env.SESSION_SECRET ("(hidden)")                                           Environment Variable      local
+env.READ_DIAG ("(hidden)")                                                Environment Variable      local
+env.LOCAL_TEST_JWKS ("(hidden)")                                          Environment Variable      local
+
+⎔ Starting local server...
+Wrangler detected this dev session is running in an AI agent.
+The Local Explorer API is available at http://127.0.0.1:8799/cdn-cgi/local/explorer/api
+Useful routes:
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/workers - local Workers and bindings
+  POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/scheduled?worker=<name> - invoke a Worker's scheduled handler; cron is required (see the OpenAPI schema for the full request)
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/storage/kv/namespaces - KV namespaces
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/d1/database - D1 databases
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/r2/buckets - R2 buckets
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/workers/durable_objects/namespaces - Durable Object namespaces
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/workflows - Workflows
+  POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/observability/query - run a read-only SQL query (SELECT/WITH only) over captured request traces and console logs. Tables: spans, logs (read attributes via json(attributes)). Example:
+    curl -X POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/observability/query -H 'Content-Type: application/json' -d '{"sql":"SELECT service, name, outcome, duration_ms FROM spans WHERE parent_id IS NULL LIMIT 20"}'
+  POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/observability/clear - clear all captured traces and logs
+If the routes above don't cover what you need, fetch the full OpenAPI schema (large - use only as a last resort):
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api - OpenAPI schema
+[wrangler:info] Ready on http://0.0.0.0:8799
+[wrangler:info] - http://127.0.0.1:8799
+[wrangler:info] - http://10.0.0.90:8799
+[wrangler:info] GET /v1/plays/finished 200 OK (131ms)
+[wrangler:info] OPTIONS /v1/auth/apple 204 No Content (77ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (78ms)
+[wrangler:info] OPTIONS /v1/plays/productions 204 No Content (6ms)
+[wrangler:info] GET /v1/plays/productions 200 OK (12ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (7ms)
+[wrangler:info] OPTIONS /v1/sync/merge 204 No Content (8ms)
+[wrangler:info] POST /v1/sync/merge 200 OK (7ms)
+[wrangler:info] OPTIONS /v1/auth/refresh 204 No Content (5ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (9ms)
+[wrangler:info] POST /v1/sync/merge 200 OK (10ms)
+[wrangler:info] GET /v1/plays/productions 200 OK (13ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (4ms)
+[wrangler:info] OPTIONS /v1/plays/classes 204 No Content (2ms)
+[wrangler:info] GET /v1/sync 200 OK (8ms)
+[wrangler:info] GET /v1/plays/classes 200 OK (18ms)
+[wrangler:info] POST /v1/plays/classes 201 Created (199ms)
+[wrangler:info] GET /v1/plays/classes 200 OK (9ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (8ms)
+[wrangler:info] GET /v1/sync 200 OK (4ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (5ms)
+[wrangler:info] GET /v1/sync 200 OK (7ms)
+[wrangler:info] OPTIONS /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a 204 No Content (8ms)
+[wrangler:info] OPTIONS /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a/progress 204 No Content (8ms)
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a 200 OK (7ms)
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a/progress 200 OK (10ms)
+[wrangler:info] OPTIONS /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a/seats 204 No Content (134ms)
+[wrangler:info] POST /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a/seats 201 Created (52ms)
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a 200 OK (19ms)
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a/progress 200 OK (20ms)
+[wrangler:info] OPTIONS /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a/productions 204 No Content (2ms)
+[wrangler:info] POST /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a/productions 201 Created (11ms)
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a 200 OK (4ms)
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a/progress 200 OK (9ms)
+[wrangler:info] OPTIONS /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494 204 No Content (4ms)
+[wrangler:info] GET /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494 200 OK (6ms)
+[wrangler:info] OPTIONS /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494/takes/inbox 204 No Content (2ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (4ms)
+[wrangler:info] GET /v1/sync 200 OK (6ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (6ms)
+[wrangler:info] GET /v1/sync 200 OK (6ms)
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a 200 OK (10ms)
+[wrangler:info] GET /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494 200 OK (19ms)
+[wrangler:info] OPTIONS /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494/assignments 204 No Content (28ms)
+[wrangler:info] PUT /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494/assignments 200 OK (9ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (4ms)
+[wrangler:info] GET /v1/sync 200 OK (11ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (6ms)
+[wrangler:info] GET /v1/sync 200 OK (4ms)
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a 200 OK (16ms)
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a/progress 200 OK (16ms)
+[wrangler:info] GET /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494 200 OK (6ms)
+[wrangler:info] OPTIONS /v1/read 204 No Content (136ms)
+[wrangler:info] POST /v1/read 200 OK (66ms)
+[wrangler:info] GET /v1/read/Y6AEHG/socket 101 Switching Protocols (8ms)
+[wrangler:info] OPTIONS /v1/read/Y6AEHG 204 No Content (6ms)
+[wrangler:info] GET /v1/read/Y6AEHG 200 OK (12ms)
+[wrangler:info] GET /v1/read/Y6AEHG/socket 101 Switching Protocols (7ms)
+[readdiag] worker mode by 190EXytYn3tgeMd3 line - base - at cursor L0001 gen 0 -> cursor L0001 gen 0 done 0
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a 200 OK (80ms)
+[wrangler:info] OPTIONS /v1/read/Y6AEHG/takes/inbox 204 No Content (26ms)
+[wrangler:info] OPTIONS /v1/read/Y6AEHG/join 204 No Content (221ms)
+[wrangler:info] POST /v1/read/Y6AEHG/join 400 Bad Request (63ms)
+[wrangler:info] OPTIONS /v1/plays/seat/list 204 No Content (6ms)
+[wrangler:info] POST /v1/plays/seat/list 200 OK (19ms)
+[wrangler:info] OPTIONS /v1/plays/seat/claim 204 No Content (4ms)
+[wrangler:info] POST /v1/plays/seat/claim 201 Created (16ms)
+[wrangler:info] POST /v1/read/Y6AEHG/join 200 OK (23ms)
+[wrangler:info] GET /v1/read/Y6AEHG/socket 101 Switching Protocols (18ms)
+[readdiag] worker cursor by 190EXytYn3tgeMd3 line L0002 base 0 at cursor L0001 gen 0 -> cursor L0002 gen 1 done 0
+[wrangler:info] GET /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494/takes/inbox 204 No Content (25023ms)
+[readdiag] worker cursor by 190EXytYn3tgeMd3 line L0003 base 1 at cursor L0002 gen 1 -> cursor L0003 gen 2 done 0
+[readdiag] worker cursor by 190EXytYn3tgeMd3 line L0004 base 2 at cursor L0003 gen 2 -> cursor L0004 gen 3 done 0
+[readdiag] worker cursor by 190EXytYn3tgeMd3 line L0005 base 3 at cursor L0004 gen 3 -> cursor L0005 gen 4 done 0
+[readdiag] worker cursor by 190EXytYn3tgeMd3 line L0006 base 4 at cursor L0005 gen 4 -> cursor L0006 gen 5 done 0
+[readdiag] worker cursor by 190EXytYn3tgeMd3 line L0007 base 5 at cursor L0006 gen 5 -> cursor L0007 gen 6 done 0
+[readdiag] worker cursor by 190EXytYn3tgeMd3 line L0008 base 6 at cursor L0007 gen 6 -> cursor L0008 gen 7 done 0
+[readdiag] worker cursor by 190EXytYn3tgeMd3 line L0009 base 7 at cursor L0008 gen 7 -> cursor L0009 gen 8 done 0
+[wrangler:info] GET /v1/read/Y6AEHG/takes/inbox 204 No Content (25025ms)
+[wrangler:info] GET /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494/takes/inbox 204 No Content (25162ms)
+[wrangler:info] GET /v1/read/Y6AEHG/takes/inbox 204 No Content (25088ms)
+[wrangler:info] GET /v1/plays/3BE3E918-7A20-444F-BD90-69CFC15D4494 404 Not Found (44ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (4ms)
+[wrangler:info] GET /v1/sync 200 OK (6ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (8ms)
+[wrangler:info] GET /v1/sync 200 OK (5ms)
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a 200 OK (15ms)
+[wrangler:info] GET /v1/plays/classes/eb1cdf53-7ae3-45e5-a247-4895f9c75b4a/progress 200 OK (15ms)
+[wrangler:info] GET /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494 200 OK (8ms)
+[wrangler:info] GET /v1/read/Y6AEHG/takes/inbox 204 No Content (25056ms)
+[wrangler:info] GET /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494/takes/inbox 204 No Content (25015ms)
+[wrangler:info] GET /v1/plays/3BE3E918-7A20-444F-BD90-69CFC15D4494 404 Not Found (117ms)
+[wrangler:info] GET /v1/plays/productions/3BE3E918-7A20-444F-BD90-69CFC15D4494/takes/inbox 204 No Content (25171ms)
+[wrangler:info] OPTIONS /v1/auth/apple 204 No Content (35ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (82ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (7ms)
+[wrangler:info] OPTIONS /v1/auth/refresh 204 No Content (14ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (71ms)
+[wrangler:info] OPTIONS /v1/sync/merge 204 No Content (5ms)
+[wrangler:info] OPTIONS /v1/plays/productions 204 No Content (12ms)
+[wrangler:info] POST /v1/sync/merge 200 OK (14ms)
+[wrangler:info] GET /v1/plays/productions 200 OK (26ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (15ms)
+[wrangler:info] OPTIONS /v1/plays/classes 204 No Content (8ms)
+[wrangler:info] GET /v1/sync 200 OK (14ms)
+[wrangler:info] GET /v1/plays/classes 200 OK (21ms)
+[wrangler:info] POST /v1/plays/classes 201 Created (40ms)
+[wrangler:info] GET /v1/plays/classes 200 OK (9ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (41ms)
+[wrangler:info] GET /v1/sync 200 OK (16ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (43ms)
+[wrangler:info] GET /v1/sync 200 OK (42ms)
+[wrangler:info] OPTIONS /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b 204 No Content (41ms)
+[wrangler:info] OPTIONS /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b/progress 204 No Content (41ms)
+[wrangler:info] GET /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b 200 OK (20ms)
+[wrangler:info] GET /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b/progress 200 OK (28ms)
+[wrangler:info] OPTIONS /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b/seats 204 No Content (263ms)
+[wrangler:info] POST /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b/seats 201 Created (118ms)
+[wrangler:info] GET /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b 200 OK (17ms)
+[wrangler:info] GET /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b/progress 200 OK (33ms)
+[wrangler:info] OPTIONS /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b/productions 204 No Content (5ms)
+[wrangler:info] POST /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b/productions 201 Created (19ms)
+[wrangler:info] GET /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b 200 OK (26ms)
+[wrangler:info] GET /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b/progress 200 OK (26ms)
+[wrangler:info] OPTIONS /v1/plays/productions/DCFD2DD5-E7D8-455A-8A2D-570C44C5A53A 204 No Content (7ms)
+[wrangler:info] GET /v1/plays/productions/DCFD2DD5-E7D8-455A-8A2D-570C44C5A53A 200 OK (27ms)
+[wrangler:info] OPTIONS /v1/plays/productions/DCFD2DD5-E7D8-455A-8A2D-570C44C5A53A/takes/inbox 204 No Content (9ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (9ms)
+[wrangler:info] GET /v1/sync 200 OK (19ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (9ms)
+[wrangler:info] GET /v1/sync 200 OK (21ms)
+[wrangler:info] GET /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b 200 OK (21ms)
+[wrangler:info] GET /v1/plays/productions/DCFD2DD5-E7D8-455A-8A2D-570C44C5A53A 200 OK (30ms)
+[wrangler:info] OPTIONS /v1/plays/productions/DCFD2DD5-E7D8-455A-8A2D-570C44C5A53A/assignments 204 No Content (15ms)
+[wrangler:info] PUT /v1/plays/productions/DCFD2DD5-E7D8-455A-8A2D-570C44C5A53A/assignments 200 OK (36ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (14ms)
+[wrangler:info] GET /v1/sync 200 OK (14ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (17ms)
+[wrangler:info] GET /v1/sync 200 OK (10ms)
+[wrangler:info] GET /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b 200 OK (19ms)
+[wrangler:info] GET /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b/progress 200 OK (14ms)
+[wrangler:info] GET /v1/plays/productions/DCFD2DD5-E7D8-455A-8A2D-570C44C5A53A 200 OK (20ms)
+[wrangler:info] OPTIONS /v1/read 204 No Content (160ms)
+[wrangler:info] POST /v1/read 200 OK (111ms)
+[wrangler:info] GET /v1/read/S674ZZ/socket 101 Switching Protocols (15ms)
+[wrangler:info] OPTIONS /v1/read/S674ZZ 204 No Content (15ms)
+[wrangler:info] GET /v1/read/S674ZZ 200 OK (12ms)
+[wrangler:info] GET /v1/read/S674ZZ/socket 101 Switching Protocols (12ms)
+[wrangler:info] GET /v1/plays/classes/98366114-d98b-406f-8829-2891e062a95b 200 OK (23ms)
+[wrangler:info] GET /v1/plays/productions/DCFD2DD5-E7D8-455A-8A2D-570C44C5A53A/takes/inbox 204 No Content (25043ms)
+[wrangler:info] OPTIONS /v1/read/S674ZZ/join 204 No Content (57ms)
+[wrangler:info] POST /v1/read/S674ZZ/join 400 Bad Request (31ms)
+[wrangler:info] OPTIONS /v1/plays/seat/list 204 No Content (3ms)
+[wrangler:info] POST /v1/plays/seat/list 200 OK (8ms)
+[wrangler:info] OPTIONS /v1/plays/seat/claim 204 No Content (3ms)
+[wrangler:info] POST /v1/plays/seat/claim 201 Created (13ms)
+[wrangler:info] POST /v1/read/S674ZZ/join 200 OK (9ms)
+[wrangler:info] GET /v1/read/S674ZZ/socket 101 Switching Protocols (9ms)
+[readdiag] worker cursor by ZhzEl0ZhT5PRnQsi line L0002 base 0 at cursor L0001 gen 0 -> cursor L0002 gen 1 done 0
+[readdiag] worker cursor by ZhzEl0ZhT5PRnQsi line L0003 base 1 at cursor L0002 gen 1 -> cursor L0003 gen 2 done 0
+[readdiag] worker cursor by ZhzEl0ZhT5PRnQsi line L0004 base 2 at cursor L0003 gen 2 -> cursor L0004 gen 3 done 0
+[readdiag] worker cursor by ZhzEl0ZhT5PRnQsi line L0005 base 3 at cursor L0004 gen 3 -> cursor L0005 gen 4 done 0
+[readdiag] worker cursor by ZhzEl0ZhT5PRnQsi line L0006 base 4 at cursor L0005 gen 4 -> cursor L0006 gen 5 done 0
+[readdiag] worker cursor by ZhzEl0ZhT5PRnQsi line L0007 base 5 at cursor L0006 gen 5 -> cursor L0007 gen 6 done 0
+[readdiag] worker cursor by ZhzEl0ZhT5PRnQsi line L0008 base 6 at cursor L0007 gen 6 -> cursor L0008 gen 7 done 0
+[wrangler:info] GET /v1/plays/productions/DCFD2DD5-E7D8-455A-8A2D-570C44C5A53A/takes/inbox 204 No Content (25196ms)
+[wrangler:info] GET /v1/plays/finished 200 OK (42ms)
+[wrangler:info] OPTIONS /v1/read/S674ZZ 204 No Content (12ms)
+[wrangler:info] GET /v1/read/S674ZZ 200 OK (10ms)
+[wrangler:info] GET /v1/read/S674ZZ/socket 101 Switching Protocols (7ms)
+[wrangler:info] GET /v1/read/S674ZZ 200 OK (31ms)
+[wrangler:info] GET /v1/read/S674ZZ/socket 101 Switching Protocols (6ms)
+[wrangler:info] GET /v1/plays/finished 200 OK (160ms)
+[wrangler:info] OPTIONS /v1/auth/apple 204 No Content (28ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (53ms)
+[wrangler:info] OPTIONS /v1/plays/productions 204 No Content (6ms)
+[wrangler:info] GET /v1/plays/productions 200 OK (12ms)
+[wrangler:info] POST /v1/auth/apple 200 OK (9ms)
+[wrangler:info] OPTIONS /v1/sync/merge 204 No Content (6ms)
+[wrangler:info] POST /v1/sync/merge 200 OK (15ms)
+[wrangler:info] OPTIONS /v1/auth/refresh 204 No Content (3ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (5ms)
+[wrangler:info] POST /v1/sync/merge 200 OK (3ms)
+[wrangler:info] GET /v1/plays/productions 200 OK (9ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (6ms)
+[wrangler:info] OPTIONS /v1/plays/classes 204 No Content (3ms)
+[wrangler:info] GET /v1/sync 200 OK (5ms)
+[wrangler:info] GET /v1/plays/classes 200 OK (13ms)
+[wrangler:info] POST /v1/plays/classes 201 Created (111ms)
+[wrangler:info] GET /v1/plays/classes 200 OK (9ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (5ms)
+[wrangler:info] GET /v1/sync 200 OK (5ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (9ms)
+[wrangler:info] GET /v1/sync 200 OK (6ms)
+[wrangler:info] OPTIONS /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21 204 No Content (7ms)
+[wrangler:info] OPTIONS /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21/progress 204 No Content (7ms)
+[wrangler:info] GET /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21 200 OK (4ms)
+[wrangler:info] GET /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21/progress 200 OK (7ms)
+[wrangler:info] OPTIONS /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21/seats 204 No Content (201ms)
+[wrangler:info] POST /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21/seats 201 Created (64ms)
+[wrangler:info] GET /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21 200 OK (9ms)
+[wrangler:info] GET /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21/progress 200 OK (28ms)
+[wrangler:info] OPTIONS /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21/productions 204 No Content (3ms)
+[wrangler:info] POST /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21/productions 201 Created (31ms)
+[wrangler:info] GET /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21 200 OK (5ms)
+[wrangler:info] GET /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21/progress 200 OK (11ms)
+[wrangler:info] OPTIONS /v1/plays/productions/FFA82921-A6B9-4DB7-A298-64969E0A28F2 204 No Content (2ms)
+[wrangler:info] GET /v1/plays/productions/FFA82921-A6B9-4DB7-A298-64969E0A28F2 200 OK (8ms)
+[wrangler:info] OPTIONS /v1/plays/productions/FFA82921-A6B9-4DB7-A298-64969E0A28F2/takes/inbox 204 No Content (2ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (3ms)
+[wrangler:info] GET /v1/sync 200 OK (7ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (8ms)
+[wrangler:info] GET /v1/sync 200 OK (8ms)
+[wrangler:info] GET /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21 200 OK (20ms)
+[wrangler:info] GET /v1/plays/productions/FFA82921-A6B9-4DB7-A298-64969E0A28F2 200 OK (28ms)
+[wrangler:info] OPTIONS /v1/plays/productions/FFA82921-A6B9-4DB7-A298-64969E0A28F2/assignments 204 No Content (98ms)
+[wrangler:info] PUT /v1/plays/productions/FFA82921-A6B9-4DB7-A298-64969E0A28F2/assignments 200 OK (54ms)
+[wrangler:info] OPTIONS /v1/sync 204 No Content (109ms)
+[wrangler:info] GET /v1/sync 200 OK (26ms)
+[wrangler:info] POST /v1/auth/refresh 200 OK (19ms)
+[wrangler:info] GET /v1/sync 200 OK (9ms)
+[wrangler:info] GET /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21 200 OK (8ms)
+[wrangler:info] GET /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21/progress 200 OK (17ms)
+[wrangler:info] GET /v1/plays/productions/FFA82921-A6B9-4DB7-A298-64969E0A28F2 200 OK (10ms)
+[wrangler:info] OPTIONS /v1/read 204 No Content (4ms)
+[wrangler:info] POST /v1/read 200 OK (22ms)
+[wrangler:info] OPTIONS /v1/read/VDJPGA 204 No Content (2ms)
+[wrangler:info] GET /v1/read/VDJPGA/socket 101 Switching Protocols (7ms)
+[wrangler:info] GET /v1/read/VDJPGA 200 OK (9ms)
+[wrangler:info] GET /v1/read/VDJPGA/socket 101 Switching Protocols (3ms)
+[wrangler:info] GET /v1/plays/classes/eec84e93-cf21-44ed-aed0-167ecf03dc21 200 OK (7ms)
+[readdiag] worker mode by iNN6UqsC0ayBMfoj line - base - at cursor L0001 gen 0 -> cursor L0001 gen 0 done 0
+[wrangler:info] OPTIONS /v1/read/VDJPGA/takes/inbox 204 No Content (9ms)
+[wrangler:info] OPTIONS /v1/read/VDJPGA/join 204 No Content (135ms)
+[wrangler:info] POST /v1/read/VDJPGA/join 400 Bad Request (50ms)
+[wrangler:info] OPTIONS /v1/plays/seat/list 204 No Content (3ms)
+[wrangler:info] POST /v1/plays/seat/list 200 OK (7ms)
+[wrangler:info] OPTIONS /v1/plays/seat/claim 204 No Content (3ms)
+[wrangler:info] POST /v1/plays/seat/claim 201 Created (13ms)
+[wrangler:info] POST /v1/read/VDJPGA/join 200 OK (14ms)
+[wrangler:info] GET /v1/read/VDJPGA/socket 101 Switching Protocols (6ms)
+[readdiag] worker cursor by iNN6UqsC0ayBMfoj line L0002 base 0 at cursor L0001 gen 0 -> cursor L0002 gen 1 done 0
+[readdiag] worker cursor by iNN6UqsC0ayBMfoj line L0003 base 1 at cursor L0002 gen 1 -> cursor L0003 gen 2 done 0
+[readdiag] worker cursor by iNN6UqsC0ayBMfoj line L0004 base 2 at cursor L0003 gen 2 -> cursor L0004 gen 3 done 0
+[readdiag] worker cursor by iNN6UqsC0ayBMfoj line L0005 base 3 at cursor L0004 gen 3 -> cursor L0005 gen 4 done 0
+[readdiag] worker cursor by iNN6UqsC0ayBMfoj line L0006 base 4 at cursor L0005 gen 4 -> cursor L0006 gen 5 done 0
+[readdiag] worker cursor by iNN6UqsC0ayBMfoj line L0007 base 5 at cursor L0006 gen 5 -> cursor L0007 gen 6 done 0
+[wrangler:info] GET /v1/plays/productions/FFA82921-A6B9-4DB7-A298-64969E0A28F2/takes/inbox 204 No Content (25022ms)
+[readdiag] worker cursor by iNN6UqsC0ayBMfoj line L0008 base 6 at cursor L0007 gen 6 -> cursor L0008 gen 7 done 0
+[wrangler:info] GET /v1/read/VDJPGA/takes/inbox 204 No Content (25025ms)
+[wrangler:info] GET /v1/plays/FFA82921-A6B9-4DB7-A298-64969E0A28F2 404 Not Found (10ms)

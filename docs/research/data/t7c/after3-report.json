@@ -1,0 +1,376 @@
+{
+ "tag": "after3",
+ "base": "https://eardrama-api.benwilkoff.workers.dev",
+ "script": "gut-7364",
+ "devices": {
+  "pixel": {
+   "what": "Pixel 8a",
+   "role": "reader",
+   "skip": null
+  },
+  "duo": {
+   "what": "open iPhone Duo",
+   "role": "reader",
+   "skip": null
+  },
+  "web1": {
+   "what": "Chrome headless, muted, reader",
+   "role": "reader",
+   "skip": null
+  }
+ },
+ "tests": {
+  "T5": {
+   "members": [
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    }
+   ],
+   "devices": {
+    "pixel": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "1795179337872 I/System.out(22048): [readdiag] lit L0001 gen 0 at 1.795179340163E12 offset null",
+      "1795179337933 I/System.out(22048): [readdiag] transport socket",
+      "1795179347859 I/System.out(22048): [readdiag] clock offset -2359.0 samples 1"
+     ]
+    },
+    "duo": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "1795179337390 [readdiag] lit L0001 gen 0 at 1795179337387.948 offset nan",
+      "1795179337420 [readdiag] transport socket",
+      "1795179347655 [readdiag] clock offset -0.807373046875 samples 1"
+     ]
+    },
+    "web1": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": null,
+     "log_tail": [
+      "1795179348783 [readdiag] transport socket",
+      "1795179355068 [readdiag] rec L0001 at 1795179355011 offset 27.5",
+      "1795179355068 [readdiag] take L0001 start gen 0"
+     ]
+    }
+   },
+   "room_members": 4,
+   "started": 3
+  },
+  "T7": {
+   "claims": {
+    "pixel": "CAMPBELL",
+    "duo": "ROBERTS",
+    "web1": "MRS. ROBERTS"
+   },
+   "presses": 16,
+   "lines": [
+    {
+     "line": "L0002",
+     "role": "MRS. ROBERTS",
+     "expected": "web1",
+     "recorded_by": {
+      "web1": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0003",
+     "role": "ROBERTS",
+     "expected": "duo",
+     "recorded_by": {
+      "duo": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0004",
+     "role": "MRS. ROBERTS",
+     "expected": "web1",
+     "recorded_by": {
+      "web1": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0005",
+     "role": "ROBERTS",
+     "expected": "duo",
+     "recorded_by": {
+      "duo": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0006",
+     "role": "MRS. ROBERTS",
+     "expected": "web1",
+     "recorded_by": {
+      "web1": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0007",
+     "role": "MRS. ROBERTS",
+     "expected": "web1",
+     "recorded_by": {
+      "web1": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0008",
+     "role": "CAMPBELL",
+     "expected": "pixel",
+     "recorded_by": {
+      "pixel": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0009",
+     "role": "CAMPBELL",
+     "expected": "pixel",
+     "recorded_by": {
+      "pixel": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0010",
+     "role": "ROBERTS",
+     "expected": "duo",
+     "recorded_by": {
+      "duo": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0011",
+     "role": "CAMPBELL",
+     "expected": "pixel",
+     "recorded_by": {
+      "pixel": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0012",
+     "role": "ROBERTS",
+     "expected": "duo",
+     "recorded_by": {
+      "duo": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0013",
+     "role": "CAMPBELL",
+     "expected": "pixel",
+     "recorded_by": {
+      "pixel": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0014",
+     "role": "ROBERTS",
+     "expected": "duo",
+     "recorded_by": {
+      "duo": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0015",
+     "role": "CAMPBELL",
+     "expected": "pixel",
+     "recorded_by": {
+      "pixel": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0016",
+     "role": "CAMPBELL",
+     "expected": "pixel",
+     "recorded_by": {
+      "pixel": 1
+     },
+     "ok": true,
+     "ack": true
+    },
+    {
+     "line": "L0017",
+     "role": "CAMPBELL",
+     "expected": "pixel",
+     "recorded_by": {
+      "pixel": 1
+     },
+     "ok": true,
+     "ack": true
+    }
+   ],
+   "exactly_one": 16,
+   "missed": 0,
+   "wrong_or_extra": 0,
+   "repeated_opens": 0,
+   "takes_arrived": 26,
+   "takes_lines": [
+    "L0001",
+    "L0002",
+    "L0003",
+    "L0004",
+    "L0005",
+    "L0006",
+    "L0007",
+    "L0008",
+    "L0009",
+    "L0010",
+    "L0011",
+    "L0012",
+    "L0013",
+    "L0014",
+    "L0015",
+    "L0016",
+    "L0017",
+    "L0018",
+    "L0019",
+    "L0020",
+    "L0021",
+    "L0022",
+    "L0023",
+    "L0024",
+    "L0025",
+    "L0026"
+   ],
+   "pickup_errors": [],
+   "takes_expected_lines": [
+    "L0002",
+    "L0004",
+    "L0006",
+    "L0007",
+    "L0008",
+    "L0009",
+    "L0011",
+    "L0013",
+    "L0015",
+    "L0016",
+    "L0017"
+   ],
+   "takes_missing": [],
+   "rec_events": {
+    "pixel": [
+     "L0008",
+     "L0009",
+     "L0011",
+     "L0013",
+     "L0015",
+     "L0016",
+     "L0017",
+     "L0019",
+     "L0022",
+     "L0024",
+     "L0026"
+    ],
+    "duo": [
+     "L0003",
+     "L0005",
+     "L0010",
+     "L0012",
+     "L0014",
+     "L0018",
+     "L0020",
+     "L0021",
+     "L0023",
+     "L0025",
+     "L0027"
+    ],
+    "web1": [
+     "L0001",
+     "L0002",
+     "L0004",
+     "L0006",
+     "L0007"
+    ]
+   },
+   "note": "Apple's stub microphone returns an empty take (nothing is written), so an Apple device opens its microphone but sends no take"
+  }
+ },
+ "site": "http://127.0.0.1:60947",
+ "room": {
+  "code": "TVK9HV",
+  "transport": "socket",
+  "leader_socket": true,
+  "leader_offset": {
+   "rtt": 1,
+   "offset": -0.5
+  }
+ },
+ "T7_claims": {
+  "pixel": "CAMPBELL",
+  "duo": "ROBERTS",
+  "web1": "MRS. ROBERTS"
+ },
+ "teardown": {
+  "pixel": {
+   "gone": true,
+   "detail": "gone (pidof empty)"
+  },
+  "duo": {
+   "gone": true,
+   "detail": "not running"
+  },
+  "web1": {
+   "gone": true,
+   "detail": "chrome gone"
+  }
+ },
+ "local_worker": {
+  "base": "http://10.0.0.90:8799",
+  "stopped": true,
+  "diag_lines": 48
+ }
+}

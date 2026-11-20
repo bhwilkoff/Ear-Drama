@@ -297,6 +297,10 @@ const M = [
   ["t6: the receiver answer is always yes", "src/plays.js", "return { receiving: await receiving(env, p.id), name:", "return { receiving: true, name:"],
   ["t6: anyone attaches a room to a production", "src/read-rooms.js", "p.class_id || p.user_id !== auth.userId || p.script_id !== body.script_id", "p.class_id || p.script_id !== body.script_id"],
   ["t6: a seat asks about another class's production", "src/plays-seats.js", '  if (!p || p.class_id !== seat.class_id) return { error: problem(404, "not_found") };', "  if (!p) return { error: problem(404, \"not_found\") };"],
+  // T7c: a take that ends after the leader moved the cursor still marks its line done (no second microphone)
+  ["t7c: a take after the cursor moved is refused", "src/read-protocol.js", "    return { room: { ...room, done: [...room.done, msg.line], generation: room.generation + 1, touched_at: now }, changed: true };", '    return { error: "stale", detail: room.cursor_gen };'],
+  ["t7c: the bench's test keys answer a public host", "src/auth.js", "return !!env.LOCAL_TEST_JWKS && !LOCAL_HOST.test(url.hostname);", "return false;"],
+  ["t7c: the test keys used without being set", "src/auth.js", "  if (!env.LOCAL_TEST_JWKS) return undefined;\n", "  if (!env.LOCAL_TEST_JWKS) return [];\n"],
   ["t3: a class's deletion takes its published production", "src/plays.js", "UPDATE play_productions SET class_id = NULL WHERE id IN (${submitted})", "UPDATE play_productions SET class_id = NULL WHERE 0 AND id IN (${submitted})"],
 ];
 

@@ -176,6 +176,25 @@ struct ReadRecordTests {
         #expect(r.link.takes.count == 1, "the line is not recorded twice for one arming")
     }
 
+    /// T7c: the leader's press raced a take; the take ended with the cursor elsewhere and its line was never marked done,
+    /// so the cursor coming back opened the microphone again. The line-done goes out whatever the cursor is now.
+    @Test func aTakeThatEndsAfterTheCursorMovedStillSendsItsLineDone() async throws {
+        let r = try rig(snapshot())
+        await arm(r)
+        r.recorder.onSnapshot()
+        #expect(r.recorder.recording == "l2")
+        r.link.snapshot = try snapshot(cursor: "l1", generation: 2)
+        r.recorder.onSnapshot()
+        #expect(await until { r.link.takes.count == 1 })
+        let done = r.link.sent.first { $0["type"] as? String == "line-done" }
+        #expect(done?["line"] as? String == "l2", "the take's line is done although the leader moved the cursor")
+        #expect(done?["base"] as? Int == 2)
+        r.link.snapshot = try snapshot(cursor: "l2", done: ["l2"], generation: 3)
+        r.recorder.onSnapshot()
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(r.link.takes.count == 1, "the cursor back on the done line opens no second microphone")
+    }
+
     @Test func aNoCueIsPlayedInTheRoom() async throws {
         let r = try rig(snapshot())
         await arm(r)

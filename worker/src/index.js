@@ -13,7 +13,7 @@
  * pure plays-relay.js) need one for every route.
  */
 
-import { authenticate, handleRefresh, handleSignIn, handleSignOut, sweepSessions } from "./auth.js";
+import { authenticate, handleRefresh, handleSignIn, handleSignOut, sweepSessions, testAuthRefused } from "./auth.js";
 import { handleRead, handleUpload } from "./sync.js";
 import { handleAccount, handleDelete } from "./account.js";
 import { handleRooms, sweepRooms } from "./rooms.js";
@@ -95,6 +95,8 @@ export default {
 
   async fetch(request, env) {
     const url = new URL(request.url);
+    // The local bench's test keys never answer a public host (auth.js testKeys): a deploy that carried them refuses everything.
+    if (testAuthRefused(env, url)) return problem(503, "test_auth_refused");
     const origin = request.headers.get("origin");
     if (!originAllowed(origin, env)) return problem(403, "origin_not_allowed");
 
