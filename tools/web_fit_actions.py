@@ -15,10 +15,29 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 import web_run  # noqa: E402
 
-ROUTES = {
-    'series-rich': '/?series=abbottandcostelloshow', 'series-sparse': '/?series=100yearsofmotionpictures',
-    'episode-rich': '/?item=abbottandcostelloshow%7C1949-02-03', 'episode-bare': '/?item=1945radionews%7C1945-09-23',
-}
+def routes():
+    """The four pages, chosen from the live data (never pinned): the most downloaded series with a picture, a
+    series without one, and each one's first dated episode."""
+    import urllib.parse, urllib.request
+    fetch = lambda u: json.load(urllib.request.urlopen('https://eardrama.org/data/' + u, timeout=30))
+    idx = fetch('index/series.json')
+    F = {k: i for i, k in enumerate(idx['fields'])}
+    rows = sorted(idx['rows'], key=lambda r: (-(r[F['downloads']] or 0), r[F['key']]))
+
+    def dated(row):
+        ser = fetch(f"series/{urllib.parse.quote(row[F['key']])}.json")
+        EF = {k: i for i, k in enumerate(ser['fields'])}
+        return next((e[EF['id']] for e in ser['episodes'] if e[EF['date']] and len(e[EF['date']]) == 10), None)
+
+    rich = next(r for r in rows if r[F['picture']] and r[F['picture']][1] and r[F['picture']][2] and dated(r))
+    bare = next(r for r in rows if not r[F['picture']] and r[F['first']] and dated(r))
+    q = lambda v: urllib.parse.quote(v, safe='')
+    return {
+        'series-rich': f"/?series={q(rich[F['key']])}", 'series-sparse': f"/?series={q(bare[F['key']])}",
+        'episode-rich': f"/?item={q(dated(rich))}", 'episode-bare': f"/?item={q(dated(bare))}",
+    }
+
+
 JS = r"""(() => {
   if (!document.querySelector('.actions-start') && document.querySelector('.actions-one') && %s) {
     const d = document.createElement('div'); d.className = 'actions actions-one actions-start';
@@ -53,7 +72,7 @@ JS = r"""(() => {
 
 def main():
     if '--list' in sys.argv:
-        print('\n'.join(ROUTES)); return 0
+        print('\n'.join(routes())); return 0
     work = tempfile.mkdtemp(prefix='fit-actions-')
     for f in os.listdir(ROOT):
         if f not in ('index.html', '.git', 'build', 'android', 'apple', 'catalog', 'docs', 'worker', 'windows'):
@@ -83,7 +102,7 @@ def main():
     shot = os.path.join(work, 'fit.png')
     problems = 0
     try:
-        for name, path in ROUTES.items():
+        for name, path in routes().items():
             for dark in (False, True):
                 for w in (320, 375, 390, 430):
                     state.update(dark=dark, start=name.startswith('episode'), out=['never measured'])
