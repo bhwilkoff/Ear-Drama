@@ -120,6 +120,41 @@ const ReadCore = (() => {
     return null;
   }
 
+  /* ---- T5: names, the receiver, Record in the room (the protocol's own, golden-checked) ---- */
+
+  const NAME_MAX = 40;
+  /** An adult's name on join: trimmed, at most 40, no control characters; null for none, false refused. */
+  function cleanName(room, raw) {
+    if (raw === undefined || raw === null || (typeof raw === 'string' && !raw.trim())) return null;
+    if (room.kind === 'class') return null;
+    if (typeof raw !== 'string' || /[\u0000-\u001f\u007f]/.test(raw)) return false;
+    const name = raw.trim();
+    return name.length > NAME_MAX ? false : name;
+  }
+
+  /** Whose device receives the room's takes: a class's teacher whoever leads, an adult room's leader. */
+  function receiverOf(room) { return room.kind === 'class' ? room.owner : room.leader; }
+
+  /** Whether a member may send a take of a line: a refusal code or null (any held line, in Record mode). */
+  function recordRefusal(room, cast, member, lineId) {
+    if (room.ended) return 'room_ended';
+    if (room.mode !== 'record') return 'not_recording';
+    if (!member || member.role !== 'reader') return 'readers_only';
+    const i = indexOf(cast, lineId);
+    if (i < 0) return 'no_such_line';
+    if (member.id === receiverOf(room)) return 'receiver_records_here';
+    if (!holds(room, cast, member, i)) return 'not_your_line';
+    return null;
+  }
+
+  function leaderName(room, members) {
+    const lead = members.find((m) => m.id === room.leader);
+    const seat = lead && lead.seat ? room.seats.find((s) => s.id === lead.seat) : null;
+    if (seat) return seat.label;
+    if (room.leader === room.owner && room.owner_name) return room.owner_name;
+    return (lead && lead.name) || null;
+  }
+
   function leaderGone(room, members, now) {
     const leader = members.find((m) => m.id === room.leader);
     if (leader && now - leader.seen_at <= LEADER_GONE_MS) return { leader: room.leader, waiting: false };
@@ -136,6 +171,7 @@ const ReadCore = (() => {
       kind: snap.kind, mode: snap.mode, cursor: snap.cursor, cursor_gen: snap.cursor_gen, generation: snap.generation,
       leader: snap.leader, claims: snap.claims || {}, seats: snap.seats || [], assignments: snap.assignments || [],
       done: snap.done || [], locked: !!snap.locked, ended: !!snap.ended,
+      owner: snap.receiver && snap.kind === 'class' ? snap.receiver : undefined,
     };
   }
 
@@ -190,10 +226,69 @@ const ReadCore = (() => {
     return seat ? seat.label : null;
   }
 
+  /** Who reads a line, by name: a seat's label, or the name an adult gave; null when nobody named holds it. */
+  function readerName(snap, reads) {
+    if (!reads) return null;
+    if (reads.seat) { const s = (snap.seats || []).find((x) => x.id === reads.seat); return s ? s.label : null; }
+    const id = reads.holder || (reads.members && reads.members[0]);
+    const m = id && (snap.members || []).find((x) => x.id === id);
+    return (m && m.name) || null;
+  }
+
+  /**
+   * Record in the room (PLAYS-DESIGN §12.10 item 1): whether this device opens its microphone now.
+   * Only in Record mode, on a line this member holds that is at the cursor and not done, never on the
+   * receiving device (it records only in One microphone), and not twice for the same arming:
+   * `justDid` is the line this device last recorded, cleared once the room marks it done or moves on.
+   */
+  function shouldRecord(snap, cast, justDid) {
+    if (!snap || snap.ended || snap.mode !== 'record' || !snap.you || snap.you.role !== 'reader') return false;
+    if (snap.you.receives) return false;
+    const room = roomOf(snap);
+    const i = indexOf(cast, snap.cursor);
+    if (i < 0 || !holds(room, cast, snap.you, i)) return false;
+    if ((snap.done || []).includes(snap.cursor)) return false;
+    return justDid !== snap.cursor;
+  }
+
+  /** `justDid` after a snapshot: kept while the line stays at the cursor and undone, else cleared. */
+  function settleJustDid(snap, justDid) {
+    if (!justDid || !snap) return justDid;
+    if (snap.cursor !== justDid || (snap.done || []).includes(justDid)) return null;
+    return justDid;
+  }
+
+  /**
+   * The receiver's Takes sheet (item 4): each speaking line in script order with its state, and the
+   * counts per reader. `arrived` is a Set of line ids with a take on this device; `speaking(part)`
+   * says which parts speak. States: recorded, away (done, the take not here), waiting, open.
+   */
+  function takeRows(snap, cast, arrived, speaking) {
+    const room = roomOf(snap);
+    const done = new Set(snap.done || []);
+    const rows = [];
+    const counts = new Map();
+    for (let i = 0; i < cast.length; i++) {
+      const [line, part] = cast[i];
+      if (!speaking(part)) continue;
+      const who = whoReads(room, cast, (snap.members || []).map((m) => ({ ...m, seen_at: m.live ? 0 : -Infinity })), line, 0);
+      const key = room.kind === 'class' ? (who.seat ? `seat:${who.seat}` : null) : (who.holder ? `member:${who.holder}` : null);
+      const state = arrived.has(line) ? 'recorded' : done.has(line) ? 'away' : key ? 'waiting' : 'open';
+      rows.push({ line, part, state, seat: who.seat || null, holder: who.holder || null });
+      if (key) {
+        const c = counts.get(key) || { key, seat: who.seat || null, holder: who.holder || null, lines: 0, recorded: 0 };
+        c.lines += 1;
+        if (state === 'recorded') c.recorded += 1;
+        counts.set(key, c);
+      }
+    }
+    return { rows, counts: [...counts.values()] };
+  }
+
   /** The refusal words for a Worker code (PLAYS-DESIGN §12.6); one line under the action, never an explanation. */
   const REFUSALS = {
     bad_code: 'That is not a reading code.',
-    no_such_room: 'No reading has that code.',
+    no_such_room: 'No reading with that code.',
     room_ended: 'This reading has ended.',
     room_full: 'This reading is full.',
     joining_locked: 'Joining is locked.',
@@ -209,6 +304,12 @@ const ReadCore = (() => {
     class_not_found: 'No class has that code.',
     revision_mismatch: 'This play has changed since it was cast.',
     not_castable: 'This play cannot be read together.',
+    bad_name: 'That name is not allowed.',
+    no_such_pair: 'No screen shows that code.',
+    pair_expired: 'That code has expired.',
+    not_recording: 'The reading is not recording.',
+    not_your_line: 'That line is someone else\'s.',
+    school_consent_required: 'Waits for the school\'s consent.',
   };
   const refusal = (code) => REFUSALS[code] || 'Ear Drama could not be reached.';
 
@@ -293,6 +394,7 @@ const ReadCore = (() => {
   return {
     PROTOCOL_VERSION, CODE_ALPHABET, CODE_LENGTH, MAX_MEMBERS, MEMBER_GONE_MS, LEADER_GONE_MS, POLL_MS, MODES, SLOW_MS,
     normalizeCode, codeFromBytes, clockOffset, canLead, partsOf, whoReads, nextMine, leaderGone, liveMembers,
+    NAME_MAX, cleanName, receiverOf, recordRefusal, leaderName, readerName, shouldRecord, settleJustDid, takeRows,
     roomOf, newer, castOf, mineIndexes, step, sceneStart, nextLine, waitingFor, refusal,
     partFacts, seatTotals, fillEvenly, sceneRanges, toWire,
   };

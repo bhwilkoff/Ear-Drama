@@ -49,6 +49,8 @@ class LaunchDoorsTest {
         assertEquals(listOf(InboxRequest.ReadRoom("ABC123", true, "KLS456:Lucy")), doors.requests())
         assertEquals(LaunchDoors(), LaunchDoors.from(extras, debug = false))
         assertEquals(emptyList<InboxRequest>(), LaunchDoors(startReadRoom = "ABCDEU").requests())
+        assertEquals(listOf(InboxRequest.ReadPair), LaunchDoors.from(mapOf("appname_start_read_pair" to "1"), debug = true).requests())
+        assertEquals(emptyList<InboxRequest>(), LaunchDoors.from(mapOf("appname_start_read_pair" to "1"), debug = false).requests())
     }
 
     /** Decision 075: five tabs; Stations and Surprise are Home pushes, and the old names still open. */

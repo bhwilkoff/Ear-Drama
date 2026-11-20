@@ -32,6 +32,9 @@ sealed interface InboxRequest {
     /** A read room by code (DEEP_LINKS.md `read/{CODE}`); [screen] opens it as the shared screen; [seat] is the DEBUG seat door. */
     data class ReadRoom(val code: String, val screen: Boolean = false, val seat: String? = null) : InboxRequest
 
+    /** `read/pair` or the DEBUG door `appname_start_read_pair`: a TV's pairing screen. */
+    data object ReadPair : InboxRequest
+
     /** APP_DOOR_SECONDS elapsed: end the door's activity (stop playback, leave the room). */
     data object EndDoor : InboxRequest
 }
@@ -71,6 +74,8 @@ data class LaunchDoors(
     val startReadRoom: String? = null,
     val startSeat: String? = null,
     val startScreen: Boolean = false,
+    /** `appname_start_read_pair`: the TV's pairing screen (Show a reading). */
+    val startReadPair: Boolean = false,
 ) {
     fun requests(): List<InboxRequest> =
         listOfNotNull(
@@ -78,6 +83,7 @@ data class LaunchDoors(
             // A series key has no `|`; an episode id always does (Apple's door reads it the same way).
             startItem?.let { if ('|' in it) InboxRequest.Item(it) else InboxRequest.Series(it) },
             startReadRoom?.let { ReadCore.normalizeCode(it) }?.let { InboxRequest.ReadRoom(it, startScreen, startSeat) },
+            if (startReadPair) InboxRequest.ReadPair else null,
             startAlong?.takeIf { it.isNotBlank() }?.let { InboxRequest.Along(alongPid(it)) },
             startRead?.let {
                 InboxRequest.Read(
@@ -107,6 +113,7 @@ data class LaunchDoors(
         const val EXTRA_START_READ_ROOM = "appname_start_read_room"
         const val EXTRA_START_SEAT = "appname_start_seat"
         const val EXTRA_START_SCREEN = "appname_start_screen"
+        const val EXTRA_START_READ_PAIR = "appname_start_read_pair"
         const val EXTRA_READ_DIAG = "appname_read_diag"
 
         /** DEBUG `appname_read_diag`: the read session prints its transport, cursor delay and clock offset. Set once by MainActivity. */
@@ -130,6 +137,7 @@ data class LaunchDoors(
                 startReadRoom = extras[EXTRA_START_READ_ROOM]?.toString()?.takeIf { it.isNotBlank() },
                 startSeat = extras[EXTRA_START_SEAT]?.toString()?.takeIf { it.isNotBlank() },
                 startScreen = extras[EXTRA_START_SCREEN].let { it == true || it == "1" || it == "true" },
+                startReadPair = extras[EXTRA_START_READ_PAIR].let { it == true || it == "1" || it == "true" },
             )
         }
     }

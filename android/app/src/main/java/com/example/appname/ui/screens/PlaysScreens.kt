@@ -671,7 +671,7 @@ private fun DeleteProductionDialog(production: Production, onDismiss: () -> Unit
  * Export is offered whenever the play is complete.
  */
 @Composable
-private fun ListenThrough(production: Production, script: PlayScript, shared: SharedSheet?, voices: CastHandle?, onReadAlong: () -> Unit) {
+internal fun ListenThrough(production: Production, script: PlayScript, shared: SharedSheet?, voices: CastHandle?, onReadAlong: (() -> Unit)?) {
     val container = LocalAppContainer.current
     val plays = container.plays
     val context = LocalContext.current
@@ -801,7 +801,7 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
                 Text("Listen through", Modifier.padding(start = Spacing.S2.dp))
             }
         }
-        if (running == null && !mixing && !LocalIsTelevision.current) {
+        if (running == null && !mixing && !LocalIsTelevision.current && onReadAlong != null) {
             OutlinedButton(onClick = onReadAlong) {
                 Icon(Icons.AutoMirrored.Outlined.MenuBook, contentDescription = null)
                 Text("Read along", Modifier.padding(start = Spacing.S2.dp))

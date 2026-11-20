@@ -156,7 +156,7 @@ class RecordingSession(
     }
 
     /** Opens the microphone on a line until it ends (or Stop), and keeps the line window as a new take; null when nothing was kept. */
-    private suspend fun listenAndKeep(lineID: String, heard: Map<String, String>): Take? {
+    private suspend fun listenAndKeep(lineID: String, heard: Map<String, String>, credit: PartID = part, kind: Take.Capture? = null): Take? {
         announce()
         if (!started) return null
         phaseNow = Phase.Listening(lineID, run = _run.value != null)
@@ -180,12 +180,12 @@ class RecordingSession(
                 val take = Take(
                     id = UUID.randomUUID().toString().uppercase(),
                     lineID = lineID,
-                    part = part,
+                    part = credit,
                     file = file,
                     created = ReferenceDate.now(),
                     frames = kept.samples.size,
                     sampleRate = kept.sampleRate,
-                    capture = if (echoCancelled) Take.Capture.Aec else Take.Capture.Direct,
+                    capture = kind ?: if (echoCancelled) Take.Capture.Aec else Take.Capture.Direct,
                     heard = heard,
                     loudness = BS1770.integratedLoudness(kept.samples, kept.sampleRate),
                     peak = BS1770.samplePeak(kept.samples),
@@ -199,6 +199,18 @@ class RecordingSession(
             phaseNow = Phase.Failed(e.message ?: "The take could not be saved.")
             null
         }
+    }
+
+    /**
+     * Record in the room (PLAYS-DESIGN §12.10 item 1): the microphone opens on the line at once, no cue played, and the take
+     * is kept as `room` capture credited to [credit] (the line's own part, which may not be this session's). Null when nothing was kept.
+     */
+    suspend fun recordInRoom(lineID: String, credit: PartID): Take? {
+        if (!started || isBusy) return null
+        heldStandIns = ArrayList()
+        val take = listenAndKeep(lineID, LinkedHashMap(), credit, Take.Capture.Room)
+        if (started && _phase.value !is Phase.Failed) phaseNow = Phase.Idle
+        return take
     }
 
     /** Remembers a take the run made, with the take its line had before, for Discard the run. */

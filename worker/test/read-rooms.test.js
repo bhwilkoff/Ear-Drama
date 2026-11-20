@@ -265,7 +265,7 @@ describe("read rooms over the Durable Object", () => {
     const g = await enter(h.code);
     expect((await send(h.code, g.member_key, { type: "end" })).status).toBe(403);
     expect((await send(h.code, h.member_key, { type: "end" })).status).toBe(200);
-    expect((await read("GET", `/${h.code}`, { key: g.member_key })).status).toBe(404);
+    expect((await read("GET", `/${h.code}`, { key: g.member_key })).status).toBe(410);
   });
 });
 

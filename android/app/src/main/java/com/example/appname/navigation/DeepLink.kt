@@ -41,7 +41,7 @@ object DeepLink {
             "drama" -> segments.getOrNull(1)?.let(InboxRequest::Drama)
             "library" -> InboxRequest.Tab(Tab.Library.name)
             // `/read/CODE` (`?screen` for the shared screen): a malformed code opens nothing.
-            "read" -> segments.getOrNull(1)?.let { ReadCore.normalizeCode(it) }?.let { InboxRequest.ReadRoom(it, queryParam(query, "screen") != null || "screen" in query.split('&')) }
+            "read" -> if (segments.getOrNull(1) == "pair") InboxRequest.ReadPair else segments.getOrNull(1)?.let { ReadCore.normalizeCode(it) }?.let { InboxRequest.ReadRoom(it, queryParam(query, "screen") != null || "screen" in query.split('&')) }
             // `/invite#TOKEN` (DEEP_LINKS.md): the token rides the fragment; a malformed one opens nothing.
             "invite" -> PlaysShare.inviteToken("/" + segments.joinToString("/"), fragment)?.let(InboxRequest::Invite)
             else -> null

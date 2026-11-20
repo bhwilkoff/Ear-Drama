@@ -1598,3 +1598,79 @@ WEB-DESIGN §4.17 to §4.19 hold the web's idiom; what the other ports need to k
 6. **Deleting a class keeps its published production**: the account deletion detaches a submitted
    class production from its class before the class goes (worker test and mutant, owner ruling
    2026-10-29 that published works stay).
+
+### §12.10 Record in the room, pairing a TV, names (T5, 2026-11-19; binding on every client)
+
+> **Owner, 2026-11-19**: *"We also need to build out how someone would do this with a bunch of
+> different devices in the same room (whether a classroom of kids or a group of adults doing a
+> table read). Ideally, all of this would work quite easily..."* Rulings: storage is archive.org,
+> never Cloudflare; *"teachers could upload the full recording under their name"*; takes pass
+> through the Worker to the leader's device and are deleted on arrival. The Worker's side is
+> `docs/WORKER.md` "Read rooms"; each rule has its test in `worker/test/read-record.test.js` and a
+> break in `worker/test/mutations.mjs` (`t5:`). The protocol's new rules (`recordRefusal`,
+> `receiverOf`, `cleanName`, the paired screen) are in `worker/test/read-golden.json`, which every
+> stack runs.
+
+1. **Who records.** In Record mode only the device of the reader who holds the line at the cursor
+   opens its microphone. The engine is the studio's (`RecordingSession`) with no cue played: the
+   microphone opens when the cursor reaches the line, the take ends on one second of silence (the
+   line-end detector) or the reader's **Stop**, is trimmed, and is written on the device first with
+   `capture: "room"`. The reader taps **Start recording** once per room (the microphone permission
+   and five seconds of room tone); there is no headphones gate, because no device plays during a
+   take (§12.3). The take ended, the device sends `line-done` and the cursor moves to the next held
+   line. Every other device shows who is reading ("Ann is reading", "Lucy is reading") and, while
+   a take records, **Quiet while others record** (a refusal-class instruction).
+2. **Where a take goes.** Each take joins the device's **outbox**, kept with its local room
+   production (one per room code), and is sent with `PUT /v1/read/{code}/takes/{id}`. `201`
+   empties it. `409 nobody_receiving`, offline, a timeout or a 5xx keeps it and it is sent again
+   every 5 seconds while the room is open and on every new snapshot; any other refusal keeps the
+   take on the device and takes it out of the outbox. While any wait the reader sees
+   "{n} takes on this device" (a fact). A network drop during a take changes nothing: the take
+   finishes, is written, and waits; the leader can still move the cursor.
+3. **The receiver** is the snapshot's `you.receives` (a class's teacher whoever leads; an adult
+   room's leader). While the room records, its device holds the room's pickup (`GET
+   /v1/read/{code}/takes/inbox`) and imports each take into its own local room production, the
+   newest take of a line becoming its chosen one (as on the Worker). The receiver never sends a
+   take: its own device records only in One microphone (item 6).
+4. **Takes** (the receiver's sheet, from the room bar): a head line of counts per reader ("Lucy
+   3 of 5"; counts, never a ranking), then each speaking line in script order with its state:
+   **Recorded** (Play, Again), **On {name}'s device** (the reader ended it, the take has not
+   arrived), **Waiting** (held, not yet read), or **Open** (nobody holds it; it stays open and the
+   play is unfinished until someone records it). **Again** sends the room's `again`: the cursor
+   returns to that line and its reader's microphone re-arms. In a class room with a production,
+   each arrived take also offers **Approve** and **Again** with a typed note (the class's review
+   route, 500 characters, shown to that seat only), and the room's Again re-arms the reader when
+   their device is there.
+5. **Listen through and the file.** The receiver's **Listen through** plays its room production
+   (the takes on this device; open lines read live by the device voice, never stored or mixed).
+   **Export** when every speaking line has a take. **Publish under my name** only in a class
+   marked 13 and over, with a production: the credit name (the account's chosen name to start),
+   the CC0 consent, `POST /v1/plays/productions/:pid/publish { credit_name }`, then the device
+   sends each line's chosen take to `archive/files` one at a time (`409 not_ready` waits for the
+   cron and tries again; `409 already_sent` is skipped). An under-13 class shows **Export** and the
+   refusal "An under-13 class never publishes."; an adult room without a production exports.
+6. **One microphone** (the leader's **Record every line here**, in the Reading menu; on by default
+   in an under-13 class): the leader's device records the line at the cursor whoever holds it,
+   credits it to that line's part (and seat), keeps it in its room production, and moves the
+   cursor on when the take ends. In a room with a production the take's row is written as the
+   director's own take (recorded, never relayed).
+7. **Names.** An adult room's join takes an optional name (40 characters at most, the name
+   filter: `422 bad_name` reads "That name is not allowed."); signed in, the field starts with the
+   account's chosen name. The name travels in `members[].name` and names the leader ("Waiting for
+   Ann") and the reader ("Ann is reading"). A class room takes no name: its names are its seats.
+8. **A reading that ended or never was.** `410 room_ended` reads "This reading has ended." and
+   `404 no_such_room` reads "No reading with that code.", on the join page and in the room, on
+   every platform, never "could not be reached". An ended room's code says so for 6 hours.
+9. **Pairing a TV** (tvOS-DESIGN §4.13, ANDROID-DESIGN's TV panel rule, WEB-DESIGN §4.18). The TV
+   asks `POST /v1/read/pair` and shows the pairing code large, split 3 + 3, with one line, "On the
+   leader's device: Reading, then Add a screen." (a fact the viewer cannot discover by looking).
+   It asks `GET /v1/read/pair/{code}` every 2 seconds; when a leader attaches it, the answer is the
+   room's snapshot with the TV's member key, and the TV becomes that room's screen (past a lock:
+   the leader let it in). A code lasts 10 minutes and is used once; an expired one is replaced by a
+   new one without a word. The leader's **Add a screen** (Reading menu) takes the code (any case,
+   spaces allowed) and sends `POST /v1/read/{code}/pair { code }`; refusals: "No screen shows that
+   code." (`no_such_pair`), "That code has expired." (`pair_expired`). No audio passes, and the
+   screen records nothing.
+10. **The screen's voice.** On the Apple and Android screens (and the web's), a line nobody holds
+    is read aloud by the live stand-in voice only while the room's `read_open` is on (the leader's
+    message); it stops the moment the cursor moves, so it never sounds during a take; never stored.

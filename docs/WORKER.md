@@ -325,10 +325,15 @@ the room opened join the next room.
 | Method and path | Who | Body | Answer |
 |---|---|---|---|
 | `POST /v1/read` | anyone; a class room needs its teacher's bearer token | `{ script_id, script_revision, cast, mode?, kind?, class_id?, seats?, assignments?, production_id? }` | the snapshot with `member_key` and `transport` (`socket` or `poll`); the creator leads |
-| `POST /v1/read/{code}/join` | anyone with the code; a class seat with its key | `{ role?: "reader" or "screen", seat?, seat_key?, move? }` | the snapshot with `member_key`; `409 room_full`, `joining_locked`, `seat_in_use`; `400 seat_required`; `403 seat_key_required` |
+| `POST /v1/read/{code}/join` | anyone with the code; a class seat with its key | `{ role?: "reader" or "screen", seat?, seat_key?, move?, name? }` | the snapshot with `member_key`; `409 room_full`, `joining_locked`, `seat_in_use`; `400 seat_required`; `403 seat_key_required`; `422 bad_name`; `404 no_such_room`; `410 room_ended` |
 | `GET /v1/read/{code}` | a member (`x-read-key`) | | the snapshot (poll every second) |
 | `POST /v1/read/{code}/send` | a member | a message | the snapshot (and `reply` for a ping), or the refusal |
 | `GET /v1/read/{code}/socket` | a member, by upgrade | first message `{ type: "hello", key }` | snapshots on every change; a `poll_only` room answers `409` |
+| `PUT /v1/read/{code}/takes/{takeId}` | a reader, in Record mode, for a line they hold (T5) | the audio with its `Content-Length`; `x-take: { lineID, frames, sampleRate, ... }` | `201` with `delivered: true` once the receiving device has it; `403 not_your_line`, `readers_only`, `school_consent_required` (an under-13 class); `409 not_recording`, `receiver_records_here`, `nobody_receiving`, `one_take_at_a_time`; the take checks of `PUT .../takes/:takeId` |
+| `GET /v1/read/{code}/takes/inbox` | the receiving device (`you.receives`) | | the next take: its bytes, `x-take` its fields (`id`, `lineID`, `part`, `file`, `frames`, `sampleRate`, `capture: "room"`, `seat`, `member`); `204` after 25 s; `403 receivers_only` |
+| `POST /v1/read/pair` | a TV (no account) | | `201 { pair_code, pair_key, expires_at }`; the key once, stored as its hash; READ_CREATE_LIMITER per address |
+| `GET /v1/read/pair/{pair_code}` | the TV (`x-pair-key`) | | `{ paired: false, expires_at }` until a leader attaches it, then the room's snapshot with `member_key` (the TV joined as its screen, past a lock) and the pairing is gone; `404 no_such_pair`, `410 pair_expired` |
+| `POST /v1/read/{code}/pair` | the leader or the owner | `{ code }`: the TV's pairing code, normalized as a room code | `{ paired: true }`; `403 leader_only`, `404 no_such_pair` (none, or used), `410 pair_expired`; READ_JOIN_LIMITER per address |
 
 Messages: `cursor { line, base }`, `line-done { line, base }`, `again { line,
 base }`, `mode { mode }`, `claim { part }`, `release { part }`, `lead { to }`,
@@ -337,6 +342,22 @@ t0, server_time }`), `end`. Refusals: `leader_only`, `stale` (with the current
 cursor generation), `part_taken` (with the holder), `not_your_line`,
 `class_assignments_only`, `readers_only`, `screens_do_not_lead`,
 `not_a_member`, `seat_key_required`, `rate_limited`. The key never travels in a URL. The snapshot carries `leader_name` (the leader's seat label, or the room owner's own `owner_name` given when the room opens; else null) so readers see "Waiting for <name>", and `read_open`.
+
+**Record in the room** (T5, PLAYS-DESIGN §12.10). A take crosses the Worker only from a reader who
+holds the line (`recordRefusal`: Record mode, a reader, an adult's claimed part or a seat's
+assignment with its range, any held line rather than only the cursor's) to the room's **receiver**
+(`receiverOf`: a class's teacher, whoever leads; an adult room's leader), and nothing keeps it. A
+room with a production pipes it through that production's `TakeRelay` and writes the take's row
+(the teacher's account, credited to the seat; `capture: "room"`), so review, progress and Publish
+see it; a room without one pipes it through its own relay (`read:{code}`) and writes nothing. An
+under-13 class sends no seat's voice until the school's consent (Decision 059). Joins take an
+optional adult `name` (40 characters, `plays-names.js`; `422 bad_name`), carried in
+`members[].name`, in `you.name`, and as `leader_name` when the leader gave one; the snapshot also
+carries `receiver` and `you.receives`. **A room that ended** answers `410 room_ended` for 6 hours
+(the object keeps only the time it ended; the D1 row stays until the sweep); a code that never was
+answers `404 no_such_room`. **Pairing a TV**: `read_pairs` (migration 0008), one row a code for 10
+minutes, used once, swept hourly; a `paired` flag in a join body is dropped, so only a pairing lets
+a screen past a lock.
 
 ## Shared plays
 

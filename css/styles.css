@@ -1861,6 +1861,35 @@ body.reading #main-content { overflow: hidden; }
 .rr-menu-body { position: absolute; right: 0; bottom: calc(100% + var(--space-2)); z-index: 5; min-width: 220px; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2);
   background: var(--color-background); border: 1px solid var(--color-border); border-radius: 8px; }
 .rr-end { color: var(--color-error); }
+/* Record in the room (§4.17 item 9): red only while this device records (Decision 064). */
+.rr-rec[hidden] { display: none; }
+.rr-rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-record); flex-shrink: 0; }
+.rr-quiet { margin: 0; color: var(--color-text-muted); }
+.rr-name-field { display: flex; flex-direction: column; max-width: 320px; }
+.rr-name-field[hidden] { display: none; }
+.rr-pair { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.rr-pair-input { flex: 1 1 8em; min-width: 0; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+.rr-pair-input::placeholder { text-transform: none; }
+.rr-menu-body .rd-choice { display: flex; flex-direction: column; gap: var(--space-1); }
+.rr-pair .caption { flex-basis: 100%; margin: 0; }
+.rr-counts { margin: 0 0 var(--space-2); }
+.rr-takes-sheet .rd-sheet-head { position: sticky; top: calc(-1 * var(--space-4)); z-index: 1; background: var(--color-background); padding-top: var(--space-2); }
+@media (min-width: 600px) { .rr-takes-sheet .rd-sheet-head { top: calc(-1 * var(--space-6)); } }
+.rr-take-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rr-take-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
+.rr-take-row .cast-main { display: flex; flex-direction: column; min-width: 0; }
+.rr-take-words { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rr-take-state { align-self: start; color: var(--color-text-muted); }
+.rr-take-row[data-state="recorded"] .rr-take-state { color: var(--color-text); }
+.rr-take-acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.rr-take-acts:empty { display: none; }
+.rr-again-note summary { list-style: none; cursor: pointer; }
+.rr-again-note summary::-webkit-details-marker { display: none; }
+.rr-again-note form { display: flex; gap: var(--space-2); margin-top: var(--space-1); }
+.rr-take-foot { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-top: var(--space-3); }
+.rr-publish { display: flex; flex-direction: column; gap: var(--space-2); flex-basis: 100%; }
+.rs-pair .rs-page { align-items: flex-start; }
+.rs-pair-code { font-family: var(--type-page-title-family); font-weight: var(--type-page-title-weight); font-size: clamp(3rem, 12vw, 9rem); letter-spacing: 0.12em; margin: 0; }
 
 /* ---- The shared screen (§4.18): the current line large, presence and the code in a corner ---- */
 body.read-screen .tabbar, body.read-screen .sidebar, body.read-screen .site-footer, body.read-screen #now-playing-bar { display: none; }

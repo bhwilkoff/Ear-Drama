@@ -187,6 +187,8 @@ const ReadSession = (() => {
       open: async (body) => enter(await api.read.create(body), 'reader'),
       /** Joins by code: `{ role?, seat?, seat_key?, move? }`. */
       join: async (code, want = {}) => enter(await api.read.join(code, want), want.role || 'reader'),
+      /** A snapshot with its member key that came another way (a TV's pairing): this device is now in that room. */
+      adopt: (snap, role) => enter(snap, role),
       /** Back into the room this tab was in, with its key; false when there is none or it is over. */
       async resume(code) {
         let kept = null;

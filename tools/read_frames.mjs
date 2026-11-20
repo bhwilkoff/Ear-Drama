@@ -11,6 +11,13 @@
  * iframe of the frame's width (headless Chrome lays a page under ~500 px out wider and crops it),
  * light and dark. The script is picked from the bundled castable plays, never named by a test.
  * Prints each frame's path; read every one before calling a change done.
+ *
+ *   T5=1 node tools/read_frames.mjs docs/research/design/img/t5
+ *
+ * draws Record in the room instead (PLAYS-DESIGN §12.10): the stub microphone door (a 160 Hz
+ * oscillator never connected to the speakers, its level set by the harness) on each reader, the
+ * room's take routes and pickup, the TV pairing routes, names on join, and the ended and unknown
+ * room refusals.
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -69,6 +76,9 @@ function wav(n = 4800) {
 }
 
 const rooms = new Map();
+const pairs = new Map();
+const pickups = new Map();
+const roomTakes = [];
 let memberN = 0;
 const newMember = (role, seat = null) => { memberN++; return { id: `m${memberN}`, key: `key-${memberN}-${Math.random().toString(36).slice(2)}`, role, seat, joined_at: now(), seen_at: now() }; };
 const snapOf = (room, id) => P.joinSnapshot(room.room, cast, room.members, id, now());
@@ -97,7 +107,7 @@ function readRoute(method, url, body, headers) {
     if (want.seat && room.room.kind === "class" && seatKeys.get(want.seat_key) !== want.seat) return [403, { error: "seat_key_required" }];
     const refusal = P.joinRefusal(room.room, room.members, want, now());
     if (refusal) return [refusal === "seat_required" ? 400 : 409, { error: refusal }];
-    const me = newMember(want.role || "reader");
+    const me = { ...newMember(want.role || "reader"), name: P.cleanName(room.room, want.name) || null };
     room.members.push(me);
     room.keys.set(me.key, me.id);
     if (want.seat) {
@@ -123,11 +133,35 @@ function readRoute(method, url, body, headers) {
 function apiRoute(method, url, body, headers) {
   const p = url.pathname;
   const session = { user_id: "teacher", provider: "google", access_token: "A", access_expires_at: now() + 3600e3, refresh_token: "R", refresh_expires_at: now() + 30 * 864e5 };
-  if (p.startsWith("/v1/read")) return readRoute(method, url, body, headers);
+  if (p.startsWith("/v1/read") && !/\/pair(\/|$)/.test(p)) return readRoute(method, url, body, headers);
   if (p === "/v1/auth/google" || p === "/v1/auth/refresh") return [200, session];
   if (p.startsWith("/v1/sync")) return [200, { history: [], follows: [], queue: null, server_time: now(), next_since: now() }];
   if (p === "/v1/account") return [200, { user_id: "teacher", providers: ["google"], counts: { history: 0, follows: 0 } }];
   if (p === "/v1/plays/consent") return [200, { version: "v1", text: "", uploads: true, publishes: false }];
+  if (p === "/v1/read/pair" && method === "POST") {
+    const code = P.codeFromBytes([...Array(6)].map(() => Math.floor(Math.random() * 256)));
+    const key = `pair-${Math.random().toString(36).slice(2)}`;
+    pairs.set(code, { key, room: null, expires_at: now() + 600000 });
+    return [201, { pair_code: code, pair_key: key, expires_at: now() + 600000, server_time: now() }];
+  }
+  const pw = /^\/v1\/read\/pair\/([^/]+)$/.exec(p);
+  if (pw) {
+    const pr = pairs.get(pw[1]);
+    if (!pr || pr.key !== headers["x-pair-key"]) return [404, { error: "no_such_pair" }];
+    if (!pr.room) return [200, { paired: false, expires_at: pr.expires_at, server_time: now() }];
+    pairs.delete(pw[1]);
+    const room = rooms.get(pr.room);
+    const me = newMember("screen");
+    room.members.push(me); room.keys.set(me.key, me.id);
+    return [200, { ...snapOf(room, me.id), member_key: me.key, transport: "poll" }];
+  }
+  const pa = /^\/v1\/read\/([^/]+)\/pair$/.exec(p);
+  if (pa) {
+    const pr = pairs.get(P.normalizeCode(body.code || ""));
+    if (!pr || pr.room) return [404, { error: "no_such_pair" }];
+    pr.room = P.normalizeCode(pa[1]);
+    return [200, { paired: true }];
+  }
   if (p === "/v1/plays/classes" && method === "GET") return [200, { teaching: [{ id: "C1", name: klass.name, code: klass.code, under13: false, school_consent: false }], member_of: [] }];
   if (p === "/v1/plays/classes/C1") return [200, klass];
   if (p === "/v1/plays/classes/C1/progress") return [200, progress()];
@@ -158,6 +192,39 @@ const server = http.createServer(async (req, res) => {
     }
     await sleep(20000);
     res.writeHead(204); res.end();
+    return;
+  }
+  const tk = /^\/v1\/read\/([^/]+)\/takes\/(.+)$/.exec(url.pathname);
+  if (tk) {
+    const room = rooms.get(P.normalizeCode(tk[1]));
+    const id = room && room.keys.get(req.headers["x-read-key"]);
+    const fail = (status, error) => { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify({ error })); };
+    if (!room) return fail(404, "no_such_room");
+    if (!id) return fail(403, "not_a_member");
+    if (tk[2] === "inbox") {
+      if (P.receiverOf(room.room) !== id) return fail(403, "receivers_only");
+      const list = pickups.get(room.room.code) || [];
+      pickups.set(room.room.code, list);
+      const held = { res };
+      list.push(held);
+      setTimeout(() => { if (list.includes(held)) { list.splice(list.indexOf(held), 1); res.writeHead(204); res.end(); } }, 20000);
+      return;
+    }
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    const bytes = Buffer.concat(chunks);
+    const meta = JSON.parse(req.headers["x-take"] || "{}");
+    const me = room.members.find((x) => x.id === id);
+    const refusal = P.recordRefusal(room.room, cast, me, meta.lineID);
+    if (refusal) return fail(refusal === "not_your_line" ? 403 : 409, refusal);
+    const held = (pickups.get(room.room.code) || []).shift();
+    if (!held) return fail(409, "nobody_receiving");
+    const fields = { id: decodeURIComponent(tk[2]), lineID: meta.lineID, part: cast.find((c) => c[0] === meta.lineID)[1], frames: meta.frames, sampleRate: meta.sampleRate, capture: "room", seat: me.seat, member: id };
+    roomTakes.push(fields);
+    held.res.writeHead(200, { "content-type": "audio/wav", "x-take": JSON.stringify(fields) });
+    held.res.end(bytes);
+    res.writeHead(201, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ...fields, delivered: true }));
     return;
   }
   if (url.pathname.startsWith("/v1/")) {
@@ -222,6 +289,22 @@ async function main() {
     d.call = (m, p) => cdp.send(m, p, sessionId);
     await d.call("Page.enable");
     await d.call("Runtime.enable");
+    // The stub microphone door: an oscillator never connected to the speakers; its level is the harness's (__micGain).
+    await d.call("Page.addScriptToEvaluateOnNewDocument", { source: `(() => {
+      Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: {
+        enumerateDevices: async () => [],
+        async getUserMedia() {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator(); osc.frequency.value = 160;
+          const g = ctx.createGain(); g.gain.value = 0.0005;
+          const dest = ctx.createMediaStreamDestination();
+          osc.connect(g); g.connect(dest); osc.start();
+          await ctx.resume();
+          window.__micGain = g;
+          return dest.stream;
+        } } });
+      window.confirm = () => true;
+    })();` });
     d.open = async (route, w = 1440, dark = false, h = 900) => {
       d.w = w; d.dark = dark;
       await d.call("Emulation.setDeviceMetricsOverride", { width: Math.max(w, 520), height: h, deviceScaleFactor: 1, mobile: false });
@@ -232,7 +315,7 @@ async function main() {
     };
     /** Runs `js` inside the app's frame (same origin), returning its value. */
     d.eval = async (js) => {
-      const r = await d.call("Runtime.evaluate", { expression: `(async () => { const win = document.querySelector('iframe').contentWindow; const doc = win.document; ${js} })()`, awaitPromise: true, returnByValue: true });
+      const r = await d.call("Runtime.evaluate", { expression: `(async () => { const win = document.querySelector('iframe').contentWindow; const doc = win.document; ${js} })()`, awaitPromise: true, returnByValue: true, userGesture: true });
       if (r.exceptionDetails) throw new Error(`${name}: ${r.exceptionDetails.exception ? r.exceptionDetails.exception.description : r.exceptionDetails.text}`);
       return r.result.value;
     };
@@ -252,6 +335,7 @@ async function main() {
   }
 
   try {
+    if (process.env.T5) { await recordFrames(device); done(); console.log(`${frames.length} frames`); process.exit(0); }
     const teacher = await device("teacher");
     await teacher.open("?view=library&tab=dramas");
     await teacher.eval("await win.eval(\"API.account.signIn('google', 'id-token', 'nonce')\"); return true;");
@@ -321,4 +405,100 @@ async function main() {
   console.log(`${frames.length} frames`);
   process.exit(0);
 }
+/** T5: Record in the room, the Takes sheet, names, the refusals, and pairing a TV (PLAYS-DESIGN §12.10). */
+async function recordFrames(device) {
+  const teacher = await device("teacher");
+  await teacher.open("?view=library&tab=dramas");
+  await teacher.eval("await win.eval(\"API.account.signIn('google', 'id-token', 'nonce')\"); return true;");
+  await teacher.open("?class=C1", 1440, false, 900);
+  await teacher.click("button", "Start a reading");
+  await sleep(2000);
+  const code = await teacher.eval("return new win.URLSearchParams(win.location.search).get('read-room');");
+  if (!code) throw new Error("no room code");
+  rooms.get(code).room.production_id = "P1";
+  const seatJoin = async (d, label, w, dark) => {
+    await d.open(`?read-room=${code}`, w, dark, 820);
+    await d.click("button", "Join");
+    await sleep(800);
+    await d.type("input.class-code-input", klass.code);
+    await d.eval("doc.querySelector('input.class-code-input').form.requestSubmit(); return true;");
+    await sleep(800);
+    // Wait for the class's names (the stub answers in a moment; a fixed sleep raced it once).
+    let names = '';
+    for (let i = 0; i < 50 && !names.includes(label); i++) {
+      names = await d.eval("return [...doc.querySelectorAll('button.rr-name, [role=alert]')].map((e) => e.textContent).join(' | ');");
+      if (!names.includes(label)) await sleep(100);
+    }
+    if (!names.includes(label)) throw new Error(label + ' sees: ' + names);
+    await d.click("button.rr-name", label);
+    await sleep(2500);
+  };
+  const lucy = await device("lucy");
+  await seatJoin(lucy, "Lucy", 375, false);
+  const tom = await device("tom");
+  await seatJoin(tom, "Tom", 375, true);
+  await teacher.open(`?read-room=${code}`, 1440, false, 900);
+  await sleep(2500);
+  await teacher.eval("await win.eval(\"ReadUI.session.send({ type: 'mode', mode: 'record' })\"); return true;");
+  await sleep(2500);
+  await lucy.shot("t5-reader-start");
+  for (const d of [lucy, tom]) { await d.click("button.btn-record", "Start recording"); }
+  await sleep(6500);
+  // The cursor reaches Lucy's line: her microphone opens by itself; she speaks (the stub's level rises).
+  const lucyFirst = cast.find((c) => c[1] === assignments.find((a) => a.seat === "S1").part)[0];
+  await lucy.eval("if (win.__micGain) win.__micGain.gain.value = 0.3; return true;");
+  await teacher.eval(`await win.eval("ReadUI.session.send({ type: 'cursor', line: '${lucyFirst}', base: ReadUI.session.state().snap.cursor_gen })"); return true;`);
+  await sleep(2400);
+  await lucy.shot("t5-reader-recording");
+  await tom.shot("t5-reader-quiet");
+  await lucy.eval("if (win.__micGain) win.__micGain.gain.value = 0.0005; return true;");
+  await sleep(4000);
+  console.log(`  takes through the room: ${roomTakes.map((t) => t.lineID).join(", ") || "none"}`);
+  await teacher.shot("t5-leader-recording");
+  await teacher.click("button.rr-takes", "Takes");
+  await sleep(1500);
+  await teacher.shot("t5-takes");
+  await teacher.open(`?read-room=${code}`, 375, true, 1100);
+  await sleep(3000);
+  await teacher.click("button.rr-takes", "Takes");
+  await sleep(1500);
+  await teacher.shot("t5-takes");
+  await teacher.open(`?read-room=${code}`, 1440, false, 900);
+  await sleep(2500);
+  await teacher.eval("doc.querySelector('.rr-menu').open = true; return true;");
+  await sleep(600);
+  await teacher.shot("t5-leader-menu");
+
+  // A TV with no code yet shows one; the leader adds it; it becomes the screen.
+  const tv = await device("tv");
+  await tv.open("?read-room=pair&screen=1", 1440, false, 810);
+  await sleep(2000);
+  await tv.shot("t5-tv-pairing");
+  await tv.open("?read-room=pair&screen=1", 1440, true, 810);
+  await sleep(2000);
+  await tv.shot("t5-tv-pairing");
+  const shown = await tv.eval("return doc.querySelector('.rs-pair-code').textContent.replace(/\\s/g, '');");
+  await teacher.type("input.rr-pair-input", shown.toLowerCase());
+  await teacher.eval("doc.querySelector('input.rr-pair-input').form.requestSubmit(); return true;");
+  await sleep(4500);
+  await tv.shot("t5-tv-paired");
+
+  // An adult room: the join page's name; an ended room and an unknown code.
+  const host = await device("host");
+  await host.open("?view=library&tab=dramas");
+  const adult = await host.eval(`return await win.eval("API.read.create({ script_id: '${script.id}', script_revision: '${script.revision}', cast: [] }).then((s) => s.code)");`);
+  const ann = await device("ann");
+  await ann.open(`?read-room=${adult}`, 375, false, 700);
+  await ann.type("input.rr-name-input", "Ann");
+  await ann.shot("t5-join-name");
+  rooms.get(adult).room.ended = true;
+  await ann.click("button", "Join");
+  await sleep(1200);
+  await ann.shot("t5-join-ended");
+  await ann.open("?read-room=ZZZZZZ", 375, false, 700);
+  await ann.click("button", "Join");
+  await sleep(1200);
+  await ann.shot("t5-join-unknown");
+}
+
 main().catch((e) => { console.error(e); console.log("FAIL read_frames"); process.exit(1); });

@@ -15,6 +15,13 @@ import com.example.appname.ui.ShowShelf
 import com.example.appname.ui.SectionCaption
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Tv
+import com.example.appname.ui.tvFocusMark
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -124,12 +131,23 @@ fun LibraryScreen(
                 library.following.isEmpty() && downloadRecords.isEmpty() && dramaRows.isEmpty()
             // On a TV the D-pad starts on the first row (§9.2), or on an empty Library's Browse (§7.1a).
             val firstRow = remember { FocusRequester() }
+            val tv = LocalIsTelevision.current
             if (!empty) ClaimTvFocus(firstRow, Unit)
             LazyColumn(Modifier.fillMaxSize().focusRequester(firstRow), contentPadding = padding) {
                 // §4.11: the account is the first row, above what this device holds.
                 item(key = "account") { AccountRow() }
                 item(key = "export") { ExportRow() }
                 item(key = "together") { ListenTogetherRow(onListenTogether) }
+                if (tv) {
+                    item(key = "show-reading") {
+                        val showReading = com.example.appname.ui.screens.LocalReadNav.current.showReading
+                        ListItem(
+                            modifier = Modifier.fillMaxWidth().tvFocusMark().clickable(onClickLabel = "Show a reading", onClick = showReading),
+                            leadingContent = { Icon(Icons.Filled.Tv, contentDescription = null) },
+                            headlineContent = { Text("Show a reading") },
+                        )
+                    }
+                }
                 // §7.1a: the empty state heads what this device holds; the account and the site pages stay.
                 if (empty) {
                     item(key = "empty") { EmptyMessage("Nothing played yet.", action = EmptyAction("Browse", onBrowse)) }

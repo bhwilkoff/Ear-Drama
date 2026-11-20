@@ -124,7 +124,7 @@ const RecordingSession = (() => {
     }
 
     /** Opens the microphone on a line until it ends (or Stop), and keeps the line window as a new take. */
-    async function listenAndKeep(lineID, heard, bleed) {
+    async function listenAndKeep(lineID, heard, bleed, over = {}) {
       await announce();
       if (ended) return null;
       s.levels = [];
@@ -144,8 +144,8 @@ const RecordingSession = (() => {
         const atRate = await audio.toTakeRate(kept);
         const file = await store.writeTake(atRate, s.production, lineID);
         const take = {
-          id: C.uuid(), lineID, part, file, created: C.now(), frames: atRate.samples.length,
-          sampleRate: atRate.sampleRate, capture: audio.capture, heard,
+          id: C.uuid(), lineID, part: over.part || part, file, created: C.now(), frames: atRate.samples.length,
+          sampleRate: atRate.sampleRate, capture: over.capture || audio.capture, heard,
           peak: C.samplePeak(atRate.samples), bleed,
         };
         const loudness = C.integratedLoudness(atRate.samples, atRate.sampleRate);
@@ -222,6 +222,18 @@ const RecordingSession = (() => {
       if (ended) return;
       if (s.run.takes.length) set({ kind: 'runReview' });
       else { s.run = null; set({ kind: 'idle' }); }
+    };
+
+    /**
+     * Record in the room (PLAYS-DESIGN §12.10 item 1): no cue plays, since the cue is the last reader's
+     * voice in the room. The microphone opens on the line until it ends or Stop and the window is kept
+     * as `part`'s take, `capture: "room"`. Resolves to the take, or null when nothing was kept.
+     */
+    s.recordInRoom = async (lineID, part, capture = 'room') => {
+      if (!s.started || s.isBusy() || ended) return null;
+      const t = await listenAndKeep(lineID, {}, false, { part, capture });
+      if (!ended && s.phase.kind !== 'failed') set({ kind: 'idle' });
+      return t;
     };
 
     /** Pause ends a run; a line being recorded is kept as far as it went. */

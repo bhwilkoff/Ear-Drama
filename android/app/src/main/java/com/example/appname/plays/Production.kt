@@ -36,6 +36,9 @@ data class Take(
     val peak: Float,
     /** The bleed check found the device voice in the microphone (§5 rule 2). */
     val bleed: Boolean,
+    /** A take that arrived from a room reader's device: the seat it was credited to and the member that sent it. */
+    val seat: String? = null,
+    val member: String? = null,
 ) {
     @Serializable
     enum class Capture {
@@ -43,6 +46,8 @@ data class Take(
         @SerialName("direct") Direct,
         /** No headphones: echo cancellation removed the device's own playback. */
         @SerialName("aec") Aec,
+        /** Record in the room (PLAYS-DESIGN §12.10): no cue, no playback during the take. */
+        @SerialName("room") Room,
     }
 
     val seconds: Double get() = frames / sampleRate
@@ -87,6 +92,11 @@ data class Production(
     val listenedThrough: Boolean = false,
     /** The chosen takes `mix.m4a` was rendered from; a different set means the mix is stale. */
     val mixedFrom: String? = null,
+    /** The read room this production keeps the takes of (PLAYS-DESIGN §12.10): its code, the Worker production, kind, and takes waiting to be sent. */
+    val room: String? = null,
+    val roomPid: String? = null,
+    val roomKind: String? = null,
+    val roomOutbox: List<String> = emptyList(),
 ) {
     val isEmpty: Boolean get() = takes.isEmpty()
 
@@ -170,7 +180,7 @@ data class Production(
 
         /** Local, unshared productions with no take: removed rather than listed (PLAYS-DESIGN §2.3 rule 3a). */
         fun abandoned(productions: List<Production>, isShared: (String) -> Boolean): List<String> =
-            productions.filter { it.isEmpty && !isShared(it.id) }.map { it.id }
+            productions.filter { it.isEmpty && it.room == null && !isShared(it.id) }.map { it.id }
 
         fun create(script: PlayScript, id: String = UUID.randomUUID().toString().uppercase()) = Production(
             id = id,

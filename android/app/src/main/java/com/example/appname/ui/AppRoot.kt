@@ -47,6 +47,7 @@ import com.example.appname.ui.screens.EpisodeScreen
 import com.example.appname.ui.screens.CastingBoardScreen
 import com.example.appname.ui.screens.ClassPageScreen
 import com.example.appname.ui.screens.DramaScreen
+import com.example.appname.ui.screens.ReadPairScreen
 import com.example.appname.ui.screens.ReadRoomScreen
 import com.example.appname.ui.screens.ReadScreenScreen
 import com.example.appname.ui.screens.InvitationScreen
@@ -137,6 +138,7 @@ fun AppRoot(
                 }
                 is InboxRequest.Item -> stacks.getValue(selected).navigateTo(if ('|' in request.id) Route.Episode(request.id) else Route.Series(request.id))
                 is InboxRequest.ReadRoom -> stacks.getValue(selected).navigateTo(Route.ReadRoom(request.code, request.screen || container.isTelevision, request.seat))
+                is InboxRequest.ReadPair -> stacks.getValue(selected).navigateTo(Route.ReadPair)
                 is InboxRequest.Series -> stacks.getValue(selected).navigateTo(Route.Series(request.key))
                 is InboxRequest.Person -> stacks.getValue(selected).navigateTo(Route.Person(request.id))
                 is InboxRequest.Search -> {
@@ -199,7 +201,8 @@ fun AppRoot(
     }
     val accountAsk by container.plays.accountAsk.collectAsState()
     // Reading is full screen (§4.17): the tab bar, the mini player and the offline line step aside.
-    val reading = stack.lastOrNull() is Route.Reader
+    val last = stack.lastOrNull()
+    val reading = last is Route.Reader || last is Route.ReadRoom || last is Route.ReadPair
 
     CompositionLocalProvider(
         LocalPlayerMuted provides muted,
@@ -208,6 +211,7 @@ fun AppRoot(
         com.example.appname.ui.screens.LocalReadNav provides com.example.appname.ui.screens.ReadNav(
             openClass = { id -> stack.navigateTo(Route.ClassPage(id)) },
             openRoom = { code -> stack.navigateTo(Route.ReadRoom(code)) },
+            showReading = { stack.navigateTo(Route.ReadPair) },
         ),
     ) {
         HapticEvents()
@@ -340,6 +344,7 @@ fun AppRoot(
                 if (route.screen) ReadScreenScreen(route.code, onBack = back)
                 else ReadRoomScreen(route.code, onBack = back, onOpenScreen = { stack.add(Route.ReadRoom(it, screen = true)) }, seatDoor = route.seat)
             }
+            entry<Route.ReadPair> { ReadPairScreen(onBack = back) }
             entry<Route.ClassPage> { route ->
                 ClassPageScreen(route.id, onBack = back, onCasting = { c, p -> stack.add(Route.ClassCasting(c, p)) }, onOpenRoom = { stack.add(Route.ReadRoom(it)) })
             }

@@ -188,6 +188,8 @@ nonisolated struct PickedTake: Sendable {
         var sampleRate: Double
         var capture: String?
         var seat: String?
+        var file: String?
+        var member: String?
     }
     var fields: Fields
     var data: Data
@@ -229,6 +231,8 @@ nonisolated struct TakeMeta: Codable, Equatable, Sendable {
     var peak: Double
     var bleed: Bool
     var loudness: Double?
+    /// The seat a room take is credited to (One microphone in a class room).
+    var seat: String? = nil
 }
 
 /// A refusal or a failure, carrying the Worker's own code and detail.
@@ -351,6 +355,8 @@ struct WorkerPlays: PlaysTransport {
     private struct NewClass: Encodable { let name: String; let under13: Bool }
     private struct JoinClass: Encodable { let code: String; let display_name: String? }
     private struct Empty: Encodable {}
+    private struct Credit: Encodable { let credit_name: String }
+    private struct Review: Encodable { let state: String; let note: String? }
     private struct List: Decodable { let productions: [RemoteProduction] }
 
     func consent() async throws -> PlaysConsent {
@@ -426,6 +432,21 @@ struct WorkerPlays: PlaysTransport {
 
     func publish(_ pid: String) async throws -> PublishJob {
         try decode(PublishJob.self, try await call("POST", "\(Self.at(pid))/publish", json: Empty()))
+    }
+
+    /// Publish under the teacher's own name (PLAYS-DESIGN §12.10 item 5).
+    func publishWithCredit(_ pid: String, creditName: String) async throws -> PublishJob {
+        try decode(PublishJob.self, try await call("POST", "\(Self.at(pid))/publish", json: Credit(credit_name: creditName)))
+    }
+
+    /// One line's chosen take, to archive.org through the Worker (Decision 073).
+    func archiveFile(_ pid: String, lineID: String, audio: Data, contentType: String) async throws {
+        _ = try await call("PUT", "\(Self.at(pid))/archive/files/\(Self.escape(lineID))", raw: audio, contentType: contentType)
+    }
+
+    /// A class production's review of one take: `approved` or `again`, with a note only that seat sees.
+    func reviewTake(_ pid: String, takeID: String, state: String, note: String?) async throws {
+        _ = try await call("POST", "\(Self.at(pid))/takes/\(Self.escape(takeID))/review", json: Review(state: state, note: note))
     }
 
     func removeLine(_ pid: String, lineID: String, reason: String) async throws {

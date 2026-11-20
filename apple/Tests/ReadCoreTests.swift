@@ -7,6 +7,10 @@ import Testing
 ///   the harness over a golden copy with one expected value flipped: failures > 0 (goldenHarnessSeesADrift).
 ///   leaderGone letting a class hand the lead on: the leaderGone goldens failed.
 ///   assignmentFor ignoring a range's `to`: partsOf/whoReads/nextMine goldens failed.
+/// T5 (2026-11-19), the new ports against the same file (98 cases, 22 of them these functions):
+///   recordRefusal without the holds check: the recordRefusal goldens failed (recordRefusalNeedsItsHoldsCheck holds that).
+///   cleanName keeping a 41 character name: the cleanName goldens failed.
+///   receiverOf answering the leader for a class: the receiverOf and joinSnapshot goldens failed.
 struct ReadCoreTests {
     private static let golden: [String: Any] = {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -23,7 +27,7 @@ struct ReadCoreTests {
         func list<T>(_ k: String, _ f: ([String: Any]) -> T) -> [T] { (d[k] as? [[String: Any]] ?? []).map(f) }
         return ReadCore.Room(
             kind: str(d["kind"]) ?? "adult", mode: str(d["mode"]) ?? "read", cursor: str(d["cursor"]) ?? "",
-            cursorGen: Int(num(d["cursor_gen"])), generation: Int(num(d["generation"])), leader: str(d["leader"]) ?? "",
+            cursorGen: Int(num(d["cursor_gen"])), generation: Int(num(d["generation"])), leader: str(d["leader"]) ?? "", owner: str(d["owner"]) ?? "", ownerName: str(d["owner_name"]),
             claims: d["claims"] as? [String: String] ?? [:],
             seats: list("seats") { ReadCore.Seat(id: str($0["id"]) ?? "", label: str($0["label"]) ?? "") },
             assignments: list("assignments") { ReadCore.Assignment(part: str($0["part"]) ?? "", seat: str($0["seat"]) ?? "", from: str($0["from"]), to: str($0["to"])) },
@@ -33,7 +37,7 @@ struct ReadCoreTests {
     private static func member(_ o: Any?) -> ReadCore.Member? {
         guard let d = o as? [String: Any] else { return nil }
         return ReadCore.Member(id: str(d["id"]) ?? "", role: str(d["role"]) ?? "reader", seat: str(d["seat"]),
-                               joinedAt: num(d["joined_at"]), seenAt: num(d["seen_at"]))
+                               joinedAt: num(d["joined_at"]), seenAt: num(d["seen_at"]), name: str(d["name"]))
     }
 
     private static func members(_ o: Any?) -> [ReadCore.Member] { (o as? [Any] ?? []).compactMap(member) }
@@ -46,7 +50,9 @@ struct ReadCoreTests {
     }
 
     /// What a ported function answers for a golden case, shaped as the JSON the Worker wrote.
-    private static func answer(_ c: [String: Any]) -> Any? {
+    private static func answer(_ c: [String: Any], recordRefusal: (ReadCore.Room, [(String, String)], ReadCore.Member?, String) -> String? = {
+        ReadCore.recordRefusal($0, cast: $1, member: $2, lineID: $3)
+    }) -> Any? {
         guard let fn = c["fn"] as? String, let a = c["args"] as? [Any] else { return nil }
         switch fn {
         case "normalizeCode": return jsonValue(ReadCore.normalizeCode(a[0] as? String ?? ""))
@@ -68,11 +74,21 @@ struct ReadCoreTests {
         case "leaderGone":
             let l = ReadCore.leaderGone(room(a[0]), members: members(a[1]), now: num(a[2]))
             return ["leader": l.leader, "waiting": l.waiting]
+        case "cleanName":
+            switch ReadCore.cleanName(room(a[0]), a[1] as? String) {
+            case .none: return NSNull()
+            case .refused: return false
+            case let .name(n): return n
+            }
+        case "receiverOf": return ReadCore.receiverOf(room(a[0]))
+        case "recordRefusal": return jsonValue(recordRefusal(room(a[0]), cast(a[1]), member(a[2]), a[3] as? String ?? ""))
+        case "leaderName": return jsonValue(ReadCore.leaderName(room(a[0]), members: members(a[1])))
         default: return nil
         }
     }
 
-    private static let ported: Set<String> = ["normalizeCode", "codeFromBytes", "clockOffset", "canLead", "partsOf", "whoReads", "nextMine", "leaderGone"]
+    private static let ported: Set<String> = ["normalizeCode", "codeFromBytes", "clockOffset", "canLead", "partsOf", "whoReads", "nextMine", "leaderGone",
+                                          "cleanName", "receiverOf", "recordRefusal", "leaderName"]
 
     private static func same(_ x: Any?, _ y: Any?) -> Bool {
         guard let x, let y else { return x == nil && y == nil }
@@ -80,12 +96,13 @@ struct ReadCoreTests {
     }
 
     /// Names of the golden cases the port answers differently from the Worker.
-    private static func failures(in cases: [[String: Any]]) -> [String] {
+    private static func failures(in cases: [[String: Any]], recordRefusal: ((ReadCore.Room, [(String, String)], ReadCore.Member?, String) -> String?)? = nil) -> [String] {
         var bad: [String] = []
         for c in cases {
             let fn = c["fn"] as? String ?? ""
             if ported.contains(fn) {
-                if !same(answer(c), c["expect"]) { bad.append("\(fn): \(c["note"] ?? "")") }
+                let got = recordRefusal.map { answer(c, recordRefusal: $0) } ?? answer(c)
+                if !same(got, c["expect"]) { bad.append("\(fn): \(c["note"] ?? "")") }
             } else if fn == "joinSnapshot", let e = c["expect"] as? [String: Any],
                       let data = try? JSONSerialization.data(withJSONObject: e),
                       let snap = try? JSONDecoder().decode(ReadSnapshot.self, from: data) {
@@ -93,6 +110,8 @@ struct ReadCoreTests {
                 let got = ReadCore.nextMine(snap.room, cast: cast(a[1]), member: snap.meMember, cursor: snap.cursor)
                 let want = snap.nextMine
                 if got?.line != want?.line || got?.inLines != want?.in { bad.append("snapshot next line: \(c["note"] ?? "")") }
+                if let receiver = snap.receiver, ReadCore.receiverOf(snap.room) != receiver { bad.append("snapshot receiver: \(c["note"] ?? "")") }
+                if let you = snap.you, you.receives != nil, you.receives != (snap.receiver == you.id) { bad.append("snapshot receives: \(c["note"] ?? "")") }
             }
         }
         return bad
@@ -104,6 +123,28 @@ struct ReadCoreTests {
         let ran = cases.filter { Self.ported.contains($0["fn"] as? String ?? "") || $0["fn"] as? String == "joinSnapshot" }
         #expect(ran.count >= 30)
         #expect(Self.failures(in: cases).isEmpty, "\(Self.failures(in: cases))")
+    }
+
+    @Test func theNewT5FunctionsAreRunOverEveryOfTheirCases() {
+        let t5 = ["cleanName", "receiverOf", "recordRefusal", "leaderName"]
+        for fn in t5 { #expect(cases.filter { $0["fn"] as? String == fn }.count >= 2, "\(fn) has cases") }
+        #expect(cases.filter { t5.contains($0["fn"] as? String ?? "") }.count >= 18)
+        #expect(Self.failures(in: cases.filter { t5.contains($0["fn"] as? String ?? "") }).isEmpty)
+    }
+
+    /// The control: the same goldens, run through a recordRefusal that skips the holds check, must fail.
+    @Test func recordRefusalNeedsItsHoldsCheck() {
+        let mutant: (ReadCore.Room, [(String, String)], ReadCore.Member?, String) -> String? = { room, cast, member, line in
+            if room.ended { return "room_ended" }
+            if room.mode != "record" { return "not_recording" }
+            guard let member, member.role == "reader" else { return "readers_only" }
+            guard ReadCore.indexOf(cast, line) != nil else { return "no_such_line" }
+            if member.id == ReadCore.receiverOf(room) { return "receiver_records_here" }
+            return nil
+        }
+        let bad = Self.failures(in: cases, recordRefusal: mutant)
+        #expect(bad.contains { $0.hasPrefix("recordRefusal") }, "\(bad)")
+        #expect(Self.failures(in: cases).isEmpty)
     }
 
     @Test func constantsAreTheProtocols() throws {

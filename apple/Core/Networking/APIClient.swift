@@ -265,12 +265,22 @@ actor APIClient {
     /// The takes inbox long poll (docs/WORKER.md): refreshed first, a 40 second wait, and the `x-take` header back with the bytes.
     func workerInboxResponse(path: String) async throws -> (Data, Int, String?) {
         let current = try await refreshIfNeeded()
+        return try await inbox(path: path, token: current.accessToken, headers: [:])
+    }
+
+    /// A read room's pickup: no account, the member key in `headers`.
+    func anonInboxResponse(path: String, headers: [String: String]) async throws -> (Data, Int, String?) {
+        try await inbox(path: path, token: nil, headers: headers)
+    }
+
+    private func inbox(path: String, token: String?, headers: [String: String]) async throws -> (Data, Int, String?) {
         guard let base = config.workerURL else { throw WorkerError.notConfigured }
         let root = base.absoluteString.hasSuffix("/") ? String(base.absoluteString.dropLast()) : base.absoluteString
         guard let url = URL(string: root + path) else { throw WorkerError.badResponse }
         var request = URLRequest(url: url, timeoutInterval: 40)
         request.httpMethod = "GET"
-        request.setValue("Bearer \(current.accessToken)", forHTTPHeaderField: "Authorization")
+        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
         let data: Data
         let response: URLResponse
         do { (data, response) = try await session.data(for: request) } catch { throw WorkerError.transport }

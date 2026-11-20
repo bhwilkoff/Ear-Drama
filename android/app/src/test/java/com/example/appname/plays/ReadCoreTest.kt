@@ -28,6 +28,7 @@ import org.junit.Test
  *   the harness over a golden copy with one expected value flipped: failures non-empty ([the harness sees a drift]).
  *   leaderGone letting a class hand the lead on: the leaderGone goldens failed.
  *   assignmentFor ignoring a range's `to`: partsOf/whoReads/nextMine goldens failed.
+ *   recordRefusal without the holds check (T5, 2026-11-19, seen to fail with the other T5 rules broken in one run): the recordRefusal golden "not another part's line" failed.
  */
 class ReadCoreTest {
     private val golden: JsonObject = Json.parseToJsonElement(File("../../worker/test/read-golden.json").readText()).jsonObject
@@ -50,13 +51,14 @@ class ReadCoreTest {
             }.orEmpty(),
             done = o["done"]?.jsonArray?.map { it.jsonPrimitive.content }.orEmpty(),
             locked = o["locked"]?.jsonPrimitive?.boolean ?: false, ended = o["ended"]?.jsonPrimitive?.boolean ?: false,
+            owner = str(o["owner"]), ownerName = str(o["owner_name"]),
         )
     }
 
     private fun member(e: JsonElement): ReadCore.Member? {
         if (e is JsonNull) return null
         val o = e.jsonObject
-        return ReadCore.Member(str(o["id"])!!, str(o["role"]) ?: "reader", str(o["seat"]), num(o["joined_at"]), num(o["seen_at"]))
+        return ReadCore.Member(str(o["id"])!!, str(o["role"]) ?: "reader", str(o["seat"]), num(o["joined_at"]), num(o["seen_at"]), str(o["name"]))
     }
 
     private fun members(e: JsonElement): List<ReadCore.Member> = e.jsonArray.mapNotNull(::member)
@@ -87,6 +89,10 @@ class ReadCoreTest {
             }
             "nextMine" -> ReadCore.nextMine(room(a[0]), cast(a[1]), member(a[2]), a[3].jsonPrimitive.content)
                 ?.let { n -> buildJsonObject { put("line", JsonPrimitive(n.line)); put("in", JsonPrimitive(n.inLines)) } } ?: JsonNull
+            "cleanName" -> ReadCore.cleanName(room(a[0]), str(a[1])).let { if (it == ReadCore.NAME_REFUSED) JsonPrimitive(false) else orNull(it) }
+            "receiverOf" -> orNull(ReadCore.receiverOf(room(a[0])))
+            "recordRefusal" -> orNull(ReadCore.recordRefusal(room(a[0]), cast(a[1]), member(a[2]), a[3].jsonPrimitive.content))
+            "leaderName" -> orNull(ReadCore.leaderName(room(a[0]), members(a[1])))
             "leaderGone" -> ReadCore.leaderGone(room(a[0]), members(a[1]), num(a[2])).let { l ->
                 buildJsonObject { put("leader", JsonPrimitive(l.leader)); put("waiting", JsonPrimitive(l.waiting)) }
             }
@@ -94,7 +100,7 @@ class ReadCoreTest {
         }
     }
 
-    private val ported = setOf("normalizeCode", "codeFromBytes", "clockOffset", "canLead", "partsOf", "whoReads", "nextMine", "leaderGone")
+    private val ported = setOf("normalizeCode", "codeFromBytes", "clockOffset", "canLead", "partsOf", "whoReads", "nextMine", "leaderGone", "cleanName", "receiverOf", "recordRefusal", "leaderName")
 
     /** JSON numbers compare by value, as the web's `JSON.stringify` and Swift's NSNumber compare them. */
     private fun same(x: JsonElement?, y: JsonElement?): Boolean = when {
@@ -124,7 +130,7 @@ class ReadCoreTest {
 
     @Test fun `every ported golden case holds`() {
         val ran = cases.count { it["fn"]!!.jsonPrimitive.content in ported || it["fn"]!!.jsonPrimitive.content == "joinSnapshot" }
-        assertTrue("the golden file has its cases ($ran)", ran >= 30)
+        assertTrue("the golden file has its cases ($ran)", ran >= 50)
         assertEquals(emptyList<String>(), failures(cases))
     }
 

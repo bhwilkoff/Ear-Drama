@@ -452,15 +452,12 @@ export async function receiveTake(env, request, p, takeId, meta, part, who, now,
     .first();
   if (count.n >= MAX_TAKES_PER_LINE) return problem(409, "too_many_takes");
 
-  const take = await takeStream(request);
-  if (take.error) return problem(...take.error);
+  const take = await checkedTake(request, meta);
+  if (take.error) return take.error;
   const { audio } = take;
-  if (meta.sampleRate && meta.sampleRate !== audio.sampleRate) return problem(422, "audio_mismatch", "sampleRate");
-  if (meta.frames !== undefined && Math.abs(meta.frames - audio.frames) > audio.sampleRate * 0.05) {
-    return problem(422, "audio_mismatch", "frames");
-  }
   const file = meta.file || `${takeId}.${audio.ext}`;
   const fields = { id: takeId, lineID: meta.lineID, part, file, frames: audio.frames, sampleRate: audio.sampleRate, capture: meta.capture, seat: who.seatId };
+  if (who.member) fields.member = who.member;
   if (who.direct) {
     try {
       await drain(take.stream);
@@ -504,6 +501,35 @@ export async function receiveTake(env, request, p, takeId, meta, part, who, now,
   await env.DB.batch(stmts);
   const row = await env.DB.prepare("SELECT * FROM play_takes WHERE production_id = ?1 AND id = ?2").bind(p.id, takeId).first();
   return json({ ...takeOut(p.id, row), delivered: !who.direct }, 201);
+}
+
+/** The take's head judged against its declared fields; the stream to pipe on, or the refusal. */
+async function checkedTake(request, meta) {
+  const take = await takeStream(request);
+  if (take.error) return { error: problem(...take.error) };
+  const { audio } = take;
+  if (meta.sampleRate && meta.sampleRate !== audio.sampleRate) return { error: problem(422, "audio_mismatch", "sampleRate") };
+  if (meta.frames !== undefined && Math.abs(meta.frames - audio.frames) > audio.sampleRate * 0.05) {
+    return { error: problem(422, "audio_mismatch", "frames") };
+  }
+  return take;
+}
+
+/**
+ * A read room's take with no production behind it (an adult table read, T5): judged
+ * as every take is, then piped to the room's receiving device under `relayId`. No row
+ * is written and nothing is kept (Decision 082).
+ */
+export async function passThrough(env, request, relayId, takeId, meta, part, who) {
+  if (!ID.test(takeId)) return problem(400, "bad_request", "take id");
+  if (meta.bleed) return problem(422, "bleed_flagged");
+  const take = await checkedTake(request, meta);
+  if (take.error) return take.error;
+  const { audio } = take;
+  const fields = { id: takeId, lineID: meta.lineID, part, file: meta.file || `${takeId}.${audio.ext}`, frames: audio.frames, sampleRate: audio.sampleRate, capture: meta.capture, seat: who.seatId, member: who.member };
+  const r = await relay(env, relayId, who.sender, fields, take.stream, take.length);
+  if (!r.ok) return r;
+  return json({ id: takeId, lineID: meta.lineID, part, frames: audio.frames, sampleRate: audio.sampleRate, delivered: true }, 201);
 }
 
 /** PUT /v1/plays/productions/:id/takes/:takeId, the audio as the body, the take's fields in `x-take`. */

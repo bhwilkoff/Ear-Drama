@@ -5,7 +5,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import io.mockk.coEvery
+import io.mockk.mockk
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import com.example.appname.app.AppContainer
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -16,12 +24,28 @@ import com.example.appname.plays.LinePart
 import com.example.appname.plays.PlayScript
 import com.example.appname.plays.ReadClass
 import com.example.appname.plays.ReadCore
+import com.example.appname.plays.MarkDao
+import com.example.appname.plays.MarkEntity
+import com.example.appname.plays.ProductionStore
+import com.example.appname.plays.ReadClassWire
+import com.example.appname.plays.ReadJoined
+import com.example.appname.plays.ReadRecord
+import com.example.appname.plays.ReadSession
 import com.example.appname.plays.ReadSnapshot
+import com.example.appname.plays.ReadWire
+import com.example.appname.plays.Take
+import com.example.appname.plays.PartID
+import com.example.appname.plays.temporaryRoot
 import com.example.appname.plays.ReadState
 import com.example.appname.plays.ScriptLine
 import com.example.appname.plays.ShareJson
 import com.example.appname.ui.screens.CastingBoardContent
-import com.example.appname.ui.screens.ReadRoomContent
+import com.example.appname.ui.LocalAppContainer
+import com.example.appname.ui.LocalIsTelevision
+import com.example.appname.ui.screens.PairContent
+import com.example.appname.ui.screens.ReaderBody
+import com.example.appname.ui.screens.RoomSeam
+import com.example.appname.ui.screens.TakesContent
 import com.example.appname.ui.screens.ReadScreenContent
 import com.example.appname.ui.theme.AppTheme
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -54,15 +78,23 @@ class ReadRenderTest {
         System.setProperty("roborazzi.test.record", "true")
     }
 
-    private fun shoot(name: String, content: @Composable () -> Unit) {
+    private fun shoot(name: String, settle: Int = 20, content: @Composable () -> Unit) {
         var dark by mutableStateOf(false)
         compose.setContent { AppTheme(darkTheme = dark) { Surface(color = MaterialTheme.colorScheme.background) { content() } } }
         listOf(false, true).forEach { d ->
             dark = d
-            repeat(20) { compose.mainClock.advanceTimeBy(50); Thread.sleep(10) }
+            repeat(settle) { compose.mainClock.advanceTimeBy(50); Thread.sleep(if (settle > 20) 40 else 10) }
             compose.waitForIdle()
             compose.onRoot().captureRoboImage(File(out, "$name-${if (dark) "dark" else "light"}.png").path)
         }
+    }
+
+    /** Composed in the dark from the first frame, so a theme that is not rebuilt on toggle cannot hide a defect. */
+    private fun shootDark(name: String, settle: Int, content: @Composable () -> Unit) {
+        compose.setContent { AppTheme(darkTheme = true) { Surface(color = MaterialTheme.colorScheme.background) { content() } } }
+        repeat(settle) { compose.mainClock.advanceTimeBy(50); Thread.sleep(40) }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage(File(out, "$name-dark-fresh.png").path)
     }
 
     private fun say(id: String, role: String, text: String) = ScriptLine(id, ScriptLine.Kind.Speech, role, listOf(LinePart.Say(text)))
@@ -92,13 +124,72 @@ class ReadRenderTest {
             "assignments":[{"part":"role:LUCY","seat":"s1"},{"part":"role:TOM","seat":"s2"}],"done":[],"server_time":1763500000000}""",
         )
 
-    @Test fun theReaderFollowsTheLitLine() = shoot("read-reader") {
-        Column(Modifier.height(900.dp)) { ReadRoomContent(snap("l2"), ReadState(snapshot = snap("l2")), script, null) {} }
+    private class NoMarks : MarkDao() {
+        override suspend fun marksFor(scriptId: String): List<MarkEntity> = emptyList()
+        override suspend fun all(): List<MarkEntity> = emptyList()
+        override suspend fun deleteFor(scriptId: String) {}
+        override suspend fun insertAll(rows: List<MarkEntity>) {}
     }
 
-    @Test fun theLeaderMovesIt() = shoot("read-leader") {
-        val you = """{"id":"teacher","role":"reader","leads":true,"owner":true}"""
-        Column(Modifier.height(900.dp)) { ReadRoomContent(snap("l2", you, "null"), ReadState(snapshot = snap("l2", you, "null")), script, null) {} }
+    /** An adult room as Ann sees it in Record mode: Lucy is hers; Ben holds Tom and is the receiver. */
+    private fun adult(cursor: String, you: String, next: String, mode: String = "record", reads: String = """{"part":"role:TOM","holder":"host","members":["host"]}""") = ShareJson.decodeFromString(
+        ReadSnapshot.serializer(),
+        """{"type":"snapshot","code":"ABC123","kind":"adult","mode":"$mode","script_id":"fixture","script_revision":"r1","cursor":"$cursor","cursor_gen":2,"generation":4,
+        "locked":false,"ended":false,"leader":"host","leader_name":"Ben","read_open":false,"waiting_for_leader":false,"you":$you,"next_mine":$next,
+        "reads_now":$reads,"members":[{"id":"host","role":"reader","name":"Ben"},{"id":"ann","role":"reader","name":"Ann"}],
+        "receiver":"host","present":2,"claims":{"role:LUCY":"ann","role:TOM":"host"},"seats":[],"assignments":[],"done":["l1"],"server_time":1763500000000}""",
+    )
+
+    private val ann = """{"id":"ann","role":"reader","name":"Ann","leads":false,"owner":false,"receives":false}"""
+    private val ben = """{"id":"host","role":"reader","name":"Ben","leads":true,"owner":true,"receives":true}"""
+
+    private fun seamFor(snap: ReadSnapshot, scope: CoroutineScope): RoomSeam {
+        val wire = mockk<ReadWire>(relaxed = true)
+        coEvery { wire.poll(any(), any()) } returns snap
+        val session = ReadSession(wire, scope)
+        session.adopt(ReadJoined(snap, "key", "poll"))
+        session.pause()
+        val record = ReadRecord(wire, session, ProductionStore(temporaryRoot()), script, scope, engineFor = { error("no microphone in a render") })
+        return RoomSeam(session, record, mockk<ReadClassWire>(relaxed = true), scope, {}, {})
+    }
+
+    private fun theReader(name: String, snap: ReadSnapshot) = shoot(name, settle = 120) {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val seam = remember { seamFor(snap, scope) }
+        CompositionLocalProvider(LocalAppContainer provides mockk<AppContainer>(relaxed = true)) {
+            ReaderBody(script, snap.cursor, null, {}, { _, _, _ -> }, room = seam, marksDao = NoMarks())
+        }
+    }
+
+    /** The room inside the real reader: pages, the lit line, my lines tinted, the fact, and the Record row's Start recording. */
+    @Test fun theReaderFollowsTheLitLine() = theReader("read-reader", adult("l2", ann, """{"line":"l3","in":1}"""))
+
+    @Test fun theReaderInTheDark() = shootDark("read-reader", 120) {
+        val snap = adult("l2", ann, """{"line":"l3","in":1}""")
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val seam = remember { seamFor(snap, scope) }
+        CompositionLocalProvider(LocalAppContainer provides mockk<AppContainer>(relaxed = true)) {
+            ReaderBody(script, snap.cursor, null, {}, { _, _, _ -> }, room = seam, marksDao = NoMarks())
+        }
+    }
+
+    @Test fun theLeaderMovesIt() = theReader("read-leader", adult("l3", ben, """{"line":"l5","in":2}""", reads = """{"part":"role:LUCY","holder":"ann","members":["ann"]}"""))
+
+    /** The receiver's Takes: counts per reader, each line's state, Play and Again. */
+    @Test fun theTakesSheet() = shoot("read-takes", settle = 40) {
+        val snap = adult("l5", ben, """{"line":"l5","in":0}""")
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val seam = remember { seamFor(snap, scope) }
+        val store = remember { ProductionStore(temporaryRoot()) }
+        val local = remember {
+            var p = store.create(script).copy(room = "ABC123")
+            p = p.add(Take("a1", "l1", PartID.role("LUCY"), "a1.wav", 0.0, 4_800, 48_000.0, Take.Capture.Room, emptyMap(), null, 0.1f, false, member = "ann"))
+            p = p.add(Take("a2", "l2", PartID.role("TOM"), "a2.wav", 0.0, 4_800, 48_000.0, Take.Capture.Room, emptyMap(), null, 0.1f, false, member = "host"))
+            p
+        }
+        CompositionLocalProvider(LocalAppContainer provides mockk<AppContainer>(relaxed = true)) {
+            Column(Modifier.height(900.dp)) { TakesContent(seam, snap, script, script.lines.map { it.id to it.part.raw }, local, null, store, {}) }
+        }
     }
 
     @Test fun theSharedScreenAPaired_TvShows() = shoot("read-screen") {
@@ -113,5 +204,11 @@ class ReadRenderTest {
         Column(Modifier.height(900.dp)) {
             CastingBoardContent(facts, seats, filled, null, true, {}, { _, _ -> }, { _, _, _ -> }, {}, {}, {})
         }
+    }
+
+    /** A Google TV before a leader has added it: the code large, split 3 + 3, one line, one Leave. */
+    @Config(sdk = [35], qualifiers = "w960dp-h540dp-xhdpi")
+    @Test fun theTvPairingScreen() = shoot("read-pair-tv") {
+        CompositionLocalProvider(LocalIsTelevision provides true) { PairContent("K7M4PD", null, {}) }
     }
 }

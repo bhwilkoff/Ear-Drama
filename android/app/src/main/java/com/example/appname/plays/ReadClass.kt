@@ -26,7 +26,7 @@ import kotlinx.serialization.json.put
 
 @Serializable data class ReadSeatClaim(@SerialName("seat_key") val seatKey: String, val seat: String)
 
-@Serializable data class ReadClassDetail(val id: String, val name: String, val code: String? = null, val seats: List<Seat> = emptyList()) {
+@Serializable data class ReadClassDetail(val id: String, val name: String, val code: String? = null, val under13: Boolean = false, val seats: List<Seat> = emptyList()) {
     @Serializable data class Seat(val id: String, val label: String, val claimed: Boolean = false)
 }
 
@@ -54,6 +54,15 @@ interface ReadClassWire {
     suspend fun releaseSeat(id: String, seat: String)
     suspend fun classProduction(id: String, scriptId: String, revision: String, cast: List<Pair<String, String>>): ReadProductionInfo
     suspend fun assign(pid: String, assignments: List<ReadCore.Assignment>): List<ReadCore.Assignment>
+
+    /** The director marks an arrived take of a class production (approved or again, with a typed note a seat alone sees). */
+    suspend fun review(pid: String, takeId: String, state: String, note: String?)
+    suspend fun consent(): Consent
+    suspend fun agree(pid: String, version: String)
+    suspend fun publish(pid: String, creditName: String)
+
+    /** One line's chosen take to archive.org through the Worker; `not_ready` and `already_sent` are the Worker's codes. */
+    suspend fun sendFile(pid: String, lineId: String, bytes: ByteArray)
 }
 
 class WorkerReadClass(private val worker: WorkerApi) : ReadClassWire {
@@ -108,6 +117,20 @@ class WorkerReadClass(private val worker: WorkerApi) : ReadClassWire {
         val o = buildJsonObject { put("assignments", ReadClass.toWire(assignments)) }
         val r = ShareJson.decodeFromString<ReadProductionInfo>(signed(HttpMethod.Put, "$p/productions/${enc(pid)}/assignments", o))
         return r.assignments.map { ReadCore.Assignment(it.part, it.seat, it.from, it.to) }
+    }
+
+    override suspend fun review(pid: String, takeId: String, state: String, note: String?) {
+        signed(HttpMethod.Post, "$p/productions/${enc(pid)}/takes/${enc(takeId)}/review", buildJsonObject { put("state", state); note?.takeIf { it.isNotBlank() }?.let { put("note", it.trim()) } })
+    }
+
+    override suspend fun consent(): Consent = ShareJson.decodeFromString(signed(HttpMethod.Get, "$p/consent"))
+
+    override suspend fun agree(pid: String, version: String) { signed(HttpMethod.Post, "$p/productions/${enc(pid)}/consent", buildJsonObject { put("version", version) }) }
+
+    override suspend fun publish(pid: String, creditName: String) { signed(HttpMethod.Post, "$p/productions/${enc(pid)}/publish", buildJsonObject { put("credit_name", creditName) }) }
+
+    override suspend fun sendFile(pid: String, lineId: String, bytes: ByteArray) {
+        guarded { worker.callBytes(HttpMethod.Put, "$p/productions/${enc(pid)}/archive/files/${enc(lineId)}", bytes, mapOf("content-type" to "audio/wav")) }
     }
 }
 

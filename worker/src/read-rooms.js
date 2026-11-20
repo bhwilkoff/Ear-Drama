@@ -39,11 +39,19 @@ import { randomToken, sha256Hex } from "./jwt.js";
 import { authenticate } from "./auth.js";
 import * as P from "./read-protocol.js";
 import { assignmentRows, seatKeyOpens, seatsOf } from "./plays-seats.js";
+import { nameRefusal } from "./plays-names.js";
+import { parseTakeMeta, passThrough, production, receiveTake } from "./plays.js";
+import { pickup } from "./take-relay.js";
 
 /** Tables that hold no person's rows; test/account.test.js checks they have no user_id. */
-export const READ_ANONYMOUS_TABLES = ["read_rooms"];
+export const READ_ANONYMOUS_TABLES = ["read_rooms", "read_pairs"];
 
 export const KEY_HEADER = "x-read-key";
+export const PAIR_KEY_HEADER = "x-pair-key";
+/** A TV's pairing code lives this long (Decision 082, tvOS-DESIGN §4.13): long enough to walk to a laptop. */
+export const PAIR_TTL_MS = 10 * 60 * 1000;
+/** An ended room answers "This reading has ended" (410) this long, then "No reading with that code" (404). */
+export const ENDED_KEPT_MS = P.ROOM_IDLE_MS;
 
 const STATUS = {
   room_full: 409,
@@ -63,6 +71,13 @@ const STATUS = {
   class_leads_are_seats: 403,
   class_assignments_only: 403,
   rate_limited: 429,
+  not_recording: 409,
+  receiver_records_here: 409,
+  receivers_only: 403,
+  school_consent_required: 403,
+  no_such_pair: 404,
+  pair_expired: 410,
+  bad_name: 422,
 };
 
 const refuse = (error, detail) => problem(STATUS[error] || 400, error, detail);
@@ -73,9 +88,9 @@ function newCode() {
   return P.codeFromBytes(bytes);
 }
 
-async function newMember(role, seat, now) {
+async function newMember(role, seat, now, name = null) {
   const key = randomToken(24);
-  return { member: { id: randomToken(12), key_hash: await sha256Hex(key), role, seat, joined_at: now, seen_at: now }, key };
+  return { member: { id: randomToken(12), key_hash: await sha256Hex(key), role, seat, name, joined_at: now, seen_at: now }, key };
 }
 
 async function memberByKey(members, key) {
@@ -105,9 +120,11 @@ const engine = {
     const role = want.role === undefined ? "reader" : want.role;
     const seat = want.seat === undefined ? null : want.seat;
     if (seat !== null && w.room.kind === "class" && !(await seatKeyOpens(env, w.room.class_id, seat, want.seat_key))) return { error: "seat_key_required" };
-    const refusal = P.joinRefusal(w.room, w.members, { role, seat }, now);
+    const refusal = P.joinRefusal(w.room, w.members, { role, seat, paired: want.paired === true }, now);
     if (refusal) return { error: refusal };
-    const { member, key } = await newMember(role, null, now);
+    const name = role === "reader" ? P.cleanName(w.room, want.name) : null;
+    if (name === false || (name && nameRefusal(name))) return { error: "bad_name" };
+    const { member, key } = await newMember(role, null, now, name);
     let members = [...w.members, member];
     if (seat !== null) {
       const t = P.takeSeat(w.room, members, member.id, seat, want.move === true, now);
@@ -133,6 +150,24 @@ const engine = {
     return (await seatKeyOpens(env, world.room.class_id, msg.seat, msg.seat_key)) ? null : "seat_key_required";
   },
 
+  /**
+   * Record in the room (T5): whether this member may send a take of `line`, and where it goes:
+   * the room's production (a row is written, the teacher's account) or, with none, the room's own
+   * relay. Never the audio itself: the caller pipes it.
+   */
+  take(world, me, line, now) {
+    const refusal = P.recordRefusal(world.room, world.cast, me, line);
+    if (refusal) return { error: refusal };
+    const who = P.whoReads(world.room, world.cast, world.members, line, now);
+    return { ok: true, part: who.part, seat: world.room.kind === "class" ? me.seat : null, member: me.id, ...relayOf(world.room) };
+  },
+
+  /** The room's receiving device asks for the next take (the leader's, or a class's teacher's). */
+  inbox(world, me) {
+    if (P.receiverOf(world.room) !== me.id) return { error: "receivers_only" };
+    return { ok: true, ...relayOf(world.room) };
+  },
+
   async member(env, world, key) {
     const me = await memberByKey(world.members, key);
     if (!me) return { error: "not_a_member" };
@@ -140,6 +175,11 @@ const engine = {
     return { me };
   },
 };
+
+/** Where a room's takes pass: its production's relay (a row per take), or the room's own. */
+function relayOf(room) {
+  return { code: room.code, kind: room.kind, production_id: room.production_id, class_id: room.class_id, relay: room.production_id || `read:${room.code}` };
+}
 
 /** POST /v1/read: checks the script and the class, then hands the room to a transport. */
 async function createInput(request, env) {
@@ -189,8 +229,10 @@ export class ReadRoom extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.world = null;
+    this.endedAt = null;
     ctx.blockConcurrencyWhile(async () => {
       this.world = await this.load();
+      if (!this.world) this.endedAt = (await this.ctx.storage.get("ended_at")) || null;
     });
   }
 
@@ -260,6 +302,10 @@ export class ReadRoom extends DurableObject {
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     this.world = null;
+    // Only the fact that it ended stays, so its code answers "This reading has ended" rather than "No reading with that code".
+    this.endedAt = now;
+    await this.ctx.storage.put("ended_at", now);
+    await this.ctx.storage.setAlarm(now + ENDED_KEPT_MS);
   }
 
   /** Applies a member's message and fans the result out; the caller gets its reply or refusal. */
@@ -281,7 +327,7 @@ export class ReadRoom extends DurableObject {
     const op = url.pathname.slice(1);
 
     if (op === "create") {
-      if (this.world) return problem(409, "code_in_use");
+      if (this.world || this.endedAt) return problem(409, "code_in_use");
       const { input, cast, code } = await request.json();
       const made = await engine.create({ ...input, code }, cast, now);
       if (made.error) return refuse(made.error);
@@ -289,7 +335,7 @@ export class ReadRoom extends DurableObject {
       return json({ ...snapshot(made.world, made.member.id, now), member_key: made.key, transport: "socket" });
     }
 
-    if (!this.world) return refuse("no_such_room");
+    if (!this.world) return refuse(this.endedAt ? "room_ended" : "no_such_room");
     if (P.roomExpired(this.world.room, now)) {
       await this.end(now);
       return refuse("room_ended");
@@ -315,6 +361,22 @@ export class ReadRoom extends DurableObject {
 
     const auth = await engine.member(this.env, this.world, request.headers.get(KEY_HEADER));
     if (auth.error) return refuse(auth.error);
+
+    if (op === "take") {
+      const { line } = await request.json();
+      const r = engine.take(this.refresh(this.world, now), auth.me, line, now);
+      return r.error ? refuse(r.error) : json(r);
+    }
+
+    if (op === "inbox") {
+      const r = engine.inbox(this.world, auth.me);
+      return r.error ? refuse(r.error) : json(r);
+    }
+
+    if (op === "leads") {
+      const room = this.world.room;
+      return P.canLead(room, auth.me.id) || room.owner === auth.me.id ? json({ ok: true }) : refuse("leader_only");
+    }
 
     if (op === "poll") {
       const w = this.refresh(this.world, now);
@@ -392,7 +454,13 @@ export class ReadRoom extends DurableObject {
   }
 
   async alarm() {
-    if (!this.world) return;
+    if (!this.world) {
+      if (this.endedAt) {
+        await this.ctx.storage.deleteAll();
+        this.endedAt = null;
+      }
+      return;
+    }
     const now = Date.now();
     if (P.roomExpired(this.world.room, now)) return this.end(now);
     const w = this.refresh(this.world, now);
@@ -446,6 +514,7 @@ const d1 = {
     for (let attempt = 0; attempt < 5; attempt++) {
       const loaded = await d1.load(env, code);
       if (!loaded) return { error: "no_such_room" };
+      if (loaded.world.room.ended) return { error: "room_ended" };
       if (P.roomExpired(loaded.world.room, now)) {
         await d1.remove(env, code);
         return { error: "room_ended" };
@@ -453,10 +522,7 @@ const d1 = {
       const r = await fn(loaded.world);
       if (r.error || !r.world) return r;
       if (!r.changed && !r.touch) return r;
-      if (r.world.room.ended) {
-        await d1.remove(env, code);
-        return r;
-      }
+      // An ended room's row stays until the sweep, so its code answers "This reading has ended".
       if (await d1.save(env, code, r.world, loaded.version)) return r;
     }
     return { error: "busy" };
@@ -491,9 +557,20 @@ const d1 = {
     return json({ ...snapshot(r.world, joined.member.id, now), member_key: joined.key, transport: "poll" });
   },
 
+  /** The world for a member's key, or the refusal; for the take routes. */
+  async world(env, code, key) {
+    const loaded = await d1.load(env, code);
+    if (!loaded) return { error: "no_such_room" };
+    if (loaded.world.room.ended) return { error: "room_ended" };
+    const auth = await engine.member(env, loaded.world, key);
+    if (auth.error) return auth;
+    return { world: loaded.world, me: auth.me };
+  },
+
   async poll(env, code, key, now) {
     const loaded = await d1.load(env, code);
     if (!loaded) return refuse("no_such_room");
+    if (loaded.world.room.ended) return refuse("room_ended");
     const auth = await engine.member(env, loaded.world, key);
     if (auth.error) return refuse(auth.error);
     const w = loaded.world;
@@ -509,6 +586,7 @@ const d1 = {
   async send(env, code, key, msg, now) {
     const loaded = await d1.load(env, code);
     if (!loaded) return refuse("no_such_room");
+    if (loaded.world.room.ended) return refuse("room_ended");
     const auth = await engine.member(env, loaded.world, key);
     if (auth.error) return refuse(auth.error);
     const guarded = await engine.guard(env, loaded.world, msg);
@@ -541,14 +619,135 @@ async function createRoom(request, env, ip, now) {
   return problem(503, "no_free_code");
 }
 
-/** /v1/read and /v1/read/{code}[/join|/send|/socket] */
+/** A member's standing in a room, for the take and pairing routes: the transport's own answer. */
+async function ask(env, code, op, request, body, now) {
+  const inD1 = await env.DB.prepare("SELECT 1 FROM read_rooms WHERE code = ?1").bind(code).first();
+  if (inD1 || !env.READ_ROOMS) {
+    const w = await d1.world(env, code, request.headers.get(KEY_HEADER));
+    if (w.error) return { error: w.error };
+    if (op === "take") return engine.take(w.world, w.me, body.line, now);
+    if (op === "inbox") return engine.inbox(w.world, w.me);
+    return P.canLead(w.world.room, w.me.id) || w.world.room.owner === w.me.id ? { ok: true } : { error: "leader_only" };
+  }
+  const r = await forward(env, code, op, request, body);
+  const out = await r.json();
+  return r.ok ? out : { error: out.error || "no_such_room" };
+}
+
+/** Whether an under-13 class may send a seat's voice (Decision 059: only under the school's consent). */
+async function classVoiceAllowed(env, classId) {
+  const c = await env.DB.prepare(
+    "SELECT c.under13, sc.class_id AS consent FROM play_classes c LEFT JOIN play_school_consents sc ON sc.class_id = c.id WHERE c.id = ?1",
+  )
+    .bind(classId)
+    .first();
+  return !!c && (!c.under13 || !!c.consent);
+}
+
+/**
+ * PUT /v1/read/{code}/takes/{takeId} (T5, Record in the room): a reader's take of a line they hold
+ * passes through to the room's receiving device. A room with a production writes the take's row
+ * there (a class's takes are the teacher's account's, credited to the seat); without one the take
+ * crosses the room's own relay and nothing is written. The audio is never kept (Decision 082).
+ */
+async function roomTake(request, env, code, takeId, now) {
+  const meta = parseTakeMeta(request.headers.get("x-take"));
+  if (!meta) return problem(400, "bad_request", "x-take must be the take's fields as JSON");
+  const check = await ask(env, code, "take", request, { line: meta.lineID }, now);
+  if (check.error) return refuse(check.error);
+  if (await limited(env.PLAY_UPLOAD_LIMITER, `read:${code}:${check.member}`)) return problem(429, "rate_limited");
+  if (meta.part !== undefined && meta.part !== check.part) return problem(422, "line_is_another_part", check.part);
+  const room = { ...meta, capture: "room" };
+  const who = { userId: null, seatId: check.seat, sender: `read:${code}:${check.member}`, direct: false, member: check.member };
+  if (!check.production_id) return passThrough(env, request, check.relay, takeId, room, check.part, who);
+  const p = await production(env, check.production_id);
+  if (!p) return refuse("no_such_room");
+  if (check.class_id && !(await classVoiceAllowed(env, check.class_id))) return refuse("school_consent_required");
+  return receiveTake(env, request, p, takeId, room, check.part, { ...who, userId: p.user_id }, now);
+}
+
+/** GET /v1/read/{code}/takes/inbox: the receiving device's pickup, a long poll answered with the next take. */
+async function roomInbox(request, env, code, now) {
+  const check = await ask(env, code, "inbox", request, undefined, now);
+  if (check.error) return refuse(check.error);
+  return pickup(env, check.relay);
+}
+
+/* ---- Pairing a TV (T5; tvOS-DESIGN §4.13, ANDROID-DESIGN's TV panel rule) ---- */
+
+/**
+ * POST /v1/read/pair: a TV asks for a pairing code to show. It gets the code and a key, the key
+ * stored only as its hash; the TV never types. The code works for PAIR_TTL_MS, once.
+ */
+async function newPair(env, ip, now) {
+  if (await limited(env.READ_CREATE_LIMITER, ip)) return problem(429, "rate_limited");
+  const key = randomToken(24);
+  const hash = await sha256Hex(key);
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = newCode();
+    try {
+      await env.DB.prepare("INSERT INTO read_pairs (code, key_hash, room, created_at, expires_at) VALUES (?1, ?2, NULL, ?3, ?4)")
+        .bind(code, hash, now, now + PAIR_TTL_MS)
+        .run();
+    } catch (e) {
+      if (String(e).includes("UNIQUE")) continue;
+      throw e;
+    }
+    return json({ pair_code: code, pair_key: key, expires_at: now + PAIR_TTL_MS, server_time: now }, 201);
+  }
+  return problem(503, "no_free_code");
+}
+
+/**
+ * GET /v1/read/pair/{code} with `x-pair-key`: the TV waits. Until a leader attaches it, `{ paired:
+ * false }`; then the TV joins that room as its screen (past a lock: the leader let it in) and gets
+ * the snapshot with its member key, and the pairing is gone.
+ */
+async function pairPoll(request, env, code, now) {
+  const row = await env.DB.prepare("SELECT * FROM read_pairs WHERE code = ?1").bind(code).first();
+  const key = request.headers.get(PAIR_KEY_HEADER);
+  if (!row || typeof key !== "string" || (await sha256Hex(key)) !== row.key_hash) return refuse("no_such_pair");
+  if (row.expires_at <= now) {
+    await env.DB.prepare("DELETE FROM read_pairs WHERE code = ?1").bind(code).run();
+    return refuse("pair_expired");
+  }
+  if (!row.room) return json({ paired: false, expires_at: row.expires_at, server_time: now });
+  await env.DB.prepare("DELETE FROM read_pairs WHERE code = ?1").bind(code).run();
+  const want = { role: "screen", paired: true };
+  const inD1 = await env.DB.prepare("SELECT 1 FROM read_rooms WHERE code = ?1").bind(row.room).first();
+  if (inD1 || !env.READ_ROOMS) return d1.join(env, row.room, want, now);
+  return forward(env, row.room, "join", new Request("https://read-room/"), want);
+}
+
+/** POST /v1/read/{room}/pair { code }: the leader attaches the TV showing `code` to this room. */
+async function attachPair(request, env, room, body, now) {
+  const code = P.normalizeCode(body && body.code);
+  if (!code) return refuse("no_such_pair");
+  const lead = await ask(env, room, "leads", request, undefined, now);
+  if (lead.error) return refuse(lead.error);
+  const row = await env.DB.prepare("SELECT expires_at, room FROM read_pairs WHERE code = ?1").bind(code).first();
+  if (!row || row.room) return refuse("no_such_pair");
+  if (row.expires_at <= now) return refuse("pair_expired");
+  const r = await env.DB.prepare("UPDATE read_pairs SET room = ?2 WHERE code = ?1 AND room IS NULL AND expires_at > ?3").bind(code, room, now).run();
+  if (!r.meta.changes) return refuse("no_such_pair");
+  return json({ paired: true, pair_code: code, room });
+}
+
+/** /v1/read, /v1/read/pair[/{code}], and /v1/read/{code}[/join|/send|/socket|/pair|/takes/inbox|/takes/{id}] */
 export async function handleReadRooms(url, request, env, ip) {
   const now = Date.now();
   const method = request.method;
   if (url.pathname === "/v1/read" || url.pathname === "/v1/read/") {
     return method === "POST" ? createRoom(request, env, ip, now) : problem(405, "method_not_allowed");
   }
-  const m = /^\/v1\/read\/([^/]+)(?:\/(join|send|socket))?$/.exec(url.pathname);
+  if (url.pathname === "/v1/read/pair") return method === "POST" ? newPair(env, ip, now) : problem(405, "method_not_allowed");
+  const pm = /^\/v1\/read\/pair\/([^/]+)$/.exec(url.pathname);
+  if (pm) {
+    if (method !== "GET") return problem(405, "method_not_allowed");
+    const code = P.normalizeCode(pm[1]);
+    return code ? pairPoll(request, env, code, now) : refuse("no_such_pair");
+  }
+  const m = /^\/v1\/read\/([^/]+)(?:\/(join|send|socket|pair|takes\/inbox|takes\/[^/]+))?$/.exec(url.pathname);
   if (!m) return problem(404, "not_found");
   let raw;
   try {
@@ -558,8 +757,20 @@ export async function handleReadRooms(url, request, env, ip) {
   }
   const code = P.normalizeCode(raw);
   if (!code) return problem(400, "bad_code");
-  const action = `${method} ${m[2] || ""}`;
-  if (!["POST join", "POST send", "GET socket", "GET "].includes(action)) return problem(405, "method_not_allowed");
+  const sub = m[2] || "";
+  if (sub === "takes/inbox") return method === "GET" ? roomInbox(request, env, code, now) : problem(405, "method_not_allowed");
+  if (sub.startsWith("takes/")) {
+    if (method !== "PUT") return problem(405, "method_not_allowed");
+    let takeId;
+    try {
+      takeId = decodeURIComponent(sub.slice("takes/".length));
+    } catch {
+      return problem(400, "bad_request", "take id");
+    }
+    return roomTake(request, env, code, takeId, now);
+  }
+  const action = `${method} ${sub}`;
+  if (!["POST join", "POST send", "POST pair", "GET socket", "GET "].includes(action)) return problem(405, "method_not_allowed");
 
   let body;
   if (method === "POST") {
@@ -567,7 +778,10 @@ export async function handleReadRooms(url, request, env, ip) {
     if (read.error) return read.error;
     body = read.body;
   }
-  if (action === "POST join" && (await limited(env.READ_JOIN_LIMITER, ip))) return problem(429, "rate_limited");
+  if ((action === "POST join" || action === "POST pair") && (await limited(env.READ_JOIN_LIMITER, ip))) return problem(429, "rate_limited");
+  if (action === "POST pair") return attachPair(request, env, code, body, now);
+  // Only a pairing lets a screen past a lock; a join cannot claim one.
+  if (action === "POST join" && body && typeof body === "object") delete body.paired;
 
   const inD1 = await env.DB.prepare("SELECT 1 FROM read_rooms WHERE code = ?1").bind(code).first();
   if (inD1 || !env.READ_ROOMS) {
@@ -583,4 +797,5 @@ export async function handleReadRooms(url, request, env, ip) {
 /** The cron sweep: D1 rooms past their idle limit are deleted. Object rooms end on their own alarm. */
 export async function sweepReadRooms(env, now = Date.now()) {
   await env.DB.prepare("DELETE FROM read_rooms WHERE touched_at < ?1").bind(now - P.ROOM_IDLE_MS).run();
+  await env.DB.prepare("DELETE FROM read_pairs WHERE expires_at < ?1").bind(now).run();
 }
