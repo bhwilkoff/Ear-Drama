@@ -163,13 +163,16 @@ private fun DrawScope.labelStyle(face: String, px: Float, color: Color) = TextSt
     color = color,
 )
 
-/** The label in a square window: the item's own art where it has no picture. Hidden from accessibility. */
+/**
+ * The label in a square window: the item's own art where it has no picture. Hidden from accessibility. [tierSize] is the
+ * window's size in dp when the drawing sits inside padding that must not demote its tier (a head's round window).
+ */
 @Composable
-fun LabelArt(item: LabelItem, modifier: Modifier = Modifier) {
+fun LabelArt(item: LabelItem, modifier: Modifier = Modifier, tierSize: Double? = null) {
     val dark = OnAir.colors.dark
     val measurer = rememberTextMeasurer()
     BoxWithConstraints(modifier.aspectRatio(1f).clearAndSetSemantics {}) {
-        val spec = remember(item, maxWidth) { LabelSpec.make(item, maxWidth.value.toDouble()) }
+        val spec = remember(item, maxWidth, tierSize) { LabelSpec.make(item, tierSize ?: maxWidth.value.toDouble()) }
         val palette = remember(dark) { LabelPalette(dark) }
         Canvas(Modifier.matchParentSize()) { drawLabel(spec, measurer, palette) }
     }

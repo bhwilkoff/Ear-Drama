@@ -31,8 +31,9 @@ struct LabelView: View {
     /// A play's rules over its own page: no ground, so the opening's text shows through.
     var overlay = false
 
-    init(item: LabelItem, side: CGFloat, overlay: Bool = false) {
-        spec = LabelSpec.make(item, size: Double(side))
+    /// `tierSide` is the window's size when the drawing sits inside padding that must not demote its tier (a head's round window).
+    init(item: LabelItem, side: CGFloat, tierSide: CGFloat? = nil, overlay: Bool = false) {
+        spec = LabelSpec.make(item, size: Double(tierSide ?? side))
         self.overlay = overlay
     }
 
