@@ -673,12 +673,16 @@ struct SeriesScreen: View {
         }
     }
 
-    private func head(_ page: SeriesPage, actions: AnyView? = nil) -> some View {
-        HeadBoard(kicker: SeriesHead.kicker(page.series), name: page.series.name, genre: page.series.genre,
-                  art: page.series.windowArt, first: page.series.firstDate, last: page.series.lastDate,
-                  years: page.series.yearCounts,
-                  facts: SeriesHead.facts(page.series), genreKey: page.series.genre,
-                  kickerRest: page.series.networks.joined(separator: " \u{00B7} "), actions: actions, showsCredit: true)
+    private func head(_ page: SeriesPage) -> some View {
+        let series = page.series
+        let kicker = series.genre.map { ItemKicker.genre($0, rest: series.networks.joined(separator: " \u{00B7} ")) }
+            ?? (series.networks.isEmpty ? nil : ItemKicker.text(series.networks.joined(separator: " \u{00B7} ")))
+        return ItemHeadBoard(kicker: kicker, name: series.name, genre: series.genre, art: series.lead, label: series.labelItem,
+                             facts: SeriesHead.facts(series), first: series.firstDate, last: series.lastDate, years: series.yearCounts)
+    }
+
+    private func gallery(_ page: SeriesPage) -> [Artwork] {
+        ItemLead.gallery(page.series.gallery, lead: page.series.lead)
     }
 
     private func actions(_ page: SeriesPage) -> some View {
@@ -695,11 +699,13 @@ struct SeriesScreen: View {
     #if !os(tvOS)
     private func wide(_ page: SeriesPage) -> some View {
         WidePage {
-            head(page, actions: AnyView(actions(page)))
+            head(page)
+            actions(page).frame(maxWidth: 480, alignment: .leading)
             if let about = page.about {
                 SeriesAboutBlock(about: about)
                     .frame(maxWidth: 720, alignment: .leading)
             }
+            if !gallery(page).isEmpty { SeriesGallery(pictures: gallery(page)) }
             ForEach(page.seasons) { season in
                 WideSection(title: season.season ?? "Undated") {
                     ForEach(season.episodes) { episode in
@@ -739,6 +745,13 @@ struct SeriesScreen: View {
                 if let about = page.about {
                     SeriesAboutBlock(about: about)
                         .listRowInsets(EdgeInsets(top: 0, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
+                if !gallery(page).isEmpty {
+                    SeriesGallery(pictures: gallery(page))
+                        .padding(.horizontal, Spacing.s4)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: Spacing.s2, trailing: 0))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                 }
@@ -805,26 +818,20 @@ struct EpisodeScreen: View {
         let isCurrent = player.item?.episode.id == episode.id
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
         let lead = Grammar.leadPicture(series: show, credits: detail.credits, star: detail.star)
+        let showFacts: [String?] = show.map { [$0.yearSpan ?? "Undated", $0.episodeCount == 1 ? "1 episode" : "\($0.episodeCount.formatted()) episodes"] } ?? []
         let genre = show?.genre ?? episode.seriesGenre
         let onAir = Grammar.onAirOf(detail.credits)
         let downloadState = downloads.record(for: episode.id)?.state
         return PageBody(measure: 960) {
             PageSection {
-                HeadBoard(kicker: show?.genre.map(GenreDisplay.name) ?? "Show", name: episode.seriesName, genre: genre, art: lead,
-                          first: show?.firstDate, last: show?.lastDate, years: show?.yearCounts,
-                          facts: show.map { [$0.yearSpan ?? "Undated", $0.episodeCount == 1 ? "1 episode" : "\($0.episodeCount.formatted()) episodes"] } ?? ["Undated"],
-                          link: .series(episode.seriesKey), showsCredit: true)
-                    .gridRow()
-                VStack(alignment: .leading, spacing: Spacing.s1) {
-                    Text(episode.displayTitle)
-                        .font(TypeRamp.pageTitle)
-                        .foregroundStyle(Color.brandText)
-                        .accessibilityAddTraits(.isHeader)
-                    EventLine(facts: Grammar.episodeFacts(date: episode.airDate.map { AirDate.display($0) }, network: episode.network, sponsor: detail.sponsor,
+                ItemHeadBoard(kicker: ItemKicker.show(episode.seriesName, key: episode.seriesKey),
+                              name: ItemLead.episodeTitle(episode), genre: genre, label: episode.labelItem(series: show),
+                              facts: Grammar.episodeFacts(date: episode.airDate.map { AirDate.display($0) }, network: episode.network, sponsor: detail.sponsor,
                                                           length: episode.durationText, season: episode.season,
-                                                          title: episode.title, number: episode.number))
-                }
-                .gridRow(.words, top: 0)
+                                                          title: episode.title, number: episode.number),
+                              first: show?.firstDate, last: show?.lastDate, years: show?.yearCounts,
+                              markYear: episode.airDate.flatMap { Int($0.prefix(4)) })
+                    .gridRow()
 
                 ActionRow {
                     Button {
@@ -883,6 +890,19 @@ struct EpisodeScreen: View {
                 }
             }
 
+            if lead != nil {
+                PageSection {
+                    NavigationLink(value: Route.series(episode.seriesKey)) {
+                        GrammarRow(visual: .window(lead, name: episode.seriesName, genre: genre), title: episode.seriesName, sub: showFacts)
+                    }
+                    .playRowLink()
+                    .pageRow()
+                    PictureCredit(arts: [lead], slot: 48)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
+            }
+
             if !onAir.isEmpty {
                 PageSection {
                     OnAirFaces(credits: onAir, genre: genre)
@@ -927,19 +947,30 @@ struct EpisodeScreen: View {
             }
 
             if detail.recordings.count > 1 {
-                PageSection("Recordings") {
-                    ForEach(Array(detail.recordings.enumerated()), id: \.element.id) { index, recording in
-                        Button {
-                            play(episode.id, recording: recording)
-                        } label: {
-                            VersionLabel(recording: recording, position: index + 1, isDefault: recording.rank == 0)
+                PageSection {
+                    DisclosureGroup {
+                        ForEach(Array(detail.recordings.enumerated()), id: \.element.id) { index, recording in
+                            Button {
+                                play(episode.id, recording: recording)
+                            } label: {
+                                VersionLabel(recording: recording, position: index + 1, isDefault: recording.rank == 0)
+                            }
+                            .accessibilityHint("Plays this copy")
+                            #if os(macOS)
+                            .buttonStyle(.plain)
+                            .help("Play this copy")
+                            #endif
                         }
-                        .accessibilityHint("Plays this copy")
-                        #if os(macOS)
-                        .buttonStyle(.plain)
-                        .help("Play this copy")
-                        #endif
+                    } label: {
+                        HStack {
+                            Text("Recordings").font(TypeRamp.bodyStrong)
+                            Spacer(minLength: 0)
+                            Text(verbatim: detail.recordings.count.formatted())
+                                .font(TypeRamp.caption)
+                                .foregroundStyle(Color.brandTextMuted)
+                        }
                     }
+                    .accessibilityIdentifier("recordings-disclosure")
                 }
             }
 
@@ -954,7 +985,7 @@ struct EpisodeScreen: View {
         #if os(iOS)
         .modifier(ReadableColumn(width: 960))
         #endif
-        .navigationTitle(episode.displayTitle)
+        .navigationTitle(ItemLead.episodeTitle(episode))
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $transcriptOpen) {
@@ -1020,11 +1051,11 @@ struct PersonScreen: View {
 
     private func head(_ page: PersonPage, groups: [PersonSeriesGroup]) -> some View {
         let run = PersonShows.span(page.episodes)
-        return HeadBoard(kicker: nil, name: page.person.name, genre: nil, art: page.person.art,
-                         first: run.first, last: run.last, years: PersonShows.yearCounts(page.episodes),
-                         facts: [page.person.years, PersonRowLabel.count(page.episodes.count),
-                                 groups.count > 1 ? countText(groups.count, "show", "shows") : nil],
-                         showsCredit: true)
+        return ItemHeadBoard(name: page.person.name, genre: nil, art: page.person.art,
+                             label: LabelItem(kind: .person, name: page.person.name, first: run.first, last: run.last), round: true,
+                             facts: [page.person.years, PersonRowLabel.count(page.episodes.count),
+                                     groups.count > 1 ? countText(groups.count, "show", "shows") : nil],
+                             first: run.first, last: run.last, years: PersonShows.yearCounts(page.episodes))
     }
 
     private func showShelf(_ groups: [PersonSeriesGroup], inset: CGFloat) -> some View {

@@ -118,9 +118,15 @@ data class SeriesRow(
     val aboutText: String? = null,
     val aboutSource: String? = null,
     val aboutUrl: String? = null,
+    /** The landscape show image and the further pictures (R3b §5.5 `series.hero`, `series.gallery`); empty on a catalog that predates them. */
+    val hero: Artwork? = null,
+    val gallery: List<Artwork> = emptyList(),
 ) {
     /** What the window draws: the published picture, else the star's portrait an older catalog carries. */
     val windowArt: Artwork? get() = picture ?: face?.art
+
+    /** The picture that leads the series page (WEB-DESIGN §6.4g): a wide hero, else the window's picture; null is the label. */
+    val lead: Artwork? get() = ItemLead.seriesLead(hero, windowArt)
 }
 
 /** The light columns of `episodes` a list row shows; never `detail_json`. */

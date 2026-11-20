@@ -50,6 +50,10 @@ import com.example.appname.ui.rememberCatalogQuery
 import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.tvFocusMark
 import com.example.appname.ui.theme.Spacing
+import com.example.appname.data.LabelItem
+import com.example.appname.data.LabelKind
+import com.example.appname.ui.ItemHeadBoard
+import com.example.appname.ui.HeadCredit
 
 /**
  * A person's page (`withPerson`, ANDROID-DESIGN §4.15): the portrait when one is
@@ -93,15 +97,19 @@ fun PersonScreen(id: String, onBack: () -> Unit, onOpenEpisode: (String) -> Unit
             ClaimTvFocus(firstRow, firstId)
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
                 item(key = "head") {
-                    HeadBoard(
-                        name = personPage.person.name, genre = null, art = personPage.person.art, kicker = null,
+                    val run1 = PersonShows.first(personPage.episodes)
+                    val run2 = PersonShows.last(personPage.episodes)
+                    ItemHeadBoard(
+                        name = personPage.person.name, genre = null, art = personPage.person.art, round = true,
+                        label = LabelItem(LabelKind.Person, personPage.person.name, first = run1, last = run2),
                         facts = listOf(
                             personPage.person.years, episodeCount(personPage.episodes.size),
                             if (groups.size > 1) "${groups.size} shows" else null,
                         ),
-                        first = PersonShows.first(personPage.episodes), last = PersonShows.last(personPage.episodes),
+                        first = run1, last = run2,
                         years = PersonShows.yearCounts(personPage.episodes),
                     )
+                    HeadCredit(personPage.person.art, Modifier.padding(horizontal = Spacing.S4.dp))
                 }
                 if (groups.size > 1) {
                     item(key = "shows") {

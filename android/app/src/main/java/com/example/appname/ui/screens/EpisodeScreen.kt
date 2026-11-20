@@ -75,6 +75,21 @@ import com.example.appname.ui.rememberCatalogQuery
 import com.example.appname.ui.seriesYears
 import com.example.appname.ui.theme.Spacing
 import com.example.appname.ui.tvFocusMark
+import com.example.appname.data.ItemLead
+import com.example.appname.data.labelItem
+import com.example.appname.ui.ItemHeadBoard
+import com.example.appname.ui.ShowKicker
+import com.example.appname.ui.revealWhole
+import com.example.appname.ui.GrammarRow
+import com.example.appname.ui.PictureWindow
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Row
 
 /**
  * Episode Detail (§4.4, R11d): the head board of its show, the episode's title and event line, one
@@ -120,6 +135,7 @@ fun EpisodeScreen(
             // On a TV the D-pad starts on Play (§9.2, tvOS-DESIGN §6.2).
             val play = remember { FocusRequester() }
             ClaimTvFocus(play, row.id)
+            var recordingsOpen by rememberSaveable(row.id) { mutableStateOf(false) }
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                 LazyColumn(Modifier.widthIn(max = 720.dp).fillMaxSize(), contentPadding = padding) {
                     episodeHead(
@@ -139,9 +155,22 @@ fun EpisodeScreen(
                         },
                     )
                     if (d.recordings.size > 1) {
-                        item(key = "versions-h") { SectionHeader("Recordings") }
-                        items(d.recordings, key = { "r${it.rank}" }) { rec ->
-                            VersionItem(rec, onPlay = { container.playback.play(row, url = rec.url) })
+                        item(key = "versions-h") {
+                            ListItem(
+                                headlineContent = { Text("Recordings", style = MaterialTheme.typography.titleMedium) },
+                                trailingContent = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(d.recordings.size.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Icon(if (recordingsOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = if (recordingsOpen) "Collapse" else "Expand")
+                                    }
+                                },
+                                modifier = Modifier.clickable(onClickLabel = if (recordingsOpen) "Hide the recordings" else "Show the recordings") { recordingsOpen = !recordingsOpen }.tvFocusMark(),
+                            )
+                        }
+                        if (recordingsOpen) {
+                            items(d.recordings, key = { "r${it.rank}" }) { rec ->
+                                VersionItem(rec, onPlay = { container.playback.play(row, url = rec.url) })
+                            }
                         }
                     } else {
                         d.recordings.firstOrNull()?.let { rec ->
@@ -186,28 +215,19 @@ fun LazyListScope.episodeHead(
     val genre = series?.genre ?: row.seriesGenre
     val lead = leadPicture(series, d.credits, d.star)
     item(key = "head") {
-        HeadBoard(
-            name = row.seriesName,
-            genre = genre,
-            art = lead,
-            kicker = genre?.let { DisplayVocabulary.genreName(it) } ?: "Show",
-            facts = listOf(series?.let { seriesYears(it) } ?: "Undated", series?.let { "All " + episodeCount(it.episodes) + " \u203a" }),
-            first = series?.firstDate,
-            last = series?.lastDate,
-            years = series?.yearCounts,
-            onOpen = { onOpenSeries(row.seriesKey) },
-        )
-    }
-    item(key = "title") {
-        Text(
-            episodeTitle(row),
-            style = MaterialTheme.typography.displaySmall,
-            modifier = Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S3.dp).semantics { heading() },
-        )
-        EventLine(
-            episodeFacts(d.network, d.sponsor, row.season, row.title, row.num, formatAirDateLong(row.airDate), formatLength(row.lengthSeconds)),
-            Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp),
-        )
+        Column(Modifier.revealWhole()) {
+            ItemHeadBoard(
+                name = ItemLead.episodeTitle(row, ::episodeTitle) { formatAirDateLong(it) },
+                genre = genre,
+                label = row.labelItem(series),
+                kicker = { ink -> ShowKicker(row.seriesName, ink) { onOpenSeries(row.seriesKey) } },
+                facts = episodeFacts(d.network, d.sponsor, row.season, row.title, row.num, formatAirDateLong(row.airDate), formatLength(row.lengthSeconds)),
+                first = series?.firstDate ?: row.seriesFirst,
+                last = series?.lastDate ?: row.seriesLast,
+                years = series?.yearCounts,
+                markYear = row.airDate?.take(4)?.toIntOrNull(),
+            )
+        }
     }
     item(key = "actions") {
         val resume = progress?.takeIf { !it.finished && it.positionMs > 0 }
@@ -249,8 +269,19 @@ fun LazyListScope.episodeHead(
             }
         }
     }
-    item(key = "credit") {
-        PictureCredit(listOf(lead), headSlot(), Modifier.padding(horizontal = Spacing.S4.dp))
+    if (lead != null) {
+        item(key = "show") {
+            Column {
+                GrammarRow(
+                    visual = { m -> PictureWindow(lead, row.seriesName, genre, m) },
+                    title = row.seriesName,
+                    sub = listOf(series?.let { seriesYears(it) } ?: "Undated", series?.let { episodeCount(it.episodes) }),
+                    onOpen = { onOpenSeries(row.seriesKey) },
+                    openLabel = "Open show",
+                )
+                PictureCredit(listOf(lead), 48.dp, Modifier.padding(horizontal = Spacing.S4.dp))
+            }
+        }
     }
     if (d.transcriptUrl != null) {
         item(key = "transcript") {

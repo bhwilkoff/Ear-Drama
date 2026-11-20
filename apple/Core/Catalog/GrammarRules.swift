@@ -76,6 +76,14 @@ nonisolated enum Grammar {
     /// The run strip's fixed axis: every show's strip is the same object.
     static let runAxis = (lo: 1930, hi: 1962)
 
+    /// True for a bar that is not the marked year's (an episode's head marks its year on the show's strip): `from` is the
+    /// bar's start on the fixed axis.
+    static func barDimmed(from: Double, markYear: Int?) -> Bool {
+        guard let markYear else { return false }
+        let n = Double(runAxis.hi - runAxis.lo + 1)
+        return runAxis.lo + Int((from * n).rounded()) != markYear
+    }
+
     /// The strip's bar as fractions of the axis, from the first to the last broadcast year; nil
     /// when undated (the baseline alone).
     static func runSpan(first: String?, last: String?) -> (from: Double, to: Double)? {
@@ -230,6 +238,11 @@ nonisolated enum PictureGrade {
 
     static func cached(_ url: URL, _ grade: Artwork.Grade) -> CGImage? {
         cache.object(forKey: key(url, grade))?.image
+    }
+
+    /// Puts a decoded picture in the cache for `url`, so a render rig can draw a window that holds a picture without a network.
+    static func seed(_ image: CGImage, url: URL, grade: Artwork.Grade = .identity) {
+        cache.setObject(Box(image), forKey: key(url, grade))
     }
 
     /// How a load ended. `cancelled` is no verdict on the picture: a window that scrolled away or

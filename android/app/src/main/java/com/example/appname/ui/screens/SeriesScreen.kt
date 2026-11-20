@@ -62,6 +62,15 @@ import com.example.appname.ui.seriesYears
 import com.example.appname.ui.theme.Spacing
 import com.example.appname.ui.tvFocusMark
 import kotlinx.coroutines.launch
+import com.example.appname.data.ItemLead
+import com.example.appname.data.labelItem
+import com.example.appname.ui.ItemHeadBoard
+import com.example.appname.ui.GenreKicker
+import com.example.appname.ui.TextKicker
+import com.example.appname.ui.HeadCredit
+import com.example.appname.ui.SeriesGallery
+import com.example.appname.ui.revealWhole
+import androidx.compose.foundation.layout.Column
 
 /**
  * A series page (§4.3, R11d): the head board, one button row (Follow, Share), the picture's credit
@@ -167,47 +176,52 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
     }
 }
 
-/** The series page down to the picture's credit: the head board, then the one button row. */
+/** The series page down to the pictures row: the head board, its credit, the one button row, About, the gallery. */
 fun LazyListScope.seriesHead(series: SeriesRow, following: Boolean, onOpenGenre: (String) -> Unit = {}, toggle: () -> Unit) {
     item(key = "head") {
-        HeadBoard(
-            name = series.name,
-            genre = series.genre,
-            art = series.windowArt,
-            kicker = (listOfNotNull(series.genre?.let { DisplayVocabulary.genreName(it) }) + series.networks)
-                .joinToString(" · ").ifEmpty { null },
-            facts = listOf(seriesYears(series) ?: "Undated", episodeCount(series.episodes)),
-            first = series.firstDate,
-            last = series.lastDate,
-            years = series.yearCounts,
-            genreLink = series.genre?.let { g ->
-                DisplayVocabulary.genreName(g)?.let { name ->
-                    GenreLink(name, series.networks.joinToString(" \u00b7 ")) { onOpenGenre(g) }
+        val genreKey = series.genre
+        val genreName = genreKey?.let { DisplayVocabulary.genreName(it) }
+        val rest = series.networks.joinToString(" \u00b7 ")
+        Column(Modifier.revealWhole()) {
+            ItemHeadBoard(
+                name = series.name,
+                genre = series.genre,
+                label = series.labelItem(),
+                art = series.lead,
+                kicker = if (genreKey != null && genreName != null) {
+                    { ink -> GenreKicker(genreName, rest, ink) { onOpenGenre(genreKey) } }
+                } else if (rest.isNotEmpty()) {
+                    { ink -> TextKicker(rest, ink) }
+                } else null,
+                facts = listOf(seriesYears(series) ?: "Undated", episodeCount(series.episodes)),
+                first = series.firstDate,
+                last = series.lastDate,
+                years = series.yearCounts,
+            )
+            HeadCredit(series.lead, Modifier.padding(horizontal = Spacing.S4.dp))
+            // §4.3: the web's Follow and Following; the store is the one sync carries (§2.3).
+            ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
+                val grow = Modifier.weight(1f).tvFocusMark()
+                if (following) {
+                    FilledTonalButton(onClick = toggle, modifier = grow) {
+                        Icon(Icons.Filled.Check, contentDescription = null)
+                        Text("Following", Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
+                    }
+                } else {
+                    OutlinedButton(onClick = toggle, modifier = grow) {
+                        Icon(Icons.Filled.Add, contentDescription = null)
+                        Text("Follow", Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
+                    }
                 }
-            },
-        )
-    }
-    item(key = "follow") {
-        ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
-            val grow = Modifier.weight(1f).tvFocusMark()
-            if (following) {
-                FilledTonalButton(onClick = toggle, modifier = grow) {
-                    Icon(Icons.Filled.Check, contentDescription = null)
-                    Text("Following", Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
-                }
-            } else {
-                OutlinedButton(onClick = toggle, modifier = grow) {
-                    Icon(Icons.Filled.Add, contentDescription = null)
-                    Text("Follow", Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
-                }
+                ShareButton(series.name, SiteLinks.series(series.key), fit.folded)
             }
-            ShareButton(series.name, SiteLinks.series(series.key), fit.folded)
         }
-    }
-    item(key = "credit") {
-        PictureCredit(listOf(series.windowArt), headSlot(), Modifier.padding(horizontal = Spacing.S4.dp))
     }
     if (series.aboutText != null) {
         item(key = "about") { AboutBlock(series.aboutText, series.aboutSource, series.aboutUrl) }
+    }
+    val gallery = ItemLead.gallery(series.gallery, series.lead)
+    if (gallery.isNotEmpty()) {
+        item(key = "gallery") { SeriesGallery(gallery, Modifier.padding(vertical = Spacing.S2.dp)) }
     }
 }

@@ -58,6 +58,11 @@ import com.example.appname.ui.theme.genreColor
 import com.example.appname.ui.theme.boardColor
 import com.example.appname.ui.theme.onBoardColor
 import com.example.appname.ui.theme.onGenreColor
+import androidx.compose.ui.text.font.FontWeight
+import com.example.appname.data.Artwork
+import com.example.appname.data.ItemLead
+import com.example.appname.data.LabelItem
+import com.example.appname.data.LabelKind
 
 // An ear drama in direction D's grammar (ANDROID-DESIGN §4.9a, PLAYS-DESIGN §2): a play stands on the
 // drama board, a part's face and strip carry its hue, the cast fingerprint fills the mark slot.
@@ -272,6 +277,57 @@ fun PlayHeadBoard(script: PlayListing, kicker: String, modifier: Modifier = Modi
             Box(Modifier.height(h), contentAlignment = Alignment.BottomStart) { CastFingerprint(script, onBoard = on, height = 10.dp) }
         },
     )
+}
+
+/**
+ * The play page's head (WEB-DESIGN §6.4g): its title page, else its author's portrait, at their own shape; else its opening drawn
+ * as a page at tier L, the voice bands at its foot. The production's board keeps [PlayHeadBoard].
+ */
+@Composable
+fun PlayPageHead(script: PlayListing, kicker: String, modifier: Modifier = Modifier, titlePage: Artwork? = null, authorArt: Artwork? = null) {
+    val lead = ItemLead.playLead(titlePage, authorArt)
+    val facts = listOf(
+        script.year?.toString(),
+        script.cast.size.let { "$it ${if (it == 1) "part" else "parts"}" },
+        (script as? PlayScript)?.let { linesFact(it.lines.size) },
+    )
+    val label = LabelItem(LabelKind.Play, voices = script.voices, opening = true)
+    ItemHeadBoard(
+        name = script.title,
+        genre = PLAY_BOARD,
+        label = label,
+        modifier = modifier,
+        art = lead,
+        kicker = { ink -> TextKicker(kicker, ink) },
+        facts = facts,
+        credits = script.authorWithYears.ifEmpty { null },
+        mark = { h ->
+            val on = onBoardColor(PLAY_BOARD, OnAir.colors.dark)
+            Box(Modifier.height(h), contentAlignment = Alignment.BottomStart) { CastFingerprint(script, onBoard = on, height = 10.dp) }
+        },
+        customWindow = if (ItemLead.shown(lead) == null) { m -> PlayOpeningWindow(script, label, m) } else null,
+    )
+}
+
+/** A play's opening drawn as a page: the first speeches in body type on the script's ground, the voice bands at its foot. */
+@Composable
+fun PlayOpeningWindow(script: PlayListing, label: LabelItem, modifier: Modifier = Modifier) {
+    val speeches = remember(script) { PlayScript.openingOf(script, 4) }
+    val ink = remember { LabelPalette(false) }.let { if (OnAir.colors.dark) LabelPalette(true).color("brand.text") else it.color("brand.text") }
+    Box(modifier.clip(RoundedCornerShape(4.dp))) {
+        LabelArt(label, Modifier.fillMaxSize())
+        Column(
+            Modifier.fillMaxSize().padding(start = Spacing.S3.dp, end = Spacing.S3.dp, top = Spacing.S3.dp, bottom = Spacing.S6.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
+        ) {
+            speeches.forEach { speech ->
+                Column {
+                    Text(speech.name, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = ink, maxLines = 1)
+                    Text(speech.text, style = MaterialTheme.typography.bodySmall, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
 }
 
 private fun linesFact(n: Int) = String.format(java.util.Locale.US, "%,d", n) + if (n == 1) " line" else " lines"

@@ -75,7 +75,7 @@ private enum GrammarType {
 
 /// A picture decoded and graded by `PictureGrade`; nothing shows until it arrives, and a failure is
 /// reported so the window can fall back to its title block.
-private struct GradedImage: View {
+struct GradedImage: View {
     let url: URL
     let grade: Artwork.Grade
     var onFail: () -> Void = {}
@@ -244,6 +244,8 @@ struct RunStrip: View {
     /// The page about one show compares it with nothing: the bars take the show's own years, so a
     /// short run is not a mostly empty axis. A tile keeps the fixed axis, where shows sit side by side.
     var ownSpan = false
+    /// An episode's page marks its year: that year's bar at full ink, the rest at 45 % (WEB-DESIGN §6.4g).
+    var markYear: Int? = nil
 
     var body: some View {
         GeometryReader { geo in
@@ -256,7 +258,7 @@ struct RunStrip: View {
                 Rectangle().fill(ink.opacity(0.3)).frame(height: 1)
                 if let bars {
                     ForEach(Array(bars.enumerated()), id: \.offset) { _, bar in
-                        Rectangle().fill(ink)
+                        Rectangle().fill(ink.opacity(Grammar.barDimmed(from: bar.from, markYear: markYear) ? 0.45 : 1))
                             .frame(width: max(1, scale * CGFloat(bar.to - bar.from) - (fit ? 2 : 0.5)),
                                    height: max(2, (height - 3) * CGFloat(bar.height)))
                             .offset(x: scale * (CGFloat(bar.from) - lo), y: -1)

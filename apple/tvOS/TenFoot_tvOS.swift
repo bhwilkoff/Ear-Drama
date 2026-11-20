@@ -48,6 +48,8 @@ struct TVFocusRing<Content: View>: View {
 struct TVRunStrip: View {
     let years: [Int]?
     let genre: String?
+    /// An episode's head marks its own year: that bar at full ink, the rest at 45 %.
+    var markYear: Int? = nil
 
     var body: some View {
         if let bars = Grammar.runBars(years: years), let lo = bars.first?.from, let hi = bars.last?.to, hi > lo {
@@ -57,7 +59,7 @@ struct TVRunStrip: View {
                 ZStack(alignment: .bottomLeading) {
                     Rectangle().fill(ink.opacity(0.3)).frame(height: 1)
                     ForEach(Array(bars.enumerated()), id: \.offset) { _, bar in
-                        Rectangle().fill(ink)
+                        Rectangle().fill(ink.opacity(Grammar.barDimmed(from: bar.from, markYear: markYear) ? 0.45 : 1))
                             .frame(width: max(2, CGFloat(bar.to - bar.from) * scale - 2),
                                    height: max(3, geo.size.height * CGFloat(bar.height)))
                             .offset(x: CGFloat(bar.from - lo) * scale)
@@ -82,14 +84,22 @@ struct TVHero<Actions: View>: View {
     var pictureName: String? = nil
     var round = false
     var years: [Int]? = nil
+    var markYear: Int? = nil
     var progress: Double? = nil
     var clearance: CGFloat = 0
     /// What the window's label draws when there is no picture: the show's run and network, the evening's year ticked.
     var label: LabelItem? = nil
     @ViewBuilder let actions: () -> Actions
+    @State private var failed = false
+
+    /// The picture the window holds: at its own shape, never cropped or barred (tvOS-DESIGN §3.0, WEB-DESIGN §6.4g).
+    private var shown: Artwork? { failed ? nil : ItemLead.shown(art) }
+    /// The widest a picture stands: a plate wider than the label's square, the same 460 pt tall.
+    private var plateWidth: CGFloat { 760 }
 
     var body: some View {
-        let side = TV.windowSide(art, bound: TV.heroPicture)
+        let picture = shown.map { $0.fitted(in: CGSize(width: plateWidth, height: TV.heroPicture)) }
+        let window = picture ?? CGSize(width: TV.heroPicture, height: TV.heroPicture)
         HStack(alignment: .center, spacing: 64) {
             VStack(alignment: .leading, spacing: Spacing.s6) {
                 words.foregroundStyle(Color.onBoard(genre))
@@ -102,8 +112,15 @@ struct TVHero<Actions: View>: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .contain)
-            PictureWindow(art: art, name: pictureName ?? title, genre: genre, side: side, round: round, label: label)
-                .frame(width: TV.heroPicture, height: TV.heroPicture, alignment: .trailing)
+            Group {
+                if let shown, let picture {
+                    TVHeroPicture(art: shown, size: picture) { failed = true }
+                } else {
+                    PictureWindow(art: nil, name: pictureName ?? title, genre: genre, side: TV.heroPicture, round: round, label: label)
+                }
+            }
+            .frame(width: window.width, height: window.height, alignment: .trailing)
+            .onChange(of: art?.url) { failed = false }
         }
         .padding(.top, clearance)
         .padding(.bottom, 56)
@@ -112,7 +129,6 @@ struct TVHero<Actions: View>: View {
 
     private var words: some View {
         let ink = Color.onBoard(genre)
-        let side = TV.windowSide(art, bound: TV.heroPicture)
         return VStack(alignment: .leading, spacing: Spacing.s2) {
             if let kicker, !kicker.isEmpty {
                 Text(verbatim: kicker.uppercased())
@@ -137,15 +153,30 @@ struct TVHero<Actions: View>: View {
                     .padding(.top, Spacing.s1)
                     .accessibilityHidden(true)
             }
-            TVRunStrip(years: years, genre: genre)
+            TVRunStrip(years: years, genre: genre, markYear: markYear)
                 .padding(.top, Spacing.s2)
-            if let credit = art?.credit, Grammar.windowFill(art, slot: Double(side)) != .block {
+            if let credit = shown?.credit {
                 Text(verbatim: "Picture: \(credit)")
                     .font(TypeRamp.caption)
                     .foregroundStyle(ink.opacity(0.7))
                     .lineLimit(1)
             }
         }
+    }
+}
+
+/// A hero picture at its own shape, graded as everywhere; a failed load is reported so the hero falls back to the label.
+private struct TVHeroPicture: View {
+    let art: Artwork
+    let size: CGSize
+    let onFail: () -> Void
+    @Environment(\.displayScale) private var scale
+
+    var body: some View {
+        GradedImage(url: art.url(pixels: Double(size.width * scale)), grade: Grammar.gradeOf(art), onFail: onFail)
+            .frame(width: size.width, height: size.height)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .accessibilityHidden(true)
     }
 }
 

@@ -127,6 +127,7 @@ import java.io.File
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.appname.ui.PlayPageHead
 
 // Ear dramas, phase 1, pass the phone (docs/PLAYS-DESIGN.md, binding; ANDROID-DESIGN
 // §4.9). The same seven verbs as iPhone, iPad, and the Mac (§2): pick a play,
@@ -346,7 +347,7 @@ fun LazyListScope.playPage(
     start: @Composable () -> Unit = { StartEarDramaButton(script, onOpenProduction); ReadTogetherButton(script) },
     onRead: (() -> Unit)? = null,
 ) {
-    item(key = "head") { PlayHeadBoard(script, kicker = if (script.kind == "stage") "Stage play" else "Radio play") }
+    item(key = "head") { PlayPageHead(script, kicker = if (script.kind == "stage") "Stage play" else "Radio play") }
     if (!television) {
         item(key = "actions") {
             ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
