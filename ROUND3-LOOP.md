@@ -246,3 +246,12 @@ privacy words) is folded in when it arrives, never waited on.
   above only. For V8: the dial's station labels read as blank white circles at 56 px. For the next
   catalog batch: display_text.py misses "AbyM #001"-style upload tags in episode rows. Running: V2,
   T4, V7 (Opus, detail pages web). V6 waits for T4 (same apple/android code).
+- **2026-11-19, tick 10**: T4 merged locally (1.0.143; macOS 483, Android 572, Worker 385, web 24;
+  goldens 76): read rooms on Apple and Android, class page, casting board, tvOS/Google TV screen,
+  doors, leader name + Read open parts in the protocol. Push held for the iPhone 12 launch check
+  (running). DEFECT for T5: Apple (and likely Android) built a separate plain list (ReadLineRow)
+  instead of driving the existing ScriptReader, so room reading lacks play typography, pages,
+  marks: T5 must make the room follow inside ScriptReader / the Android reader. T4 gaps: TV pairing
+  route (Decision 082 says pairing code: build it), Duo outer display, Mac menu commands, Android
+  drag, stand-in voice on Apple/Android screens; adults get an optional name on join (decided).
+  Disk was 98%: removed 53 merged agent worktrees (34 GB free). Running: V2, V7, device check.
