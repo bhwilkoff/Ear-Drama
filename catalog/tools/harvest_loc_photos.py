@@ -194,12 +194,28 @@ def db_terms():
     return ser, ppl
 
 
+def star_terms(have):
+    """H5 (R3b section 5.1): the people the programs' own records mark as their stars (series_marks) who have no
+    portrait from Commons, by the most episodes of a series first, not already asked for above. Each is one
+    quoted-name query at the same pace; a re-run asks only what is not cached."""
+    c = sqlite3.connect(DB)
+    if not c.execute("select 1 from sqlite_master where name = 'series_marks'").fetchone():
+        return []
+    rows = c.execute(
+        "select p.name, max(s.episodes) from series_marks m join people p on p.id = m.person_id "
+        "join series s on s.key = m.series_key "
+        "where m.person_id not in (select person_id from people_art where usable = 1) "
+        "group by p.id order by max(s.episodes) desc, p.name").fetchall()
+    return [n for n, _ in rows if M.name_ok(n) and n not in have]
+
+
 def run_search(budget, fails, recs):
     jobs = [("topic:" + t, {"q": t, "dates": "1920/1965"}) for t in TOPICS]
     jobs += [("coll:" + lab, {"q": q, "fa": fa}) for lab, q, fa in COLLECTIONS]
     ser, ppl = db_terms()
     jobs += [("series:" + n, {"q": f'"{n}"', "dates": "1920/1975"}) for n in ser]
     jobs += [("person:" + n, {"q": f'"{n}"', "dates": "1915/1980"}) for n in ppl]
+    jobs += [("person:" + n, {"q": f'"{n}"', "dates": "1915/1980"}) for n in star_terms(set(ppl))]
     done = 0
     for label, params in jobs:
         res, ok = search(label, params, budget, fails)

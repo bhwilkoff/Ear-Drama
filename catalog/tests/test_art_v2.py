@@ -139,6 +139,67 @@ check("control: a plain publicity category without radio is not a radio category
 check("control: a place that shares the program's name names no person", GR("Prairie Home Cemetery, Moorhead.jpg", ["Cemeteries"],
       ppl=("Garrison Keillor",)), False)
 
+# --- H5: archive photographs through people (R3b section 5.1; owner V2/V4) -----------------------------------
+check("portrait title: the person's name alone", AP.portrait_title("Graham McNamee", "Graham McNamee"), True)
+check("portrait title: the name and portrait words", AP.portrait_title(
+      "[Herbert Hoover, three-quarter length portrait, seated, facing slightly left]", "Herbert Hoover"), True)
+check("portrait title: at the microphone", AP.portrait_title("Graham McNamee at the microphone", "Graham McNamee"), True)
+check("control: a Jr. is another person", AP.portrait_title("Herbert Hoover, Jr., and radio set", "Herbert Hoover"), False)
+check("control: a title naming two people is no portrait of one", AP.portrait_title(
+      "Graham McNamee and Ted Husing", "Graham McNamee"), False)
+check("control: an event is not a portrait", AP.portrait_title("Wheeler bill would cripple radio. Sen. Alben Barkley", "Alben Barkley"), False)
+check("control: a one-word name is too short to tie a title", AP.portrait_title("Cher", "Cher"), False)
+AS = lambda **k: AP.archive_portrait_served(**{"source": "loc", "rights_class": "no_known_restrictions", "usable": 1,
+                                              "title": "Graham McNamee", "name": "Graham McNamee", "photo_year": 1925,
+                                              "birth": "1888-07-10", "death": "1942-05-09", "basis": "name+birth_day+death_day",
+                                              "link_basis": "", **k})
+check("archive portrait: LoC, no known restrictions, a title that is the person, a year inside their life", AS(), True)
+check("archive portrait: a Smithsonian CC0 sitter line", AS(source="smithsonian", rights_class="cc0", title="Neutral", link_basis="portrait: x"), True)
+check("archive portrait: our own birth and death, no Wikidata match", AS(basis=None), True)
+check("archive portrait: a Smithsonian photographic negative is a photograph", AS(
+      source="smithsonian", rights_class="cc0", link_basis="portrait: x", object_type="Photographic Negative"), True)
+check("control: a Smithsonian caricature, drawing, bust or poster is the sitter's likeness, not a photograph", [AS(
+      source="smithsonian", rights_class="cc0", link_basis="portrait: x", object_type=t) for t in
+      ("Drawing", "Painting", "Print", "Silhouette", None)], [False] * 5)
+check("control: a record that restricts publication", AS(rights_class="restricted"), False)
+check("control: a photograph taken before the person was grown", AS(photo_year=1895), False)
+check("control: a photograph taken after their death", AS(photo_year=1950), False)
+check("control: no year on the photograph", AS(photo_year=None), False)
+check("control: nothing of the person's own to set the year against", AS(birth=None, death=None), False)
+check("control: one known date and no Wikidata match is not enough", AS(birth="1888", death=None, basis=None), False)
+check("control: a title that is about something else, no sitter line", AS(title="Graham McNamee and Ted Husing"), False)
+check("archive image: LoC's tile address is served as it is", AP.archive_image_url("loc", "https://tile.loc.gov/x/3a03536r.jpg"),
+      "https://tile.loc.gov/x/3a03536r.jpg")
+check("archive image: a Smithsonian master becomes the 960 px delivery, ending in a parameter the client's ?width= falls into",
+      AP.archive_image_url("smithsonian", "https://ids.si.edu/ids/download?id=NPG-NPG_94_50Welles-000002.jpg"),
+      "https://ids.si.edu/ids/deliveryService?id=NPG-NPG_94_50Welles-000002&max=960&w=")
+import json
+import sqlite3
+import build_projection as BPJ
+_h5 = sqlite3.connect(":memory:")
+_h5.executescript("""
+CREATE TABLE people (id TEXT, name TEXT, names TEXT, birth TEXT, death TEXT);
+CREATE TABLE people_wikidata (person_id TEXT, basis TEXT, birth TEXT, death TEXT);
+CREATE TABLE archive_photos (source TEXT, record_id TEXT, title TEXT, year INTEGER, width INTEGER, height INTEGER,
+  rights_class TEXT, usable INTEGER, evidence_url TEXT, image_url TEXT);
+CREATE TABLE archive_photo_links (source TEXT, record_id TEXT, target_kind TEXT, target_id TEXT, basis TEXT, strength TEXT);
+INSERT INTO people VALUES ('p1', 'Graham McNamee', '[]', '1888-07-10', '1942-05-09'), ('p2', 'Ted Husing', '[]', '1901-11-27', '1962-08-10');
+INSERT INTO archive_photos VALUES ('loc', 'r1', 'Graham McNamee', 1925, 751, 1024, 'no_known_restrictions', 1,
+  'https://www.loc.gov/item/r1/', 'https://tile.loc.gov/r1.jpg'),
+  ('loc', 'r2', 'Graham McNamee and Ted Husing', 1930, 800, 600, 'no_known_restrictions', 1, 'https://www.loc.gov/item/r2/', 'https://tile.loc.gov/r2.jpg');
+INSERT INTO archive_photo_links VALUES ('loc', 'r1', 'person', 'p1', 'title', 'title'), ('loc', 'r2', 'person', 'p1', 'title', 'title'),
+  ('loc', 'r2', 'person', 'p2', 'title', 'title');
+""")
+_got = BPJ.served_archive_portraits(_h5, {"p1": "Graham McNamee", "p2": "Ted Husing"}, None, {}, set())
+check("projection: the person whose title it is gets the record; the second person of a two-person title gets none",
+      sorted(_got), ["p1"])
+check("projection: the row carries the record page, where it was found and the tie", _got["p1"][7:], (
+      "https://www.loc.gov/item/r1/", "loc:record-title", "record title is the person; photograph year inside their life"))
+check("control: a person who already has a Commons portrait is not given another",
+      BPJ.served_archive_portraits(_h5, {"p1": "Graham McNamee"}, None, {}, {"p1"}), {})
+check("control: a source without the archive tables serves none",
+      BPJ.served_archive_portraits(sqlite3.connect(":memory:"), {"p1": "x"}, None, {}, set()), {})
+
 # --- H9: liveness ------------------------------------------------------------------------------
 check("liveness: 200 and a redirect chain's last 200 are ok", [AP.liveness_verdict(s) for s in (200, 301)], ["ok", "ok"])
 check("liveness: 404 and 410 are gone", [AP.liveness_verdict(s) for s in (404, 410)], ["gone", "gone"])

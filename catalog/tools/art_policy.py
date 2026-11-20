@@ -150,6 +150,75 @@ def alternate(basis, cls, usable, found_via, author, own_work=False, date_field=
             and served(basis, cls, usable, SERVED_VIA, author, own_work, date_field, died))
 
 
+# ---------------------------------------------------------------- H5: archive photographs through people
+# R3b section 5.1 H5 (owner V2/V4, ROUND3-LOOP.md): a Library of Congress "No known restrictions on publication" or
+# Smithsonian CC0 photograph is a person's portrait when the record's own title is that person (and nothing else: a
+# record that names two people, or "Herbert Hoover, Jr., and radio set", is not a portrait of the one), the person
+# was alive and grown in the photograph's year, and the match is one the person rule serves (a dated Wikidata
+# match, or our own birth and death years both known). Only for a person with no Commons portrait of their own:
+# it changes who has a face, never which face a person who has one wears.
+ARCHIVE_CLASS = {"no_known_restrictions": "no_known_restrictions", "government": "pd_us_gov", "cc0": "cc0"}
+ARCHIVE_VIA = {"loc": "loc:record-title", "smithsonian": "smithsonian:sitter"}
+PORTRAIT_FILLER = frozenset(
+    "portrait photograph photo head shoulders half three quarter length full bust standing seated sitting facing slightly "
+    "left right front view at the microphone mike radio broadcasting broadcast studio a an in mr mrs miss dr".split())
+ADULT_AGE = 10
+SMITHSONIAN_STEP = "https://ids.si.edu/ids/deliveryService?id={id}&max=960&w="
+
+
+def _name_tokens(text):
+    t = re.sub(r"[^a-z0-9]+", " ", PL.unescape(text or "").casefold().replace("’", "'").replace("'", ""))
+    return t.split()
+
+
+def portrait_title(title, name):
+    """True when a record's title is the person and only portrait words: "Graham McNamee", "[Herbert Hoover,
+    three-quarter length portrait, seated, facing slightly left]", "Graham McNamee at the microphone". Any other
+    word (a second person, "Jr.", a place, an event) means the record is about something else."""
+    t, n = _name_tokens(title), _name_tokens(name)
+    if len(n) < 2 or len(t) < len(n):
+        return False
+    for i in range(len(t) - len(n) + 1):
+        if t[i:i + len(n)] == n:
+            rest = t[:i] + t[i + len(n):]
+            return all(w in PORTRAIT_FILLER or re.fullmatch(r"\d{4}|\d{1,2}", w) for w in rest)
+    return False
+
+
+PHOTOGRAPH = re.compile(r"^photograph", re.I)
+
+
+def archive_portrait_served(source, rights_class, usable, title, name, photo_year, birth, death, basis, link_basis="",
+                            object_type="Photograph"):
+    """True when this archive record may be the portrait of this person (the policy above). `basis` is the person's
+    Wikidata match (people_wikidata.basis, or None), `link_basis` photo_match's own reason for the tie: a
+    Smithsonian sitter line whose printed lifespan agreed with ours. `object_type` is the holder's own kind of
+    object: a photograph only (NPG's caricatures, drawings, busts, posters and prints are the sitter's likeness,
+    never a photograph of them: R3b section 5.1 H5 is photographs)."""
+    if source not in ARCHIVE_VIA or rights_class not in ARCHIVE_CLASS or not usable or not photo_year:
+        return False
+    if not PHOTOGRAPH.match(object_type or ""):
+        return False
+    if not (portrait_title(title, name) or str(link_basis).startswith("portrait:")):
+        return False
+    b, d = year_of(str(birth)) if birth else None, year_of(str(death)) if death else None
+    if b is None and d is None:
+        return False   # nothing of the person's own to set the photograph's year against
+    if (b is not None and photo_year < b + ADULT_AGE) or (d is not None and photo_year > d):
+        return False
+    return bool(dated_match(basis) or (b is not None and d is not None))
+
+
+def archive_image_url(source, url):
+    """The address a client appends ?width= to. LoC's tile address is a plain file that ignores the query; a
+    Smithsonian download is the master (thousands of pixels), so the delivery service gives 960 px, with a last
+    parameter the client's ?width= falls into."""
+    if source == "smithsonian":
+        m = re.search(r"[?&]id=([^&]+?)(?:\.jpe?g)?$", url or "")
+        return SMITHSONIAN_STEP.format(id=m.group(1)) if m else None
+    return url
+
+
 def pick(rows):
     """The one portrait per person: the most permissive class of their own image, then the file
     name; unless it is under the size floor (it fills less than LARGEST_SLOT) and a file showing

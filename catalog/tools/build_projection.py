@@ -342,11 +342,12 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
 
     live = liveness or {}
     portraits = served_portraits(s, people_rows, same, live)   # person id -> art row id, rows written to `art`
-    for aid, (file, cls, template, author, w, h, face) in enumerate(portraits["rows"], 1):
+    for aid, (file, cls, template, author, w, h, face, *archive) in enumerate(portraits["rows"], 1):
+        evidence, via, tie = archive or (AP.evidence_url(file), AP.SERVED_VIA, "name+dated person")
+        url = file if archive else AP.image_url(file)
         d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
-            aid, AP.image_url(file), w, h, cls, AP.clean_author(author) if AP.license_name(cls, template) else None,
-            AP.credit(cls, template, author), AP.evidence_url(file), face, grade_of(art_grades, AP.image_url(file), w, h, face),
-            AP.SERVED_VIA, "name+dated person"))
+            aid, url, w, h, cls, AP.clean_author(author) if AP.license_name(cls, template) else None,
+            AP.credit(cls, template, author), evidence, face, grade_of(art_grades, url, w, h, face), via, tie))
     faces = set(portraits["by_person"])
     series_of = dict(s.execute("SELECT id, series_key FROM episodes"))
     credited_by_series = {}
@@ -364,7 +365,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                                    people_rows, names))
     stars = {sk: f[0] for sk, f in face_of.items() if f}
     # The series' picture (contract section 3.3a): its show image, else its star's portrait.
-    file_ids = {AP.image_url(r[0]): i for i, r in enumerate(portraits["rows"], 1)}
+    file_ids = {(r[0] if len(r) > 7 else AP.image_url(r[0])): i for i, r in enumerate(portraits["rows"], 1)}
     next_id = len(portraits["rows"]) + 1
 
     def art_id(row):
@@ -1129,7 +1130,50 @@ def served_portraits(s, people, same=None, live=None):
             out["rows"].append((file, cls, template, author) + dims.get(file, (None, None)) + (focus.get(file),))
             ids[file] = len(out["rows"])
         out["by_person"][pid] = ids[file]
+    for pid, row in sorted(served_archive_portraits(s, people, same, live, set(out["by_person"])).items()):
+        out["rows"].append(row)
+        out["by_person"][pid] = len(out["rows"])
     return out
+
+
+def served_archive_portraits(s, people, same, live, have):
+    """H5 (R3b section 5.1; art_policy.archive_portrait_served): {person id: portraits row} for people with no Commons
+    portrait whose own birth and death place a Library of Congress or Smithsonian record's title: that record is
+    their portrait. The row carries the evidence (the record page), where it was found and how it is tied. A source
+    without the archive tables (a fixture, an older build) serves none."""
+    tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    if not {"archive_photos", "archive_photo_links", "people"} <= tables:
+        return {}
+    wd = {}
+    if "people_wikidata" in tables:
+        wd = {pid: (basis, birth, death) for pid, basis, birth, death in s.execute(
+            "SELECT person_id, basis, birth, death FROM people_wikidata")}
+    ours = {pid: (name, json.loads(names or "[]"), birth, death) for pid, name, names, birth, death in s.execute(
+        "SELECT id, name, names, birth, death FROM people")}
+    cands = {}
+    kcol = "a.object_type" if "object_type" in {r[1] for r in s.execute("PRAGMA table_info(archive_photos)")} else "NULL"
+    for (src, rid, title, year, w, h, cls, usable, evidence, image, pid, link_basis, kind) in s.execute(
+            "SELECT a.source, a.record_id, a.title, a.year, a.width, a.height, a.rights_class, a.usable, a.evidence_url, "
+            f"a.image_url, l.target_id, l.basis, {kcol} FROM archive_photos a JOIN archive_photo_links l "
+            "ON l.source = a.source AND l.record_id = a.record_id WHERE l.target_kind = 'person' "
+            "AND l.strength IN ('title', 'heading') AND a.usable = 1 ORDER BY a.source, a.record_id, l.target_id"):
+        pid = (same or {}).get(pid, pid)
+        if pid not in people or pid in have or pid not in ours:
+            continue
+        kind = kind or ("Photograph" if src == "loc" else None)   # an older table: LoC's search keeps photographs only
+        name, aliases, birth, death = ours[pid]
+        basis, wbirth, wdeath = wd.get(pid, (None, None, None))
+        birth, death = birth or wbirth, death or wdeath
+        url = AP.archive_image_url(src, image)
+        if not url or not evidence or (w and h and min(w, h) < AP.SHOW_MIN_SIDE) or not AP.alive(live, url):
+            continue
+        if any(AP.archive_portrait_served(src, cls, usable, title, n, year, birth, death, basis, link_basis, kind)
+               for n in [name] + aliases if n):
+            tie = "record title is the person; " + ("sitter lifespan agrees" if str(link_basis).startswith("portrait:")
+                                                    else "photograph year inside their life")
+            cands.setdefault(pid, []).append(
+                (url, AP.ARCHIVE_CLASS[cls], None, None, w, h, None, evidence, AP.ARCHIVE_VIA[src], tie))
+    return {pid: min(rows, key=lambda r: (-min(r[4] or 0, r[5] or 0), r[0])) for pid, rows in cands.items()}
 
 
 def deflate(src, dst):
