@@ -371,3 +371,10 @@ privacy words) is folded in when it arrives, never waited on.
   green): 504 of 73,643 titles cleaned (repeat notes, "#84 on list", series echoes, running times,
   certain apostrophes), 7 withheld (file names with no date). Publish dispatched (run 44732321891).
   Running: final sweep + T7b.
+- **2026-11-20, tick 28**: final sweep + T7b merged and pushed (4da183a, 1.0.152; web 25, macOS
+  539, Android 649, 0 warnings): Google TV capped plate beside the words (frame read), web dial
+  names wrap, web_fit_library deterministic (3 identical runs), record doors on all stacks, T7-lite
+  (one holder opened the mic on 16/16 lines; takes all arrived), tap-tier T6 on the Pixel. Catalog
+  publish with titles batch 2: green. Running (last batch, Opus): repeated mic opens (Duo 3 lines,
+  Pixel 1), web Back to the line in rooms, T10-T12 against a local Worker, web_fit_cast widths.
+  Open, needs devices: Duo Record "Plays" indent (frames blind), Apple class review on a device.
