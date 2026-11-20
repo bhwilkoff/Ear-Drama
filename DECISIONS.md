@@ -98,6 +98,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md` and 046-065 in `doc
 - 080: At regular width Now Playing stands beside what plays next; closing the Duo never stops a take (answered 2026-11-16)
 - 081: Drawn label art for everything without a picture, and a Home that reads as one thing (owner 2026-11-19)
 - 082: Reading together: read rooms, classes that own productions, takes that pass through (owner 2026-11-19)
+- 083: Relay across time, and credit the maker (owner 2026-11-19, T6)
 
 ---
 
