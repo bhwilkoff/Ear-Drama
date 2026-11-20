@@ -256,6 +256,26 @@ web app follows today.
      the hero's era is drawn (the dial tick), never written. No blurbs, no "Because you listened".
   `tools/web_fit_home.py` gains two checks: the hero is the largest window on the first screen,
   and no rail opens on the show of the rail above.
+  **As built (Round 3 V5, 2026-11-19).** The hero's window spans the column on a phone (the board's
+  top, square, tier L from 320 px) and is 320 px beside the words from 600 px; its label is the
+  series' with the evening's year (a station's: the broadcast's year) as its one tick. The event
+  line's title is the episode's, unless it still carries an upload's catalog number or identifier
+  (`API.uploadTagged`), when it is the broadcast's date, composed from the record (raw upload text
+  never shows, AGENTS.md). The dial is a 56 px station label per genre (tick: the year of what it
+  has on), the genre's name, and the show on now as one muted line; it scrolls on a phone and
+  is eight equal columns from 768 px; a station with nothing on is shown dimmed and does not
+  press. Order: hero, dial, Continue (personal, so outside rule 5), the two doors, Made here when
+  it leads, Start a show, Today's scene, By length, Most heard voices, This day in radio, Made
+  here. Rule 5 is `API.homeShows(episodes, seen)` over the hero's show, then Start a show's and
+  By length's first-drawn chip, then the night's tiles (which only skip); a chip pressed later
+  skips the rows above it and nothing else. Today's scene: on a phone the title block, the
+  drama board holding the opening, then the buttons; from 600 px the board (320 px) at the left
+  and the words and buttons beside it. The day chart's bars are muted ink, the chosen year's in
+  text, and the genre key is gone (a key to one ink keys nothing). Checks (each seen to fail):
+  the doors are two; nothing on the first screen (812 px on a phone, 900 wide) is as large as the
+  hero's window; no rail opens on a show the row above shows; no show twice (hero, rails, night
+  tiles); at 1024 px and wider the scene's board is at most 60% of the column; On the air never
+  shows a `#NNN` upload tag, against a fixture that gives every slot a raw title (`fx.html`).
 - **§4.3 Browse** (was Series, Decision 068) lists the radio series. The
   plays moved to Record (§4.15, Decision 075); a play is still found by
   Search. Its filters are visible controls in one row, as Archive Watch's

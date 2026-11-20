@@ -883,6 +883,12 @@ comes back empty, and ignores a rule it does not know.
 | `genreFirsts` | `rule`, `genre`, `episodes` | for each served series in the genre, its earliest recommendable episode (oldest first: dated before undated, then `air_date`, then `num` with nulls last, then `id`), series with the most served episodes first, ties by key, limit 20. Precomputed: `episodes` is the ordered id list, so a client reads ids and never re-derives the query. |
 | `byLength` | `rule`, `band`, `episodes` | Decision 075's length doors. `band` is `under15` (300 to 899 s), `about30` (1500 to 2099 s) or `hour` (3000 to 4199 s), over the episode's `length_s` (its default copy's length). For each served series with a recommendable episode in the band, its earliest such episode (front matter skipped, oldest first as `genreFirsts`); most downloaded series first (`series_downloads`), then most served episodes, ties by key; limit 20; a band publishes when at least `MIN_SERIES` series have one. Precomputed ids. Its heading is the client's word for the band ("Under 15 min", "About 30 min", "An hour"), true of every episode in it. MEASURED 2026-11-14 on the local research database (default copies): 4,318 series have an episode under 15 min, 4,372 about 30, 2,731 an hour. |
 
+- **A show at most once per Home** (Decision 081, WEB-DESIGN §4.2r rule 5): the shelves stay as
+  published; each client draws Home's rows in order (the show on the air, then the Start a show
+  shelf first drawn, then the By length shelf first drawn, then the night's tiles) and keeps an
+  episode only when its `series` is not already drawn above or earlier in the same row. The rule
+  is the web's `API.homeShows`; Apple and Android mirror it (V6). It is why a shelf publishes up
+  to 20 ids when a phone shows four.
 - **Order**: `onThisDay` first, then `mostDownloaded`, then one `genreFirsts` per genre in
   `genres.GENRES` order that has at least `MIN_SERIES` (5) served series with
   a recommendable episode, then one `byLength` per band in `under15`,

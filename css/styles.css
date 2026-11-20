@@ -438,16 +438,18 @@ select {
   position: relative; display: block; aspect-ratio: 1; overflow: hidden; flex: none;
   border-radius: 4px; background: var(--color-print-ground);
 }
-.g-window::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--color-print-edge); pointer-events: none; }
+.g-window::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--color-print-edge); pointer-events: none; }
 .g-window[data-fill="block"] { background: var(--genre-board, var(--color-surface-alt)); color: var(--genre-on, var(--color-text)); }
-.g-window[data-fill="block"]::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 32%, transparent); }
+.g-window[data-fill="block"]::after { box-shadow: inset 0 0 0 1px var(--color-print-edge); }
+/* Every color-mix() sits in @supports after a plain fallback: the TV build runs Chromium 85 (tools/test_tv_compat.py). */
+@supports (color: color-mix(in srgb, red 50%, blue)) { .g-window[data-fill="block"]::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 32%, transparent); } }
 .g-window img { position: absolute; display: block; max-width: none; object-fit: fill; }
 .g-round { border-radius: 50%; }
 /* A person's shows: small tiles under the head board, then the order and the episodes. */
 .shelf-after-head { margin-top: var(--space-4); }
 .g-rail.g-rail-small { grid-auto-columns: 148px; }
 @media (min-width: 768px) { .g-rail.g-rail-small { grid-auto-columns: 160px; } }
-.g-window[data-fill="whole"] img { inset: 6%; width: 88%; height: 88%; object-fit: contain; }
+.g-window[data-fill="whole"] img { top: 6%; right: 6%; bottom: 6%; left: 6%; width: 88%; height: 88%; object-fit: contain; }
 /* The label (§6.4r): drawn from the item's own data (js/label-core.js), filling the window as a picture
    would, with the picture's hairline edge; its colors are the token variables the spec names. */
 .lb { display: block; width: 100%; height: 100%; }
@@ -498,9 +500,13 @@ select {
 .g-yr-hit { fill: transparent; }
 .g-yr-bar { fill: var(--genre-accent); }
 .g-yr-bar[data-genre=""] { fill: var(--color-text-muted); }
+/* Home's day board draws in one ink (§4.2r rule 6): every bar muted text, the chosen year's in text. */
+.g-day .g-yr-bar { fill: var(--color-text-muted); }
+.g-day .g-yr[aria-checked="true"] .g-yr-bar { fill: var(--color-text); }
 .g-yr-zero { fill: var(--color-text-muted); opacity: 0.5; }
 .g-yr-sel { fill: none; stroke: var(--color-text); stroke-width: 1.5px; vector-effect: non-scaling-stroke; display: none; }
-.g-yr[aria-checked="true"] .g-yr-sel, .g-yr:focus-visible .g-yr-sel { display: inline; }
+.g-yr[aria-checked="true"] .g-yr-sel { display: inline; }
+.g-yr:focus-visible .g-yr-sel { display: inline; }
 .g-axis-labels { display: flex; justify-content: space-between; margin-top: var(--space-1); }
 .g-legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
 .g-legend li, .g-field-label { display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
@@ -632,7 +638,7 @@ a.g-face:hover .g-face-name { text-decoration: underline; }
 .art-letter { font-family: var(--type-section-header-family); font-size: var(--type-section-header-size); font-weight: var(--type-section-header-weight); line-height: 1; color: var(--genre-accent); }
 .art-tile[data-genre=""] .art-letter { color: var(--color-text-muted); }
 .art-tile img {
-  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%;
 }
 .art-tile.has-img .art-letter { visibility: hidden; }
 .series-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -924,7 +930,7 @@ a.g-face:hover .g-face-name { text-decoration: underline; }
 .pl-mode label { position: relative; flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; min-height: 40px;
   padding: 0 6px; border-radius: calc(var(--radius-control) - 3px); color: var(--color-secondary); font-weight: 600; white-space: nowrap; cursor: pointer; }
 .pl-mode label.on { background: var(--color-secondary); color: var(--color-on-secondary); }
-.pl-mode input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: inherit; }
+.pl-mode input { position: absolute; top: 0; right: 0; bottom: 0; left: 0; opacity: 0; margin: 0; cursor: inherit; }
 .pl-mode label:has(input:focus-visible) { outline: 2px solid var(--color-text); outline-offset: 2px; }
 .pl-mode label:has(input:disabled) { cursor: default; }
 .pl-mode label:has(input:disabled):not(.on) { opacity: 0.4; }
@@ -992,7 +998,8 @@ select.pl-aid { padding-right: 8px; }
 .pl-lab { font-size: 12px; color: var(--color-text-muted); }
 .pl-recbtn { display: inline-grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; border: 0; cursor: pointer;
   background: var(--color-record); color: var(--color-on-record);
-  box-shadow: 0 0 0 4px var(--color-background), 0 0 0 6px color-mix(in srgb, var(--color-record) 40%, transparent); }
+  box-shadow: 0 0 0 4px var(--color-background), 0 0 0 6px var(--color-record); }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .pl-recbtn { box-shadow: 0 0 0 4px var(--color-background), 0 0 0 6px color-mix(in srgb, var(--color-record) 40%, transparent); } }
 .pl-recbtn svg { width: 30px; height: 30px; fill: currentColor; }
 .pl-recbtn.armed { background: transparent; color: var(--color-record); border: 3px dashed var(--color-record); box-shadow: none; }
 .pl-recbtn.ink { background: var(--color-primary); color: var(--color-on-primary); box-shadow: none; }
@@ -1251,7 +1258,7 @@ html.tv .np-together { display: none; }
 .about-text[data-clamped="true"] { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
 .about-text[data-clamped="true"] p { display: inline; margin: 0; }
 .about-text[data-clamped="true"] p + p::before { content: " "; }
-.about-more { padding-inline: 0; min-height: 44px; }
+.about-more { padding-left: 0; padding-right: 0; min-height: 44px; }
 .about-source { margin: 0; color: var(--color-text-muted); }
 .ep-script { margin: var(--space-2) 0; }
 
@@ -1261,29 +1268,60 @@ html.tv .np-together { display: none; }
 .home-surprise { flex: none; white-space: nowrap; }
 /* The site's footer leaves Home (§4.8). */
 #main-content:has(#view-listen:not([hidden])) .site-footer { display: none; }
-/* On the air: one block on the surface, the slot on now as a grammar row, then Listen live. */
-.home-live { margin-bottom: var(--space-4); padding: var(--space-4); border-radius: var(--radius-card); background: var(--color-surface-alt); }
-.home-live .g-kicker { margin: 0 0 var(--space-2); }
-.home-live-row { display: flex; align-items: center; gap: var(--space-3); text-decoration: none; color: inherit; }
-.home-live-row .g-window { width: 64px; }
-.home-live-row .g-text { min-width: 0; }
-.home-live-row:hover .ep-title { text-decoration: underline; }
+/* The hero (§4.2r rule 1): the board of the show on the air, its window at tier L (full column width on a
+   phone, 320 px beside the words from 600 px), the show's name in page-title type, then Listen live. */
+.home-live {
+  display: grid; margin-bottom: var(--space-3); overflow: hidden; border-radius: var(--radius-card);
+  background: var(--genre-board, var(--color-surface-alt)); color: var(--genre-on, var(--color-text));
+}
+.home-live-win { display: block; }
+.home-live-win > .g-window { width: 100%; border-radius: 0; }
+.home-live-text { min-width: 0; padding: var(--space-4); }
+.home-live .g-kicker { margin: 0 0 var(--space-2); color: inherit; }
+.home-live-name {
+  display: block; color: inherit; text-decoration: none; font-family: var(--type-page-title-family);
+  font-weight: var(--type-page-title-weight); font-size: var(--type-page-title-size); line-height: 1.05;
+  text-transform: uppercase; text-wrap: balance; overflow-wrap: normal; word-break: normal; hyphens: manual;
+}
+.home-live-name[data-step="1"] { font-size: var(--type-section-header-size); }
+.home-live-name[data-step="2"] { font-size: var(--type-body-strong-size); }
+.home-live-name:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.home-live .g-event, .home-live .caption { color: inherit; }
+.home-live-event { display: block; margin-top: var(--space-1); }
 .home-live-note { margin: var(--space-2) 0 0; }
-.home-live-actions { display: flex; flex-wrap: nowrap; gap: var(--space-2); margin-top: var(--space-3); }
+.home-live-actions { display: flex; flex-wrap: nowrap; gap: var(--space-2); margin-top: var(--space-4); }
 .home-live-actions .btn { flex: none; white-space: nowrap; }
 .home-live-actions .btn-primary { flex: 1 1 auto; min-width: 0; }
-@media (min-width: 600px) { .home-live-actions .btn-primary { flex: none; } }
-.btn-live-home[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); }
-/* The three doors: one row, never wrapping apart; a label breaks between words, never inside one. */
-.home-doors { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); margin: 0 0 var(--space-6); }
-.home-door {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1);
-  min-height: 76px; padding: var(--space-3) var(--space-1); border: 1px solid var(--color-border); border-radius: var(--radius-card);
-  background: var(--color-surface); color: var(--color-text); text-decoration: none; text-align: center;
+.home-live .btn-ghost { color: inherit; }
+@media (min-width: 600px) {
+  .home-live { grid-template-columns: 320px minmax(0, 1fr); align-items: center; }
+  .home-live-text { padding: var(--space-4) var(--space-6); }
+  .home-live-actions .btn-primary { flex: none; }
 }
-.home-door:hover { background: var(--color-surface-alt); }
-.home-door svg { width: 26px; height: 26px; fill: currentColor; }
-.home-door-lab { font-weight: var(--type-body-strong-weight); line-height: 1.2; overflow-wrap: normal; word-break: keep-all; hyphens: manual; }
+.btn-live-home[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); }
+/* The dial (§4.2r rule 2): every genre station as a small label, one row; it scrolls on a phone. */
+.home-dial { margin: 0 0 var(--space-4); }
+.home-dial-list {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 84px; gap: var(--space-2);
+  margin: 0; padding: 0 0 var(--space-1); list-style: none; overflow-x: auto; scroll-snap-type: x proximity;
+}
+.home-dial-list > li { min-width: 0; scroll-snap-align: start; }
+@media (min-width: 768px) { .home-dial-list { grid-auto-flow: row; grid-template-columns: repeat(8, minmax(0, 1fr)); overflow: visible; } }
+.home-dial-st {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; min-width: 0; padding: var(--space-1) 0;
+  border: 0; border-radius: var(--radius-card); background: none; color: var(--color-text); font: inherit; text-align: center; cursor: pointer;
+}
+.home-dial-st:disabled { cursor: default; opacity: 0.55; }
+.home-dial-st > .g-window { width: 56px; margin-bottom: 2px; }
+.home-dial-st[aria-pressed="true"] > .g-window { box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-text); }
+.home-dial-name { font-weight: var(--type-body-strong-weight); color: var(--color-text); }
+.home-dial-name, .home-dial-on { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1.25; }
+.home-dial-on { color: var(--color-text-muted); }
+/* The doors (§4.2r rule 3): two quiet buttons in one row, never wrapping apart. */
+.home-doors { display: flex; flex-wrap: nowrap; gap: var(--space-2); margin: 0 0 var(--space-6) calc(-1 * var(--space-2)); }
+.home-door { flex: 0 1 auto; min-width: 0; padding-left: var(--space-2); padding-right: var(--space-2); white-space: nowrap; }
+.home-door svg { width: 20px; height: 20px; fill: currentColor; flex: none; }
+.home-door-lab { overflow-wrap: normal; word-break: keep-all; hyphens: manual; }
 .home-chips { margin-top: 0; }
 .home-chips button { white-space: nowrap; flex: none; }
 /* Play on a tile: over the window's corner, outside the link so the two targets stay two. */
@@ -1306,7 +1344,8 @@ html.tv .np-together { display: none; }
 .pl-scene-sp::before { content: ""; position: absolute; left: 0; top: 3px; bottom: 3px; width: 3px; border-radius: 2px; background: var(--hue); }
 .pl-scene-who { display: block; font-weight: var(--type-body-strong-weight); font-size: var(--type-caption-size); letter-spacing: 0.04em; }
 .pl-scene-said { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
-.pl-scene-now { background: color-mix(in srgb, var(--hue) 14%, transparent); border-radius: 2px; }
+.pl-scene-now { background: var(--color-surface-alt); border-radius: 2px; }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .pl-scene-now { background: color-mix(in srgb, var(--hue) 14%, transparent); } }
 .pl-scene-actions { flex-wrap: nowrap; margin: var(--space-3) 0 0; padding-top: 0; }
 .pl-scene-actions .btn-primary { flex: 1 1 auto; min-width: 0; }
 .pl-scene-actions .btn svg { flex: none; }
@@ -1319,6 +1358,27 @@ html.tv .np-together { display: none; }
   .pl-scene-actions .btn-ghost { padding-left: var(--space-2); padding-right: var(--space-2); }
 }
 .pl-scene .refusal:empty { display: none; }
+/* Today's scene on Home (§4.2r rule 6): a wide card at the grammar's size. The drama board is the window,
+   holding the script page; the title, facts and buttons stand beside it on the page ground. */
+.pl-scene.pl-scene-wide { display: grid; gap: var(--space-3); min-height: 0; padding: 0; border-radius: 0; background: none; color: var(--color-text); }
+.pl-scene-win { padding: var(--space-3); border-radius: var(--radius-card); background: var(--genre-board); color: var(--genre-on); }
+.pl-scene-win .pl-scene-page { margin: 0; }
+.pl-scene-wide > * { min-width: 0; }
+.pl-scene-wide .pl-scene-actions { margin: 0; }
+.pl-scene-wide .caption, .pl-scene-wide .g-event { color: var(--color-text-muted); }
+.pl-scene-wide .pl-scene-head .g-kicker { color: var(--color-text-muted); }
+.pl-scene-wide .btn-ghost { color: var(--color-link); }
+@media (min-width: 600px) {
+  .pl-scene.pl-scene-wide {
+    grid-template-columns: minmax(0, 320px) minmax(0, 1fr); grid-template-areas: "win head" "win actions" "win err";
+    grid-template-rows: 1fr auto 1fr; column-gap: var(--space-6); row-gap: var(--space-3);
+  }
+  .pl-scene-wide > .pl-scene-head { grid-area: head; align-self: end; }
+  .pl-scene-wide > .pl-scene-win { grid-area: win; }
+  .pl-scene-wide > .pl-scene-actions { grid-area: actions; }
+  .pl-scene-wide > .refusal { grid-area: err; align-self: start; }
+  .pl-scene-wide .pl-scene-page { font-size: var(--type-caption-size); }
+}
 /* A play tile's window, when its row carries an opening: the first two speeches as a page. */
 .pl-open { display: flex; flex-direction: column; gap: 6px; padding: 10px; box-sizing: border-box; color: var(--color-text);
   font-size: var(--type-caption-size); line-height: 1.3; text-align: left; text-transform: none; }
@@ -1438,24 +1498,28 @@ body.reading #main-content { overflow: hidden; }
 .rd[data-layout="pages"] .rd-head[data-level="part"], .rd[data-layout="pages"] .rd-headline[data-level="part"] { break-before: column; margin-top: 0; }
 .rd-flow > :first-child { margin-top: 0; }
 /* I'm playing: my speeches tinted with a rule in the hue; the cue I come in on underlined in it. */
-.rd-sp.rd-mine { position: relative; background: color-mix(in srgb, var(--hue) 10%, transparent);
-  box-shadow: -10px 0 0 0 color-mix(in srgb, var(--hue) 10%, transparent), 10px 0 0 0 color-mix(in srgb, var(--hue) 10%, transparent); }
+.rd-sp.rd-mine { position: relative; background: var(--color-surface-alt);
+  box-shadow: -10px 0 0 0 var(--color-surface-alt), 10px 0 0 0 var(--color-surface-alt); }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .rd-sp.rd-mine { background: color-mix(in srgb, var(--hue) 10%, transparent); box-shadow: -10px 0 0 0 color-mix(in srgb, var(--hue) 10%, transparent), 10px 0 0 0 color-mix(in srgb, var(--hue) 10%, transparent); } }
 .rd-sp.rd-mine::before { content: ""; position: absolute; top: 0; bottom: 0; left: -13px; width: 3px; background: var(--hue); }
 .rd-cueword { text-decoration: underline 2px var(--mine); text-underline-offset: 0.22em; text-decoration-skip-ink: none; }
 .rd-hiding .rd-line:not(.rd-peek) .rd-sp.rd-mine .rd-said {
-  color: transparent; background: color-mix(in srgb, var(--hue) 30%, transparent); border-radius: 3px;
+  color: transparent; background: var(--color-surface-alt); border-radius: 3px;
   -webkit-box-decoration-break: clone; box-decoration-break: clone; user-select: none;
 }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .rd-hiding .rd-line:not(.rd-peek) .rd-sp.rd-mine .rd-said { background: color-mix(in srgb, var(--hue) 30%, transparent); } }
 .rd-hiding .rd-mine:not(.rd-peek) { cursor: pointer; }
 .rd-flash { outline: 2px solid var(--color-text); outline-offset: 2px; border-radius: 2px; }
-.rd-now .rd-sp, .rd-line.rd-now:not(.rd-speech) { background: color-mix(in srgb, var(--color-text) 8%, transparent);
-  box-shadow: -10px 0 0 0 color-mix(in srgb, var(--color-text) 8%, transparent), 10px 0 0 0 color-mix(in srgb, var(--color-text) 8%, transparent); }
+.rd-now .rd-sp, .rd-line.rd-now:not(.rd-speech) { background: var(--color-surface-alt);
+  box-shadow: -10px 0 0 0 var(--color-surface-alt), 10px 0 0 0 var(--color-surface-alt); }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .rd-now .rd-sp, .rd-line.rd-now:not(.rd-speech) { background: color-mix(in srgb, var(--color-text) 8%, transparent); box-shadow: -10px 0 0 0 color-mix(in srgb, var(--color-text) 8%, transparent), 10px 0 0 0 color-mix(in srgb, var(--color-text) 8%, transparent); } }
 .rd-dock { flex-shrink: 0; }
 .rd-back-line { align-self: center; margin: var(--space-2) 0; flex-shrink: 0; }
 .rd-back-line[hidden] { display: none; }
 .rd-main { flex: 1; min-height: 0; display: flex; }
 .rd-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.rd-rec-btn { color: var(--color-record); border-color: color-mix(in srgb, var(--color-record) 45%, transparent); }
+.rd-rec-btn { color: var(--color-record); border-color: var(--color-record); }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .rd-rec-btn { border-color: color-mix(in srgb, var(--color-record) 45%, transparent); } }
 .rd-rec-btn svg { fill: currentColor; }
 
 /* ---- Marks on the reader's page (WEB-DESIGN §4.16 item 15, PLAYS-DESIGN §2.10) ---- */
@@ -1496,7 +1560,8 @@ body.reading #main-content { overflow: hidden; }
 .mk-wrap { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; padding: 0 var(--space-2); pointer-events: none; }
 .mk-bar { pointer-events: auto; display: flex; flex-direction: column; gap: 2px; max-width: 100%; padding: 4px; box-sizing: border-box;
   background: var(--color-background); border: 1px solid var(--color-border); border-radius: 14px;
-  box-shadow: 0 8px 28px color-mix(in srgb, #000 22%, transparent); }
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22); }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .mk-bar { box-shadow: 0 8px 28px color-mix(in srgb, #000 22%, transparent); } }
 .mk-bar[hidden] { display: none; }
 .mk-row { display: flex; align-items: center; gap: 2px; }
 .mk-btn { flex: none; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 10px;
@@ -1506,7 +1571,8 @@ body.reading #main-content { overflow: hidden; }
 .mk-btn[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--color-text); }
 .mk-text { width: auto; padding: 0 var(--space-4); font: inherit; font-weight: var(--type-body-strong-weight); }
 .mk-swatch { flex: none; display: inline-block; width: 22px; height: 22px; border-radius: 50%; background: var(--mk);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 30%, transparent); }
+  box-shadow: inset 0 0 0 1px var(--color-border); }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .mk-swatch { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 30%, transparent); } }
 .mk-swatch[data-hue="yellow"] { --mk: var(--color-mark-yellow); }
 .mk-swatch[data-hue="green"] { --mk: var(--color-mark-green); }
 .mk-swatch[data-hue="blue"] { --mk: var(--color-mark-blue); }
@@ -1549,7 +1615,8 @@ body.reading #main-content { overflow: hidden; }
 /* Each of my lines' take state, after the speaker's name: a ring, the ring filled with the count, or the flag. */
 .rd-take { display: inline-flex; align-items: center; gap: 0.3em; margin-left: 0.5em; padding: 0.15em 0.35em; border: 0; border-radius: 999px;
   background: transparent; color: var(--hue); font: inherit; font-size: 0.8125em; line-height: 1; vertical-align: 0.05em; cursor: pointer; }
-.rd-take:hover { background: color-mix(in srgb, var(--hue) 14%, transparent); }
+.rd-take:hover { background: var(--color-surface-alt); }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .rd-take:hover { background: color-mix(in srgb, var(--hue) 14%, transparent); } }
 .rd-take-dot { width: 0.75em; height: 0.75em; border-radius: 50%; border: 1.5px solid currentColor; box-sizing: border-box; }
 .rd-take[data-state="chosen"] .rd-take-dot { background: currentColor; }
 .rd-take[data-state="none"] { color: var(--color-text-muted); }
@@ -1559,7 +1626,8 @@ body.reading #main-content { overflow: hidden; }
 /* Another part's line a device voice reads: the dashed ring (never a face) and the voice's name; a tap casts the part. */
 .rd-vc { display: inline-flex; align-items: center; gap: 0.35em; margin-left: 0.5em; padding: 0.15em 0.4em 0.15em 0.15em; border: 0; border-radius: 999px;
   background: transparent; color: var(--color-text-muted); font: inherit; font-size: 0.8125em; line-height: 1; vertical-align: 0.05em; cursor: pointer; }
-.rd-vc:hover { background: color-mix(in srgb, var(--hue) 14%, transparent); color: var(--color-text); }
+.rd-vc:hover { background: var(--color-surface-alt); color: var(--color-text); }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .rd-vc:hover { background: color-mix(in srgb, var(--hue) 14%, transparent); } }
 .rd-vc[hidden] { display: none; }
 .rd-vc-ring { display: inline-flex; align-items: center; justify-content: center; width: 1.25em; height: 1.25em; border: 1.5px dashed var(--hue); border-radius: 50%; box-sizing: border-box; }
 .rd-vc-ring svg { width: 0.85em; height: 0.85em; fill: var(--hue); }
@@ -1606,7 +1674,8 @@ body.reading #main-content { overflow: hidden; }
 .st-transport { flex: 1; display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-width: 0; }
 .st-transport:empty { visibility: hidden; }
 .st-transport > .btn { flex: 0 1 auto; min-width: 0; white-space: nowrap; padding-left: var(--space-2); padding-right: var(--space-2); }
-.st-recbtn { flex: none; width: 52px; height: 52px; box-shadow: 0 0 0 3px var(--color-background), 0 0 0 5px color-mix(in srgb, var(--color-record) 40%, transparent); }
+.st-recbtn { flex: none; width: 52px; height: 52px; box-shadow: 0 0 0 3px var(--color-background), 0 0 0 5px var(--color-record); }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .st-recbtn { box-shadow: 0 0 0 3px var(--color-background), 0 0 0 5px color-mix(in srgb, var(--color-record) 40%, transparent); } }
 .st-recbtn svg { width: 22px; height: 22px; }
 .st-hear[aria-pressed="true"] { color: var(--color-text); background: var(--color-surface-alt); }
 .rd[data-studio="wide"] .st-open { display: none; }
@@ -1664,7 +1733,8 @@ body.reading #main-content { overflow: hidden; }
 .rd-hit { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: var(--space-2); border: 0; border-bottom: 1px solid var(--color-border);
   background: transparent; text-align: left; cursor: pointer; }
 .rd-hit:hover { background: var(--color-surface-alt); }
-.rd-hit mark { background: color-mix(in srgb, var(--color-link) 22%, transparent); color: inherit; border-radius: 2px; }
+.rd-hit mark { background: var(--color-surface-alt); color: inherit; border-radius: 2px; }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .rd-hit mark { background: color-mix(in srgb, var(--color-link) 22%, transparent); } }
 .rd-size { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); }
 .rd-size > .caption { flex: 1; }
 .rd-size-btn { min-width: 56px; }
@@ -1674,7 +1744,7 @@ body.reading #main-content { overflow: hidden; }
 .rd-choice legend { margin-bottom: var(--space-2); }
 .rd-seg { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--color-border); border-radius: var(--radius-control); }
 .rd-seg label { flex: 1; position: relative; }
-.rd-seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.rd-seg input { position: absolute; opacity: 0; top: 0; right: 0; bottom: 0; left: 0; margin: 0; cursor: pointer; }
 .rd-seg span { display: grid; place-items: center; min-height: 40px; border-radius: calc(var(--radius-control) - 3px); font-weight: var(--type-body-strong-weight); color: var(--color-secondary); }
 .rd-seg input:checked + span { background: var(--color-primary); color: var(--color-on-primary); }
 .rd-seg input:focus-visible + span { outline: 2px solid var(--color-link); outline-offset: 2px; }
@@ -1682,7 +1752,8 @@ body.reading #main-content { overflow: hidden; }
 .vc-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 32px; margin: -6px 0 0 -6px; padding: 0 4px 0 6px;
   border: 0; border-radius: var(--radius-control); background: transparent; color: var(--color-link);
   font: inherit; font-size: var(--type-caption-size); text-align: left; cursor: pointer; }
-.vc-chip:hover { background: color-mix(in srgb, var(--color-text) 6%, transparent); }
+.vc-chip:hover { background: var(--color-surface-alt); }
+@supports (color: color-mix(in srgb, red 50%, blue)) { .vc-chip:hover { background: color-mix(in srgb, var(--color-text) 6%, transparent); } }
 .vc-chip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vc-chip-tune { flex: none; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .vc-chip svg { flex: none; width: 16px; height: 16px; fill: currentColor; }

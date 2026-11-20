@@ -611,9 +611,17 @@
     const voicesBox = el('div');
     const madeBox = el('div', { class: 'ear-drama-only' });
     const leadBox = el('div', { class: 'ear-drama-only' });
-    body.replaceChildren(liveBox, contBox, homeDoors(), leadBox, startBox, recordBox, lengthBox, dayBox, voicesBox, madeBox);
+    // §4.2r rhythm: the hero (L) and its dial (S), the quiet doors, Start a show (M), Today's scene (L),
+    // By length (M), voices (S), This day in radio (L), Made here (M).
+    body.replaceChildren(liveBox, contBox, homeDoors(), leadBox, startBox, recordBox, lengthBox, voicesBox, dayBox, madeBox);
 
-    renderLiveBlock(liveBox);
+    // §4.2r rule 5: rows that show shows wait for the rows above them, then skip any show already drawn.
+    const above = homeOrder();
+    const heroStage = above.stage();
+    const startStage = above.stage();
+    const lengthStage = above.stage();
+    const dayStage = above.stage();
+    renderLiveBlock(liveBox, heroStage);
     const cont = Store.inProgress(10);
     if (cont.length) {
       contBox.append(el('section', { class: 'block', 'aria-labelledby': 'cont-h' },
@@ -625,25 +633,27 @@
       const [s, m] = await Promise.all([shelves, API.manifest()]);
       manifest = m;
       return s.start.map(x => ({ ...x, label: x.rule === 'mostDownloaded' ? 'Most downloaded' : genreLabel(x.genre) }));
-    });
+    }, startStage);
     homeChipRow(lengthBox, 'length', 'By length', r.p.get('length'), async () =>
-      (await shelves).length.map(x => ({ ...x, label: BAND_LABEL[x.key] })));
+      (await shelves).length.map(x => ({ ...x, label: BAND_LABEL[x.key] })), lengthStage);
     if (!onTV()) renderTodaysPlay(recordBox);
     homeRow(dayBox, null, async () => {
       const today = new Date();
-      const [rows, idx, m] = await Promise.all([API.thisDay(today, undefined, Infinity), API.seriesIndex(), API.manifest()]);
-      manifest = m;
-      return { rows, idx, today };
-    }, ({ rows, idx, today }, box) => {
+      try {
+        const [rows, idx, m, seen] = await Promise.all([API.thisDay(today, undefined, Infinity), API.seriesIndex(), API.manifest(), dayStage.above]);
+        manifest = m;
+        return { rows, idx, today, seen };
+      } finally { dayStage.done(); }
+    }, ({ rows, idx, today, seen }, box) => {
       if (!rows.length) return false;
-      box.append(dayAndNight(rows, idx, today));
+      box.append(dayAndNight(rows, idx, today, seen));
       return true;
     });
     homeRow(voicesBox, ['Most heard voices', el('a', { class: 'caption', href: '?view=browse&scope=voices' }, 'All voices')],
       () => API.voices(12), (voices, box) => {
         if (!voices.length) return false;
         box.append(el('ul', { class: 'g-faces-rail' }, ...voices.slice(0, 12).map(p => voiceFace(p))),
-          pictureCredit(voices.slice(0, 12).map(p => p.art)));
+          ...[pictureCredit(voices.slice(0, 12).map(p => p.art))].filter(Boolean));
         return true;
       });
     if (!onTV()) {
@@ -668,12 +678,30 @@
     load(content, loader, (data, c) => { if (render(data, c) === false) box.replaceChildren(); });
   }
 
-  /** The three doors: the app's three jobs, one row, a verb under an icon each. */
+  /** Home's draw order for shows (§4.2r rule 5): each stage's `above` resolves to the shows drawn higher
+      up once every stage before it is done; a stage adds its own (API.homeShows) and calls `done`, on
+      failure too, so one row that fails never holds the rows under it. */
+  function homeOrder() {
+    const seen = new Set();
+    let chain = Promise.resolve();
+    return {
+      stage() {
+        let release;
+        const mine = new Promise((r) => { release = r; });
+        const above = chain.then(() => seen);
+        chain = above.then(() => mine);
+        return { above, done: () => release() };
+      },
+    };
+  }
+
+  /** The doors (§4.2r rule 3): two quiet buttons in one row, an icon and a verb each. The dial under
+      On the air does what the Listen door did. */
   function homeDoors() {
-    const door = (href, ic, label, cls = '') => el('a', { class: `home-door ${cls}`.trim(), href }, icon(ic),
+    const door = (href, ic, label, cls = '') => el('a', { class: `btn btn-ghost home-door ${cls}`.trim(), href }, icon(ic),
       el('span', { class: 'home-door-lab' }, label));
     return el('nav', { class: 'home-doors', 'aria-label': 'Start here' },
-      door('?view=stations', 'radio', 'Listen'), door('?view=browse', 'find', 'Find a show'),
+      door('?view=browse', 'find', 'Find a show'),
       door('?view=record', 'mic', 'Record a play', 'ear-drama-only'));
   }
 
@@ -690,9 +718,13 @@
   }
 
   /** A row of chips over a rail of first episodes: each chip a published shelf (`start=`/`length=` in the URL). */
-  function homeChipRow(box, param, title, wanted, loader) {
-    homeRow(box, title, loader, (shelves, content) => {
-      if (!shelves.length) return false;
+  function homeChipRow(box, param, title, wanted, loader, stage) {
+    let higher = null;   // the shows drawn above this row, as they were when it first drew
+    const guarded = async () => {
+      try { return await loader(); } catch (e) { stage.done(); throw e; }
+    };
+    homeRow(box, title, guarded, (shelves, content) => {
+      if (!shelves.length) { stage.done(); return false; }
       let on = shelves.find(s => s.key === wanted) || shelves[0];
       const railBox = el('div');
       const chips = shelves.length > 1 ? el('div', { class: 'segmented segmented-scroll home-chips', role: 'group', 'aria-label': title },
@@ -706,7 +738,15 @@
           history.replaceState(history.state, '', `?${p}`);
           fill();
         } }, s.label))) : null;
-      const fill = () => load(railBox, () => Promise.all([API.episodesByIds(on.episodes), API.seriesIndex()]), ([eps, idx], b) => {
+      const fill = () => load(railBox, async () => {
+        try {
+          const [all, idx, seen] = await Promise.all([API.episodesByIds(on.episodes), API.seriesIndex(), stage.above]);
+          // The first draw adds this row's shows for the rows below; a chip changed later skips only the rows above.
+          if (higher) return [API.homeShows(all, new Set(higher)), idx];
+          higher = new Set(seen);
+          return [API.homeShows(all, seen), idx];
+        } finally { stage.done(); }
+      }, ([eps, idx], b) => {
         if (!eps.length) { b.append(stateBox('empty', { text: 'Nothing here yet.' })); return; }
         b.append(el('ul', { class: 'rail g-rail', 'aria-label': on.label }, ...eps.map(ep => episodeTile(ep, idx))));
       });
@@ -719,15 +759,20 @@
 
   /* On the air (§4.2 item 2): tonight's slot on now, else the first genre station with a playable
      slot; Listen live is Stations' own tune-in. Repainted on the clock and on the player. */
-  let homeLive = null;        // { box, day, stations }
+  let homeLive = null;        // { box, day, stations, idx }
   let homeLiveTimer = null;
-  function renderLiveBlock(box) {
+  function renderLiveBlock(box, stage) {
     clearInterval(homeLiveTimer);
     homeLive = null;
     load(box, async () => {
-      const [day, stations] = await Promise.all([API.tonight(API.localDate(new Date(clockNow()))),
-        API.stations().catch((e) => { console.error(e); return []; })]);
-      return { day, stations };
+      try {
+        const [day, stations, idx, seen] = await Promise.all([API.tonight(API.localDate(new Date(clockNow()))),
+          API.stations().catch((e) => { console.error(e); return []; }),
+          API.seriesIndex().catch((e) => { console.error(e); return null; }), stage.above]);
+        const on = onAirNow(day, stations, clockNow());
+        if (on) seen.add(on.slot.episode.id.split('|')[0]);
+        return { day, stations, idx };
+      } finally { stage.done(); }
     }, (data) => {
       homeLive = { box, ...data };
       paintLiveBlock();
@@ -754,17 +799,28 @@
     }
     return null;
   }
+  /* The hero (§4.2r rule 1): the board of the show on the air, its window at tier L (the show's picture,
+     else its label with the evening's year ticked), the kicker, the show's name in page-title type, the
+     event line, Listen live and All stations; then the dial (rule 2). */
   function paintLiveBlock() {
     if (!homeLive) return;
-    const { box, day, stations } = homeLive;
+    const { box, day, stations, idx } = homeLive;
     const now = clockNow();
     const on = onAirNow(day, stations, now);
-    if (!on) { box.replaceChildren(); return; }
+    const dial = homeDial(stations, now);
+    if (!on) { box.replaceChildren(...[dial].filter(Boolean)); return; }
     const ep = on.slot.episode;
+    const key = ep.id.split('|')[0];
+    const show = (idx && idx.byKey.get(key)) || { key, name: ep.series };
+    const year = (on.day ? on.day.evening : ep.id.split('|')[1] || '').slice(0, 4);
     const mins = Math.max(0, Math.floor((now - Date.parse(on.slot.utc_start)) / 60000));
     const tuned = Boolean(live && (on.station ? live.station === on.station.genre : live.day === on.day));
     const name = on.kicker;
     const kicker = [el('span', { class: 'home-live-dot', 'aria-hidden': 'true' }), `On the air · ${name}`];
+    // Raw upload text never shows (AGENTS.md): a title still carrying an upload's tag gives way to the
+    // broadcast's date, composed from the record's own data.
+    const date = ep.id.split('|')[1];
+    const title = ep.title && !API.uploadTagged(ep.title) ? epTitle(ep) : factDate(date && /^\d{4}/.test(date) ? date : null);
     const go = el('button', { type: 'button', class: 'btn btn-primary btn-live-home', 'aria-pressed': tuned ? 'true' : null,
       'aria-label': tuned ? `Listening live to ${name}, stop` : `Listen live to ${name}` }, icon('live'),
       el('span', {}, tuned ? 'Listening live' : 'Listen live'));
@@ -781,15 +837,44 @@
       }
       paintLiveBlock();
     });
-    box.replaceChildren(el('section', { class: 'home-live', 'aria-labelledby': 'live-h' },
-      el('p', { class: 'g-kicker caption', id: 'live-h' }, ...kicker),
-      el('a', { class: 'g-link home-live-row', href: `?item=${encodeURIComponent(ep.id)}` },
-        pictureWindow({ key: ep.id.split('|')[0], name: ep.series }, 64, false, ep),
-        el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, ep.series),
-          eventLine([ep.title, `${mins} min in`]))),
-      on.note ? el('p', { class: 'caption home-live-note' }, on.note) : null,
-      el('div', { class: 'actions home-live-actions' }, go,
-        el('a', { class: 'btn btn-ghost', href: '?view=stations' }, 'All stations'))));
+    const href = `?item=${encodeURIComponent(ep.id)}`;
+    box.replaceChildren(el('section', { class: 'home-live', 'aria-labelledby': 'live-h', dataset: { genre: show.genre || '' } },
+      el('a', { class: 'home-live-win', href, tabindex: '-1', 'aria-hidden': 'true' },
+        pictureWindow(/^\d{4}$/.test(year) ? { ...show, tickYear: +year } : show, 320)),
+      el('div', { class: 'home-live-text' },
+        el('p', { class: 'g-kicker caption', id: 'live-h' }, ...kicker),
+        el('a', { class: 'home-live-name', href, dataset: { step: String(API.headNameStep(show.name || ep.series)) } }, show.name || ep.series),
+        eventLine([title, `${mins} min in`], 'caption home-live-event'),
+        on.note ? el('p', { class: 'caption home-live-note' }, on.note) : null,
+        el('div', { class: 'actions home-live-actions' }, go,
+          el('a', { class: 'btn btn-ghost', href: '?view=stations' }, 'All stations')))),
+      ...[dial].filter(Boolean));
+  }
+  /** The dial (§4.2r rule 2): every genre station as a small label on its board, its genre's name and
+      the show it has on now; the label's one tick is that broadcast's year. A press tunes in. */
+  function homeDial(stations, now) {
+    if (!stations || !stations.length) return null;
+    const items = stations.map((st) => {
+      const at = API.onNow(st.slots, now);
+      const ep = at && !at.slot.withheld && at.slot.episode;
+      const yr = ep ? +String(ep.id.split('|')[1] || '').slice(0, 4) : 0;
+      const tuned = Boolean(live && live.station === st.genre);
+      const b = el('button', { type: 'button', class: 'home-dial-st', disabled: ep ? null : true, 'aria-pressed': tuned ? 'true' : null,
+        dataset: { genre: st.genre },
+        'aria-label': ep ? `${tuned ? 'Listening live to' : 'Listen live to'} ${st.name}: ${ep.series}` : `${st.name}: nothing on` },
+        pictureWindow({ kind: 'station', genre: st.genre, tickYear: yr >= 1900 ? yr : undefined, picture: null }, 56),
+        el('span', { class: 'home-dial-name caption' }, st.name),
+        el('span', { class: 'home-dial-on caption' }, ep ? ep.series : ''));
+      b.addEventListener('click', async () => {
+        if (tuned) { Player.pause(); stopLive(); paintLiveBlock(); return; }
+        b.disabled = true;
+        try { await tuneInStation(st); } catch (err) { console.error(err); announce('This did not load.'); }
+        b.disabled = false;
+        paintLiveBlock();
+      });
+      return el('li', {}, b);
+    });
+    return el('nav', { class: 'home-dial', 'aria-label': 'Stations' }, el('ul', { class: 'home-dial-list' }, ...items));
   }
   Player.onChange(() => { if (homeLive && !$('view-listen').hidden) paintLiveBlock(); });
 
@@ -801,7 +886,7 @@
       return { scene, open };
     }, ({ scene, open }, content) => {
       if (!scene) return false;
-      content.append(sceneCard(scene));
+      content.append(sceneCard(scene, { wide: true }));
       if (open) content.append(open);
       return true;
     });
@@ -820,7 +905,7 @@
      first line, the first voice read by the cast), Hear it (the opening read aloud live by the cast's
      device voices, never kept) and Read. */
   let sceneVoice = null;
-  function sceneCard({ row, whole }) {
+  function sceneCard({ row, whole }, { wide = false } = {}) {
     const script = whole || row;
     const id = row.id;
     const lines = PlaysCore.openingOf(script, 4);
@@ -873,13 +958,19 @@
     const showHear = () => { hear.hidden = !(whole && lines.length && StandInVoice.voices().length); };
     showHear();
     if (whole) StandInVoice.onVoices(showHear);
+    const head = el('a', { class: 'pl-scene-head', href: `?play=${encodeURIComponent(id)}` },
+      el('p', { class: 'g-kicker caption' }, 'Today’s scene'),
+      el('h3', { class: 'pl-scene-title', id: `scene-${id}` }, row.title),
+      eventLine(facts.filter(Boolean)));
+    const actions = el('div', { class: 'actions actions-one pl-scene-actions' }, tryBtn, hear, PlaysUI.readLink(id));
+    // On Home (§4.2r rule 6) the scene is a wide card at the grammar's size: the drama board is the
+    // window, holding the script page, and the words beside it stand on the page ground.
+    if (wide) {
+      return el('section', { class: 'pl-scene pl-scene-wide', 'aria-labelledby': `scene-${id}` },
+        head, el('div', { class: 'pl-scene-win', dataset: { genre: PlaysUI.BOARD } }, lines.length ? page : null), actions, err);
+    }
     return el('section', { class: 'pl-scene', dataset: { genre: PlaysUI.BOARD }, 'aria-labelledby': `scene-${id}` },
-      el('a', { class: 'pl-scene-head', href: `?play=${encodeURIComponent(id)}` },
-        el('p', { class: 'g-kicker caption' }, 'Today’s scene'),
-        el('h3', { class: 'pl-scene-title', id: `scene-${id}` }, row.title),
-        eventLine(facts.filter(Boolean))),
-      lines.length ? page : null,
-      el('div', { class: 'actions actions-one pl-scene-actions' }, tryBtn, hear, PlaysUI.readLink(id)), err);
+      head, lines.length ? page : null, actions, err);
   }
   function stopScene() {
     const run = sceneVoice;
@@ -1022,7 +1113,7 @@
   }
 
   /** The day board (the years this date was on the air, stacked by genre) and the night picked on it. */
-  function dayAndNight(rows, idx, today) {
+  function dayAndNight(rows, idx, today, seen = null) {
     const dy = API.dayYears(rows, (r) => (idx.byKey.get(r.series) || {}).genre);
     const box = el('div');
     if (!dy.years.length) return box;
@@ -1076,13 +1167,12 @@
       el('h2', { class: 'view-heading g-day-date', id: 'day-h' }, monthDay.format(today)),
       el('p', { class: 'caption' }, el('span', { class: 'nw' }, `${facts[0]} ·`), ' ', el('span', { class: 'nw' }, facts[1])),
       el('div', { class: 'g-years-wrap' }, svg,
-        el('div', { class: 'g-axis-labels caption tabular', 'aria-hidden': 'true' }, el('span', {}, String(first)), axisSel, el('span', {}, String(last)))),
-      el('ul', { class: 'g-legend caption' }, ...dy.genres.map(g =>
-        el('li', { dataset: { genre: g } }, el('i', { 'aria-hidden': 'true' }), genreLabel(g)))));
+        el('div', { class: 'g-axis-labels caption tabular', 'aria-hidden': 'true' }, el('span', {}, String(first)), axisSel, el('span', {}, String(last)))));
+    // §4.2r rule 6: the chart draws in one ink, so it carries no genre key; the night's tiles carry the genres.
     const paintNight = (y) => {
       const ofYear = rows.filter(r => r.date && r.date.startsWith(String(y)));
       const nt = API.nightShows(ofYear, (r) => idx.byKey.get(r.series));
-      const all = nt.shows;
+      const all = seen ? nt.shows.filter(r => !seen.has(r.series)) : nt.shows;
       const draw = (n) => {
         const ul = el('ul', { class: 'g-grid' });
         all.slice(0, n).forEach(r => {

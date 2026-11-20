@@ -263,6 +263,24 @@ test('API exposes the data verbs', () => {
   }
 });
 
+test('homeShows: a show at most once per Home, in each row\'s own order (WEB-DESIGN §4.2r rule 5)', () => {
+  const ep = (id, series) => ({ id, series });
+  const seen = new Set(['gunsmoke']);
+  const start = API.homeShows([ep(1, 'gunsmoke'), ep(2, 'dragnet'), ep(3, 'dragnet'), ep(4, 'suspense')], seen);
+  assert(start.map(e => e.id).join() === '2,4', `start kept ${start.map(e => e.id)}`);
+  const length = API.homeShows([ep(5, 'dragnet'), ep(6, 'suspense'), ep(7, 'xminusone'), ep(8, 'gunsmoke')], seen);
+  assert(length.map(e => e.id).join() === '7', `by length kept ${length.map(e => e.id)}`);
+  assert([...seen].join() === 'gunsmoke,dragnet,suspense,xminusone', 'seen grows in draw order');
+});
+
+test('uploadTagged: an upload\'s catalog number or an identifier is raw text; a story title is not', () => {
+  assert(API.uploadTagged('AbyM #026 The Girl on Shipwreck Island Pt 03 More About Gracie'), 'catalog number');
+  assert(API.uploadTagged('OTRR_Suspense_420622'), 'identifier');
+  for (const t of ['The Telltale Bottle', 'Sorry, Wrong Number', 'The Case of the 13 Keys', '']) {
+    assert(!API.uploadTagged(t), `${t} is a title`);
+  }
+});
+
 // --- Listen shelves (contract §5.1) ---
 
 test('onThisDay returns catalog/tests/golden/on_this_day.json (Feb 29, partial dates, recommendAnd)', () => {
