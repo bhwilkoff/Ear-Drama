@@ -121,7 +121,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
   author portraits, work P18), period sponsor ads; H9 liveness with fallback. Projection fields
   `series.hero`, `series.gallery`, `play.titlePage`, `play.authorArt` (R3b §5.5) in
   CATALOG-CONTRACT first. Report coverage per kind against R3b's baseline.
-- [ ] **V3 The label, web (Opus).** `art.label` tokens in design-tokens.json and the generator;
+- [x] **V3 The label, web (Opus).** `art.label` tokens in design-tokens.json and the generator;
   pure `labelSpec(item)` with golden cases; drawn for series, episodes (date on the label), people
   (groove ring), finished ear dramas (part colors), plays (script page + voice marks); 56 px to TV
   hero, light and dark. `web_fit_home.py` checks.
@@ -210,3 +210,7 @@ privacy words) is folded in when it arrives, never waited on.
   catalog change. H1's names cache (`.cache/wikidata/names.json.gz`) is not in a cache Release yet:
   V2 cuts the Release with its harvest. Running: T2, V3 (Opus). Worker full mutation run waits for
   T2's merge, then deploy.
+- **2026-11-19, tick 4**: V3 merged (abdf582, 1.0.139): the label on the web; frames read (sheet,
+  Home 1440, series 375 dark). Android unit 555/555 on the catalog merge. Running: T2 (Opus), V4
+  (Sonnet ports). Queued for V5: On the air shows a raw upload title ("AbyM #026 ...", rule: no raw
+  upload text); tools/test_tv_compat.py fails on main (16 color-mix() outside @supports).
