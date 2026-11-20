@@ -1125,11 +1125,10 @@ The owner's answers in §9 hold on the server, word for word:
 
 ### §11.3 Takes on the server
 
-- **Where.** Each take is an object in an R2 bucket (free egress), its fields
-  a row in D1. D1's 500 MB free database holds under an hour of 24-bit mono
-  takes (144 KB a second), so audio never goes in it. R2 asks for a payment method
-  on file even on its free tier (research 08c Q8), so the bucket is a
-  commented placeholder and uploads answer `503` until the owner decides.
+- **Where.** *Superseded 2026-11-19 by Decision 082 (§12.5, §12.8).* A take
+  passes through the Worker to the director's device and is kept nowhere on
+  Cloudflare; its fields are a row in D1. (Until then each take was to be an
+  object in an R2 bucket that was never turned on.)
 - **Limits, read from the file's own header**: mono WAV or FLAC only; at most
   300 seconds (the longest castable speech, 644 words, is about 258 seconds at
   150 words a minute, measured over the 7,345 speeches in the castable file on
@@ -1193,7 +1192,7 @@ The owner's answers in §9 hold on the server, word for word:
   teacher records the school's consent, and that record is refused until the
   owner names the privacy policy's version that covers school consent.
 - **Deletion** (Decision 063) removes every row, the person's take audio in
-  the bucket, and their classes. A **submitted production** (its publish is
+  the bucket (none since Decision 082), and their classes. A **submitted production** (its publish is
   queued or done) survives any member's deletion (owner, 2026-10-29: "Account
   deletion should definitely not remove their recordings from already submitted
   works"): its listing, takes, audio and archive.org item stay, the deleted
@@ -1207,7 +1206,7 @@ The owner's answers in §9 hold on the server, word for word:
 
 | # | Question | What the Worker does until it is answered |
 |---|---|---|
-| P1 | R2 needs a payment method on file. Turn it on, or keep phase 2 waiting? | The `TAKES` binding is commented out; uploads answer `503` |
+| P1 | R2 needs a payment method on file. Turn it on, or keep phase 2 waiting? | Answered 2026-11-19: "We are using archive.org for storage, not cloudflare." No R2; takes pass through (Decision 082, §12.5) |
 | P2 | The CC0 consent words (Decision 059) | Answered 2026-10-29: the owner's words at version `cc0-2026-10-29` |
 | P3 | A vetted deny list for names | A short seed list in `worker/src/plays-names.js` |
 | P4 | Who reads reports, how they arrive, and how fast they are answered (guideline 1.2 asks for timely action and a published contact) | Reports wait in D1 with status `open`; nothing notifies anyone, and nothing auto-hides a take for everyone |
@@ -1215,7 +1214,7 @@ The owner's answers in §9 hold on the server, word for word:
 | P6 | The Ear Drama archive.org account and its keys | Answered 2026-10-29: keys given; the uploader runs once both are Worker secrets (Decision 073) |
 | P14 | Does deleting an account remove that person's lines from the item? An Ear Drama collection on archive.org? | Answered by the owner 2026-10-29: "Account deletion should definitely not remove their recordings from already submitted works" (lines stay, uncredited); "community audio is just fine, as long as we are doing a good job of labeling the ear dramas within archive.org" |
 | P7 | The 7-day claim lapse (C6 and C7 are answered, §9) | Applied as the default |
-| P8 | Do classes own productions (a class member joins without an invite)? | No: classes are a roster only; every production is invite-only |
+| P8 | Do classes own productions (a class member joins without an invite)? | Answered 2026-11-19 (ruling 3): yes, a class owns a production, seen only by its seats (Decision 082, §12.4) |
 
 ### §11.7 Phase 2 in the apps (2026-10-24, binding)
 
@@ -1532,3 +1531,46 @@ Decision 080), Mac (a window per class, a Reading menu, a second window on the p
 Android phone and tablet. Apple TV and Google TV are the shared screen with a pairing code
 and record nothing (tvOS-DESIGN §4.13, ANDROID-DESIGN's TV panel rule). Apple uses the
 Worker's read room, not SharePlay.
+
+### §12.8 As built on the Worker (T2, 2026-11-19)
+
+The contract is `docs/WORKER.md` ("Shared plays", "Seats"); each rule below has its test
+in `worker/test/seats.test.js`, `plays.test.js` or `archive.test.js` and a deliberate
+break in `worker/test/mutations.mjs`.
+
+1. **Seats.** The teacher pastes a list (one name a line; duplicates once; the name
+   filter applies; at most 64). A student lists the seats by class code and claims one,
+   with no account, and gets a seat key once (stored as its hash). A held seat is refused
+   to a second device until it asks to **Move here**; the first device's key then stops
+   working. **Release** frees a seat for the next device; removing a seat drops its
+   casting and keeps its takes (the teacher's).
+2. **Class production.** Made by the class's teacher; every seat of the class sees it
+   without an invite. A class read room takes its roster and casting from the class and
+   the production, never from the request, and a seat joins it (or takes a seat in it)
+   only with its key.
+3. **Assignments.** The teacher replaces the whole casting at once: a part, or a scene
+   range of it, to a seat, no line twice. A seat records only its assigned lines; every
+   assigned part records at once. A production without assignments has nothing for a
+   seat to record, and accounts keep the one-part relay (C7) there.
+4. **Pass-through.** The teacher's (director's) device holds a pickup open; a take is
+   checked from its head against its declared length and piped to the pickup one chunk
+   at a time; it is refused at once when no pickup is waiting and the teacher's device
+   was not there in the last 10 seconds; a cut body never arrives as a take. The
+   Worker holds at most the take's 64 KiB head and the chunk in the pipe, one take in
+   flight per sender and four per production, so never a whole take (the Durable Object
+   isolate has 128 MB). The teacher's own device records any line (one microphone) and
+   may credit it to a seat.
+5. **Under 13.** No seat's voice passes through until the school's consent is
+   recorded (Decision 059, waiting on P5); until then a class under 13 records on one
+   microphone, the teacher's device, and never publishes.
+6. **Review and progress.** The student chooses which take is offered; the teacher marks
+   it **Approve** or **Again** with an optional typed note that only that seat sees.
+   Progress is counts per seat and part (lines assigned, recorded, approved, again),
+   never a ranking.
+7. **Publish.** A class marked 13 and over, every speaking line chosen, the teacher's own
+   CC0 consent, and a name to credit: the item carries that name on every line and no
+   seat's label. The cron lays the item out; the teacher's device sends each line's file
+   through the Worker, streamed to archive.org and never kept. The same path carries
+   every production's files now that no take is stored (an invite production's director
+   sends them; a performer sends their own replacement, P12).
+

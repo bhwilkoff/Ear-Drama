@@ -1,8 +1,15 @@
 /**
  * The archive.org uploader (LOOP-PLAN P14 and P12, Decision 073,
- * docs/PLAYS-DESIGN.md §11.5). The cron takes publish jobs and makes one
- * archive.org item per production through the S3-like API, one file per line
- * in script order; it then carries out a performer's replacement or removal.
+ * docs/PLAYS-DESIGN.md §11.5, §12.5). One archive.org item per production
+ * through the S3-like API, one file per line in script order.
+ *
+ * THE FILES COME FROM THE DEVICES (Decision 082; owner 2026-11-19: "We are
+ * using archive.org for storage, not cloudflare."). The Worker keeps no take
+ * audio, so the cron only lays the item out (one file row a line), removes
+ * what performers and directors take back, and rewrites credits. Each line's
+ * file is sent by the director's device (or a performer's, for their own
+ * replacement) to `sendFile`, which checks it is the chosen take and streams
+ * it to archive.org under its fixed name, never holding it whole.
  *
  * RUNS ONLY WITH BOTH KEYS. Nothing here runs unless IA_S3_ACCESS_KEY and
  * IA_S3_SECRET_KEY are both set, and the same check is `publishes` for the
@@ -25,7 +32,8 @@
  */
 
 import { castParts } from "./plays-relay.js";
-import { MAX_TAKE_BYTES } from "./plays-audio.js";
+import { MAX_TAKE_BYTES, takeStream } from "./plays-audio.js";
+import { json, problem } from "./http.js";
 import MANIFEST from "./castable-manifest.json";
 
 export const IA_S3 = "https://s3.us.archive.org";
@@ -127,16 +135,17 @@ async function ask(env, url, init) {
 const auth = (env) => ({ authorization: `LOW ${env.IA_S3_ACCESS_KEY}:${env.IA_S3_SECRET_KEY}` });
 const s3Url = (identifier, name) => `${IA_S3}/${identifier}/${encodeURIComponent(name)}`;
 
-// The whole take is read first (45 MB at most) so archive.org gets a Content-Length, as S3 expects.
-async function put(env, identifier, name, obj, extra) {
-  const body = await obj.arrayBuffer();
+// Streamed with its Content-Length, as S3 expects, one chunk at a time: the file is never held whole.
+function putStream(env, identifier, name, take, extra) {
+  const { readable, writable } = new FixedLengthStream(take.length);
+  take.stream.pipeTo(writable).catch(() => {});
   return ask(env, s3Url(identifier, name), {
     method: "PUT",
-    body,
+    body: readable,
     headers: {
       ...auth(env),
-      "content-type": obj.httpMetadata?.contentType || "application/octet-stream",
-      "x-archive-size-hint": String(body.byteLength),
+      "content-type": take.audio.type,
+      "x-archive-size-hint": String(take.length),
       "x-archive-keep-old-version": "0",
       ...extra,
     },
@@ -252,8 +261,7 @@ async function runJob(env, pid, now, budget) {
   const initial = job.status === "uploading";
 
   const { results: files } = await env.DB.prepare(
-    "SELECT f.*, t.object_key, t.bytes FROM play_archive_files f LEFT JOIN play_takes t ON t.production_id = f.production_id AND t.id = f.take_id " +
-      "WHERE f.production_id = ?1 AND f.state IN ('pending', 'remove') ORDER BY f.seq",
+    "SELECT f.* FROM play_archive_files f WHERE f.production_id = ?1 AND f.state IN ('pending', 'remove') ORDER BY f.seq",
   )
     .bind(pid)
     .all();
@@ -265,7 +273,6 @@ async function runJob(env, pid, now, budget) {
   const reported = new Set(reports.map((r) => r.take_id));
   const sendable = files.filter((f) => f.state === "remove" || !reported.has(f.take_id));
   const held = files.length - sendable.length;
-  const last = sendable.filter((f) => f.state === "pending").at(-1);
 
   /** A transient failure: back off, or give up after MAX_ATTEMPTS. The caller stops this job for the run. */
   const transient = async (r, f) => {
@@ -296,14 +303,8 @@ async function runJob(env, pid, now, budget) {
     return false;
   };
 
-  if (sendable.some((f) => f.state === "pending") && budget.left > 0) {
-    budget.left--;
-    const limit = await overLimit(env, identifier);
-    if (limit) return limit.transient ? transient(limit, sendable[0]) : void (await refused(sendable[0], limit.reason));
-  }
-
   let progressed = false;
-  let startCredits;
+  // Pending lines wait for their files from the devices (sendFile); the cron sends only removals.
   for (const f of sendable) {
     if (budget.left <= 0) break;
     if (f.state === "remove") {
@@ -320,48 +321,6 @@ async function runJob(env, pid, now, budget) {
       if (await refused(f, r.reason)) return;
       continue;
     }
-    if (!f.object_key) {
-      if (await refused(f, "take_missing")) return;
-      continue;
-    }
-    if (f.bytes > MAX_TAKE_BYTES) {
-      if (await refused(f, "too_large")) return;
-      continue;
-    }
-    if (f.stale_name) {
-      budget.left--;
-      const r = await remove(env, identifier, f.stale_name);
-      if (!r.ok && r.status !== 404) {
-        if (r.transient) return transient(r, f);
-        if (await refused(f, r.reason)) return;
-        continue;
-      }
-      await env.DB.prepare("UPDATE play_archive_files SET stale_name = NULL WHERE production_id = ?1 AND line_id = ?2").bind(pid, f.line_id).run();
-      if (budget.left <= 0) break;
-    }
-    const obj = await env.TAKES.get(f.object_key);
-    if (!obj) {
-      if (await refused(f, "take_audio_missing")) return;
-      continue;
-    }
-    budget.left--;
-    if (initial && !startCredits) startCredits = await creditsFor(env, p, p.cast);
-    const extra = initial ? { "x-archive-auto-make-bucket": "1", ...metaHeaders(itemMeta(script, startCredits, job.created_at)) } : {};
-    // Only the last file of a first upload asks archive.org to make the MP3s, so the item derives once.
-    if (initial && f !== last) extra["x-archive-queue-derive"] = "0";
-    const r = await put(env, identifier, f.name, obj, extra);
-    if (!r.ok) {
-      if (r.transient) return transient(r, f);
-      if (await refused(f, r.reason)) return;
-      continue;
-    }
-    // A replacement that arrived while this one was sending stays pending.
-    await env.DB.prepare(
-      "UPDATE play_archive_files SET state = 'sent', reason = NULL, updated_at = ?4 WHERE production_id = ?1 AND line_id = ?2 AND take_id = ?3 AND state = 'pending'",
-    )
-      .bind(pid, f.line_id, f.take_id, now)
-      .run();
-    progressed = true;
   }
 
   const left = await env.DB.prepare("SELECT COUNT(*) AS n FROM play_archive_files WHERE production_id = ?1 AND state IN ('pending', 'remove')")
@@ -397,7 +356,7 @@ async function runJob(env, pid, now, budget) {
  * budget is spent.
  */
 export async function runArchive(env, now = Date.now(), requests = REQUESTS_PER_RUN) {
-  if (!iaConfigured(env) || !env.TAKES) return;
+  if (!iaConfigured(env)) return;
   const { results } = await env.DB.prepare(
     "SELECT production_id FROM play_archive_jobs j WHERE next_attempt_at <= ?1 AND lease_until <= ?1 AND (status IN ('queued', 'uploading') " +
       "OR (status = 'published' AND (credits IS NULL OR EXISTS (SELECT 1 FROM play_archive_files f WHERE f.production_id = j.production_id AND f.state IN ('pending', 'remove'))))) " +
@@ -420,4 +379,92 @@ export async function runArchive(env, now = Date.now(), requests = REQUESTS_PER_
       await env.DB.prepare("UPDATE play_archive_jobs SET lease_until = 0 WHERE production_id = ?1").bind(pid).run();
     }
   }
+}
+
+/** Marks a first upload published once no line waits; the cron does the same if a device stops early. */
+async function finishFirst(env, p, identifier, now) {
+  const left = await env.DB.prepare("SELECT COUNT(*) AS n FROM play_archive_files WHERE production_id = ?1 AND state IN ('pending', 'remove')")
+    .bind(p.id)
+    .first();
+  if (left.n) return;
+  const credits = JSON.stringify(await creditsFor(env, p, p.cast));
+  await env.DB.prepare(
+    "UPDATE play_archive_jobs SET status = 'published', item_url = ?2, published_at = ?3, credits = ?4, attempts = 0, reason = NULL, updated_at = ?3 WHERE production_id = ?1 AND status = 'uploading'",
+  )
+    .bind(p.id, itemUrl(identifier), now, credits)
+    .run();
+  log(p.id, "published");
+}
+
+/**
+ * PUT /v1/plays/productions/:id/archive/files/:lineId: one line's file, from
+ * the device that holds it (Decision 082). Only the director, or the take's
+ * own performer, sends; only a line waiting to be sent; only the chosen take
+ * (its format, rate and length match the take's fields); never a reported
+ * one. The body is checked from its head and streamed to archive.org under
+ * the line's fixed name, so a retry overwrites rather than adds. A first
+ * upload's files carry the item's metadata, and only its last asks
+ * archive.org to derive. archive.org's refusal is answered to the device,
+ * which tries again; nothing waits here.
+ */
+export async function sendFile(env, request, p, lineId, userId, now) {
+  if (!iaConfigured(env)) return problem(503, "publishing_unavailable");
+  const job = await env.DB.prepare("SELECT * FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first();
+  if (!job || !["uploading", "published"].includes(job.status)) return problem(409, "not_ready", job ? job.status : undefined);
+  const f = await env.DB.prepare(
+    "SELECT f.*, t.user_id, t.content_type, t.frames, t.sample_rate FROM play_archive_files f " +
+      "LEFT JOIN play_takes t ON t.production_id = f.production_id AND t.id = f.take_id WHERE f.production_id = ?1 AND f.line_id = ?2",
+  )
+    .bind(p.id, lineId)
+    .first();
+  if (!f) return problem(404, "no_such_file");
+  if (f.state !== "pending") return problem(409, "already_sent", f.state);
+  if (p.user_id !== userId && f.user_id !== userId) return problem(403, "not_your_take");
+  const reported = await env.DB.prepare("SELECT 1 FROM play_reports WHERE production_id = ?1 AND take_id = ?2 AND status = 'open'")
+    .bind(p.id, f.take_id)
+    .first();
+  if (reported) return problem(409, "reported_take", [f.take_id]);
+  const take = await takeStream(request);
+  if (take.error) return problem(...take.error);
+  const a = take.audio;
+  if (a.type !== f.content_type || a.sampleRate !== f.sample_rate || Math.abs(a.frames - f.frames) > a.sampleRate * 0.05) {
+    return problem(422, "not_the_take");
+  }
+  const identifier = job.identifier || identifierFor(p.id);
+  const initial = job.status === "uploading";
+  const others = await env.DB.prepare(
+    "SELECT SUM(state = 'pending') AS pending, SUM(state = 'sent') AS sent FROM play_archive_files WHERE production_id = ?1 AND line_id <> ?2",
+  )
+    .bind(p.id, lineId)
+    .first();
+  if (initial && !others.sent) {
+    const limit = await overLimit(env, identifier);
+    if (limit) return problem(503, "archive_busy", limit.reason);
+  }
+  if (f.stale_name) {
+    const r = await remove(env, identifier, f.stale_name);
+    if (!r.ok && r.status !== 404) return problem(r.transient ? 503 : 502, r.transient ? "archive_unavailable" : "archive_refused", r.reason);
+    await env.DB.prepare("UPDATE play_archive_files SET stale_name = NULL WHERE production_id = ?1 AND line_id = ?2").bind(p.id, lineId).run();
+  }
+  const extra = {};
+  if (initial) {
+    const script = MANIFEST.scripts[p.script_id] || { title: p.title };
+    Object.assign(extra, { "x-archive-auto-make-bucket": "1", ...metaHeaders(itemMeta(script, await creditsFor(env, p, p.cast), job.created_at)) });
+    // Only the last file of a first upload asks archive.org to make the MP3s, so the item derives once.
+    if (others.pending) extra["x-archive-queue-derive"] = "0";
+  }
+  const r = await putStream(env, identifier, f.name, take, extra);
+  if (!r.ok) {
+    log(p.id, `file refused ${r.status}`);
+    return problem(r.transient ? 503 : 502, r.transient ? "archive_unavailable" : "archive_refused", r.reason);
+  }
+  // A replacement that arrived while this one was sending stays pending.
+  await env.DB.prepare(
+    "UPDATE play_archive_files SET state = 'sent', reason = NULL, updated_at = ?4 WHERE production_id = ?1 AND line_id = ?2 AND take_id = ?3 AND state = 'pending'",
+  )
+    .bind(p.id, lineId, f.take_id, now)
+    .run();
+  if (initial) await finishFirst(env, p, identifier, now);
+  const after = await env.DB.prepare("SELECT status, item_url FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first();
+  return json({ line_id: lineId, state: "sent", name: f.name, archive: { status: after.status, url: after.item_url } });
 }

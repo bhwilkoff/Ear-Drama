@@ -5,9 +5,9 @@
  * Each table is named here and deleted from in one batch, and the schema's
  * ON DELETE CASCADE is the second lock. When a table that holds a person's
  * rows is added, it is added to USER_TABLES; test/account.test.js counts the
- * rows in EVERY table after a deletion, so a table left out fails it. A
- * shared play's take audio lives in the TAKES bucket, and playsBeforeDeletion
- * deletes it (or queues it for the sweep) before the rows go.
+ * rows in EVERY table after a deletion, so a table left out fails it. No take
+ * audio is kept on Cloudflare (Decision 082), so there is none to delete; a
+ * class's seats, casting and reviews go with the class.
  *
  * Sign in with Apple also asks that the app revoke the person's Apple tokens
  * when the account goes. The Worker never keeps an Apple token, so the client

@@ -1,6 +1,6 @@
 /**
  * Shared plays, phase 2: invite-only productions across devices (LOOP-PLAN M8,
- * docs/PLAYS-DESIGN.md §11). The HTTP, D1, and R2 adapter; the relay's rules
+ * docs/PLAYS-DESIGN.md §11, §12). The HTTP and D1 adapter; the relay's rules
  * are in plays-relay.js, the name gate in plays-names.js, the audio check in
  * plays-audio.js.
  *
@@ -10,24 +10,26 @@
  * and whoever came in with an invite token. A token is 256 random bits,
  * returned once, stored as its SHA-256, revocable, and expiring.
  *
- * TAKES ARE OBJECTS, NOT ROWS. A take's audio goes to the TAKES bucket (R2:
- * free egress, 10 GB-month free); D1's row holds its metadata and object key.
- * D1 holds 500 MB a database on the free plan, under an hour of 24-bit mono
- * takes at 48 kHz, so audio never goes in it. The bucket is a placeholder until
- * the owner turns R2 on (it asks for a payment method on file; research 08c
- * Q8); without it, an upload answers 503 and nothing else changes.
+ * TAKES PASS THROUGH (Decision 082; owner 2026-11-19: "We are using
+ * archive.org for storage, not cloudflare."). A take's bytes cross the Worker
+ * to the director's device (take-relay.js) and are kept nowhere: no R2, no
+ * D1, no KV, no Durable Object storage. D1's row holds the take's fields,
+ * written once the take reached the director. The director's own take is
+ * checked and recorded, never relayed. With nobody receiving, a take is
+ * refused (409) and waits on the device that recorded it.
  *
- * Nothing here calls archive.org. Publishing queues a job (status `queued`)
- * that the cron's uploader (plays-archive.js) carries out once both archive.org
- * keys are set; a performer's replacement or removal of a published take is a
- * change to one line's file that the uploader carries out the same way.
+ * Publishing queues a job (status `queued`); the cron's uploader
+ * (plays-archive.js) lays out the archive.org item, and the director's device
+ * sends each line's file through the Worker to archive.org (or a performer
+ * sends their replacement), streamed and never stored here.
  */
 
 import { json, limited, problem, readJson } from "./http.js";
 import { randomToken, sha256Hex } from "./jwt.js";
 import { castHash } from "./plays-manifest.js";
 import { nameRefusal, cleanName } from "./plays-names.js";
-import { MAX_TAKE_BYTES, MAX_TAKE_SECONDS, readTakeAudio } from "./plays-audio.js";
+import { drain, takeStream } from "./plays-audio.js";
+import { pickup, relay } from "./take-relay.js";
 import {
   CLAIM_TTL_MS,
   castParts,
@@ -35,6 +37,7 @@ import {
   finishRefusal,
   incomplete,
   isClaimant,
+  isSpeaking,
   next,
   parseCast,
   partOf,
@@ -43,10 +46,11 @@ import {
   statusOf,
 } from "./plays-relay.js";
 import MANIFEST from "./castable-manifest.json";
-import { extOf, fileName, iaConfigured } from "./plays-archive.js";
+import { extOf, fileName, iaConfigured, sendFile } from "./plays-archive.js";
+import { assignmentRows, classHandlers, putAssignments, review, reviewsFor, rosterFor, seatsOf } from "./plays-seats.js";
 
 /** Tables that hold no person's rows; test/account.test.js checks they reference no user. */
-export const PLAYS_ANONYMOUS_TABLES = ["play_orphan_objects", "play_archive_files"];
+export const PLAYS_ANONYMOUS_TABLES = ["play_archive_files", "play_class_seats", "play_assignments", "play_reviews"];
 
 /**
  * The CC0 consent (Decision 059). The version id is what a person agreed to;
@@ -82,13 +86,13 @@ export const EXPIRED_INVITE_KEPT_MS = 30 * DAY_MS;
 /** Seconds between 1970 and 2001: production.json dates are Foundation's. */
 const REFERENCE_DATE_S = 978307200;
 const foundation = (ms) => ms / 1000 - REFERENCE_DATE_S;
-const ID = /^[A-Za-z0-9_-]{8,64}$/;
+export const ID = /^[A-Za-z0-9_-]{8,64}$/;
 const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 export const CLASS_CODE_LENGTH = 8;
 
 /* ---- Reading ---- */
 
-async function production(env, id) {
+export async function production(env, id) {
   const p = await env.DB.prepare("SELECT * FROM play_productions WHERE id = ?1").bind(id).first();
   if (!p) return null;
   return { ...p, cast: JSON.parse(p.cast_sheet) };
@@ -104,7 +108,7 @@ async function partRows(env, pid) {
   return Object.fromEntries(results.map((r) => [r.part, r]));
 }
 
-async function chosenLines(env, pid) {
+export async function chosenLines(env, pid) {
   const { results } = await env.DB.prepare("SELECT line_id FROM play_takes WHERE production_id = ?1 AND chosen = 1").bind(pid).all();
   return new Set(results.map((r) => r.line_id));
 }
@@ -132,7 +136,7 @@ async function hiddenFrom(env, userId, pid) {
   return (t) => blocked.has(t.user_id) || reported.has(t.id);
 }
 
-function takeOut(pid, t) {
+export function takeOut(pid, t) {
   return {
     id: t.id,
     lineID: t.line_id,
@@ -147,7 +151,7 @@ function takeOut(pid, t) {
     peak: t.peak,
     bleed: false,
     user_id: t.user_id,
-    audio: `/v1/plays/productions/${encodeURIComponent(pid)}/takes/${encodeURIComponent(t.id)}/audio`,
+    seat: t.seat_id || null,
   };
 }
 
@@ -211,9 +215,12 @@ async function recordFor(env, p, userId, now) {
     next: next(p.cast, rows, now),
     hidden_takes: takes.length - visible.length,
     archive: job ? { status: job.status, created_at: job.created_at, url: job.item_url, reason: job.reason } : null,
-    uploads: !!env.TAKES,
+    uploads: !!env.TAKE_RELAY,
+    class_id: p.class_id || null,
     server_time: now,
   };
+  if (p.class_id) out.assignments = await assignmentRows(env, p.id);
+  if (p.class_id && p.user_id === userId) out.reviews = await reviewsFor(env, p.id);
   if (p.user_id === userId) {
     const { results } = await env.DB.prepare(
       "SELECT id, created_at, expires_at, revoked FROM play_invites WHERE production_id = ?1 ORDER BY created_at",
@@ -227,7 +234,7 @@ async function recordFor(env, p, userId, now) {
 
 /* ---- Productions ---- */
 
-async function createProduction(auth, request, env, now) {
+export async function createProduction(auth, request, env, now, classId = null) {
   const { body, error } = await readJson(request, 2 * 1024 * 1024);
   if (error) return error;
   const entry = typeof body.script_id === "string" && Object.hasOwn(MANIFEST.scripts, body.script_id) ? MANIFEST.scripts[body.script_id] : null;
@@ -244,8 +251,8 @@ async function createProduction(auth, request, env, now) {
   const id = crypto.randomUUID().toUpperCase();
   await env.DB.batch([
     env.DB.prepare(
-      "INSERT INTO play_productions (id, user_id, script_id, script_revision, title, cast_sheet, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
-    ).bind(id, auth.userId, body.script_id, entry.revision, entry.title, JSON.stringify(cast), now),
+      "INSERT INTO play_productions (id, user_id, script_id, script_revision, title, cast_sheet, created_at, updated_at, class_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?8)",
+    ).bind(id, auth.userId, body.script_id, entry.revision, entry.title, JSON.stringify(cast), now, classId),
     env.DB.prepare("INSERT INTO play_members (production_id, user_id, display_name, joined_at) VALUES (?1, ?2, ?3, ?4)").bind(
       id,
       auth.userId,
@@ -275,7 +282,7 @@ const setPart = (env, pid, part, status, userId, now) =>
           "ON CONFLICT (production_id, part) DO UPDATE SET status = excluded.status, user_id = excluded.user_id, claimed_at = excluded.claimed_at",
       ).bind(pid, part, status, userId, now);
 
-const touch = (env, pid, now) => env.DB.prepare("UPDATE play_productions SET updated_at = ?2 WHERE id = ?1").bind(pid, now);
+export const touch = (env, pid, now) => env.DB.prepare("UPDATE play_productions SET updated_at = ?2 WHERE id = ?1").bind(pid, now);
 
 async function claim(env, p, userId, part, now) {
   const rows = await partRows(env, p.id);
@@ -402,7 +409,7 @@ async function claimByInvite(auth, request, env, now) {
 
 /* ---- Takes ---- */
 
-function parseTakeMeta(raw) {
+export function parseTakeMeta(raw) {
   let m;
   try {
     m = JSON.parse(raw || "");
@@ -410,7 +417,7 @@ function parseTakeMeta(raw) {
     return null;
   }
   if (!m || typeof m !== "object" || Array.isArray(m) || typeof m.lineID !== "string") return null;
-  if (m.capture !== undefined && !["direct", "aec"].includes(m.capture)) return null;
+  if (m.capture !== undefined && !["direct", "aec", "room"].includes(m.capture)) return null;
   const heard = m.heard === undefined ? {} : m.heard;
   if (!heard || typeof heard !== "object" || Array.isArray(heard) || Object.keys(heard).length > 64) return null;
   for (const [k, v] of Object.entries(heard)) if (k.length > 64 || typeof v !== "string" || v.length > 64) return null;
@@ -418,64 +425,68 @@ function parseTakeMeta(raw) {
   if (!num(m.loudness, -200, 20) || !num(m.peak, 0, 16) || !num(m.frames, 0, 1e9) || !num(m.sampleRate, 0, 400000)) return null;
   if (!num(m.created, -1e10, 1e10)) return null;
   if (m.file !== undefined && (typeof m.file !== "string" || !/^[A-Za-z0-9._-]{1,100}$/.test(m.file))) return null;
+  if (m.seat !== undefined && (typeof m.seat !== "string" || m.seat.length > 64)) return null;
   return { ...m, heard, capture: m.capture || "direct" };
 }
 
-/** PUT /v1/plays/productions/:id/takes/:takeId, the audio as the body, the take's fields in `x-take`. */
-async function uploadTake(auth, request, env, p, takeId, now) {
-  if (await limited(env.PLAY_UPLOAD_LIMITER, auth.userId)) return problem(429, "rate_limited");
-  if (!env.TAKES) return problem(503, "storage_not_configured");
+/**
+ * A take arriving, from a member or a seat (Decision 082). In order: refusals
+ * that need no audio; the header, judged from the take's head against its
+ * Content-Length; then the bytes, piped to the director's device (the relay
+ * refuses at once when nobody is receiving), and the take's fields written.
+ * The director's own take and a performer's replacement are recorded only. Nothing
+ * of the audio is kept. `who` is { userId, seatId, sender, direct }: the
+ * account the take belongs to, the seat that recorded it, the relay's
+ * one-take-at-a-time key, and whether it is recorded without relaying.
+ */
+export async function receiveTake(env, request, p, takeId, meta, part, who, now, replacing = null) {
   if (!ID.test(takeId)) return problem(400, "bad_request", "take id");
-  const meta = parseTakeMeta(request.headers.get("x-take"));
-  if (!meta) return problem(400, "bad_request", "x-take must be the take's fields as JSON");
-  const part = partOf(p.cast, meta.lineID);
-  if (!part) return problem(422, "no_such_line");
-  if (meta.part !== undefined && meta.part !== part) return problem(422, "line_is_another_part", part);
-  // A published line's performer may replace their take (P12); otherwise only the part's claimant uploads.
-  const replacing = await publishedLine(env, p.id, meta.lineID);
-  if (replacing) {
-    const refusal = await replaceRefusal(env, p, replacing, auth.userId);
-    if (refusal) return refusal;
-  } else if (!isClaimant(await partRows(env, p.id), part, auth.userId, now)) return problem(403, "not_your_claim");
-  // No CC0 consent here (Decision 072): a take on the Worker reaches only this
-  // production's members. The consent is asked before publishing, which goes beyond them.
-  // A take the bleed check flagged holds the device voice, which is never stored (§5 rule 2, §8 rule 3).
+  // A take the bleed check flagged holds the device voice, which never leaves the device (§5 rule 2, §8 rule 3).
   if (meta.bleed === true) return problem(422, "bleed_flagged");
-
-  if (Number(request.headers.get("content-length") || 0) > MAX_TAKE_BYTES) return problem(413, "too_large");
-  const bytes = new Uint8Array(await request.arrayBuffer());
-  if (bytes.length > MAX_TAKE_BYTES) return problem(413, "too_large");
-  const audio = readTakeAudio(bytes);
-  if (!audio) return problem(415, "unsupported_audio", "mono WAV or FLAC");
-  if (audio.frames / audio.sampleRate > MAX_TAKE_SECONDS) return problem(413, "take_too_long", `${MAX_TAKE_SECONDS} s`);
-  if (meta.sampleRate && meta.sampleRate !== audio.sampleRate) return problem(422, "audio_mismatch", "sampleRate");
-  if (meta.frames !== undefined && Math.abs(meta.frames - audio.frames) > audio.sampleRate * 0.05) {
-    return problem(422, "audio_mismatch", "frames");
+  // A take id is used once (§8 rule 5): a second take under it is refused before any audio is read.
+  if (await env.DB.prepare("SELECT 1 FROM play_takes WHERE production_id = ?1 AND id = ?2").bind(p.id, takeId).first()) {
+    return problem(409, "take_exists");
   }
-
   const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM play_takes WHERE production_id = ?1 AND line_id = ?2")
     .bind(p.id, meta.lineID)
     .first();
   if (count.n >= MAX_TAKES_PER_LINE) return problem(409, "too_many_takes");
 
-  const key = `plays/${p.id}/${takeId}-${randomToken(6)}.${audio.ext}`;
-  await env.TAKES.put(key, bytes, { httpMetadata: { contentType: audio.type } });
+  const take = await takeStream(request);
+  if (take.error) return problem(...take.error);
+  const { audio } = take;
+  if (meta.sampleRate && meta.sampleRate !== audio.sampleRate) return problem(422, "audio_mismatch", "sampleRate");
+  if (meta.frames !== undefined && Math.abs(meta.frames - audio.frames) > audio.sampleRate * 0.05) {
+    return problem(422, "audio_mismatch", "frames");
+  }
   const file = meta.file || `${takeId}.${audio.ext}`;
+  const fields = { id: takeId, lineID: meta.lineID, part, file, frames: audio.frames, sampleRate: audio.sampleRate, capture: meta.capture, seat: who.seatId };
+  if (who.direct) {
+    try {
+      await drain(take.stream);
+    } catch {
+      return problem(400, "bad_request", "the body is not its Content-Length");
+    }
+  } else {
+    const r = await relay(env, p.id, who.sender, fields, take.stream, take.length);
+    if (!r.ok) return r;
+  }
+
   const ins = await env.DB.prepare(
-    "INSERT INTO play_takes (production_id, id, user_id, line_id, part, file, object_key, content_type, bytes, frames, sample_rate, " +
+    "INSERT INTO play_takes (production_id, id, user_id, seat_id, line_id, part, file, content_type, bytes, frames, sample_rate, " +
       "capture, heard, loudness, peak, created, uploaded_at, chosen) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, 0) " +
       "ON CONFLICT DO NOTHING",
   )
     .bind(
       p.id,
       takeId,
-      auth.userId,
+      who.userId,
+      who.seatId,
       meta.lineID,
       part,
       file,
-      key,
       audio.type,
-      bytes.length,
+      take.length,
       audio.frames,
       audio.sampleRate,
       meta.capture,
@@ -486,18 +497,47 @@ async function uploadTake(auth, request, env, p, takeId, now) {
       now,
     )
     .run();
-  // A take id is used once (§8 rule 5): the object key is new on every upload,
-  // so a reused id never touches the first take's audio, and its row stays.
-  if (!ins.meta.changes) {
-    await env.TAKES.delete(key);
-    return problem(409, "take_exists");
-  }
+  if (!ins.meta.changes) return problem(409, "take_exists");
   // A new take becomes the line's chosen one; the older takes stay (§8 rule 5).
   const stmts = [...chooseStatements(env, p.id, meta.lineID, takeId), touch(env, p.id, now)];
   if (replacing) stmts.push(replaceStatement(env, p.id, replacing, takeId, audio.type, now));
   await env.DB.batch(stmts);
   const row = await env.DB.prepare("SELECT * FROM play_takes WHERE production_id = ?1 AND id = ?2").bind(p.id, takeId).first();
-  return json(takeOut(p.id, row), 201);
+  return json({ ...takeOut(p.id, row), delivered: !who.direct }, 201);
+}
+
+/** PUT /v1/plays/productions/:id/takes/:takeId, the audio as the body, the take's fields in `x-take`. */
+async function uploadTake(auth, request, env, p, takeId, now) {
+  if (await limited(env.PLAY_UPLOAD_LIMITER, auth.userId)) return problem(429, "rate_limited");
+  const meta = parseTakeMeta(request.headers.get("x-take"));
+  if (!meta) return problem(400, "bad_request", "x-take must be the take's fields as JSON");
+  const part = partOf(p.cast, meta.lineID);
+  if (!part) return problem(422, "no_such_line");
+  if (meta.part !== undefined && meta.part !== part) return problem(422, "line_is_another_part", part);
+  const director = p.user_id === auth.userId;
+  let seatId = null;
+  let replacing = null;
+  if (p.class_id) {
+    // A class production's members are its seats (plays-seats.js); an account here is its teacher,
+    // whose device records any line (one microphone, §12.3) and may credit it to a seat.
+    if (!director) return problem(403, "seats_record_here");
+    if (meta.seat !== undefined) {
+      if (!(await seatsOf(env, p.class_id)).some((s) => s.id === meta.seat)) return problem(422, "no_such_seat");
+      seatId = meta.seat;
+    }
+  } else {
+    // A published line's performer may replace their take (P12); otherwise only the part's claimant uploads.
+    replacing = await publishedLine(env, p.id, meta.lineID);
+    if (replacing) {
+      const refusal = await replaceRefusal(env, p, replacing, auth.userId);
+      if (refusal) return refusal;
+    } else if (!isClaimant(await partRows(env, p.id), part, auth.userId, now)) return problem(403, "not_your_claim");
+  }
+  // No CC0 consent here (Decision 072): a take reaches only this production's
+  // director. The consent is asked before publishing, which goes beyond them.
+  // A replacement goes to archive.org from the performer's device (archive/files), not to the director.
+  const who = { userId: auth.userId, seatId, sender: `user:${auth.userId}`, direct: director || !!replacing };
+  return receiveTake(env, request, p, takeId, meta, part, who, now, replacing);
 }
 
 /* ---- Replacing or removing a published take (P12) ---- */
@@ -551,7 +591,7 @@ async function removePublished(auth, request, env, p, lineId, now) {
   return json({ line_id: lineId, state: f.state === "removed" ? "removed" : "remove" }, 202);
 }
 
-const chooseStatements = (env, pid, lineID, takeId) => [
+export const chooseStatements = (env, pid, lineID, takeId) => [
   env.DB.prepare("UPDATE play_takes SET chosen = 0 WHERE production_id = ?1 AND line_id = ?2 AND chosen = 1").bind(pid, lineID),
   env.DB.prepare("UPDATE play_takes SET chosen = 1 WHERE production_id = ?1 AND id = ?2").bind(pid, takeId),
 ];
@@ -564,17 +604,6 @@ async function chooseTake(auth, request, env, p, now) {
   if (!isClaimant(await partRows(env, p.id), t.part, auth.userId, now)) return problem(403, "not_your_claim");
   await env.DB.batch([...chooseStatements(env, p.id, t.line_id, body.take_id), touch(env, p.id, now)]);
   return json(await recordFor(env, p, auth.userId, now));
-}
-
-async function takeAudio(auth, env, p, takeId) {
-  const t = await env.DB.prepare("SELECT id, user_id, object_key, content_type FROM play_takes WHERE production_id = ?1 AND id = ?2")
-    .bind(p.id, takeId)
-    .first();
-  if (!t || (await hiddenFrom(env, auth.userId, p.id))(t)) return problem(404, "no_such_take");
-  if (!env.TAKES) return problem(503, "storage_not_configured");
-  const obj = await env.TAKES.get(t.object_key);
-  if (!obj) return problem(404, "no_such_take");
-  return new Response(obj.body, { headers: { "content-type": t.content_type, "cache-control": "private, max-age=3600" } });
 }
 
 /* ---- Consent and publishing ---- */
@@ -591,13 +620,49 @@ async function consent(auth, request, env, p, now) {
   return new Response(null, { status: 204 });
 }
 
+/** A class production is whole when every speaking line has a chosen take; sound and directions may stay silent (C6). */
+function classIncomplete(cast, chosen) {
+  const missing = cast.filter(([id, part]) => isSpeaking(part) && !chosen.has(id)).map(([id]) => id);
+  return missing.length ? { lines_missing: missing.slice(0, 50) } : null;
+}
+
+/**
+ * A class production goes to archive.org only for a class marked 13 and over,
+ * under its teacher's own name (Decision 082): the item's every line is
+ * credited to the teacher's chosen name, and the teacher's own CC0 consent at
+ * the current version is the one the publish needs. An under-13 class never
+ * publishes; its teacher exports a file.
+ */
+async function classPublishRefusal(request, env, p) {
+  const c = await env.DB.prepare("SELECT under13 FROM play_classes WHERE id = ?1").bind(p.class_id).first();
+  if (!c || c.under13) return problem(403, "under_13_never_published");
+  const { body, error } = await readJson(request, 4 * 1024);
+  if (error) return error;
+  if (body.credit_name !== undefined) {
+    const refusal = nameRefusal(body.credit_name);
+    if (refusal) return problem(422, refusal);
+    await env.DB.prepare("UPDATE play_members SET display_name = ?3 WHERE production_id = ?1 AND user_id = ?2")
+      .bind(p.id, p.user_id, cleanName(body.credit_name))
+      .run();
+  }
+  const m = await member(env, p.id, p.user_id);
+  if (!m || !m.display_name) return problem(422, "credit_name_required");
+  return null;
+}
+
 /** POST /v1/plays/productions/:id/publish: queues the archive.org upload; the cron sends it. A failed job is queued again. */
-async function publish(auth, env, p, now) {
+async function publish(auth, request, env, p, now) {
   if (p.user_id !== auth.userId) return problem(403, "director_only");
   if (!iaConfigured(env)) return problem(503, "publishing_unavailable");
   const job = await env.DB.prepare("SELECT status, take_ids, created_at FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first();
   if (job && job.status !== "failed") return json({ status: job.status, take_ids: JSON.parse(job.take_ids), created_at: job.created_at });
-  const left = incomplete(p.cast, await partRows(env, p.id), await chosenLines(env, p.id), now);
+  if (p.class_id) {
+    const refusal = await classPublishRefusal(request, env, p);
+    if (refusal) return refusal;
+  }
+  const left = p.class_id
+    ? classIncomplete(p.cast, await chosenLines(env, p.id))
+    : incomplete(p.cast, await partRows(env, p.id), await chosenLines(env, p.id), now);
   if (left) return problem(409, "incomplete", left);
   const { results: chosen } = await env.DB.prepare("SELECT id, user_id FROM play_takes WHERE production_id = ?1 AND chosen = 1 ORDER BY line_id")
     .bind(p.id)
@@ -761,7 +826,7 @@ async function getClass(auth, env, classId) {
     )
       .bind(classId)
       .all();
-    return json({ id: c.id, name: c.name, code: c.code, under13: !!c.under13, school_consent: !!c.policy_version, members: results });
+    return json({ id: c.id, name: c.name, code: c.code, under13: !!c.under13, school_consent: !!c.policy_version, members: results, seats: await rosterFor(env, classId) });
   }
   const m = await env.DB.prepare("SELECT 1 FROM play_class_members WHERE class_id = ?1 AND user_id = ?2").bind(classId, auth.userId).first();
   if (!m) return problem(404, "class_not_found");
@@ -801,7 +866,7 @@ export async function handlePlays(url, request, env, auth) {
   const now = Date.now();
   const [a, b, c, d, e] = seg;
 
-  if (a === "consent" && !b && m === "GET") return json({ version: CONSENT_VERSION, text: CONSENT_TEXT, uploads: !!env.TAKES, publishes: iaConfigured(env) });
+  if (a === "consent" && !b && m === "GET") return json({ version: CONSENT_VERSION, text: CONSENT_TEXT, uploads: !!env.TAKE_RELAY, publishes: iaConfigured(env) });
   if (a === "invites" && b === "view" && !c && m === "POST") return viewInvite(auth, request, env, now);
   if (a === "invites" && b === "claim" && !c && m === "POST") return claimByInvite(auth, request, env, now);
   if (a === "reports" && !b && m === "POST") return report(auth, request, env, now);
@@ -822,7 +887,7 @@ export async function handlePlays(url, request, env, auth) {
     if (b && !c && m === "GET") return getClass(auth, env, b);
     if (b && c === "school-consent" && !d && m === "POST") return schoolConsent(auth, request, env, b, now);
     if (b && c === "members" && d && !e && m === "DELETE") return removeClassMember(auth, env, b, d);
-    return problem(404, "not_found");
+    return (await classHandlers(auth, request, env, seg, now)) || problem(404, "not_found");
   }
 
   if (a !== "productions") return problem(404, "not_found");
@@ -837,11 +902,14 @@ export async function handlePlays(url, request, env, auth) {
   if (c === "invites" && d && !e && m === "DELETE") return revokeInvite(auth, env, p, d);
   if (c === "claim" && !d && m === "POST") return claimAsMember(auth, request, env, p, now);
   if (c === "parts" && d && e && m === "POST" && seg.length === 5) return partAction(auth, env, p, d, e, now);
+  if (c === "takes" && d === "inbox" && !e && m === "GET") return p.user_id === auth.userId ? pickup(env, p.id) : problem(403, "director_only");
   if (c === "takes" && d && !e && m === "PUT") return uploadTake(auth, request, env, p, d, now);
-  if (c === "takes" && d && e === "audio" && seg.length === 5 && m === "GET") return takeAudio(auth, env, p, d);
+  if (c === "takes" && d && e === "review" && seg.length === 5 && m === "POST") return review(auth, request, env, p, d, now);
+  if (c === "assignments" && !d && m === "PUT") return putAssignments(auth, request, env, p, now);
   if (c === "chosen" && !d && m === "POST") return chooseTake(auth, request, env, p, now);
   if (c === "consent" && !d && m === "POST") return consent(auth, request, env, p, now);
-  if (c === "publish" && !d && m === "POST") return publish(auth, env, p, now);
+  if (c === "publish" && !d && m === "POST") return publish(auth, request, env, p, now);
+  if (c === "archive" && d === "files" && e && seg.length === 5 && m === "PUT") return sendFile(env, request, p, e, auth.userId, now);
   if (c === "archive" && d === "lines" && e && seg[5] === "remove" && seg.length === 6 && m === "POST") return removePublished(auth, request, env, p, e, now);
   return problem(404, "not_found");
 }
@@ -862,10 +930,9 @@ export const DELETED_PERSON = "deleted-account";
  * DELETED_PERSON, their member row goes so no name is credited, and a published
  * item's credits are queued to be rewritten. Directorship passes to no one.
  * Every other production of theirs with anyone else in it passes to the member
- * who joined first; one nobody else is in goes with them. Then the audio of
- * every take about to lose its row is deleted from the bucket. A failed object
- * deletion is queued in play_orphan_objects for the sweep, never left behind
- * unindexed. Returns statements for the deletion batch.
+ * who joined first; one nobody else is in goes with them. No take audio is
+ * on Cloudflare to delete (Decision 082). Returns statements for the deletion
+ * batch (none today; the shape stays for account.js).
  */
 export async function playsBeforeDeletion(env, userId) {
   const submitted = "SELECT production_id FROM play_archive_jobs";
@@ -885,45 +952,14 @@ export async function playsBeforeDeletion(env, userId) {
   )
     .bind(userId)
     .run();
-  const { results } = await env.DB.prepare(
-    "SELECT object_key FROM play_takes WHERE user_id = ?1 OR production_id IN (SELECT id FROM play_productions WHERE user_id = ?1)",
-  )
-    .bind(userId)
-    .all();
-  const keys = results.map((r) => r.object_key);
-  const orphans = await deleteObjects(env, keys);
-  const now = Date.now();
-  return orphans.map((k) => env.DB.prepare("INSERT OR IGNORE INTO play_orphan_objects (object_key, queued_at) VALUES (?1, ?2)").bind(k, now));
+  return [];
 }
 
-/** Deletes objects from the bucket; returns the keys that could not be deleted. */
-async function deleteObjects(env, keys) {
-  if (!keys.length) return [];
-  if (!env.TAKES) return keys;
-  const failed = [];
-  for (let i = 0; i < keys.length; i += 1000) {
-    const chunk = keys.slice(i, i + 1000);
-    try {
-      await env.TAKES.delete(chunk);
-    } catch {
-      failed.push(...chunk);
-    }
-  }
-  return failed;
-}
-
-/** The hourly sweep: lapsed claims reopen, expired invites go, orphaned objects are retried. */
+/** The hourly sweep: lapsed claims reopen, expired invites go. */
 export async function sweepPlays(env, now = Date.now()) {
   await env.DB.batch([
     env.DB.prepare("DELETE FROM play_parts WHERE status = 'recording' AND claimed_at < ?1").bind(now - CLAIM_TTL_MS),
     // An expired invite answers 410 for a month, then is forgotten (404).
     env.DB.prepare("DELETE FROM play_invites WHERE expires_at < ?1").bind(now - EXPIRED_INVITE_KEPT_MS),
   ]);
-  const { results } = await env.DB.prepare("SELECT object_key FROM play_orphan_objects LIMIT 1000").all();
-  const keys = results.map((r) => r.object_key);
-  const failed = new Set(await deleteObjects(env, keys));
-  const done = keys.filter((k) => !failed.has(k));
-  if (done.length) {
-    await env.DB.batch(done.map((k) => env.DB.prepare("DELETE FROM play_orphan_objects WHERE object_key = ?1").bind(k)));
-  }
 }

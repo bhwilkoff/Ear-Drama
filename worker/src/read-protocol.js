@@ -133,7 +133,7 @@ function cleanSeats(raw) {
  * `from` and `to` being line ids of that part) to a seat. Two assignments may
  * not cover the same line.
  */
-function cleanAssignments(raw, cast, seats) {
+export function cleanAssignments(raw, cast, seats) {
   if (raw === undefined || raw === null) return [];
   if (!Array.isArray(raw) || raw.length > 500) return null;
   const parts = partSet(cast);

@@ -19,8 +19,10 @@
  *
  * NO ACCOUNT to read. A member is a random id and a random key, returned
  * once, stored only as its SHA-256 (Listen Together's pattern, rooms.js). A
- * class room is opened by its teacher's account; its seats are the teacher's
- * labels (T2 adds the seat key from the class roster).
+ * class room is opened by its teacher's account; its seats are the class's
+ * roster and its casting the class production's assignments, both read from
+ * D1 when the room opens, never taken from the request. A seat joins, or
+ * moves to a seat, only with that seat's key (plays-seats.js).
  *
  * LIMITS by member, not by address (a class sits behind one school address):
  * read routes skip the Worker-wide address floor and use READ_IP_LIMITER, set
@@ -36,6 +38,7 @@ import { json, problem, readJson, limited } from "./http.js";
 import { randomToken, sha256Hex } from "./jwt.js";
 import { authenticate } from "./auth.js";
 import * as P from "./read-protocol.js";
+import { assignmentRows, seatKeyOpens, seatsOf } from "./plays-seats.js";
 
 /** Tables that hold no person's rows; test/account.test.js checks they have no user_id. */
 export const READ_ANONYMOUS_TABLES = ["read_rooms"];
@@ -47,6 +50,7 @@ const STATUS = {
   joining_locked: 409,
   part_taken: 409,
   seat_in_use: 409,
+  seat_key_required: 403,
   stale: 409,
   room_ended: 410,
   no_such_room: 404,
@@ -95,11 +99,12 @@ const engine = {
     return { world: { room: made.room, cast, members: [member] }, member, key };
   },
 
-  async join(world, want, now) {
+  async join(env, world, want, now) {
     const s = P.settle(world.room, world.members, now);
     const w = { ...world, room: s.room, members: s.members };
     const role = want.role === undefined ? "reader" : want.role;
     const seat = want.seat === undefined ? null : want.seat;
+    if (seat !== null && w.room.kind === "class" && !(await seatKeyOpens(env, w.room.class_id, seat, want.seat_key))) return { error: "seat_key_required" };
     const refusal = P.joinRefusal(w.room, w.members, { role, seat }, now);
     if (refusal) return { error: refusal };
     const { member, key } = await newMember(role, null, now);
@@ -120,6 +125,12 @@ const engine = {
     if (r.error) return r;
     const after = P.settle(r.room, r.members, now);
     return { world: { ...world, room: after.room, members: after.members }, changed: r.changed || before.changed || after.changed, reply: r.reply };
+  },
+
+  /** A class room's seat changes hands only with that seat's key; null when `msg` may go on. */
+  async guard(env, world, msg) {
+    if (world.room.kind !== "class" || !msg || msg.type !== "seat") return null;
+    return (await seatKeyOpens(env, world.room.class_id, msg.seat, msg.seat_key)) ? null : "seat_key_required";
   },
 
   async member(env, world, key) {
@@ -147,6 +158,13 @@ async function createInput(request, env) {
     const c = typeof body.class_id === "string" ? await env.DB.prepare("SELECT user_id FROM play_classes WHERE id = ?1").bind(body.class_id).first() : null;
     if (!c) return { response: problem(404, "no_such_class") };
     if (c.user_id !== auth.userId) return { response: problem(403, "teacher_only") };
+    // The roster and the casting are the class's own (T2), never the request's.
+    body.seats = (await seatsOf(env, body.class_id)).map((s) => ({ id: s.id, label: s.label }));
+    if (body.production_id !== undefined) {
+      const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT class_id, script_id FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
+      if (!p || p.class_id !== body.class_id || p.script_id !== body.script_id) return { response: problem(404, "no_such_production") };
+      body.assignments = await assignmentRows(env, body.production_id);
+    }
   }
   const input = {
     kind: body.kind,
@@ -278,7 +296,7 @@ export class ReadRoom extends DurableObject {
 
     if (op === "join") {
       const want = await request.json();
-      const r = await engine.join(this.refresh(this.world, now), want, now);
+      const r = await engine.join(this.env, this.refresh(this.world, now), want, now);
       if (r.error) return refuse(r.error);
       await this.save(r.world);
       this.broadcast(r.world, now);
@@ -311,6 +329,8 @@ export class ReadRoom extends DurableObject {
 
     if (op === "send") {
       const msg = await request.json();
+      const guarded = await engine.guard(this.env, this.world, msg);
+      if (guarded) return refuse(guarded);
       const r = await this.apply(auth.me.id, msg, now);
       if (r.error) return refuse(r.error, r.detail);
       const out = r.world.room.ended ? { ended: true } : snapshot(r.world, auth.me.id, now);
@@ -348,6 +368,8 @@ export class ReadRoom extends DurableObject {
     }
 
     if (await limited(this.env.READ_MEMBER_LIMITER, a.member)) return ws.send(JSON.stringify({ type: "error", error: "rate_limited" }));
+    const guarded = await engine.guard(this.env, this.world, msg);
+    if (guarded) return ws.send(JSON.stringify({ type: "error", error: guarded }));
     const r = await this.apply(a.member, msg, now);
     if (r.error) return ws.send(JSON.stringify({ type: "error", error: r.error, detail: r.detail }));
     if (r.reply) ws.send(JSON.stringify(r.reply));
@@ -460,7 +482,7 @@ const d1 = {
   async join(env, code, want, now) {
     let joined;
     const r = await d1.update(env, code, now, async (world) => {
-      const j = await engine.join(world, want, now);
+      const j = await engine.join(env, world, want, now);
       if (!j.error) joined = j;
       return j;
     });
@@ -488,6 +510,8 @@ const d1 = {
     if (!loaded) return refuse("no_such_room");
     const auth = await engine.member(env, loaded.world, key);
     if (auth.error) return refuse(auth.error);
+    const guarded = await engine.guard(env, loaded.world, msg);
+    if (guarded) return refuse(guarded);
     const r = await d1.update(env, code, now, async (world) => engine.send(world, auth.me.id, msg, now));
     if (r.error) return refuse(r.error, r.detail);
     const out = r.world.room.ended ? { ended: true } : snapshot(r.world, auth.me.id, now);
