@@ -345,3 +345,7 @@ privacy words) is folded in when it arrives, never waited on.
   (run 44711842758). Live: series.network 912, series.hero 22, series.picture 314. Play pictures
   NOT live: the play library ships from its own plays-library Release; refresh running (Sonnet).
   Running: T7 bench, play-library refresh.
+- **2026-11-20, tick 24**: play pictures live: plays-library-2026-11-20 (play_art.attach over the
+  live asset; ids, scripts, phonemes byte-identical; only new fields), site deploy 44715639088 green;
+  live titlePage 176 / authorArt 275 / picture 394 of 803; 5 image URLs HEAD 200. Note:
+  refresh_play_library.sh re-harvests and needs the phoneme venv (missing locally). Running: T7.
