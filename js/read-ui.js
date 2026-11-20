@@ -428,7 +428,7 @@ const ReadUI = (() => {
 
   /**
    * The receiver's Takes (§12.10 items 4-5): counts per reader, each speaking line's state with Play
-   * and Again (and Approve / Again with a note in a class production), then Listen through, Export,
+   * and Again (and Approve / Again, with an optional note, in a class production), then Listen through, Export,
    * and, in a class of 13 and over, Publish under my name. Counts, never a ranking.
    */
   function takesSheet(api, script, cast, rr) {
@@ -469,13 +469,20 @@ const ReadUI = (() => {
         const take = p && p.chosen[r.line] ? p.takes.find((t) => t.id === p.chosen[r.line]) : null;
         const acts = [];
         if (take) acts.push(el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => hear(take) }, 'Play'));
-        if (r.state === 'recorded' || r.state === 'away') acts.push(el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => send({ type: 'again', line: r.line, base: session.state().snap.cursor_gen }) }, 'Again'));
-        if (take && s.production_id && s.kind === 'class') {
-          const note = el('input', { class: 'field-input', type: 'text', maxlength: '500', placeholder: 'Note', 'aria-label': 'Note to the reader' });
-          acts.push(el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => API.plays.review(s.production_id, take.id, 'approved').then(() => { line.textContent = ''; }).catch((e) => { line.textContent = R.refusal(codeOf(e)); }) }, 'Approve'),
-            el('details', { class: 'rr-again-note' }, el('summary', { class: 'btn btn-ghost' }, 'Again with a note'),
-              el('form', { onsubmit: (e) => { e.preventDefault(); API.plays.review(s.production_id, take.id, 'again', note.value.trim()).then(() => send({ type: 'again', line: r.line, base: session.state().snap.cursor_gen })).catch((er) => { line.textContent = R.refusal(codeOf(er)); }); } },
-                note, el('button', { type: 'submit', class: 'btn' }, 'Send'))));
+        const again = () => send({ type: 'again', line: r.line, base: session.state().snap.cursor_gen });
+        const reviewable = take && s.production_id && s.kind === 'class';
+        if (reviewable) {
+          const note = el('input', { class: 'field-input', type: 'text', maxlength: '500', placeholder: 'Note (optional)', 'aria-label': 'Note to the reader' });
+          const fail = (er) => { line.textContent = R.refusal(codeOf(er)); };
+          acts.push(el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => API.plays.review(s.production_id, take.id, 'approved').then(() => { line.textContent = ''; }).catch(fail) }, 'Approve'),
+            el('details', { class: 'rr-again-note' }, el('summary', { class: 'btn btn-ghost' }, 'Again'),
+              el('form', { onsubmit: (e) => {
+                e.preventDefault();
+                const said = note.value.trim();
+                (said ? API.plays.review(s.production_id, take.id, 'again', said) : Promise.resolve()).then(again).catch(fail);
+              } }, note, el('button', { type: 'submit', class: 'btn' }, 'Send'))));
+        } else if (r.state === 'recorded' || r.state === 'away') {
+          acts.push(el('button', { type: 'button', class: 'btn btn-ghost', onclick: again }, 'Again'));
         }
         return el('li', { class: 'rr-take-row', dataset: { state: r.state, line: r.line } },
           el('div', { class: 'cast-main' }, el('span', { class: 'body-strong' }, C.partTitle(r.part)), el('span', { class: 'caption rr-take-words' }, words)),

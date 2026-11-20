@@ -365,7 +365,7 @@ private fun AddScreenDialog(seam: RoomSeam, onDismiss: () -> Unit) {
 
 /**
  * The receiver's Takes (PLAYS-DESIGN §12.10 items 4-5): counts per reader, each speaking line's state with Play and Again (and
- * Approve and Again with a note in a class production), then Listen through, Export, and in a class of 13 and over Publish under
+ * Approve and Again, which offers an optional note, in a class production), then Listen through, Export, and in a class of 13 and over Publish under
  * my name. Counts, never a ranking.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -441,9 +441,6 @@ internal fun TakesContent(
                                 scope.launch { runCatching { player.load(store.takeFile(local, take)); player.toggle() } }
                             }) { Text("Play") }
                         }
-                        if (r.state != ReadCore.TakeState.Open) {
-                            TextButton(onClick = { onSend(msg("type" to "again", "line" to r.line, "base" to snap.cursorGen)) }) { Text("Again") }
-                        }
                         val pid = snap.productionId
                         if (take != null && pid != null && snap.kind == "class") {
                             TextButton(onClick = {
@@ -451,17 +448,19 @@ internal fun TakesContent(
                                     try { seam.classes.review(pid, take.id, "approved", null); line = null } catch (e: CancellationException) { throw e } catch (e: ReadFailure) { line = ReadCore.refusal(e.code) } catch (_: Exception) { line = ReadCore.refusal("error") }
                                 }
                             }) { Text("Approve") }
-                            TextButton(onClick = { noting = !noting }) { Text("Again with a note") }
+                            TextButton(onClick = { noting = !noting }) { Text("Again") }
+                        } else if (r.state != ReadCore.TakeState.Open) {
+                            TextButton(onClick = { onSend(msg("type" to "again", "line" to r.line, "base" to snap.cursorGen)) }) { Text("Again") }
                         }
                     }
                     if (noting) {
                         val pid = snap.productionId
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
-                            OutlinedTextField(note, { note = it.take(500) }, label = { Text("Note") }, modifier = Modifier.weight(1f), singleLine = true)
+                            OutlinedTextField(note, { note = it.take(500) }, label = { Text("Note (optional)") }, modifier = Modifier.weight(1f), singleLine = true)
                             Button(enabled = take != null && pid != null, onClick = {
                                 scope.launch {
                                     try {
-                                        seam.classes.review(pid!!, take!!.id, "again", note.trim())
+                                        if (note.isNotBlank()) seam.classes.review(pid!!, take!!.id, "again", note.trim())
                                         onSend(msg("type" to "again", "line" to r.line, "base" to snap.cursorGen))
                                         noting = false
                                         line = null
