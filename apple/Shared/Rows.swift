@@ -59,7 +59,7 @@ struct SeriesRowLabel: View {
         GrammarRow(
             visual: .window(series.windowArt, name: series.name, genre: series.genre),
             title: series.name,
-            sub: [series.networks.first, series.yearSpan ?? "Undated",
+            sub: [series.network, series.yearSpan ?? "Undated",
                   series.episodeCount > 0 ? (series.episodeCount == 1 ? "1 episode" : "\(series.episodeCount.formatted()) episodes") : nil])
     }
 }

@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -94,8 +95,11 @@ fun ItemHeadBoard(
     val t = MaterialTheme.typography
     var failed by remember(art) { mutableStateOf(false) }
     val shown = if (failed) null else ItemLead.shown(art)
+    val tv = LocalContext.current.isTelevision()
+    val screenHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }.value
+    val plateMax = if (tv) screenHeight * 0.3f else null
     BoxWithConstraints(modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
-        val frame = ItemLead.window(if (customWindow != null) null else shown, maxWidth.value)
+        val frame = ItemLead.window(if (customWindow != null) null else shown, maxWidth.value, plateMax)
         val beside = maxWidth.value >= ItemLead.BESIDE_FROM
         val wide = maxWidth.value >= 600f
         val window = @Composable {
@@ -189,7 +193,7 @@ fun HeadCredit(art: Artwork?, modifier: Modifier = Modifier) {
     PictureCredit(listOf(shown), 1.dp, modifier)
 }
 
-/** The kicker's genre as a link, then the networks after it, in the board's ink. */
+/** The kicker's genre as a link, then the series' one primary network after it, in the board's ink. */
 @Composable
 fun GenreKicker(name: String, rest: String, ink: Color, onOpen: () -> Unit) {
     val t = MaterialTheme.typography

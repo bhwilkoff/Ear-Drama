@@ -167,7 +167,13 @@ struct ListenScreen: View {
             .pageRow()
             .playContextMenu(episode.id)
         }
+        #if os(macOS)
         return PageRows("Continue") { rows }
+        #else
+        // V8: Home's Continue takes the heading every other Home section wears (SectionHead), not the List's
+        // small gray section title, so the first screen reads as one set of sections (open Duo, 2026-11-20).
+        return PageSection { rows } header: { SectionHead(title: "Continue") { EmptyView() } }
+        #endif
     }
 
     @ViewBuilder private func nightSection(_ day: HomeDay, _ selected: Int, skipping above: Set<String>) -> some View {
@@ -185,6 +191,7 @@ struct ListenScreen: View {
                     }
                     .buttonStyle(.borderless)
                     .font(TypeRamp.caption)
+                    .gridRow(.words)
                 }
             } header: {
                 SectionHead(title: day.nightHeading(selected)) {
@@ -676,8 +683,8 @@ struct SeriesScreen: View {
 
     private func head(_ page: SeriesPage) -> some View {
         let series = page.series
-        let kicker = series.genre.map { ItemKicker.genre($0, rest: series.networks.joined(separator: " \u{00B7} ")) }
-            ?? (series.networks.isEmpty ? nil : ItemKicker.text(series.networks.joined(separator: " \u{00B7} ")))
+        let kicker = series.genre.map { ItemKicker.genre($0, rest: series.network) }
+            ?? series.network.map(ItemKicker.text)
         return ItemHeadBoard(kicker: kicker, name: series.name, genre: series.genre, art: series.lead, label: series.labelItem,
                              facts: SeriesHead.facts(series), first: series.firstDate, last: series.lastDate, years: series.yearCounts)
     }

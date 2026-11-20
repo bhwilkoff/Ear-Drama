@@ -27,6 +27,15 @@ struct BrowseLetterTests {
         #expect(Grammar.parseYearCounts(nil) == nil)
     }
 
+    /// V8: a page's own-span strip shows at least twelve years, so three seasons are three bars, not three slabs.
+    @Test func theOwnSpanAxisShowsAtLeastTwelveYears() throws {
+        let short = try #require(Grammar.ownSpanAxis(Grammar.runBars(years: [1955, 30, 60, 20])))
+        #expect(abs((short.hi - short.lo) * 33 - 12) < 1e-9)
+        #expect(abs(short.lo - 25.0 / 33.0) < 1e-9, "the axis starts at the first year")
+        let long = try #require(Grammar.ownSpanAxis(Grammar.runBars(years: [1940] + Array(repeating: 5, count: 20))))
+        #expect(abs((long.hi - long.lo) * 33 - 20) < 1e-9, "control: a long run keeps its own span")
+    }
+
     @Test func aBareUndatedRowLeadsWithTheWindow() {
         #expect(Grammar.undatedBare(date: nil, number: nil))
         #expect(!Grammar.undatedBare(date: nil, number: 7), "control: a number keeps its block")

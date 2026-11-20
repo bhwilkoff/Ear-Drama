@@ -135,6 +135,10 @@ enum Fixture {
             try insert("INSERT INTO series (key, name, genre, first_date, last_date, networks, episodes, sort_name) VALUES (?,?,?,?,?,?,?,?)",
                        [s.key, s.name, s.genre, s.first, s.last, s.networks, counts[s.key] ?? 0, Self.sortNames[s.key] ?? s.name.lowercased()])
         }
+        // `series.network` (contract §3.3), the primary network the pipeline computes: Suspense's is CBS; the
+        // shortwave speeches name none (not a network). V8: the meta line reads this column, never `networks`.
+        try insert("UPDATE series SET network = ?, network_source = ? WHERE key = ?", ["CBS", "episodes", "suspense"])
+        try insert("UPDATE series SET network = ?, network_source = ? WHERE key = ?", ["NBC", "episodes", "mrsorrowful"])
         for (pid, name) in people { try insert("INSERT INTO people (id, name) VALUES (?, ?)", [pid, name]) }
         for c in credits { try insert("INSERT INTO credits VALUES (?,?,?,?)", [c.0, c.1, c.2, c.3]) }
         for (rowid, e) in episodes.enumerated() {

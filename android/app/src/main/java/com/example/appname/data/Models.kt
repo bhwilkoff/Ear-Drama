@@ -110,6 +110,9 @@ data class SeriesRow(
     val pictureKind: String? = null,
     /** `series.networks`, in published order. */
     val networks: List<String> = emptyList(),
+    /** `series.network` (contract §3.3): the one primary network the head and the label's rim name; never parsed
+     *  from [networks] (V8, 2026-11-20). Null when the catalog names none. */
+    val network: String? = null,
     /** The run histogram (`series.year_counts`): the first year, then one count per year; null where the catalog has none. */
     val yearCounts: List<Int>? = null,
     /** The key the A to Z order sorts on, for Browse's letter rail; null where the catalog has none. */

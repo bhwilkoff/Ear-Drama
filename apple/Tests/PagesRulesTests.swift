@@ -19,6 +19,17 @@ struct PagesRulesTests {
          Credit(personID: "b", name: "B", role: "cast", character: nil, art: art("b"))]
     }
 
+    /// V8: a series' meta line names the one primary network (`series.network`), never the first of `networks`;
+    /// the head's kicker and the label's rim are held in Render/SeriesHeadNetworkTests.swift (they need the views).
+    @Test func seriesMetaNamesThePrimaryNetworkOnly() {
+        let lux = SeriesRow(key: "lux", name: "Lux", genre: "drama", firstDate: nil, lastDate: nil,
+                            networks: ["NBC Blue", "CBS"], episodeCount: 9, network: "CBS")
+        #expect(lux.metaLine == "CBS \u{00B7} 9 episodes")
+        let none = SeriesRow(key: "x", name: "X", genre: "drama", firstDate: nil, lastDate: nil,
+                             networks: ["Syndicated"], episodeCount: 1)
+        #expect(none.metaLine == "1 episode")
+    }
+
     @Test func leadPictureFollowsTheWebCases() {
         #expect(Grammar.leadPicture(series: series("show", kind: "show"), credits: credits, star: "c")?.url.lastPathComponent == "show")
         #expect(Grammar.leadPicture(series: series("s", kind: "star"), credits: credits, star: "c")?.url.lastPathComponent == "c")

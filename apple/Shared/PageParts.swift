@@ -4,11 +4,11 @@ import SwiftUI
 // R11d): one button row that never wraps apart, the picture credit, and the round faces of who is
 // on the air.
 
-/// What a series' head board says: the genre then the networks as the kicker; the years or
+/// What a series' head board says: the genre then its one primary network (`series.network`) as the kicker; the years or
 /// "Undated", then the count of episodes, as the facts.
 enum SeriesHead {
     static func kicker(_ series: SeriesRow) -> String? {
-        let parts = [series.genre.map(GenreDisplay.name), series.networks.isEmpty ? nil : series.networks.joined(separator: " \u{00B7} ")]
+        let parts = [series.genre.map(GenreDisplay.name), series.network]
             .compactMap { $0 }.filter { !$0.isEmpty }
         return parts.isEmpty ? nil : parts.joined(separator: " \u{00B7} ")
     }

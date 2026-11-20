@@ -160,6 +160,9 @@ nonisolated struct SeriesRow: Hashable, Sendable, Identifiable {
     var yearCounts: [Int]? = nil
     /// The key the A to Z order sorts on, for Browse's letter index; nil where the catalog has none.
     var sortName: String? = nil
+    /// `series.network` (contract §3.3): the one primary network the head, rows and the label's rim name;
+    /// never parsed from `networks` (V8, 2026-11-20). Nil when the catalog names none.
+    var network: String? = nil
     /// The landscape show image and the further pictures (R3b §5.5 `series.hero`, `series.gallery`); empty on a
     /// catalog that predates them, and the page falls back to the picture, then the label.
     var hero: Artwork? = nil
@@ -187,7 +190,7 @@ nonisolated struct SeriesRow: Hashable, Sendable, Identifiable {
     /// `CBS · 1942–1962 · 1,098 episodes`: the one meta line a series card carries.
     var metaLine: String {
         var parts: [String] = []
-        if let network = networks.first { parts.append(network) }
+        if let network { parts.append(network) }
         if let span = yearSpan { parts.append(span) }
         parts.append(episodeCount == 1 ? "1 episode" : "\(episodeCount.formatted()) episodes")
         return parts.joined(separator: " · ")

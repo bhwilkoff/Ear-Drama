@@ -116,6 +116,18 @@ nonisolated enum Grammar {
         return bySlot.keys.sorted().map { (Double($0) / n, Double($0 + 1) / n, Double(bySlot[$0] ?? 0) / top) }
     }
 
+    /// The fewest years a page's own-span strip shows (V8, 2026-11-20: X Minus One's three seasons drew three
+    /// bars a third of the board wide each; the web's fixed axis drew them as a strip).
+    static let ownSpanMinYears = 12
+
+    /// The axis a page about one show draws its bars on: from its first year to its last, but at least
+    /// `ownSpanMinYears` long, starting at the first year (time still runs left to right). Nil without bars.
+    static func ownSpanAxis(_ bars: [(from: Double, to: Double, height: Double)]?) -> (lo: Double, hi: Double)? {
+        guard let lo = bars?.first?.from, let hi = bars?.last?.to, hi > lo else { return nil }
+        let year = 1 / Double(runAxis.hi - runAxis.lo + 1)
+        return (lo, max(hi, lo + Double(ownSpanMinYears) * year))
+    }
+
     /// Parses `series.year_counts` ("1932,3,12,0,4"); nil when absent or malformed.
     static func parseYearCounts(_ text: String?) -> [Int]? {
         guard let text, !text.isEmpty else { return nil }

@@ -133,7 +133,7 @@
   /** The smart-TV layer (tv.js) is on: TVs play back only, so nothing here starts an ear drama. */
   const onTV = () => document.documentElement.classList.contains('tv');
   function seriesMeta(s) {
-    return [s.networks, years(s.first, s.last), s.episodes ? plural(s.episodes, 'episode', 'episodes') : null]
+    return [s.network, years(s.first, s.last), s.episodes ? plural(s.episodes, 'episode', 'episodes') : null]
       .filter(Boolean).join(' · ');
   }
   function announce(text) {
@@ -534,7 +534,7 @@
   }
   /** A series in a list (§6.4b's row): its window, the name, an event line of its facts. */
   function seriesRow(s) {
-    const sub = eventLine([s.networks, years(s.first, s.last) || 'Undated',
+    const sub = eventLine([s.network, years(s.first, s.last) || 'Undated',
       s.episodes ? plural(s.episodes, 'episode', 'episodes') : null]);
     return el('li', { class: 'series-row g-row' },
       el('a', { class: 'g-link', href: `?series=${encodeURIComponent(s.key)}` },

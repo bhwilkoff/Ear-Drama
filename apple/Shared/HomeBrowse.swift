@@ -169,7 +169,7 @@ struct ShowGrid<Item: Identifiable, Tile: View>: View {
                     }
                     .frame(width: width, alignment: .leading)
                     .sharesNameHeight()
-                    #if os(macOS)
+                    #if !os(tvOS)
                     .environment(\.tileFillsRow, true)
                     .fixedSize(horizontal: false, vertical: true)
                     #endif

@@ -755,7 +755,8 @@ test('about: paragraphs split on blank lines; no source link means no About; lin
 });
 
 test('show facts: years, network, star, count; blanks drop out', () => {
-  assertEq(API.showFacts({ networks: 'CBS', star: 'William Conrad' }, '1952\u20131961', '544 episodes').join('|'), '1952\u20131961|CBS|with William Conrad|544 episodes');
+  assertEq(API.showFacts({ networks: 'CBS, NBC', network: 'CBS', star: 'William Conrad' }, '1952\u20131961', '544 episodes').join('|'), '1952\u20131961|CBS|with William Conrad|544 episodes');
+  assertEq(API.showFacts({ networks: 'CBS, NBC, AFRS' }, '1935\u20131955', '9 episodes').join('|'), '1935\u20131955|9 episodes');
   assertEq(API.showFacts({}, '', '3 episodes').join('|'), 'Undated|3 episodes');
 });
 

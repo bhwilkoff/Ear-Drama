@@ -181,7 +181,7 @@ fun LazyListScope.seriesHead(series: SeriesRow, following: Boolean, onOpenGenre:
     item(key = "head") {
         val genreKey = series.genre
         val genreName = genreKey?.let { DisplayVocabulary.genreName(it) }
-        val rest = series.networks.joinToString(" \u00b7 ")
+        val rest = series.network.orEmpty()
         Column(Modifier.revealWhole()) {
             ItemHeadBoard(
                 name = series.name,

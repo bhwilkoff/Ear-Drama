@@ -74,7 +74,11 @@ const LabelCore = (() => {
       }
     },
     "evening": {
-      "r0": 35,
+      "r0": {
+        "S": 35,
+        "M": 35,
+        "L": 40
+      },
       "r1": 47,
       "width": {
         "S": 3.2,
@@ -301,7 +305,7 @@ const LabelCore = (() => {
     if (kind === 'series' || kind === 'episode') spec.arc = runArc(it.first, it.last, at(T.arc.r, tier), at(T.arc.width, tier));
     const ty = yearOf(it.tickYear);
     if (dialed && ty !== null) {
-      spec.evening = { deg: r2(yearDeg(clampYear(ty)) - SLOT / 2), r0: T.evening.r0, r1: T.evening.r1, width: at(T.evening.width, tier) };
+      spec.evening = { deg: r2(yearDeg(clampYear(ty)) - SLOT / 2), r0: at(T.evening.r0, tier), r1: T.evening.r1, width: at(T.evening.width, tier) };
     }
     if (kind === 'drama') {
       const ps = (it.parts || []).filter((p) => p && p.lines > 0);

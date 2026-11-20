@@ -227,27 +227,27 @@ fun LazyListScope.episodeHead(
                 years = series?.yearCounts,
                 markYear = row.airDate?.take(4)?.toIntOrNull(),
             )
-        }
-    }
-    item(key = "actions") {
-        val resume = progress?.takeIf { !it.finished && it.positionMs > 0 }
-        ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp), foldBelow = 600.dp) { fit ->
-            Button(
-                onClick = onPlay,
-                enabled = d.recordings.isNotEmpty(),
-                modifier = Modifier.weight(1f).focusRequester(playFocus).tvFocusMark(),
-                colors = playButtonColors(),
-                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-            ) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                Text(
-                    if (resume == null) "Play" else if (fit.tight) "Resume" else "Resume at ${formatClock(resume.positionMs)}",
-                    maxLines = 1,
-                )
+            // V8: the button row is part of the head's list item, so a TV's first focus on Play reveals the whole head
+            // (Google TV, 2026-11-20: Play in its own item scrolled the board's top under the bar), as the series page does.
+            val resume = progress?.takeIf { !it.finished && it.positionMs > 0 }
+            ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp), foldBelow = 600.dp) { fit ->
+                Button(
+                    onClick = onPlay,
+                    enabled = d.recordings.isNotEmpty(),
+                    modifier = Modifier.weight(1f).focusRequester(playFocus).tvFocusMark(),
+                    colors = playButtonColors(),
+                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                ) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                    Text(
+                        if (resume == null) "Play" else if (fit.tight) "Resume" else "Resume at ${formatClock(resume.positionMs)}",
+                        maxLines = 1,
+                    )
+                }
+                queue(fit.folded)
+                share(fit.folded)
+                download(fit.folded)
             }
-            queue(fit.folded)
-            share(fit.folded)
-            download(fit.folded)
         }
     }
     // Decision 068: an episode linked to a castable script this bundle holds; none on a TV.

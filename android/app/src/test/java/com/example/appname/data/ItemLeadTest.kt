@@ -45,6 +45,14 @@ class ItemLeadTest {
         assertNull("a picture with no published size is not shown", ItemLead.shown(pic("n", null, null)))
     }
 
+    /** V8: on a TV a wide plate is capped so the name and the buttons stay on the first screen; the shape holds. */
+    @Test fun aTvCapsTheWidePlateAndKeepsItsShape() {
+        val tv = ItemLead.window(pic("w", 1600, 800), 960f, plateMax = 216f)
+        assertEquals(216f, tv.height, 0.01f)
+        assertEquals(432f, tv.width, 0.01f)
+        assertEquals(440f, ItemLead.window(pic("w", 1600, 800), 960f).height, 0.01f)
+    }
+
     @Test fun anUploadTaggedTitleGivesWayToTheBroadcastDate() {
         fun ep(title: String?, date: String?, num: Int? = null) = EpisodeRow("s|${date ?: ""}", "s", "Suspense", date, null, num, title, null)
         val own = { r: EpisodeRow -> r.title ?: "" }

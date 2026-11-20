@@ -222,7 +222,7 @@ internal object LabelMath {
         val arc = if (kind == LabelKind.Series || kind == LabelKind.Episode) runArc(it.first, it.last, T["arc"]["r"].d(tier), T["arc"]["width"].d(tier)) else null
         val ty = yearOf(it.tickYear)
         val evening = if (dialed && ty != null) T["evening"].let { e ->
-            LabelEvening(r2(yearDeg(clampYear(ty)) - slot / 2), e["r0"].d(), e["r1"].d(), e["width"].d(tier))
+            LabelEvening(r2(yearDeg(clampYear(ty)) - slot / 2), e["r0"].d(tier), e["r1"].d(), e["width"].d(tier))
         } else null
         var parts: LabelParts? = null
         if (kind == LabelKind.Drama) {
@@ -303,10 +303,10 @@ internal object LabelMath {
 }
 
 /** The show's label: its run on the dial and, at the large tier, its network. */
-fun SeriesRow.labelItem(): LabelItem = LabelItem(LabelKind.Series, name, genre, firstDate, lastDate, networks.firstOrNull())
+fun SeriesRow.labelItem(): LabelItem = LabelItem(LabelKind.Series, name, genre, firstDate, lastDate, network)
 
 /** The episode's own label: its show's disc with this broadcast's date on it (its number when undated). */
 fun EpisodeRow.labelItem(series: SeriesRow? = null): LabelItem = LabelItem(
-    LabelKind.Episode, seriesName, seriesGenre, series?.firstDate ?: seriesFirst, series?.lastDate ?: seriesLast, network ?: series?.networks?.firstOrNull(),
+    LabelKind.Episode, seriesName, seriesGenre, series?.firstDate ?: seriesFirst, series?.lastDate ?: seriesLast, network ?: series?.network,
     date = airDate, num = num?.toString(),
 )
