@@ -26,6 +26,8 @@ FILE_NAMED = re.compile(r"\d{6,}|[A-Za-z]\d{3,}[A-Za-z]|\b(?:x{3,}|afrs\d+)\b|[^
 COUNTED_BAG = re.compile(r"^\d[\d,]*\+?\s+(?:[A-Za-z']+\s+){0,3}(?:shows?|episodes?|programs?|programmes?|broadcasts?|recordings?)$", re.I)
 GENRE_YEAR = re.compile(r"^[^\W\d_]+(?:\s+[^\W\d_]+){0,3}\s+(?:19|20)\d\d$")
 V_DISC = re.compile(r"\bV[- ]?Discs?\b", re.I)
+FILE_DURATION = re.compile(r"(?<![A-Za-z0-9])\d{1,3}m\d{1,2}s(?![A-Za-z0-9])", re.I)
+DURATION_TOKEN = re.compile(r"^\(?\d{1,3}m\d{1,2}s\)?\s+|\s+(?:[-\u2013]\s*)?\(?\d{1,3}m\d{1,2}s\)?$", re.I)
 IDENTIFIER_TITLE = re.compile(r"^[^\W\d_]+\d+$")
 HARD_TITLE = {"IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED"}
 INTRO_TRACK = re.compile(r"^(?:old[- ]time radio researchers(?: group)? (?:introduction|information)|otrr (?:introduction|information)|"
@@ -73,6 +75,8 @@ def readable_title(t):
         return False
     if " " not in t and t == t.lower() and not re.search(r"\d", t):
         return False   # one lowercase token: an identifier
+    if FILE_DURATION.search(t):
+        return False   # "56m10s": a ripper's running time, so the whole string is a file name
     if IDENTIFIER_TITLE.match(t):
         return False   # one word and a number ("TopSecret15", "Hunting300"): a file name, not a title
     if set(FD.text_defects(t, "title")) & HARD_TITLE:
@@ -165,6 +169,59 @@ BROADCASTERS = re.compile(r"^(?:[KW][A-Z]{2,3}|NBC|CBS|ABC|MBS|BBC|CBC|AFRS|AFRT
 
 
 XX_LEAD = re.compile(r"^(?:xx[\s-]+)+(?=[A-Za-z]{2})", re.I)
+
+
+# Round 3 (owner 2026-11-20, "the individual item perspective"): classes of residue an upload left in a title.
+# The record has no field for a repeat, and the source's "(Repeat of 1931-08-03)" or "(Repeat of # 122)" is a
+# note about another file, so it goes (one that names the original's date stays: that is a fact); "#84 on list" is a position in an uploader's list, not the program's words.
+REPEAT_NOTE = re.compile(r"\s*[(\[]\s*(?:(?:first|second|third|fourth)\s+)?(?:a\s+)?re-?(?:peat|run|broadcast)(?:\s+of\s*(?:#\s*|no\.?\s*)?"
+                         r"(?![\w#.\-/ ]*(?:\b(?:19|20)\d\d\b|\b\d\d[-/ ]\d\d[-/ ]\d\d\b|[A-Z][a-z]{2,8}\s+\d))[\w#.\-/ ]{1,14})?\s*[)\]]", re.I)
+LIST_POSITION = re.compile(r"\s*[-–,]?\s*[(\[]?\s*#\d{1,4}\s+on\s+(?:the\s+)?list\s*[)\]]?\s*$", re.I)
+ECHO_SEPARATOR = re.compile(r"^(?:(?:\d{3,4}|[Xx]{3,6})\s*[-\u2013]\s*)?(.{2,60}?)\s*(?:\s[-–]\s|-|:|–)\s*(?=\S)")
+# An apostrophe an upload lost, set back only where the word cannot be anything else: "whos" before a word that
+# only a verb or article follows ("Whos on First"), and a given name and s before a thing a person owns
+# ("Princess Elizabeths Wedding"). A surname, or any name outside the list, is never touched.
+WHOS_BEFORE = {"on", "in", "at", "there", "here", "afraid", "next", "got", "going", "coming", "the", "a", "an", "that", "this"}
+GIVEN_NAMES = {"elizabeth", "mary", "margaret", "victoria", "alice", "helen", "anne", "annie", "jane", "susan", "betty", "lucy",
+               "emily", "sarah", "tom", "bob", "jack", "joe", "harry"}   # never one that is also a surname (Roberts, Peters, Edwards)
+OWNED_THINGS = {"wedding", "birthday", "coronation", "funeral", "christmas", "honeymoon", "diary", "secret", "wish", "dream",
+                "baby", "mother", "father", "wife", "husband", "ghost", "gift", "party", "adventure", "adventures",
+                "story", "return", "courtship", "engagement", "confession", "promise", "lesson"}
+
+
+def restore_apostrophe(title):
+    t = re.sub(r"\b(Who)s (?=(\w+))", lambda m: "Who's " if m.group(2).casefold() in WHOS_BEFORE else m.group(0), title or "")
+    return re.sub(r"\b([A-Z][a-z]+)s (?=([A-Z][a-z]+))",
+                  lambda m: f"{m.group(1)}'s " if m.group(1).casefold() in GIVEN_NAMES and m.group(2).casefold() in OWNED_THINGS
+                  else m.group(0), t)
+
+
+def strip_upload_notes(title):
+    """A repeat note ("Earned Reward (Repeat of # 122)") or a list position ("... #84 on list") taken off a title,
+    when words are left."""
+    t = (title or "").strip()
+    rest = DURATION_TOKEN.sub(" ", t).strip()
+    if rest != t and readable_title(rest):
+        t = rest
+    for pat in (REPEAT_NOTE, LIST_POSITION):
+        rest = re.sub(r"\s{2,}", " ", pat.sub("", t)).strip(" -–,")
+        if rest != t and readable_title(rest):
+            t = rest
+    return t
+
+
+def strip_series_echo(title, series_name):
+    """"Suspense - The Lodger" in Suspense is "The Lodger": the series' name, then a dash or colon, then words that
+    stand alone. The series is already named on the page, so the echo is removed; never when the words left are
+    a number, a generic stub or an identifier (readable_title refuses those)."""
+    t = (title or "").strip()
+    want = name_tokens(series_name or "")
+    m = ECHO_SEPARATOR.match(t)
+    if want and m and name_tokens(m.group(1)) == want:
+        rest = t[m.end():].strip()
+        if re.match(r"[A-Za-z]", rest) and len(rest.split()) >= 2 and readable_title(rest) and _fold_words(rest).split()[-1] not in DANGLING:
+            return rest[0].upper() + rest[1:]
+    return t
 
 
 def series_possessive(title, series_name):
@@ -318,7 +375,10 @@ def episode_text(shown, series_name, tags=()):
     t = strip_upload_label(t, series_name)
     t = strip_series_code(t, series_name)
     t = strip_audition_frame(t, series_name)
+    t = strip_upload_notes(t)
+    t = strip_series_echo(t, series_name)
     t = series_possessive(t, series_name)
+    t = restore_apostrophe(t)
     m = TAIL_TAG.search(t)
     if m and m.group(1) in tags and m.start() > 0:
         t = t[:m.start()].strip()

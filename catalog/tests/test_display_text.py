@@ -251,5 +251,36 @@ elif os.environ.get("PROJECTION"):
 else:
     print("  SKIP  guard: no projection at out/publish/ear-drama.sqlite (name one with PROJECTION)")
 
+# Round 3: classes of upload residue in a title, each with its control.
+check("a repeat of a number goes", DT.episode_text("Earned Reward (Repeat of # 122)", "The Bickersons"), "Earned Reward")
+check("a repeat of a number goes (no space)", DT.episode_text("The Long Night (Repeat of #84)", "Suspense"), "The Long Night")
+check("a bare repeat note goes", DT.episode_text("The Long Night (Repeat)", "Suspense"), "The Long Night")
+check("control: a repeat of a dated broadcast stays, as a fact", DT.episode_text("Frankenstein (Repeat of 1931-08-03)", "Lights Out"),
+      "Frankenstein (Repeat of 1931-08-03)")
+check("control: the word repeat in a title stays", DT.episode_text("The Repeat Offender", "Suspense"), "The Repeat Offender")
+check("a list position goes", DT.episode_text("Tracking Counterfeiters (First Song Jingle) #138 on list", "Hawk Larabee"),
+      "Tracking Counterfeiters (First Song Jingle)")
+check("control: a number in a title stays", DT.episode_text("Room #138 on Fire", "Suspense"), "Room #138 on Fire")
+check("a series' name before a dash goes", DT.episode_text("Suspense - The Lodger", "Suspense"), "The Lodger")
+check("a series' name before a hyphen goes", DT.episode_text("Suspense-The Pit and the Pendulum", "Suspense"), "The Pit and the Pendulum")
+check("a series' name before a colon goes", DT.episode_text("The Whistler: Dead Man's Chest", "Whistler"), "Dead Man's Chest")
+check("control: another show's name before a dash stays", DT.episode_text("Gunsmoke - The Lodger", "Suspense"), "Gunsmoke - The Lodger")
+check("control: a number after the series' name stays", DT.episode_text("Pepper Young's Family - 30", "Pepper Youngs Family"), "Pepper Young's Family - 30")
+check("control: a one-word remainder stays", DT.episode_text("Suspense - Fugue", "Suspense"), "Suspense - Fugue")
+check("a duration token is a file name: composed", DT.decide_episode("Lux-530622-56m10s-835hrt-FallofMaggiePhillips-DMcGuire", "Lux Radio Theatre", "1953-06-22", None)[:2],
+      ("Lux Radio Theatre, June 22, 1953", "composed"))
+check("a leading running time goes", DT.episode_text("56m10s The Fall of Maggie Phillips", "Lux Radio Theatre"), "The Fall of Maggie Phillips")
+check("control: m and s inside words is no duration", DT.readable_title("The Dreams and Schemes of Mr Jones"), True)
+check("whos before on is who's", DT.episode_text("Whos on First", "Abbott and Costello"), "Who's on First")
+check("a slot number, the series, the title and a running time", DT.episode_text("0035 - Bulldog Drummond - Death Uses Disappearing Ink - 25m34s", "Bulldog Drummond"),
+      "Death Uses Disappearing Ink")
+check("control: a title cut on a small word is not made by an echo", DT.episode_text("Radio Theatre - Murder on the", "Radio Theatre"), "Radio Theatre - Murder on the")
+check("control: a surname and s keeps no apostrophe", DT.episode_text("St. John Ervine Roberts Wife", "Mixed Bag"), "St. John Ervine Roberts Wife")
+check("an echo's rest starts a sentence", DT.episode_text("Perry Mason-the Case of the Restless Redhead", "Perry Mason"), "The Case of the Restless Redhead")
+check("control: whos before a noun stays", DT.episode_text("Whos Murder Is It", "Suspense"), "Whos Murder Is It")
+check("a given name's possessive before a wedding", DT.episode_text("Princess Elizabeths Wedding", "Royal Occasions"), "Princess Elizabeth's Wedding")
+check("control: a surname and s stays", DT.episode_text("The Joneses Wedding", "Royal Occasions"), "The Joneses Wedding")
+check("control: a given name and s before a verb stays", DT.episode_text("Marys Cried Wolf", "Royal Occasions"), "Marys Cried Wolf")
+
 print(f"{ran - failed}/{ran} passed")
 sys.exit(1 if failed else 0)
