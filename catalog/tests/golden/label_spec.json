@@ -1,0 +1,2389 @@
+{
+ "about": "Decision 081, WEB-DESIGN 6.4r: the label, drawn from an item's own data. Every stack runs these cases: labelSpec(item, size) must equal `want` (numbers within `tolerance`; strings, nulls, and array lengths exactly). The spec's shape, its token references and the angle convention are documented at the top of js/label-core.js; geometry comes from design-tokens.json art.label. The monogram is each stack's own (its goldens in the grammar tests). Tests never pin catalog contents: these items are fixtures.",
+ "tolerance": 0.01,
+ "cases": [
+  {
+   "name": "series, long run, rim at L (Suspense)",
+   "item": {
+    "kind": "series",
+    "name": "Suspense",
+    "genre": "mystery",
+    "first": "1942-06-17",
+    "last": "1962-09-30",
+    "network": "CBS"
+   },
+   "size": 360,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "L",
+    "viewBox": 100,
+    "ground": "board.mystery",
+    "on": "onBoard.mystery",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      22.6,
+      24.2,
+      25.8,
+      27.4,
+      29,
+      30.6,
+      32.2,
+      33.8
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 3.5,
+     "from": 122.73,
+     "to": -30,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 19
+    },
+    "text": [
+     {
+      "s": "S",
+      "face": "display",
+      "size": 28.5,
+      "x": 50,
+      "y": 61.4,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": {
+     "text": "CBS · 1940s",
+     "r": 36.5,
+     "size": 3.4,
+     "tracking": 0.14,
+     "opacity": 0.85,
+     "centerDeg": 90
+    },
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "series at M: grooves and dial ticks, no rim",
+   "item": {
+    "kind": "series",
+    "name": "Suspense",
+    "genre": "mystery",
+    "first": "1942-06-17",
+    "last": "1962-09-30",
+    "network": "CBS"
+   },
+   "size": 128,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.mystery",
+    "on": "onBoard.mystery",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 4,
+     "from": 122.73,
+     "to": -30,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "S",
+      "face": "display",
+      "size": 31.5,
+      "x": 50,
+      "y": 62.6,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "series at S: disc, label and arc only (X Minus One)",
+   "item": {
+    "kind": "series",
+    "name": "X Minus One",
+    "genre": "scifi",
+    "first": "1955",
+    "last": "1958",
+    "network": "NBC"
+   },
+   "size": 56,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "S",
+    "viewBox": 100,
+    "ground": "board.scifi",
+    "on": "onBoard.scifi",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": null,
+    "ticks": null,
+    "arc": {
+     "r": 43.5,
+     "width": 7,
+     "from": 28.18,
+     "to": -0.91,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 27
+    },
+    "text": [
+     {
+      "s": "XM",
+      "face": "display",
+      "size": 31.57,
+      "x": 50,
+      "y": 62.63,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "undated series: no arc, the dial still drawn",
+   "item": {
+    "kind": "series",
+    "name": "Ranger Bill",
+    "genre": "drama",
+    "first": null,
+    "last": null
+   },
+   "size": 128,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.drama",
+    "on": "onBoard.drama",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "RB",
+      "face": "display",
+      "size": 30.69,
+      "x": 50,
+      "y": 62.28,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "no genre, no date: the neutral ground",
+   "item": {
+    "kind": "series",
+    "name": "The Case Closed"
+   },
+   "size": 48,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "S",
+    "viewBox": 100,
+    "ground": "brand.surfaceAlt",
+    "on": "brand.text",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 27
+    },
+    "text": [
+     {
+      "s": "CC",
+      "face": "display",
+      "size": 39.46,
+      "x": 50,
+      "y": 65.78,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "a genre the tokens do not know is neutral",
+   "item": {
+    "kind": "series",
+    "name": "Lights Out",
+    "genre": "horror",
+    "first": "1936",
+    "last": "1947"
+   },
+   "size": 128,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "brand.surfaceAlt",
+    "on": "brand.text",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 4,
+     "from": 166.36,
+     "to": 79.09,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "LO",
+      "face": "display",
+      "size": 30.69,
+      "x": 50,
+      "y": 62.28,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "after the dial: held at 1962 with butt caps",
+   "item": {
+    "kind": "series",
+    "name": "CBS Radio Mystery Theater",
+    "genre": "mystery",
+    "first": "1974-01-06",
+    "last": "1982-12-31",
+    "network": "CBS"
+   },
+   "size": 200,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.mystery",
+    "on": "onBoard.mystery",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 4,
+     "from": -22.73,
+     "to": -30,
+     "capFrom": "butt",
+     "capTo": "butt"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "CR",
+      "face": "display",
+      "size": 30.69,
+      "x": 50,
+      "y": 62.28,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "before the dial: the start held at 1930, butt",
+   "item": {
+    "kind": "series",
+    "name": "Amos n Andy",
+    "genre": "comedy",
+    "first": "1928",
+    "last": "1935",
+    "network": "NBC"
+   },
+   "size": 200,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.comedy",
+    "on": "onBoard.comedy",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 4,
+     "from": 210,
+     "to": 166.36,
+     "capFrom": "butt",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "AN",
+      "face": "display",
+      "size": 30.69,
+      "x": 50,
+      "y": 62.28,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "one year, no network: the rim says the decade alone",
+   "item": {
+    "kind": "series",
+    "name": "The Mercury Theatre on the Air",
+    "genre": "drama",
+    "first": "1938",
+    "last": "1938"
+   },
+   "size": 320,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "L",
+    "viewBox": 100,
+    "ground": "board.drama",
+    "on": "onBoard.drama",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      22.6,
+      24.2,
+      25.8,
+      27.4,
+      29,
+      30.6,
+      32.2,
+      33.8
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 3.5,
+     "from": 151.82,
+     "to": 144.55,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 19
+    },
+    "text": [
+     {
+      "s": "MT",
+      "face": "display",
+      "size": 22.22,
+      "x": 50,
+      "y": 58.89,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": {
+     "text": "1930s",
+     "r": 36.5,
+     "size": 3.4,
+     "tracking": 0.14,
+     "opacity": 0.85,
+     "centerDeg": 90
+    },
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "last before first is read as one year",
+   "item": {
+    "kind": "series",
+    "name": "Escape",
+    "genre": "mystery",
+    "first": "1950",
+    "last": "1947"
+   },
+   "size": 96,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.mystery",
+    "on": "onBoard.mystery",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 4,
+     "from": 64.55,
+     "to": 57.27,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "E",
+      "face": "display",
+      "size": 31.5,
+      "x": 50,
+      "y": 62.6,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "tier boundary: 95 is S",
+   "item": {
+    "kind": "series",
+    "name": "Suspense",
+    "genre": "mystery",
+    "first": "1942-06-17",
+    "last": "1962-09-30",
+    "network": "CBS"
+   },
+   "size": 95,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "S",
+    "viewBox": 100,
+    "ground": "board.mystery",
+    "on": "onBoard.mystery",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": null,
+    "ticks": null,
+    "arc": {
+     "r": 43.5,
+     "width": 7,
+     "from": 122.73,
+     "to": -30,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 27
+    },
+    "text": [
+     {
+      "s": "S",
+      "face": "display",
+      "size": 40.5,
+      "x": 50,
+      "y": 66.2,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "tier boundary: 319 is M",
+   "item": {
+    "kind": "series",
+    "name": "Suspense",
+    "genre": "mystery",
+    "first": "1942-06-17",
+    "last": "1962-09-30",
+    "network": "CBS"
+   },
+   "size": 319,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.mystery",
+    "on": "onBoard.mystery",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 4,
+     "from": 122.73,
+     "to": -30,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "S",
+      "face": "display",
+      "size": 31.5,
+      "x": 50,
+      "y": 62.6,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "episode, full date (DEC ’42 / 22)",
+   "item": {
+    "kind": "episode",
+    "name": "Suspense",
+    "genre": "mystery",
+    "first": "1942-06-17",
+    "last": "1962-09-30",
+    "network": "CBS",
+    "date": "1942-12-22"
+   },
+   "size": 200,
+   "want": {
+    "kind": "episode",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.mystery",
+    "on": "onBoard.mystery",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 4,
+     "from": 122.73,
+     "to": -30,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "DEC ’42",
+      "face": "body",
+      "size": 7.44,
+      "x": 50,
+      "y": 42.83,
+      "anchor": "middle",
+      "fill": "ground"
+     },
+     {
+      "s": "22",
+      "face": "display",
+      "size": 20.98,
+      "x": 50,
+      "y": 62.6,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "episode, month only (’55 / APR)",
+   "item": {
+    "kind": "episode",
+    "name": "Gunsmoke",
+    "genre": "western",
+    "first": "1952",
+    "last": "1961",
+    "network": "CBS",
+    "date": "1955-04"
+   },
+   "size": 128,
+   "want": {
+    "kind": "episode",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.western",
+    "on": "onBoard.western",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 4,
+     "from": 50,
+     "to": -22.73,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "’55",
+      "face": "body",
+      "size": 8.57,
+      "x": 50,
+      "y": 43.65,
+      "anchor": "middle",
+      "fill": "ground"
+     },
+     {
+      "s": "APR",
+      "face": "display",
+      "size": 19.38,
+      "x": 50,
+      "y": 62.6,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "episode, year only",
+   "item": {
+    "kind": "episode",
+    "name": "Gunsmoke",
+    "genre": "western",
+    "first": "1952",
+    "last": "1961",
+    "date": "1955"
+   },
+   "size": 128,
+   "want": {
+    "kind": "episode",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.western",
+    "on": "onBoard.western",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 4,
+     "from": 50,
+     "to": -22.73,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "1955",
+      "face": "display",
+      "size": 17.25,
+      "x": 50,
+      "y": 56.9,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "episode, number only (No. / 7)",
+   "item": {
+    "kind": "episode",
+    "name": "Ranger Bill",
+    "genre": "drama",
+    "num": 7
+   },
+   "size": 128,
+   "want": {
+    "kind": "episode",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.drama",
+    "on": "onBoard.drama",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "No.",
+      "face": "body",
+      "size": 8.57,
+      "x": 50,
+      "y": 43.65,
+      "anchor": "middle",
+      "fill": "ground"
+     },
+     {
+      "s": "7",
+      "face": "display",
+      "size": 19.38,
+      "x": 50,
+      "y": 62.6,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "episode at S, dated: the year alone",
+   "item": {
+    "kind": "episode",
+    "name": "Suspense",
+    "genre": "mystery",
+    "first": "1942-06-17",
+    "last": "1962-09-30",
+    "network": "CBS",
+    "date": "1942-12-22"
+   },
+   "size": 48,
+   "want": {
+    "kind": "episode",
+    "shape": "square",
+    "tier": "S",
+    "viewBox": 100,
+    "ground": "board.mystery",
+    "on": "onBoard.mystery",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": null,
+    "ticks": null,
+    "arc": {
+     "r": 43.5,
+     "width": 7,
+     "from": 122.73,
+     "to": -30,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 27
+    },
+    "text": [
+     {
+      "s": "’42",
+      "face": "display",
+      "size": 31.33,
+      "x": 50,
+      "y": 62.53,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "episode at S, numbered",
+   "item": {
+    "kind": "episode",
+    "name": "Ranger Bill",
+    "genre": "drama",
+    "num": 117
+   },
+   "size": 40,
+   "want": {
+    "kind": "episode",
+    "shape": "square",
+    "tier": "S",
+    "viewBox": 100,
+    "ground": "board.drama",
+    "on": "onBoard.drama",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 27
+    },
+    "text": [
+     {
+      "s": "No.117",
+      "face": "display",
+      "size": 17.03,
+      "x": 50,
+      "y": 56.81,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "episode with neither: the show’s monogram",
+   "item": {
+    "kind": "episode",
+    "name": "Ranger Bill",
+    "genre": "drama"
+   },
+   "size": 128,
+   "want": {
+    "kind": "episode",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.drama",
+    "on": "onBoard.drama",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "RB",
+      "face": "display",
+      "size": 30.69,
+      "x": 50,
+      "y": 62.28,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "episode at L: the show’s rim",
+   "item": {
+    "kind": "episode",
+    "name": "Suspense",
+    "genre": "mystery",
+    "first": "1942-06-17",
+    "last": "1962-09-30",
+    "network": "CBS",
+    "date": "1949-03-03"
+   },
+   "size": 512,
+   "want": {
+    "kind": "episode",
+    "shape": "square",
+    "tier": "L",
+    "viewBox": 100,
+    "ground": "board.mystery",
+    "on": "onBoard.mystery",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      22.6,
+      24.2,
+      25.8,
+      27.4,
+      29,
+      30.6,
+      32.2,
+      33.8
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 3.5,
+     "from": 122.73,
+     "to": -30,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 19
+    },
+    "text": [
+     {
+      "s": "MAR ’49",
+      "face": "body",
+      "size": 6.45,
+      "x": 50,
+      "y": 43.31,
+      "anchor": "middle",
+      "fill": "ground"
+     },
+     {
+      "s": "3",
+      "face": "display",
+      "size": 19.38,
+      "x": 50,
+      "y": 61.4,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": {
+     "text": "CBS · 1940s",
+     "r": 36.5,
+     "size": 3.4,
+     "tracking": 0.14,
+     "opacity": 0.85,
+     "centerDeg": 90
+    },
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "station, an evening’s year as one tick, no name",
+   "item": {
+    "kind": "station",
+    "genre": "comedy",
+    "tickYear": 1939
+   },
+   "size": 128,
+   "want": {
+    "kind": "station",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.comedy",
+    "on": "onBoard.comedy",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": null,
+    "evening": {
+     "deg": 140.91,
+     "r0": 35,
+     "r1": 47,
+     "width": 1.8
+    },
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "series with the evening ticked (On the air)",
+   "item": {
+    "kind": "series",
+    "name": "Suspense",
+    "genre": "mystery",
+    "first": "1942-06-17",
+    "last": "1962-09-30",
+    "network": "CBS",
+    "tickYear": "1946-10-12"
+   },
+   "size": 360,
+   "want": {
+    "kind": "series",
+    "shape": "square",
+    "tier": "L",
+    "viewBox": 100,
+    "ground": "board.mystery",
+    "on": "onBoard.mystery",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      22.6,
+      24.2,
+      25.8,
+      27.4,
+      29,
+      30.6,
+      32.2,
+      33.8
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": {
+     "r0": 40,
+     "r1": 42.5,
+     "width": 0.9,
+     "opacity": 0.75,
+     "deg": [
+      210,
+      137.27,
+      64.55,
+      -8.18
+     ]
+    },
+    "arc": {
+     "r": 44.75,
+     "width": 3.5,
+     "from": 122.73,
+     "to": -30,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": {
+     "deg": 90,
+     "r0": 35,
+     "r1": 47,
+     "width": 1.4
+    },
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 19
+    },
+    "text": [
+     {
+      "s": "S",
+      "face": "display",
+      "size": 28.5,
+      "x": 50,
+      "y": 61.4,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": {
+     "text": "CBS · 1940s",
+     "r": 36.5,
+     "size": 3.4,
+     "tracking": 0.14,
+     "opacity": 0.85,
+     "centerDeg": 90
+    },
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "ear drama, two parts, recorded month at L",
+   "item": {
+    "kind": "drama",
+    "name": "The Lost Lady",
+    "parts": [
+     {
+      "lines": 50,
+      "hue": "mystery"
+     },
+     {
+      "lines": 42,
+      "hue": "scifi"
+     }
+    ],
+    "finished": "2026-11-03"
+   },
+   "size": 360,
+   "want": {
+    "kind": "drama",
+    "shape": "square",
+    "tier": "L",
+    "viewBox": 100,
+    "ground": "board.drama",
+    "on": "onBoard.drama",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      22.6,
+      24.2,
+      25.8,
+      27.4,
+      29,
+      30.6,
+      32.2,
+      33.8
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": {
+     "r": 44.75,
+     "width": 3.5,
+     "backing": {
+      "color": "brand.background",
+      "width": 4.9
+     },
+     "segments": [
+      {
+       "from": 90,
+       "to": -101.65,
+       "color": "genre.mystery"
+      },
+      {
+       "from": -105.65,
+       "to": -266,
+       "color": "genre.scifi"
+      }
+     ]
+    },
+    "ring": null,
+    "label": {
+     "r": 19
+    },
+    "text": [
+     {
+      "s": "LL",
+      "face": "display",
+      "size": 27.77,
+      "x": 50,
+      "y": 61.11,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": {
+     "text": "RECORDED · NOV 2026",
+     "r": 36.5,
+     "size": 3.4,
+     "tracking": 0.14,
+     "opacity": 0.85,
+     "centerDeg": 90
+    },
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "ear drama, nine parts: past seven the neutral hue",
+   "item": {
+    "kind": "drama",
+    "name": "Twelfth Night",
+    "parts": [
+     {
+      "lines": 80,
+      "hue": "mystery"
+     },
+     {
+      "lines": 60,
+      "hue": "scifi"
+     },
+     {
+      "lines": 50,
+      "hue": "western"
+     },
+     {
+      "lines": 40,
+      "hue": "serial"
+     },
+     {
+      "lines": 30,
+      "hue": "documentary"
+     },
+     {
+      "lines": 20,
+      "hue": "comedy"
+     },
+     {
+      "lines": 15,
+      "hue": "news"
+     },
+     {
+      "lines": 10,
+      "hue": ""
+     },
+     {
+      "lines": 5,
+      "hue": ""
+     }
+    ]
+   },
+   "size": 128,
+   "want": {
+    "kind": "drama",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "ground": "board.drama",
+    "on": "onBoard.drama",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      24.1,
+      27.2,
+      30.3,
+      33.4,
+      36.5
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": {
+     "r": 44.75,
+     "width": 4,
+     "backing": {
+      "color": "brand.background",
+      "width": 5.4
+     },
+     "segments": [
+      {
+       "from": 90,
+       "to": 1.1,
+       "color": "genre.mystery"
+      },
+      {
+       "from": -2.9,
+       "to": -68.58,
+       "color": "genre.scifi"
+      },
+      {
+       "from": -72.58,
+       "to": -126.65,
+       "color": "genre.western"
+      },
+      {
+       "from": -130.65,
+       "to": -173.1,
+       "color": "genre.serial"
+      },
+      {
+       "from": -177.1,
+       "to": -207.94,
+       "color": "genre.documentary"
+      },
+      {
+       "from": -211.94,
+       "to": -231.16,
+       "color": "genre.comedy"
+      },
+      {
+       "from": -235.16,
+       "to": -248.58,
+       "color": "genre.news"
+      },
+      {
+       "from": -252.58,
+       "to": -260.19,
+       "color": "brand.textMuted"
+      },
+      {
+       "from": -264.19,
+       "to": -267.1,
+       "color": "brand.textMuted"
+      }
+     ]
+    },
+    "ring": null,
+    "label": {
+     "r": 21
+    },
+    "text": [
+     {
+      "s": "TN",
+      "face": "display",
+      "size": 30.69,
+      "x": 50,
+      "y": 62.28,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "ear drama, one part: the whole rim, no gap",
+   "item": {
+    "kind": "drama",
+    "name": "A Monologue",
+    "parts": [
+     {
+      "lines": 30,
+      "hue": "mystery"
+     }
+    ]
+   },
+   "size": 56,
+   "want": {
+    "kind": "drama",
+    "shape": "square",
+    "tier": "S",
+    "viewBox": 100,
+    "ground": "board.drama",
+    "on": "onBoard.drama",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": {
+     "r": 43.5,
+     "width": 6,
+     "backing": {
+      "color": "brand.background",
+      "width": 7.4
+     },
+     "segments": [
+      {
+       "from": 90,
+       "to": -270,
+       "color": "genre.mystery"
+      }
+     ]
+    },
+    "ring": null,
+    "label": {
+     "r": 27
+    },
+    "text": [
+     {
+      "s": "M",
+      "face": "display",
+      "size": 40.5,
+      "x": 50,
+      "y": 66.2,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "ear drama, cast not known: the disc and its monogram",
+   "item": {
+    "kind": "drama",
+    "name": "The Lost Lady",
+    "parts": [],
+    "finished": "soon"
+   },
+   "size": 360,
+   "want": {
+    "kind": "drama",
+    "shape": "square",
+    "tier": "L",
+    "viewBox": 100,
+    "ground": "board.drama",
+    "on": "onBoard.drama",
+    "disc": {
+     "r": 47,
+     "opacity": 0.1
+    },
+    "grooves": {
+     "radii": [
+      21,
+      22.6,
+      24.2,
+      25.8,
+      27.4,
+      29,
+      30.6,
+      32.2,
+      33.8
+     ],
+     "width": 0.35,
+     "opacity": 0.32
+    },
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": {
+     "r": 19
+    },
+    "text": [
+     {
+      "s": "LL",
+      "face": "display",
+      "size": 27.77,
+      "x": 50,
+      "y": 61.11,
+      "anchor": "middle",
+      "fill": "ground"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "person at S: initials in one groove ring",
+   "item": {
+    "kind": "person",
+    "name": "Agnes Moorehead"
+   },
+   "size": 48,
+   "want": {
+    "kind": "person",
+    "shape": "circle",
+    "tier": "S",
+    "viewBox": 100,
+    "ground": "brand.surfaceAlt",
+    "on": "brand.text",
+    "disc": null,
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": {
+     "r": 40,
+     "width": 2.6,
+     "opacity": 0.55
+    },
+    "label": null,
+    "text": [
+     {
+      "s": "AM",
+      "face": "display",
+      "size": 29.23,
+      "x": 50,
+      "y": 61.69,
+      "anchor": "middle",
+      "fill": "on"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "person on a genre board, 84 px (still S)",
+   "item": {
+    "kind": "person",
+    "name": "William Conrad",
+    "genre": "western"
+   },
+   "size": 84,
+   "want": {
+    "kind": "person",
+    "shape": "circle",
+    "tier": "S",
+    "viewBox": 100,
+    "ground": "board.western",
+    "on": "onBoard.western",
+    "disc": null,
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": {
+     "r": 40,
+     "width": 2.6,
+     "opacity": 0.55
+    },
+    "label": null,
+    "text": [
+     {
+      "s": "WC",
+      "face": "display",
+      "size": 28.79,
+      "x": 50,
+      "y": 61.52,
+      "anchor": "middle",
+      "fill": "on"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "person at L: the arc of their credit years",
+   "item": {
+    "kind": "person",
+    "name": "Orson Welles",
+    "first": "1934",
+    "last": "1946"
+   },
+   "size": 360,
+   "want": {
+    "kind": "person",
+    "shape": "circle",
+    "tier": "L",
+    "viewBox": 100,
+    "ground": "brand.surfaceAlt",
+    "on": "brand.text",
+    "disc": null,
+    "grooves": null,
+    "ticks": null,
+    "arc": {
+     "r": 45,
+     "width": 3,
+     "from": 180.91,
+     "to": 86.36,
+     "capFrom": "round",
+     "capTo": "round"
+    },
+    "evening": null,
+    "parts": null,
+    "ring": {
+     "r": 40,
+     "width": 1.2,
+     "opacity": 0.55
+    },
+    "label": null,
+    "text": [
+     {
+      "s": "OW",
+      "face": "display",
+      "size": 28.79,
+      "x": 50,
+      "y": 61.52,
+      "anchor": "middle",
+      "fill": "on"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": null
+   }
+  },
+  {
+   "name": "play with its opening: two voices, one rule",
+   "item": {
+    "kind": "play",
+    "voices": 2,
+    "opening": true
+   },
+   "size": 200,
+   "want": {
+    "kind": "play",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "disc": null,
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": null,
+    "text": [],
+    "rim": null,
+    "rules": {
+     "count": 1,
+     "x0": 8,
+     "y": 93,
+     "len": 9,
+     "gap": 3,
+     "width": 2.2,
+     "opacity": 0.55,
+     "foot": 86
+    },
+    "cast": null,
+    "ground": "print.ground",
+    "on": "brand.text"
+   }
+  },
+  {
+   "name": "play with its opening: three voices, two rules",
+   "item": {
+    "kind": "play",
+    "voices": 3,
+    "opening": true
+   },
+   "size": 200,
+   "want": {
+    "kind": "play",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "disc": null,
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": null,
+    "text": [],
+    "rim": null,
+    "rules": {
+     "count": 2,
+     "x0": 8,
+     "y": 93,
+     "len": 9,
+     "gap": 3,
+     "width": 2.2,
+     "opacity": 0.55,
+     "foot": 86
+    },
+    "cast": null,
+    "ground": "print.ground",
+    "on": "brand.text"
+   }
+  },
+  {
+   "name": "play with its opening: six voices, three rules",
+   "item": {
+    "kind": "play",
+    "voices": 6,
+    "opening": true
+   },
+   "size": 200,
+   "want": {
+    "kind": "play",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "disc": null,
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": null,
+    "text": [],
+    "rim": null,
+    "rules": {
+     "count": 3,
+     "x0": 8,
+     "y": 93,
+     "len": 9,
+     "gap": 3,
+     "width": 2.2,
+     "opacity": 0.55,
+     "foot": 86
+    },
+    "cast": null,
+    "ground": "print.ground",
+    "on": "brand.text"
+   }
+  },
+  {
+   "name": "play with its opening: twelve voices, four rules",
+   "item": {
+    "kind": "play",
+    "voices": 12,
+    "opening": true
+   },
+   "size": 200,
+   "want": {
+    "kind": "play",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "disc": null,
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": null,
+    "text": [],
+    "rim": null,
+    "rules": {
+     "count": 4,
+     "x0": 8,
+     "y": 93,
+     "len": 9,
+     "gap": 3,
+     "width": 2.2,
+     "opacity": 0.55,
+     "foot": 86
+    },
+    "cast": null,
+    "ground": "print.ground",
+    "on": "brand.text"
+   }
+  },
+  {
+   "name": "play with its opening, voices unknown: no rules",
+   "item": {
+    "kind": "play",
+    "opening": true
+   },
+   "size": 200,
+   "want": {
+    "kind": "play",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "disc": null,
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": null,
+    "text": [],
+    "rim": null,
+    "rules": null,
+    "cast": null,
+    "ground": "print.ground",
+    "on": "brand.text"
+   }
+  },
+  {
+   "name": "play without its opening: the cast as bars, +2 past seven",
+   "item": {
+    "kind": "play",
+    "voices": 9,
+    "cast": [
+     120,
+     80,
+     40,
+     30,
+     10,
+     5,
+     5,
+     3,
+     2
+    ]
+   },
+   "size": 48,
+   "want": {
+    "kind": "play",
+    "shape": "square",
+    "tier": "S",
+    "viewBox": 100,
+    "disc": null,
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": null,
+    "text": [
+     {
+      "s": "+2",
+      "face": "body",
+      "size": 10,
+      "x": 92,
+      "y": 94,
+      "anchor": "end",
+      "fill": "on"
+     }
+    ],
+    "rim": null,
+    "rules": null,
+    "cast": {
+     "bars": [
+      {
+       "x": 12,
+       "y": 5.5,
+       "w": 76,
+       "h": 11
+      },
+      {
+       "x": 12,
+       "y": 22.5,
+       "w": 50.92,
+       "h": 7
+      },
+      {
+       "x": 12,
+       "y": 35.5,
+       "w": 25.08,
+       "h": 7
+      },
+      {
+       "x": 12,
+       "y": 48.5,
+       "w": 19,
+       "h": 7
+      },
+      {
+       "x": 12,
+       "y": 61.5,
+       "w": 7.6,
+       "h": 7
+      },
+      {
+       "x": 12,
+       "y": 74.5,
+       "w": 7.6,
+       "h": 7
+      },
+      {
+       "x": 12,
+       "y": 87.5,
+       "w": 7.6,
+       "h": 7
+      }
+     ]
+    },
+    "ground": "board.drama",
+    "on": "onBoard.drama"
+   }
+  },
+  {
+   "name": "play without its opening, cast unknown",
+   "item": {
+    "kind": "play",
+    "cast": []
+   },
+   "size": 128,
+   "want": {
+    "kind": "play",
+    "shape": "square",
+    "tier": "M",
+    "viewBox": 100,
+    "disc": null,
+    "grooves": null,
+    "ticks": null,
+    "arc": null,
+    "evening": null,
+    "parts": null,
+    "ring": null,
+    "label": null,
+    "text": [],
+    "rim": null,
+    "rules": null,
+    "cast": null,
+    "ground": "board.drama",
+    "on": "onBoard.drama"
+   }
+  }
+ ]
+}

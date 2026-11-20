@@ -18,7 +18,9 @@
 //   5d. the print mount (a ground apart from the page, a hairline edge);
 //   5e. every native platform (Swift, Compose, Android resources) carries every
 //      board, onBoard, onGenre and print token as its own name (D3-1), with
-//      its own negative control.
+//      its own negative control;
+//   5f. the label (art.label): geometry inside the window, ordered tiers and dial, token colors only,
+//      part hues and the play's rules at 3:1, each with a negative control.
 //
 //   node tools/test_design_tokens.mjs
 
@@ -79,6 +81,7 @@ for (const kind of ['brand', 'semantic']) {
 for (const l of altered.type) l.size += 1;
 for (const k of Object.keys(altered.space)) altered.space[k] += 1;
 for (const k of Object.keys(altered.radius)) altered.radius[k] += 1;
+if (altered.art && altered.art.label) altered.art.label.disc.r += 1;
 const after = plan(ROOT, altered);
 for (const r of after) ok(r.expected !== r.current, `${r.path} changes when the tokens change`);
 ok(colors(tokens).length > 0, 'the palette is not empty');
@@ -312,6 +315,52 @@ negM('two marks the same hue', (t) => { t.color.mark.pink.dark = t.color.mark.ye
 negM('a pink in recording red', (t) => { t.color.mark.pink.light = '#B0152F'; }, 'light pink mark is near recording red');
 negM('a lamp in dark mode', (t) => { t.color.mark.green.dark = '#CDEBC5'; }, 'dark green mark glares');
 negM('a hue missing from Swift', () => {}, 'lacks static let markGreen', nativeFiles.map((f) => ({ path: f.path, text: f.text.replace(/.*markGreen.*\n/g, '') })));
+
+// 5f. The label (Decision 081, art.label): its geometry stays inside the window, its tiers and dial
+//     are ordered, every color it names is an existing token (no new hues), the part hues hold 3:1
+//     on their backing ring and the play's rules 3:1 on the print ground, in both modes, with a
+//     negative control per rule.
+const refColor = (t, ref, mode) => {
+  const [g, n] = String(ref).split('.');
+  const v = g === 'print' ? t.color.print && t.color.print[n] : t.color[g] && t.color[g][n];
+  return v && v[mode];
+};
+const blend = (fg, a, bg) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(fg.slice(i, i + 2), 16) * a + parseInt(bg.slice(i, i + 2), 16) * (1 - a)).toString(16).padStart(2, '0')).join('');
+function labelProblems(t) {
+  const l = t.art && t.art.label, out = [];
+  if (!l) return ['no art.label group'];
+  const tiers = (v) => (typeof v === 'object' ? Object.values(v) : [v]);
+  if (!(l.tiers.M > 0 && l.tiers.L > l.tiers.M)) out.push('tiers are not ordered');
+  if (!(l.dial.to > l.dial.from && l.dial.sweepDeg > 0 && l.dial.sweepDeg < 360)) out.push('the dial is not a partial circle forward in time');
+  if (l.dial.ticks.some((y) => y < l.dial.from || y > l.dial.to)) out.push('a dial tick is off the dial');
+  const radii = [l.disc.r, ...tiers(l.arc.r).map((r, i) => r + tiers(l.arc.width)[i] / 2), l.ticks.r1, l.evening.r1, l.person.ring.r, l.person.arc.r + l.person.arc.width / 2,
+                 ...tiers(l.parts.r).map((r, i) => r + tiers(l.parts.width)[i] / 2 + l.parts.backing / 2)];
+  if (radii.some((r) => !(r > 0 && r <= l.viewBox / 2))) out.push('a ring reaches outside the window');
+  if (tiers(l.label.r).some((r) => r >= l.disc.r)) out.push('the label is not inside the disc');
+  const refs = [...Object.values(l.colors), `board.${l.play.board}`];
+  for (const ref of refs) for (const mode of ['light', 'dark']) if (!refColor(t, ref, mode)) out.push(`${ref} is not a token`);
+  for (const mode of ['light', 'dark']) {
+    const backing = refColor(t, l.colors.partsBacking, mode);
+    for (const g of genres(t)) if (contrast(g[mode], backing) < 3) out.push(`${mode} ${g.name} part hue on its backing is ${contrast(g[mode], backing).toFixed(2)}:1`);
+    const none = refColor(t, l.colors.partNone, mode);
+    if (none && backing && contrast(none, backing) < 3) out.push(`${mode} the neutral part hue on its backing`);
+    const ground = refColor(t, l.colors.playGround, mode), ink = refColor(t, l.colors.playInk, mode);
+    if (ground && ink && contrast(blend(ink, l.play.rule.opacity, ground), ground) < 3) out.push(`${mode} the play's rules on the print ground are under 3:1`);
+  }
+  return out;
+}
+const lp = labelProblems(tokens);
+ok(lp.length === 0, `the label holds: inside its window, ordered tiers and dial, token colors only, part hues and rules at 3:1 (problems: ${lp.join('; ') || 'none'})`);
+for (const [name, mutate, expect] of [
+  ['an arc past the window', (t) => { t.art.label.arc.r.L = 49; }, 'outside the window'],
+  ['a new hue', (t) => { t.art.label.colors.partNone = 'brand.lilac'; }, 'is not a token'],
+  ['faint play rules', (t) => { t.art.label.play.rule.opacity = 0.15; }, "play's rules"],
+  ['tiers out of order', (t) => { t.art.label.tiers.L = 50; }, 'not ordered'],
+]) {
+  const t = structuredClone(tokens);
+  mutate(t);
+  ok(labelProblems(t).some((p) => p.includes(expect)), `the label check catches ${name}`);
+}
 
 // 6. Every face the tokens name is a file the platform ships (Decision 060),
 //    and only the display levels set the display face, with a negative control.

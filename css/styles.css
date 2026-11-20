@@ -448,12 +448,14 @@ select {
 .g-rail.g-rail-small { grid-auto-columns: 148px; }
 @media (min-width: 768px) { .g-rail.g-rail-small { grid-auto-columns: 160px; } }
 .g-window[data-fill="whole"] img { inset: 6%; width: 88%; height: 88%; object-fit: contain; }
-.g-window[data-genre=""] .g-block text { fill: currentColor; fill-opacity: 0.78; stroke: none; }
-.g-block { display: block; width: 100%; height: 100%; overflow: visible; }
-.g-block text {
-  font-family: var(--font-display); font-weight: 700; fill: none; stroke: currentColor; stroke-width: 1.4px;
-  vector-effect: non-scaling-stroke; paint-order: stroke;
-}
+/* The label (§6.4r): drawn from the item's own data (js/label-core.js), filling the window as a picture
+   would, with the picture's hairline edge; its colors are the token variables the spec names. */
+.lb { display: block; width: 100%; height: 100%; }
+.lb text { font-weight: 700; }
+.lb .lb-display { font-family: var(--font-display); }
+.lb .lb-body { font-family: var(--font-body); }
+.lb-overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
+.g-window[data-art="label"]::after { box-shadow: inset 0 0 0 1px var(--color-print-edge); }
 /* The run strip: the broadcast years on the fixed 1930 to 1962 axis, in the board's one color. */
 .g-strip { display: block; width: 100%; height: 18px; color: inherit; }
 .g-strip rect { fill: currentColor; }
@@ -1325,14 +1327,11 @@ html.tv .np-together { display: none; }
 .pl-open-sp b { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: var(--type-body-strong-weight); letter-spacing: 0.04em; }
 .pl-open-sp:first-child b { padding-right: 34px; }
 .pl-open-said { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: break-word; }
+/* The voice band's rules take the page's foot (§6.4r), so the last speech keeps one line. */
+.pl-open-sp:last-of-type .pl-open-said { -webkit-line-clamp: 1; line-clamp: 1; }
 /* A long play title stops at four lines on a tile; the page carries the whole. */
 .pl-tile-li .g-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
 .home-open-parts .section-header { font-size: var(--type-body-strong-size); }
-/* The play tile's window draws its cast: a bar per speaking part, largest first, in the board's one color. */
-.pl-cast { display: flex; flex-direction: column; justify-content: center; gap: 6%; padding: 12%; box-sizing: border-box; }
-.pl-cast i { display: block; height: 7%; min-height: 4px; border-radius: 999px; background: currentColor; }
-.pl-cast i:first-child { height: 11%; }
-.pl-cast-more { position: absolute; right: 8%; bottom: 6%; font-size: var(--type-caption-size); font-weight: var(--type-body-strong-weight); }
 
 /* ---- The script reader (WEB-DESIGN §4.16, Decision 076): pages by default, a slide, two facing pages from 900 px ---- */
 body.reading .tabbar, body.reading .sidebar { display: none; }

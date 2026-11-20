@@ -1256,9 +1256,37 @@ web app follows today.
   credit years at L; **stage play**: the script page as today plus 1-4 voice-band rules at its
   foot; **network or sponsor**: a name in our type, never a logo. Tiers: S (below 96 px: disc,
   label, arc), M (dial ticks, grooves), L (from 320 px: rim text). Geometry is the `art.label`
-  tokens (`design-tokens.json`), and `API.labelSpec(series, episode?)` is a pure function with
-  golden cases shared with Swift and Kotlin; nothing on the label is hashed or invented. Built in
-  Round 3 V3.
+  tokens (`design-tokens.json`), and `LabelCore.labelSpec(item, size)` (`js/label-core.js`) is a
+  pure function with golden cases shared with Swift and Kotlin
+  (`catalog/tests/golden/label_spec.json`); `js/label.js` draws it as inline SVG and, for the lock
+  screen, onto a 512 px canvas. Nothing on the label is hashed or invented. Built in Round 3 V3
+  (2026-11-19); the constants as built, in units of the 100-unit window:
+  - **Tiers**: S below 96 px, M from 96, L from 320.
+  - **Dial**: 1930 to 1962, a year one slot of 240/33 degrees, clockwise from 210 degrees (lower
+    left) to -30 (lower right); ticks at 1930, 1940, 1950, 1960 from r 40 to 42.5 (M and L).
+  - **Disc** r 47 at 10% onBoard; **grooves** from r 21, every 3.1 to 39.5 at M, every 1.6 to 34 at
+    L (leaving the rim's band), 0.35 wide at 32%; none at S.
+  - **Run arc**: r 43.5 width 7 (S), r 44.75 width 4 (M) or 3.5 (L), from the first year's slot to
+    the end of the last's; a round end where the year is on the dial, a square end where it was held
+    at 1930 or 1962. Undated: none. **Evening tick**: one rule at the year's mid-slot, r 35 to 47.
+  - **Label** r 27 (S), 21 (M), 19 (L), solid onBoard; its text in the board color, fitted to 76% of
+    the label's width and 60% of its height from the glyph widths in the tokens. An episode's text
+    is the date block's (DEC ’42 over 22; ’55 over APR; 1955; No. over 7), one line at S (’42, No.7).
+  - **Rim** (L only): r 36.5, Public Sans Bold 3.4 caps tracked 0.14 em at 85%, centered at the top,
+    shrunk to fit 150 degrees: "CBS · 1940s" (network when published, then the decade of the first
+    year); an ear drama "RECORDED · NOV 2026".
+  - **Ear drama**: one segment per speaking part on a ring in the page color (the backing, 1.4
+    wider, so the part marks hold 3:1 in both modes), from the top clockwise, 4 degrees apart, each
+    its share of the lines, the seven part hues in `PlaysCore.PART_HUES` order, the rest muted text.
+  - **Person**: the round window's board (or surfaceAlt), one ring r 40 at 55%, initials fitted in
+    r 25; at L an arc of their credit years at r 45.
+  - **Stage play**: with its opening, the page as today and 1 to 4 rules (2, 3-4, 5-8, 9+ voices)
+    at y 93 on a foot band from y 86 in the page's ground, the last speech held to one line; without
+    it (rows, the head board), the cast drawn on the drama board, a bar per speaking part up to
+    seven, "+N" past them.
+  - The window keeps the picture's hairline edge (`data-art="label"`). `tools/web_fit_label.py`
+    fails on a title block left, an empty label, text outside its label, or a 64 px window above
+    tier S.
 - **§6.4 Art is a served portrait, else the typographic card** (R11,
   Decision 069, contract §3.3a). A picture comes only from the catalog: a
   person's portrait the projection serves, or a card drawn from data (the

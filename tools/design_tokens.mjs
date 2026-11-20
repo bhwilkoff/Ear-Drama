@@ -272,6 +272,23 @@ function themeColorMeta(t) {
   ];
 }
 
+// ---- the label (Decision 081): art.label into js/label-core.js ---------------
+
+// The label's geometry with its notes dropped, and the genre keys whose boards it
+// may stand on. Web only until the Swift and Kotlin ports read the same tokens
+// (Round 3 V4); every stack runs catalog/tests/golden/label_spec.json.
+export function labelTokens(t) {
+  const l = t.art && t.art.label;
+  if (!l) return null;
+  return JSON.parse(JSON.stringify(l, (k, v) => (k.startsWith('$') ? undefined : v)));
+}
+function labelBlock(t) {
+  return [
+    `const T = ${JSON.stringify(labelTokens(t), null, 2).split('\n').join('\n  ')};`,
+    `const GENRES = ${JSON.stringify(genres(t).map((g) => g.name))};`,
+  ];
+}
+
 // ---- TV (smart-TV web, Cast receiver, webOS) ----------------------------
 
 function tvCss(t) {
@@ -686,6 +703,7 @@ export function targets(t, root = ROOT) {
     { path: 'manifest.json', edit: (s) => setJsonFields(s, { background_color: t.color.brand.background.light.toUpperCase(), theme_color: t.color.brand.background.light.toUpperCase() }) },
     { path: 'tv.css', edit: (s, f) => cssBlock(s, f, '', tvCss(t)) },
     { path: 'cast/index.html', edit: (s, f) => cssBlock(s, f, '', castCss(t)) },
+    ...(labelTokens(t) ? [{ path: 'js/label-core.js', edit: (s, f) => cssBlock(s, f, 'label', labelBlock(t)) }] : []),
     { path: 'tv/webos/appinfo.json', edit: (s) => setJsonFields(s, { bgColor: t.color.brand.background.dark.toUpperCase(), iconColor: (t.color.brand.record || t.color.brand.primary).dark.toUpperCase() }) },
     { path: 'apple/Core/Design.swift', whole: () => appleDesign(t) },
     { path: 'apple/Assets.xcassets/AccentColor.colorset/Contents.json', whole: () => appleAccent(t) },
