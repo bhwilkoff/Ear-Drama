@@ -323,3 +323,8 @@ privacy words) is folded in when it arrives, never waited on.
   12 checked). Fix-sweep additions: harvest_loc_photos.py overwrites records.json.gz instead of
   merging. Cache Release needs: loc/q + loc/records.json.gz (catalog worktree a2c27d6...), art_v2,
   series_art, art_grade.json, wikidata/*, people_wd/* (V2 worktree a019f68...). Mutation run ~half.
+- **2026-11-20, tick 20**: full Worker mutation run: all 269 caught (quiet machine). Worker DEPLOYED
+  (version db2df5bf): D1 migrations 0006-0009 applied remote (0007 rebuilt play_takes: 0 rows;
+  dropped play_orphan_objects: 0 rows); READ_ROOMS/TAKE_RELAY Durable Objects and limiters live;
+  checked: health 200, unknown room 404, pairing code 201, /v1/plays/consent 401 (auth, as before).
+  Duo launch check running (the iOS stand-in); push of ~20 commits follows if it passes.
