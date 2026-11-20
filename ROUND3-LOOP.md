@@ -333,3 +333,10 @@ privacy words) is folded in when it arrives, never waited on.
   on main (TestFlight builds from here). Running: cache Release cut + catalog publish (Sonnet,
   per the push-everything-live ruling), fix sweep (Sonnet, 11 items). Next: T7 bench (Worker is
   live), then V8 audit.
+- **2026-11-20, tick 22**: fix sweep merged (1.0.149; web 25, catalog 50, macOS 536, Android 645,
+  0 warnings): person arc, one Again with optional note, pairing page centered, data-picked
+  harness items, no TV power-off at teardown, LoC records merge, eardrama://parts, Apple class
+  review + Takes foot, render rig AccountStore, GenreLegend removed. Item 2 was not a defect: the
+  four bars are the play label's voice marks (option C). Duo launch check: installed, four doors
+  launched, no crash; frames BLIND (display off), so the new Apple screens are not visually
+  verified: V8. Pushed. Next: T7 bench, then V8 audit.
