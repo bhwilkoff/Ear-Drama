@@ -150,7 +150,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
   leader gone, claims) with goldens; `ReadRoom` Durable Object over WebSockets plus the D1-polling
   fallback carrying the same messages; rate limits keyed by member or seat (a class behind one
   address); max 40 members. Tests T1-T3 (R3c §8.1), each rule's mutant seen to fail.
-- [ ] **T2 Worker classes (Opus).** Seats (add from a pasted list, claim by code + name, release),
+- [x] **T2 Worker classes (Opus).** Seats (add from a pasted list, claim by code + name, release),
   class productions, assignments (several parts record at once), review (Approve / Again, typed
   notes), progress counts; take pass-through (sender to leader, deleted on delivery, refused if no
   receiver is present); teacher publishes the full recording under their name to archive.org via the
@@ -214,3 +214,11 @@ privacy words) is folded in when it arrives, never waited on.
   Home 1440, series 375 dark). Android unit 555/555 on the catalog merge. Running: T2 (Opus), V4
   (Sonnet ports). Queued for V5: On the air shows a raw upload title ("AbyM #026 ...", rule: no raw
   upload text); tools/test_tv_compat.py fails on main (16 color-mix() outside @supports).
+- **2026-11-19, tick 5**: T2 merged (0a2f150; Worker 378/378): seats, class productions,
+  assignments, review, TakeRelay pass-through (memory only, ~64 KiB per transfer), R2 removed
+  everywhere per Decision 082. Answered from rules: a seat's take is the teacher's, so the teacher's
+  CC0 consent is the one asked; deleting a class keeps its published production listed (P16 ruling;
+  T3 fixes). Full mutation run (247) running in a scratch worktree; then deploy (D1 migrations 0006
+  + 0007 remote, wrangler deploy: READ_ROOMS, TAKE_RELAY, limiters 8313-8318). Running: V4 (Sonnet),
+  T3 (Opus). Note: invite productions' members can no longer hear each other's takes from the Worker
+  (it was always 503 in production); T3/T4 move clients to the inbox.
