@@ -367,3 +367,7 @@ privacy words) is folded in when it arrives, never waited on.
   need --data in worktrees; (c) T7b: door/UITest to claim a part + Record in a room; tap tier for
   Back to the line and teacher flows (T6, T10-T12). Not seen on a device yet: Apple class review +
   Takes foot (needs iPhone/iPad). "Season" in the episode head stays (binding WEB-DESIGN §6.4d).
+- **2026-11-20, tick 27**: catalog titles batch 2 merged and pushed (catalog 50 suites; dry run
+  green): 504 of 73,643 titles cleaned (repeat notes, "#84 on list", series echoes, running times,
+  certain apostrophes), 7 withheld (file names with no date). Publish dispatched (run 44732321891).
+  Running: final sweep + T7b.
