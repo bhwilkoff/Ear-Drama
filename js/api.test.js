@@ -133,6 +133,21 @@ test('browse and rows: A to Z letters, the histogram strip, the bare undated row
   assertEq(API.undatedBare({ date: '1943-05-25', num: null }), false, 'control: a date keeps its block');
 });
 
+test('item pages: the series lead, the pictures row, the play lead (WEB-DESIGN §6.4g golden cases)', () => {
+  const pic = (u, w = 600, h = 800, ev = `https://commons.wikimedia.org/wiki/File:${u}`) => [u, w, h, null, ev, null, null];
+  assertEq(API.seriesLead({ hero: pic('h', 1200, 600), picture: API.artRow(pic('p')) }).url, 'h', 'a wide hero leads');
+  assertEq(API.seriesLead({ hero: pic('h', 600, 800), picture: API.artRow(pic('p')) }).url, 'p', 'control: an upright "hero" is not one; the picture leads');
+  assertEq(API.seriesLead({}), null, 'nothing: the label');
+  const lead = API.artRow(pic('a'));
+  assertEq(API.galleryOf({ gallery: [pic('a'), pic('b'), pic('c')] }, lead).map(a => a.url).join(), 'b,c', 'the lead is left out; two remain');
+  assertEq(API.galleryOf({ gallery: [pic('a'), pic('b')] }, lead).length, 0, 'control: one picture after the lead draws no row');
+  assertEq(API.galleryOf({ gallery: [pic('b'), pic('b'), pic('c', 0, 0)] }, null).length, 0, 'control: a repeat and a picture with no size do not count');
+  assertEq(API.galleryOf({ gallery: [pic('b', 600, 800, null), pic('c')] }, null).length, 0, 'control: a picture with no evidence does not count');
+  assertEq(API.playLead({ titlePage: pic('t'), authorArt: pic('a') }).url, 't', 'a title page leads a play');
+  assertEq(API.playLead({ authorArt: { url: 'a', width: 1, height: 1 } }).url, 'a', 'else the author (an object row)');
+  assertEq(API.playLead({}), null, 'control: else its page');
+});
+
 test('series and episode pages: the lead picture, who is on the air, the event line (WEB-DESIGN §6.4d golden cases)', () => {
   const art = (u) => ({ url: u, width: 600, height: 800 });
   const credits = [{ person: 'a', name: 'A', role: 'cast', art: null }, { person: 'b', name: 'B', role: 'cast', art: art('b') },

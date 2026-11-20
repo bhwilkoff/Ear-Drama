@@ -46,7 +46,8 @@ CHECK = r"""(() => {
     svg.querySelectorAll(':scope > text').forEach(t => {
       const b = t.getBBox();
       if (b.x < -0.5 || b.y < -0.5 || b.x + b.width > 100.5 || b.y + b.height > 100.5) bad.push('label text leaves its window: ' + t.textContent);
-      if (r > 0) {
+      // The rim (tier L) runs on its own arc outside the center label; the window test above holds it.
+      if (r > 0 && !t.querySelector('textPath')) {
         // The cap box (from the baseline up by 0.8 em in the display face, 0.73 in the body face) inside the circle.
         const size = parseFloat(t.getAttribute('font-size')), base = parseFloat(t.getAttribute('y'));
         const cap = size * (t.classList.contains('lb-display') ? 0.8 : 0.73);

@@ -8,8 +8,23 @@ Reads the live catalog (network) in headless Chrome, muted; never presses Play.
     python3 tools/web_fit_pages.py --shots DIR  # also write a PNG per frame
 
 Negative control: delete the `.g-round` rule from css/styles.css; a person's window stops being round and the check fails.
+
+V7 (WEB-DESIGN 6.4g, item pages wear Home's hero) adds item routes chosen from the data (the most downloaded
+series with a picture and the most downloaded dated one without, that one's first dated episode, the voice
+with the most episodes and a portrait and the one without, a play) at 375 and 1440 px, plus fixtures
+injected over the live data: a series whose `gallery` holds two pictures (the row must draw) and one whose
+holds one (it must not), an episode whose title carries an upload's `#NNN` tag, and a finished ear drama.
+It fails on: an item page's head art that is a blank box (no loaded picture, no drawn label); an upload's
+catalog number or identifier in an item page's h1; a recordings disclosure open on load, or copies outside
+it; a pictures row with fewer than two pictures, or none where two were given. `--only PREFIX` runs only
+the routes whose name starts with PREFIX.
+Negative controls (each seen to fail 2026-11-19): in js/app.js heroArt return `{ node: el('span'), shape:
+'label' }` for the label -> "the head art is a blank box"; drop the `API.uploadTagged` branch of the episode
+title -> "raw upload title in the head" (episode-raw); give the recordings `details` `open: true` -> "the
+recordings disclosure is open on load"; change `>= 2` to `>= 1` in API.galleryOf -> "a pictures row with
+fewer than 2" (series-gallery1).
 """
-import json, os, subprocess, sys, tempfile, time
+import json, os, re, subprocess, sys, tempfile, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
@@ -22,6 +37,63 @@ def after_the_evening():
     last = max(datetime.datetime.fromisoformat(s['utc_end'].replace('Z', '+00:00')) for s in day['slots'])
     return (last + datetime.timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
+
+def item_routes():
+    """V7's item pages, chosen from the live data (never pinned), and the fixtures each needs: (name, query,
+    ready, selector, widths, stub)."""
+    import urllib.parse, urllib.request
+    data = 'https://eardrama.org/data/'
+    get = lambda u: json.load(urllib.request.urlopen(data + u, timeout=30))
+    idx = get('index/series.json')
+    F = {k: i for i, k in enumerate(idx['fields'])}
+    rows = sorted(idx['rows'], key=lambda r: (-(r[F['downloads']] or 0), r[F['key']]))
+    pic = next(r for r in rows if r[F['picture']] and r[F['picture']][1] and r[F['picture']][2])
+    nopic = next(r for r in rows if not r[F['picture']] and r[F['first']])
+    ser = get(f"series/{urllib.parse.quote(nopic[F['key']])}.json")
+    EF = {k: i for i, k in enumerate(ser['fields'])}
+    ep = next(e for e in ser['episodes'] if e[EF['date']] and len(e[EF['date']]) == 10)
+    voices = get('index/voices.json')
+    VF = {k: i for i, k in enumerate(voices['fields'])}
+    vs = sorted(voices['rows'], key=lambda v: -(v[VF['episodes']] or 0))
+    face = next(v for v in vs if v[VF['art']])
+    bare = next(v for v in vs if not v[VF['art']])
+    plays = get('plays/library/index.json')['plays']
+    play = sorted(plays, key=lambda p: (p['voices'], p['id']))[len(plays) // 2]
+    title_at = get('manifest.json')['fields']['detail'].index('title')
+    q, k = urllib.parse.quote, pic[F['key']]
+    others = [r[F['picture']] for r in rows if r[F['picture']] and r[F['picture']][1] and r[F['key']] != k][:2]
+    gal = lambda n: {'series': {k: {'gallery': others[:n]}}}
+    raw = {'episode': {'id': ep[EF['id']], 'at': title_at, 'title': 'AbyM #026 ' + (ep[EF['title']] or '')}}
+    drama = {'drama': {'id': 'd0', 'script_id': play['id'], 'title': play['title'], 'source': None,
+                       'credits': [{'part': 'role:' + r, 'name': n} for r, n in zip(['A', 'B'], ['Pat', 'Sam'])],
+                       'archive_url': 'https://archive.org/details/eardrama-d0', 'published_at': 1763500000000}}
+    W = (375, 1440)
+    last = lambda name: re.escape(name.split()[-1])
+    return [('series-picture', f'?series={q(k)}&mute=1', last(pic[F['name']]), '.g-head-hero', W, {}),
+            ('series-label', f"?series={q(nopic[F['key']])}&mute=1", last(nopic[F['name']]), '.g-head-hero svg.lb', W, {}),
+            ('series-gallery2', f'?series={q(k)}&mute=1', last(pic[F['name']]), '.g-gallery', W, gal(2)),
+            ('series-gallery1', f'?series={q(k)}&mute=1', last(pic[F['name']]), '.g-head-hero', (375,), gal(1)),
+            ('episode-label', f"?item={q(ep[EF['id']])}&mute=1", r'Recording', '.g-head-hero svg.lb', W, {}),
+            ('episode-raw', f"?item={q(ep[EF['id']])}&mute=1", r'Recording', '.g-head-hero', (375,), raw),
+            ('person-face', f"?person={q(face[VF['id']])}&mute=1", last(face[VF['name']]), '.g-head-hero .g-shaped img, .g-head-hero svg.lb', W, {}),
+            ('person-label', f"?person={q(bare[VF['id']])}&mute=1", last(bare[VF['name']]), '.g-head-hero svg.lb', W, {}),
+            ('play', f"?play={q(play['id'])}&mute=1", r'Parts', '.g-head-hero', W, {}),
+            ('drama', '?drama=d0&mute=1', r'Cast', '.g-head-hero svg.lb', W, drama)]
+
+
+STUB = r"""(() => {
+  const F = %s;
+  const orig = window.fetch.bind(window);
+  const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } }));
+  window.fetch = async (input, init) => {
+    const u = String(input && input.url ? input.url : input);
+    for (const [k, extra] of Object.entries(F.series || {})) if (u.endsWith(`/series/${k}.json`)) { const d = await (await orig(input, init)).json(); return json({ ...d, ...extra }); }
+    if (F.episode && /\/episodes\/[^/]+\.json$/.test(u)) { const d = await (await orig(input, init)).json(); if (d[F.episode.id]) d[F.episode.id][F.episode.at] = F.episode.title; return json(d); }
+    if (F.drama && u.includes('archive.org/metadata/')) return json({ files: [{ name: 'a.mp3', format: 'VBR MP3' }] });
+    if (F.drama && u.includes('/v1/plays/finished/')) return json(F.drama);
+    return orig(input, init);
+  };
+})()"""
 
 ROUTES = [('stations', '?view=radio&mute=1', r'Stations', '.station.g-row', 1),
           ('stations-ended', '?view=radio&mute=1&now=' + after_the_evening(), r'Stations',
@@ -63,6 +135,21 @@ JS = r"""(async () => {
     if (t.getAttribute('text-anchor') !== 'middle') bad.push('round monogram is not anchored in the middle: ' + t.textContent);
   });
   if (!view.querySelector(%r)) bad.push('nothing drew for %s');
+  // V7 (WEB-DESIGN 6.4g): an item page's head art is never a blank box, and its h1 never raw upload text.
+  const hero = view.querySelector('.g-head-hero');
+  if (hero) {
+    const art = hero.querySelector('.g-head-art'), img = art && art.querySelector('.g-shaped img');
+    if (img && !img.complete) await Promise.race([img.decode().catch(() => {}), new Promise(r => setTimeout(r, 8000))]);
+    const now = art && art.querySelector('.g-shaped img'), lb = art && art.querySelector('svg.lb'), box = art && art.getBoundingClientRect();
+    const drew = (now && now.complete && now.naturalWidth > 0) || (lb && lb.childElementCount > 0) || (art && art.querySelector('.pl-open .pl-open-sp'));
+    if (!box || box.width < 40 || box.height < 40 || !drew) bad.push('the head art is a blank box');
+    const h1 = hero.querySelector('h1');
+    if (h1 && API.uploadTagged(h1.textContent)) bad.push('raw upload title in the head: ' + h1.textContent.slice(0, 40));
+  }
+  view.querySelectorAll('details.recordings').forEach(d => { if (d.open) bad.push('the recordings disclosure is open on load'); });
+  if (view.querySelector('.versions') && !view.querySelector('details.recordings .versions')) bad.push('recordings outside their disclosure');
+  const gal = view.querySelector('.g-gallery');
+  if (gal && gal.querySelectorAll('figure').length < 2) bad.push('a pictures row with fewer than 2');
   const shown = document.body.innerText + ' ' + [...document.querySelectorAll('[aria-label]')].map(n => n.getAttribute('aria-label')).join(' ');
   const iso = shown.match(/\d{4}[-‑](0[1-9]|1[0-2])([-‑](0[1-9]|[12]\d|3[01]))?(?!\d)/);
   if (iso) bad.push('an ISO date is on screen: ' + iso[0]);
@@ -93,13 +180,15 @@ def main():
     srv = subprocess.Popen([sys.executable, '-c', srv_code, str(port), work],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(1)
-    state = {'dark': False, 'js': '', 'out': []}
+    state = {'dark': False, 'js': '', 'out': [], 'stub': None}
     orig = web_run.CDP.call
 
     def call(self, method, params=None, timeout=20):
         if method == 'Page.navigate':
             orig(self, 'Emulation.setEmulatedMedia', {'features': [
                 {'name': 'prefers-color-scheme', 'value': 'dark' if state['dark'] else 'light'}]})
+            if state['stub']:
+                orig(self, 'Page.addScriptToEvaluateOnNewDocument', {'source': STUB % json.dumps(state['stub'])})
         if method == 'Page.captureScreenshot':
             r = orig(self, 'Runtime.evaluate', {'expression': state['js'], 'returnByValue': True,
                                                 'awaitPromise': True}, 30)
@@ -108,10 +197,14 @@ def main():
     web_run.CDP.call = call
     problems = 0
     try:
-        for name, query, ready, sel, _ in ROUTES:
+        only = sys.argv[sys.argv.index('--only') + 1] if '--only' in sys.argv else None
+        routes = [(n, q, r, s, (320, 375, 390, 430), {}) for n, q, r, s, _ in ROUTES] + item_routes()
+        for name, query, ready, sel, widths, stub in routes:
+            if only and not name.startswith(only):
+                continue
             for dark in (False, True):
-                for w in (320, 375, 390, 430):
-                    state.update(dark=dark, js=JS % (sel, name), out=['never measured'])
+                for w in widths:
+                    state.update(dark=dark, js=JS % (sel, name), out=['never measured'], stub=stub or None)
                     png = f'{name}-{"dark" if dark else "light"}-{w}.png'
                     out = os.path.join(shots, png) if shots else os.path.join(work, 'fit.png')
                     web_run.shoot(f'http://127.0.0.1:{port}/{query}', w, 900, out, ready)

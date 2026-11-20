@@ -357,13 +357,17 @@
     return win;
   }
   /** The run strip: the years from the first to the last broadcast on the fixed 1930 to 1962 axis. */
-  function runStrip(first, last, cls = 'g-strip', h = 18, years = null) {
+  function runStrip(first, last, cls = 'g-strip', h = 18, years = null, markYear = null) {
     const bars = API.runBars(years), span = bars ? null : API.runSpan(first, last);
-    return svgEl('svg', { class: cls, viewBox: `0 0 100 ${h}`, preserveAspectRatio: 'none', 'aria-hidden': 'true' },
+    // An episode's page marks its own year on its show's strip (§6.4g): that year's bar at full ink, the rest quieter.
+    const at = markYear ? API.runSpan(String(markYear), String(markYear)) : null;
+    const on = (b) => (at && Math.abs(b.from - at.from) < 1e-9 ? 'on' : null);
+    return svgEl('svg', { class: `${cls}${at ? ' has-mark' : ''}`, viewBox: `0 0 100 ${h}`, preserveAspectRatio: 'none', 'aria-hidden': 'true' },
       svgEl('line', { class: 'g-axis', x1: 0, y1: h - 0.5, x2: 100, y2: h - 0.5 }),
-      ...(bars || []).map(b => svgEl('rect', { x: (b.from * 100).toFixed(2), y: (h - 1 - (h - 3) * b.h).toFixed(2),
+      ...(bars || []).map(b => svgEl('rect', { class: on(b), x: (b.from * 100).toFixed(2), y: (h - 1 - (h - 3) * b.h).toFixed(2),
         width: ((b.to - b.from) * 100).toFixed(2), height: ((h - 3) * b.h + 0.5).toFixed(2) })),
-      span ? svgEl('rect', { x: (span.from * 100).toFixed(2), y: h - 15, width: ((span.to - span.from) * 100).toFixed(2), height: 15 }) : null);
+      span ? svgEl('rect', { x: (span.from * 100).toFixed(2), y: h - 15, width: ((span.to - span.from) * 100).toFixed(2), height: 15 }) : null,
+      at && !(bars || []).some(on) ? svgEl('rect', { class: 'on', x: (at.from * 100).toFixed(2), y: 1, width: ((at.to - at.from) * 100).toFixed(2), height: h - 1.5 }) : null);
   }
   /** An event line: the facts joined by " · ", each separator kept with the fact before it. */
   function eventLine(facts, cls = 'caption') {
@@ -395,7 +399,44 @@
   function headStripH() {
     return typeof matchMedia === 'function' && matchMedia('(min-width: 600px)').matches ? 40 : 32;
   }
-  function headBoard({ series, kicker, name, facts, first, last, picture, href = null, years = null, mark = null, ep = null, win = null }) {
+  /** An item page's head window (§6.4g): a picture at its own shape, never cropped (a wide one a plate
+      over the words, an upright or square one beside them), graded as everywhere; else the label at
+      tier L, an episode's with its own date. A picture that fails to load gives way to the label. */
+  function heroArt(s, ep, pic) {
+    const label = () => {
+      const w = pictureWindow({ ...(s || {}), picture: null }, 320, false, ep);
+      if (s && s.kind === 'person') w.classList.add('g-round');
+      return w;
+    };
+    const a = pic && pic.url ? API.artAspect(pic) : null;
+    if (!a || Math.min(pic.width, pic.height) < 160) return { node: label(), shape: 'label' };
+    const shape = a > API.wideAspect ? 'wide' : 'upright';
+    const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 1 ? 2 : 1;
+    const desk = typeof matchMedia === 'function' && matchMedia('(min-width: 600px)').matches;
+    const px = shape === 'wide' ? (desk ? 880 : 400) : Math.min(320, 400 * a);
+    const win = el('span', { class: 'g-window g-shaped', 'aria-hidden': 'true', style: `--a: ${a.toFixed(3)}`, dataset: { fill: 'shaped', shape } });
+    const img = el('img', { src: API.artURL(pic, px * dpr), alt: '', decoding: 'async', width: pic.width, height: pic.height,
+                            style: `filter: url(#${gradeFilter(pic)})` });
+    img.addEventListener('error', () => {
+      const head = win.closest('.g-head');
+      if (head) head.dataset.shape = 'label';
+      win.replaceWith(label());
+    });
+    win.append(img);
+    return { node: win, shape };
+  }
+  function headBoard({ series, kicker, name, facts, first, last, picture, href = null, years = null, mark = null, ep = null, win = null, hero = false, markYear = null, id = null }) {
+    if (hero) {
+      const pic = picture !== undefined ? picture : series && (series.picture !== undefined ? series.picture : series.art);
+      const art = win ? { node: win, shape: 'label' } : heroArt(series, ep, pic);
+      return el('header', { class: 'g-head g-head-hero', dataset: { genre: (series && series.genre) || '', shape: art.shape } },
+        el('div', { class: 'g-head-art' }, art.node),
+        el('div', { class: 'g-head-text' },
+          kicker ? el('span', { class: 'g-kicker caption' }, ...[].concat(kicker)) : null,
+          el('h1', { class: 'g-head-name', ...(id ? { id } : {}), tabindex: '-1', dataset: { step: String(API.headNameStep(name)) } }, name),
+          eventLine(facts || [], 'caption g-head-facts')),
+        mark || (first || last || (years && years.length) ? runStrip(first, last, 'g-strip g-head-strip', headStripH(), years, markYear) : null));
+    }
     const slot = headSlot();
     const lead = picture === undefined ? series : { ...series, picture };
     const nm = { class: 'g-head-name', dataset: { step: String(API.headNameStep(name)) } };
@@ -1006,10 +1047,10 @@
     return win;
   }
   /** A play tile's window: its opening speeches as a page (the row's `opening`), else its cast drawn. */
-  function openingWindow(script) {
-    const lines = PlaysCore.openingOf(script, 2);
+  function openingWindow(script, hero = false) {
+    const lines = PlaysCore.openingOf(script, hero ? 4 : 2);
     if (!lines.length) return null;
-    return el('span', { class: 'g-window pl-open', 'aria-hidden': 'true', dataset: { art: 'label' } },
+    return el('span', { class: `g-window pl-open${hero ? ' pl-open-hero' : ''}`, 'aria-hidden': 'true', dataset: { art: 'label' } },
       ...lines.map(l => el('span', { class: 'pl-open-sp' }, el('b', {}, l.name), el('span', { class: 'pl-open-said' }, l.text))),
       Label.svg(LabelCore.labelSpec({ kind: 'play', voices: PlaysCore.voicesOf(script), opening: true }, 200), { overlay: true }));
   }
@@ -1720,6 +1761,38 @@
       ...owed.flatMap((a, i) => [i ? ' \u00b7 ' : '', el('a', { href: a.evidence, rel: 'noopener', target: '_blank' }, a.credit)])) : null;
   }
 
+  /** The credit line for a picture an item page shows at its own shape (§6.4g): the credit its license asks
+      for, linked to its file page; nothing when it asks for none. */
+  function heroCredit(head, art) {
+    if (!art || !art.credit || !art.evidence || !head.querySelector('.g-shaped')) return null;
+    return el('p', { class: 'caption photo-credits' }, 'Picture: ', el('a', { href: art.evidence, rel: 'noopener', target: '_blank' }, art.credit));
+  }
+  /** Where a picture's evidence lives, named from its own address (a fact, not copy). */
+  function sourceName(url) {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '');
+      return host === 'commons.wikimedia.org' ? 'Wikimedia Commons' : host === 'loc.gov' ? 'Library of Congress' : host;
+    } catch { return null; }
+  }
+  /** A series' further pictures (§6.4g): two or more, each whole at its own shape at one height, graded as one
+      set, each captioned with its credit (or where it is from) linked to its evidence. Nothing under two. */
+  function galleryStrip(series, lead) {
+    const pics = API.galleryOf(series, lead);
+    if (!pics.length) return null;
+    const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 1 ? 2 : 1;
+    return el('section', { class: 'block g-gallery', 'aria-label': 'Pictures' },
+      el('ul', { class: 'g-gallery-list' }, ...pics.map(a => {
+        const r = API.artAspect(a);
+        const img = el('img', { src: API.artURL(a, 200 * r * dpr), alt: '', loading: 'lazy', decoding: 'async', width: a.width, height: a.height,
+                                style: `filter: url(#${gradeFilter(a)})` });
+        const li = el('li', {}, el('figure', { class: 'g-gallery-fig' },
+          el('span', { class: 'g-window g-shaped', style: `--a: ${r.toFixed(3)}`, dataset: { fill: 'shaped' } }, img),
+          el('figcaption', { class: 'caption' }, el('a', { href: a.evidence, rel: 'noopener', target: '_blank' }, a.credit || sourceName(a.evidence) || 'Source'))));
+        img.addEventListener('error', () => li.remove());
+        return li;
+      })));
+  }
+
   /** The show's About (WEB-DESIGN §4.5): the encyclopedia's paragraphs, four lines until opened, with the
       attribution its license asks for. Nothing when the series carries none. */
   function aboutBlock(about) {
@@ -1792,9 +1865,10 @@
 
       const genreLink = genre && s.genre ? el('a', { class: 'g-kicker-link', href: `?view=browse&genre=${encodeURIComponent(s.genre)}`,
         'aria-label': `Browse ${genre}` }, genre) : genre;
-      const head = headBoard({ series: s, kicker: genreLink ? [genreLink] : null, name: s.name,
+      const lead = API.seriesLead(s);
+      const head = headBoard({ series: s, hero: true, picture: lead, kicker: genreLink ? [genreLink] : null, name: s.name,
         facts: API.showFacts(s, years(s.first, s.last), plural(s.episodes.length, 'episode', 'episodes')), first: s.first, last: s.last, years: s.years });
-      body.append(...[head, aboutBlock(s.about), el('div', { class: 'actions actions-one' }, followBtn, shareBtn), pictureCredit([s.picture])].filter(Boolean));
+      body.append(...[head, heroCredit(head, lead), el('div', { class: 'actions actions-one' }, followBtn, shareBtn), aboutBlock(s.about), galleryStrip(s, lead)].filter(Boolean));
       if (scopes.length > 2) body.append(seg);
       body.append(countLine, listBox);
       drawEpisodes(scope || '');
@@ -1843,7 +1917,10 @@
     }, ({ d, s, genre, rightsLine, m, script }) => {
       if (d.id !== r.id) history.replaceState(history.state, '', `?item=${encodeURIComponent(d.id)}`);
       const seriesName = s ? s.name : d.series;
-      const title = epTitle(d);
+      // Raw upload text never shows (AGENTS.md): a title still carrying an upload's catalog number or
+      // identifier gives way to one composed from the record, its date, else its number, else its show.
+      const title = d.title && API.uploadTagged(d.title)
+        ? (d.date ? fmtLongDate(d.date) : d.num !== null && d.num !== undefined ? `No. ${d.num}` : seriesName) : epTitle(d);
       setTitle(title, API.mediumDate(d.date), seriesName);
       let chosen = 0;
       const card = () => ({ id: d.id, title, series: d.series, seriesName, date: d.date, network: d.network || null,
@@ -1871,23 +1948,30 @@
       shareBtn.addEventListener('click', () => share(`${title} (${API.mediumDate(d.date) || 'undated'})`, API.shareLink('episode', d.id)));
 
       // An undated episode with no network or credits is most of the catalog: its event line says
-      // "Undated" and nothing more, in the same structure as a rich one.
-      const lead = API.leadPicture(s, d.credits, d.star);
-      const showName = { key: d.series, name: seriesName, genre: (s && s.genre) || '', picture: lead,
-                         first: s && s.first, last: s && s.last, network: s && s.network };
-      const head = headBoard({ series: showName, href: `?series=${encodeURIComponent(d.series)}`,
-        kicker: genre || 'Show', name: seriesName,
-        facts: s ? API.showFacts(s, years(s.first, s.last), plural(s.episodes.length, 'episode', 'episodes')) : ['Undated'],
-        first: s && s.first, last: s && s.last, years: s && s.years, ep: d });
+      // "Undated" and nothing more, in the same structure as a rich one. The head is the episode's own
+      // (§6.4g): its dated label, its title, its facts, its year marked on the show's strip.
+      const show = { key: d.series, name: seriesName, genre: (s && s.genre) || '', picture: null,
+                     first: s && s.first, last: s && s.last, network: s && s.network };
+      const showLink = el('a', { class: 'g-kicker-link', href: `?series=${encodeURIComponent(d.series)}` }, seriesName);
+      const yr = d.date && /^\d{4}/.test(d.date) ? +d.date.slice(0, 4) : null;
+      const head = headBoard({ series: show, hero: true, ep: d, id: 'episode-h', kicker: [showLink], name: title,
+        facts: API.episodeFacts(d, d.date ? fmtLongDate(d.date) : null, fmtLength(d.length)),
+        first: s && s.first, last: s && s.last, years: s && s.years, markYear: yr });
+      // The show's picture, when it has one, is the show's own row under the actions: never beside the
+      // episode's label as if it were the broadcast's.
+      const showPic = s ? API.seriesLead(s) : null;
+      const showRow = s && showPic ? el('div', { class: 'g-row ep-show' },
+        el('a', { class: 'g-link', href: `?series=${encodeURIComponent(d.series)}` },
+          pictureWindow({ ...s, picture: showPic }, 48),
+          el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, seriesName),
+            eventLine(API.showFacts(s, years(s.first, s.last), plural(s.episodes.length, 'episode', 'episodes')))))) : null;
       const startBtn = script ? PlaysUI.startButton(script, playsHelpers) : null;
       body.append(...[head,
-        el('h1', { class: 'view-heading ep-heading', id: 'episode-h', tabindex: '-1' }, title),
-        eventLine(API.episodeFacts(d, d.date ? fmtLongDate(d.date) : null, fmtLength(d.length)), 'caption g-event-line'),
-        d.aka ? el('p', { class: 'caption' }, `Also titled ${d.aka}`) : null,
+        d.aka ? el('p', { class: 'caption ep-aka' }, `Also titled ${d.aka}`) : null,
         scriptLink(d),
         el('div', { class: 'actions actions-one' }, playBtn, queueBtn, shareBtn),
         startBtn ? el('div', { class: 'actions actions-one actions-start' }, startBtn) : null,
-        pictureCredit([lead])].filter(Boolean));
+        showRow, showRow ? pictureCredit([showPic]) : null].filter(Boolean));
 
       // R16: the automatic transcript, only where the gate passed (the row's `transcript`
       // is null otherwise), fetched from archive.org the first time it is opened.
@@ -1917,8 +2001,9 @@
           el('summary', {}, 'Cast and credits', el('span', { class: 'caption' }, String(d.credits.length))), dl));
       }
 
-      const fs = el('fieldset', { class: 'versions' },
-        el('legend', { class: 'section-header' }, d.recordings.length > 1 ? 'Recordings' : 'Recording'));
+      // The copies are file plumbing (R3a §2.2): one closed disclosure, the default copy chosen inside it.
+      const recWord = d.recordings.length > 1 ? 'Recordings' : 'Recording';
+      const fs = el('fieldset', { class: 'versions' }, el('legend', { class: 'sr-only' }, recWord));
       d.recordings.forEach((rec, i) => {
         // A copy is named from data (rec.label, when the catalog publishes one), else by position;
         // the archive.org identifier is never text, only the link target.
@@ -1934,7 +2019,8 @@
                     rel: 'noopener', target: '_blank', 'aria-label': `${label} on archive.org` },
           'View on archive.org') : null));
       });
-      body.append(fs);
+      body.append(el('details', { class: 'booklet recordings' },
+        el('summary', {}, recWord, el('span', { class: 'caption' }, String(d.recordings.length))), fs));
       if (rightsLine) body.append(el('p', { class: 'caption rights' }, rightsLine));
     });
   }
@@ -1973,10 +2059,11 @@
       };
       const all = groups.flatMap(g => g.episodes);
       const span = yearsOf(all);
-      body.append(headBoard({ series: { kind: 'person', name: p.name, genre: '', picture: p.art || null }, name: p.name,
+      const head = headBoard({ series: { kind: 'person', name: p.name, genre: '', picture: p.art || null, first: span && String(span[0]), last: span && String(span[1]) }, hero: true, name: p.name,
         facts: [API.lifeYears(p.birth, p.death), plural(count, 'episode', 'episodes'),
           groups.length > 1 ? plural(groups.length, 'show', 'shows') : null],
-        first: span && String(span[0]), last: span && String(span[1]), years: stripOf(all) }));
+        first: span && String(span[0]), last: span && String(span[1]), years: stripOf(all) });
+      body.append(...[head, heroCredit(head, p.art || null)].filter(Boolean));
       if (groups.length > 1) {
         const tiles = el('ul', { class: 'rail g-rail g-rail-small', 'aria-label': 'Shows' });
         groups.forEach(g => {
@@ -2240,7 +2327,7 @@
      PLAYS (js/plays-ui.js draws them with these helpers)
   ================================================================ */
 
-  const playsHelpers = { el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine, showTile, share };
+  const playsHelpers = { el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine, showTile, share, openingWindow, heroCredit };
   function renderPlays(r) {
     PlaysUI.render(r, playsHelpers);
   }
