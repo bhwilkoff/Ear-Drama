@@ -285,3 +285,9 @@ privacy words) is folded in when it arrives, never waited on.
   one list item, Home hero photo at its shape. Renders read: Android person label lacks the
   credit-years arc (web has it); Android play head shows four gray placeholder-like bars (V3 removed
   that pattern on web): both for V8. Push held for device check 4. Running: V2, T5, device check.
+- **2026-11-19, tick 16**: device check 4: Pixel, Google TV (both faults fixed on the device), Apple
+  TV launch clean, frames read. NO iOS launch possible: iPhone 12 behind the Screen Time limit, iPad
+  locked, Duo black. **Push held** (owner rule: launch on the iPhone before TestFlight); local main
+  carries V7 ports (1.0.146) unpushed. Unblock: owner lifts the Screen Time limit or unlocks the iPad.
+  Also: the atv harness powered Ben Bedroom off at teardown (owner rule: never sleep a test device):
+  fix the harness; atv_run's "Inferno" item regex is stale (tests never pin catalog contents).
