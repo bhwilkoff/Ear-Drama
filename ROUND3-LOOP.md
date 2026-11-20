@@ -128,7 +128,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
 - [x] **V4 The label, Apple and Android (Sonnet).** Same goldens pass in Swift and Kotlin
   (`cross-platform-determinism`); drawn natively (SwiftUI Canvas, Compose Canvas); tvOS hero; lock
   screen and Now Playing art per episode.
-- [ ] **V5 Home composition, web (Opus).** R3a §4.1 rules 1-8; the hero is the largest window on the
+- [x] **V5 Home composition, web (Opus).** R3a §4.1 rules 1-8; the hero is the largest window on the
   first screen; no rail opens on the show above it; a show at most once. Frames at 320-1440, light and
   dark, read by the main thread.
 - [ ] **V6 Home composition, Apple and Android (Sonnet, Opus review).** iPhone, Duo open, iPad, Mac,
@@ -239,3 +239,10 @@ privacy words) is folded in when it arrives, never waited on.
   rules: the leader's name travels in the snapshot; Read open parts is a leader message; seat keys
   last a session on shared devices (T4 builds all three). Running: V2 (Sonnet, images), V5 (Opus,
   Home web), T4 (Sonnet, Apple + Android). Worker full mutation run + deploy wait for a quiet machine.
+- **2026-11-19, tick 9**: V5 merged and pushed (be267aa, 1.0.142): On the air hero on its board,
+  genre-station dial, two quiet doors, no repeats (API.homeShows), Today's scene a card, one-ink day
+  chart, raw-title guard in On the air, test_tv_compat passes. Frames read (1440 light, 375 dark).
+  Decided from rules: Continue stays exempt from no-repeats (personal); chip changes check rails
+  above only. For V8: the dial's station labels read as blank white circles at 56 px. For the next
+  catalog batch: display_text.py misses "AbyM #001"-style upload tags in episode rows. Running: V2,
+  T4, V7 (Opus, detail pages web). V6 waits for T4 (same apple/android code).
