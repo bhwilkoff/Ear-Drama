@@ -162,7 +162,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
 - [x] **T4 Apple and Android clients (Sonnet).** Same verbs, native idioms (R3c §5.4): iPhone, iPad
   drag-to-cast, Duo outer display line, Mac windows and menu, Android; Apple TV and Google TV as the
   shared screen with a pairing code (record nothing, rule 12).
-- [ ] **T5 Record in the room (Opus web, Sonnet ports).** Only the device holding the current line
+- [x] **T5 Record in the room (Opus web, Sonnet ports).** Only the device holding the current line
   records; takes pass through to the leader; the leader's mix and Listen through; the teacher's
   full-recording upload; failure states R3c §6.
 - [ ] **T6 Relay across time (Sonnet).** Assigned parts at home; takes wait on the student's device
@@ -291,3 +291,13 @@ privacy words) is folded in when it arrives, never waited on.
   carries V7 ports (1.0.146) unpushed. Unblock: owner lifts the Screen Time limit or unlocks the iPad.
   Also: the atv harness powered Ben Bedroom off at teardown (owner rule: never sleep a test device):
   fix the harness; atv_run's "Inferno" item regex is stale (tests never pin catalog contents).
+- **2026-11-19, tick 17**: T5 merged locally (1.0.147; Worker 423, web 24 suites, macOS 507,
+  Android 595, 0 warnings): record in the room (takes pass through to the receiver; One microphone
+  default for under-13), the room inside ScriptReader / ReaderScreen (separate lists gone), TV
+  pairing codes (migration 0008), 404/410 not-found states, adult names. Frames read (Apple reader
+  recording, web Takes sheet). Decided from rules: room productions with takes stay in Yours (079);
+  an anonymous adult's takes are credited to the name given on join (credit the maker) and cannot
+  publish without that performer's consent: T6 builds. For V8: Takes sheet has both "Again" and
+  "Again with a note"; web pairing page not centered; Apple Takes foot unrendered; no Mac menu
+  commands, tvOS Leave, Android arrow keys. Still unpushed (4+ merges): iOS launch check blocked.
+  Worker deploy waits for the quiet-machine mutation run (V2 still running): migrations 0006-0008.
