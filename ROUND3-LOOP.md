@@ -222,3 +222,7 @@ privacy words) is folded in when it arrives, never waited on.
   + 0007 remote, wrangler deploy: READ_ROOMS, TAKE_RELAY, limiters 8313-8318). Running: V4 (Sonnet),
   T3 (Opus). Note: invite productions' members can no longer hear each other's takes from the Worker
   (it was always 503 in production); T3/T4 move clients to the inbox.
+- **2026-11-19, tick 6**: full mutation run blocked twice on the UNMUTATED suite: (1) the 61st-join
+  test straddled a wall-clock minute (miniflare windows are clock-aligned): fixed, 60788e7, 379/379;
+  (2) an archive test timed out at 30 s under load average ~25 (V4's builds). Rule: run the 40-min
+  mutation run only when no agent is building; then deploy. Running: V4, T3.
