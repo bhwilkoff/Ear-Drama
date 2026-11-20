@@ -635,7 +635,7 @@ private struct SeriesScreen_tvOS: View {
         let episodes = page.seasons.flatMap(\.episodes)
         let ids = Set(episodes.map(\.id))
         let resume = history.inProgressIDs.first(where: ids.contains)
-        let kicker = ([series.genre.map(GenreDisplay.name)].compactMap { $0 } + series.networks.prefix(2))
+        let kicker = [series.genre.map(GenreDisplay.name), series.network].compactMap { $0 }
             .joined(separator: " \u{00B7} ")
         return ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: TV.rowGap) {

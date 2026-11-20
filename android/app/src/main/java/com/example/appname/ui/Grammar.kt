@@ -697,5 +697,5 @@ fun HeadBoard(
     }
 }
 
-/** The kicker's genre as a link: its [name], the networks after it as [rest], and what opening it does. */
+/** The kicker's genre as a link: its [name], the primary network after it as [rest], and what opening it does. */
 class GenreLink(val name: String, val rest: String, val onOpen: () -> Unit)

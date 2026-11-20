@@ -57,7 +57,11 @@ nonisolated enum LabelTokens {
         }
       },
       "evening": {
-        "r0": 35,
+        "r0": {
+          "S": 35,
+          "M": 35,
+          "L": 40
+        },
         "r1": 47,
         "width": {
           "S": 3.2,

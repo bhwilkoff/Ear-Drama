@@ -226,7 +226,7 @@ extension LabelSpec {
         }
         if dialed, let ty = yearOf(it.tickYear) {
             let e = T["evening"]
-            spec.evening = Evening(deg: r2(yearDeg(clampYear(ty)) - slot / 2), r0: e["r0"].d(), r1: e["r1"].d(), width: e["width"].d(tier))
+            spec.evening = Evening(deg: r2(yearDeg(clampYear(ty)) - slot / 2), r0: e["r0"].d(tier), r1: e["r1"].d(), width: e["width"].d(tier))
         }
         if kind == .drama {
             let ps = it.parts.filter { $0.lines > 0 }

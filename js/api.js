@@ -400,10 +400,11 @@ const API = (() => {
   function aboutLink(about) {
     return aboutParagraphs(about).length ? safeLink(about && about.url) : null;
   }
-  /** A show's facts line, the entry point for a reader who does not know it: years, network, the star,
-      the episode count. `dates` and `count` arrive formatted. */
+  /** A show's facts line, the entry point for a reader who does not know it: years, its one primary
+      network (`series.network`, never the `networks` list: V8), the star, the episode count. `dates` and
+      `count` arrive formatted. */
   function showFacts(s, dates, count) {
-    return [dates || 'Undated', s.networks, s.star ? `with ${s.star}` : null, count].filter(x => x && String(x).trim());
+    return [dates || 'Undated', s.network, s.star ? `with ${s.star}` : null, count].filter(x => x && String(x).trim());
   }
 
   /** The facts of an episode's event line: its date (or Undated), network, sponsor, length, season,

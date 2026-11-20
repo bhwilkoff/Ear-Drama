@@ -171,13 +171,13 @@ struct LabelView: View {
 
 extension SeriesRow {
     /// The show's label: its run on the dial and, at the large tier, its network.
-    var labelItem: LabelItem { LabelItem(kind: .series, name: name, genre: genre, first: firstDate, last: lastDate, network: networks.first) }
+    var labelItem: LabelItem { LabelItem(kind: .series, name: name, genre: genre, first: firstDate, last: lastDate, network: network) }
 }
 
 extension EpisodeRow {
     /// The episode's own label: its show's disc with this broadcast's date on it (its number when undated).
     func labelItem(series: SeriesRow? = nil) -> LabelItem {
         LabelItem(kind: .episode, name: seriesName, genre: seriesGenre, first: series?.firstDate, last: series?.lastDate,
-                  network: network ?? series?.networks.first, date: airDate, num: number.map(String.init))
+                  network: network ?? series?.network, date: airDate, num: number.map(String.init))
     }
 }

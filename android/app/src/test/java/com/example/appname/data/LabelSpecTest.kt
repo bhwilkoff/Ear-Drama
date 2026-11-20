@@ -95,4 +95,12 @@ class LabelSpecTest {
         assertEquals("M", LabelSpec.make(LabelItem(name = "A"), 96.0).tier)
         assertEquals("L", LabelSpec.make(LabelItem(name = "A"), 320.0).tier)
     }
+
+    /** V8: the rim and the head name `series.network`, never the first of the `networks` list. */
+    @Test fun theRimNamesThePrimaryNetworkNotTheList() {
+        val lux = SeriesRow(key = "lux", name = "Lux", genre = "drama", firstDate = "1935", lastDate = "1955", episodes = 9,
+            networks = listOf("NBC Blue", "CBS"), network = "CBS")
+        assertEquals("CBS", lux.labelItem().network)
+        assertNull(lux.copy(network = null).labelItem().network)
+    }
 }

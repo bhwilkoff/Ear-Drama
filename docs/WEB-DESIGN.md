@@ -1436,7 +1436,9 @@ web app follows today.
     L (leaving the rim's band), 0.35 wide at 32%; none at S.
   - **Run arc**: r 43.5 width 7 (S), r 44.75 width 4 (M) or 3.5 (L), from the first year's slot to
     the end of the last's; a round end where the year is on the dial, a square end where it was held
-    at 1930 or 1962. Undated: none. **Evening tick**: one rule at the year's mid-slot, r 35 to 47.
+    at 1930 or 1962. Undated: none. **Evening tick**: one rule at the year's mid-slot, r 35 to 47 at S and M; at L it starts at r 40,
+    outside the rim's words, so it never crosses them (V8, 2026-11-20: the On the air hero's 1940s
+    tick struck through the N of "NBC" on every platform).
   - **Label** r 27 (S), 21 (M), 19 (L), solid onBoard; its text in the board color, fitted to 76% of
     the label's width and 60% of its height from the glyph widths in the tokens. An episode's text
     is the date block's (DEC ’42 over 22; ’55 over APR; 1955; No. over 7), one line at S (’42, No.7).
@@ -1661,7 +1663,7 @@ web app follows today.
   macOS-, tvOS- and ANDROID-DESIGN R11d). Amends §4.4 and §4.5 and retires
   the print, the plate and the typographic-card head of §6.4a on these two
   pages; where it differs, this rule wins. **The series page** is the head
-  board (kicker: the genre, then the networks; name; facts: the years or
+  board (kicker: the genre, then the one primary network, `series.network` (V8, 2026-11-20: never the `networks` list, which put "CBS · NBC · AFRS · NBC RED" over Lux Radio Theater and "CBS, NBC" over Gunsmoke; none when the catalog names none); name; facts: the years or
   "Undated", then the count of episodes; the run strip), then one button
   row (Follow, Share), the picture's credit when its license asks and the
   window shows it, the season scope, and the episode list. **The episode

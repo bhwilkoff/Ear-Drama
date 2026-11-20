@@ -104,7 +104,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                                          withPicture: art && Self.columnExists(h, table: "series", column: "picture")
                                              && Self.columnExists(h, table: "series", column: "picture_kind"),
                                          withYears: Self.columnExists(h, table: "series", column: "year_counts"),
-                                         withSortName: Self.columnExists(h, table: "series", column: "sort_name"))
+                                         withSortName: Self.columnExists(h, table: "series", column: "sort_name"),
+                                         withNetwork: Self.columnExists(h, table: "series", column: "network"))
         rightsLines = Self.publishedRightsLines(h) ?? RightsDisplay.contract
         publishedShelves = Self.metaText(h, key: "listenShelves").flatMap(PublishedShelf.parse)
         guard let version = Self.schemaVersion(h), version >= Self.minimumSchemaVersion else {
@@ -183,10 +184,13 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         var pictureKind: String?
         var yearCounts: [Int]?
         var sortName: String?
+        /// `series.network` (contract §3.3): the one primary network, nil on an older catalog or when none is known.
+        var network: String?
     }
 
     private static func loadSeriesLook(_ h: OpaquePointer, withFaces: Bool, faceColumn: Bool, gradeColumn: Bool,
-                                       withPicture: Bool, withYears: Bool, withSortName: Bool) -> [String: SeriesLook] {
+                                       withPicture: Bool, withYears: Bool, withSortName: Bool,
+                                       withNetwork: Bool = false) -> [String: SeriesLook] {
         let faceSelect = withFaces
             ? "p.name, a.url, a.width, a.height, a.credit, a.evidence_url, \(faceColumn ? "a.face" : "NULL"), \(gradeColumn ? "a.grade" : "NULL")"
             : "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL"
@@ -196,7 +200,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             : "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL"
         let pictureJoin = withPicture ? "LEFT JOIN art pa ON pa.id = s.picture" : ""
         let yearsSelect = withYears ? "s.year_counts" : "NULL"
-        let sql = "SELECT s.key, s.genre, \(faceSelect), \(pictureSelect), \(yearsSelect), \(withSortName ? "s.sort_name" : "NULL") FROM series s \(faceJoin) \(pictureJoin)"
+        let sql = "SELECT s.key, s.genre, \(faceSelect), \(pictureSelect), \(yearsSelect), \(withSortName ? "s.sort_name" : "NULL"), \(withNetwork ? "s.network" : "NULL") FROM series s \(faceJoin) \(pictureJoin)"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(h, sql, -1, &stmt, nil) == SQLITE_OK else { return [:] }
         defer { sqlite3_finalize(stmt) }
@@ -215,6 +219,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             look.pictureKind = look.picture == nil ? nil : text(17)
             look.yearCounts = Grammar.parseYearCounts(text(18))
             look.sortName = text(19)
+            look.network = text(20)
             out[key] = look
         }
         return out
@@ -765,7 +770,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                          firstDate: row.text(3), lastDate: row.text(4), networks: networks,
                          episodeCount: row.int(6) ?? 0, face: seriesLook[key]?.face,
                          picture: seriesLook[key]?.picture, pictureKind: seriesLook[key]?.pictureKind,
-                         yearCounts: seriesLook[key]?.yearCounts, sortName: seriesLook[key]?.sortName)
+                         yearCounts: seriesLook[key]?.yearCounts, sortName: seriesLook[key]?.sortName,
+                         network: seriesLook[key]?.network)
     }
 
     private func decodeEpisode(_ row: Row) -> EpisodeRow {

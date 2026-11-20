@@ -251,9 +251,10 @@ struct RunStrip: View {
         GeometryReader { geo in
             let ink = Color.onBoard(genre)
             let bars = Grammar.runBars(years: years)
-            let fit = ownSpan && (bars?.count ?? 0) >= 3
-            let lo = fit ? CGFloat(bars?.first?.from ?? 0) : 0
-            let scale = geo.size.width / (fit ? CGFloat(bars?.last?.to ?? 1) - lo : 1)
+            let axis = ownSpan && (bars?.count ?? 0) >= 3 ? Grammar.ownSpanAxis(bars) : nil
+            let fit = axis != nil
+            let lo = CGFloat(axis?.lo ?? 0)
+            let scale = geo.size.width / CGFloat((axis?.hi ?? 1) - (axis?.lo ?? 0))
             ZStack(alignment: .bottomLeading) {
                 Rectangle().fill(ink.opacity(0.3)).frame(height: 1)
                 if let bars {
@@ -354,13 +355,14 @@ extension View {
 
 /// A series on its genre's board (R11b): the window, the name, the run strip, the facts. Never
 /// shows `pictureKind`. tvOS focus scales the whole tile through the card style around it.
-#if os(macOS)
+#if !os(tvOS)
 private struct TileFillsRowKey: EnvironmentKey {
     static let defaultValue = false
 }
 
 extension EnvironmentValues {
-    /// A grid row's tiles end on one line, whatever each says (macOS-DESIGN §4.0a).
+    /// A grid row's tiles end on one line, whatever each says (macOS-DESIGN §4.0a; iOS since V8, 2026-11-20: the open
+    /// Duo's "That night" row ended at two heights where one tile's facts took a third line).
     var tileFillsRow: Bool {
         get { self[TileFillsRowKey.self] }
         set { self[TileFillsRowKey.self] = newValue }
@@ -378,8 +380,10 @@ struct ShowTile: View {
     /// The same, for a play known only by its library row.
     var cast: CastSummary? = nil
     @Environment(\.sharedNameHeight) private var sharedNameHeight
-    #if os(macOS)
+    #if !os(tvOS)
     @Environment(\.tileFillsRow) private var fillsRow
+    #endif
+    #if os(macOS)
     @State private var hovering = false
     #endif
 
@@ -439,7 +443,7 @@ struct ShowTile: View {
         }
         .padding(EdgeInsets(top: 6, leading: 6, bottom: 10, trailing: 6))
         .frame(width: width, alignment: .topLeading)
-        #if os(macOS)
+        #if !os(tvOS)
         .frame(maxHeight: fillsRow ? .infinity : nil, alignment: .topLeading)
         #endif
         .background(Color.board(series.genre))

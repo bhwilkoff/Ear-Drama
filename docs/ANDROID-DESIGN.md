@@ -118,7 +118,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   being next to the other buttons"*; D3-3); WEB-DESIGN §6.4d is the shared
   text and where it differs this wins. It amends §4.3 and §4.4 and retires
   `FaceHero` on these two pages. **Series:** `HeadBoard` (kicker: the genre
-  name, then `series.networks` joined by " · "; the name as the page's
+  name, then the one primary network, `series.network` (V8, 2026-11-20: never the `networks` list, which put "CBS · NBC · AFRS · NBC RED" over Lux Radio Theater and "CBS, NBC" over Gunsmoke; none when the catalog names none); the name as the page's
   heading; facts: the years or "Undated", then the episode count; the run
   strip), then one button row (Follow, Share), the picture's credit when
   its license asks and the window shows it (`PictureCredit`), the season
@@ -391,6 +391,9 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   **TV: focus does the work.** The head and its buttons are one list item wrapped in `revealWhole()`, so a D-pad move to a button
   asks the list to reveal the whole board, never only the button (Google TV Home scrolled the hero's top off screen, 2026-11-19);
   Home's hero draws its photo through the same window, at its own shape, where a wide photo had sat small inside a square window.
+  V8 (2026-11-20): this holds on the episode page too (its Play row had been a separate item, and Play's first focus scrolled the
+  board's top under the bar), and on a TV a wide plate is at most 30% of the screen's height (`ItemLead.window(plateMax)`), so the
+  name and the buttons stay on the first screen (Lux Radio Theater's 2:1 hero had filled it).
 - **§4.3 A series page** shows years and count, then Follow (Following
   once followed, a tonal button), then its broadcast seasons as
   `FilterChip`s, a segmented scope and never a push, the oldest selected

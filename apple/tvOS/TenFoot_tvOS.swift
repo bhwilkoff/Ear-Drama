@@ -52,7 +52,8 @@ struct TVRunStrip: View {
     var markYear: Int? = nil
 
     var body: some View {
-        if let bars = Grammar.runBars(years: years), let lo = bars.first?.from, let hi = bars.last?.to, hi > lo {
+        if let bars = Grammar.runBars(years: years), let axis = Grammar.ownSpanAxis(bars) {
+            let lo = axis.lo, hi = axis.hi
             let ink = Color.onBoard(genre)
             GeometryReader { geo in
                 let scale = geo.size.width / CGFloat(hi - lo)

@@ -51,9 +51,10 @@ object ItemLead {
      * The window's frame inside a board [width] dp wide: a label is a square (the column's width on a phone, 320 beside the
      * words); a picture keeps its own shape. A wide one is a plate over the words at the board's full width, at most 360
      * tall (440 beside); an upright or square one stands in the window's place, at most 400 tall and 320 wide beside the
-     * words. The picture is never cropped.
+     * words. The picture is never cropped. [plateMax] caps a plate further: a TV passes 30% of its screen's height, so the
+     * name and the button row stay on the first screen under a wide picture (V8, Google TV 2026-11-20).
      */
-    fun window(art: Artwork?, width: Float): Window {
+    fun window(art: Artwork?, width: Float, plateMax: Float? = null): Window {
         val beside = width >= BESIDE_FROM
         val shown = shown(art)
         val a = shown?.aspectRatio
@@ -62,7 +63,7 @@ object ItemLead {
             return Window(side, side, false)
         }
         if (shown.isWide) {
-            val h = minOf(width / a, if (beside) 440f else 360f)
+            val h = minOf(width / a, if (beside) 440f else 360f, plateMax ?: Float.MAX_VALUE)
             return Window(h * a, h, true)
         }
         val h = minOf(UPRIGHT_HEIGHT, (if (beside) minOf(COLUMN, width) else width) / a)

@@ -117,7 +117,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             (if ("year_counts" in cols) "s.year_counts, " else "NULL, ") +
             (if ("sort_name" in cols) "s.sort_name, " else "NULL, ") +
             (if (hasAbout) "s.about_text, s.about_source, s.about_url, " else "NULL, NULL, NULL, ") +
-            "s.first_date, s.last_date " +
+            "s.first_date, s.last_date, " +
+            (if ("network" in cols) "s.network " else "NULL ") +
             "FROM series s " +
             (if (faces) "LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait " else "") +
             (if (pictures) "LEFT JOIN art ap ON ap.id = s.picture" else "")
@@ -137,6 +138,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 aboutUrl = st.textOrNull(23),
                 firstDate = st.textOrNull(24),
                 lastDate = st.textOrNull(25),
+                network = st.textOrNull(26),
             )
         }.toMap()
     }
@@ -154,6 +156,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         val aboutUrl: String? = null,
         val firstDate: String? = null,
         val lastDate: String? = null,
+        val network: String? = null,
     )
 
     private fun artwork(st: SQLiteStatement, at: Int): Artwork? = st.textOrNull(at)?.let {
@@ -841,6 +844,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         picture = seriesLook[st.getText(0)]?.picture,
         pictureKind = seriesLook[st.getText(0)]?.pictureKind,
         networks = seriesLook[st.getText(0)]?.networks.orEmpty(),
+        network = seriesLook[st.getText(0)]?.network,
         yearCounts = seriesLook[st.getText(0)]?.yearCounts,
         sortName = seriesLook[st.getText(0)]?.sortName,
         aboutText = seriesLook[st.getText(0)]?.aboutText,
