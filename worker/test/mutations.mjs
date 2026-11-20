@@ -273,6 +273,8 @@ const M = [
   ["t2: class room seat without its key", "src/read-rooms.js", '    if (seat !== null && w.room.kind === "class" && !(await seatKeyOpens(env, w.room.class_id, seat, want.seat_key))) return { error: "seat_key_required" };\n', ""],
   ["t2: class room seat change without its key", "src/read-rooms.js", '    return (await seatKeyOpens(env, world.room.class_id, msg.seat, msg.seat_key)) ? null : "seat_key_required";', "    return null;"],
   ["t2: class room on another class's production", "src/read-rooms.js", "      if (!p || p.class_id !== body.class_id || p.script_id !== body.script_id) return", "      if (!p) return"],
+  // T3: published works stay (owner 2026-10-29) when their class goes
+  ["t3: a class's deletion takes its published production", "src/plays.js", "UPDATE play_productions SET class_id = NULL WHERE id IN (${submitted})", "UPDATE play_productions SET class_id = NULL WHERE 0 AND id IN (${submitted})"],
 ];
 
 // --check: confirm every mutation still matches its file exactly once, and run nothing.

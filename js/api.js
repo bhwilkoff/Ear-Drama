@@ -1380,6 +1380,7 @@ const API = (() => {
         } catch (e) { throw netError(e, path); }
         if (resp.status === 401 && attempt === 0) { access = null; continue; }
         if (!resp.ok) throw await problemOf(resp, path);
+        if (opts.response) return resp.status === 204 ? null : resp;
         if (opts.bytes) return resp.arrayBuffer();
         return resp.status === 204 ? null : resp.json();
       }
@@ -1403,6 +1404,23 @@ const API = (() => {
         throw err;
       }
       return opts.bytes ? resp.arrayBuffer() : resp.json();
+    }
+
+    /** A call that needs no account (a seat, a read room): no bearer; `opts.headers` carries its own key. */
+    async function anon(method, path, opts = {}) {
+      const b = base();
+      if (!b) throw new DataError('not_configured', path);
+      let resp;
+      try {
+        resp = await fetch(b + path, {
+          method,
+          headers: { ...(opts.body !== undefined ? { 'content-type': 'application/json' } : {}), ...(opts.headers || {}) },
+          body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+          signal: AbortSignal.timeout(opts.timeout || TIMEOUT_MS),
+        });
+      } catch (e) { throw netError(e, path); }
+      if (!resp.ok) throw await problemOf(resp, path);
+      return resp.status === 204 ? null : resp.json();
     }
 
     function signedIn() { const s = state(); return !!(s && s.user_id); }
@@ -1447,7 +1465,7 @@ const API = (() => {
     }
 
     return {
-      available, state, signedIn, update, newNonce, signIn, signOut, deleteAccount, device: DEVICE, call, open,
+      available, state, signedIn, update, newNonce, signIn, signOut, deleteAccount, device: DEVICE, call, open, anon, base,
       /** The Worker's URL is real (not a placeholder): signed-in features may be offered. */
       reachable: () => !!base(),
       onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
@@ -1491,8 +1509,17 @@ const API = (() => {
       agree: (pid, version) => c('POST', `${at(pid)}/consent`, { version }),
       upload: (pid, takeId, bytes, meta) => c('PUT', `${at(pid)}/takes/${encodeURIComponent(takeId)}`, null,
         { raw: bytes, headers: { 'content-type': 'audio/wav', 'x-take': JSON.stringify(meta) }, timeout: 180000 }),
-      audio: (pid, takeId) => c('GET', `${at(pid)}/takes/${encodeURIComponent(takeId)}/audio`, null,
-        { bytes: true, timeout: 120000 }),
+      /**
+       * The director's pickup (Decision 082, pass-through): a long poll answered with the next take,
+       * `{ take, bytes }` (`take` from its `x-take` header), or null after 25 s with none.
+       */
+      inbox: async (pid) => {
+        const r = await c('GET', `${at(pid)}/takes/inbox`, null, { response: true, timeout: 40000 });
+        if (!r) return null;
+        let take = null;
+        try { take = JSON.parse(r.headers.get('x-take') || 'null'); } catch { take = null; }
+        return take ? { take, bytes: await r.arrayBuffer() } : null;
+      },
       choose: (pid, takeId) => c('POST', `${at(pid)}/chosen`, { take_id: takeId }),
       publish: (pid) => c('POST', `${at(pid)}/publish`, {}),
       removeLine: (pid, lineId, reason) => c('POST', `${at(pid)}/archive/lines/${encodeURIComponent(lineId)}/remove`, { reason }),
@@ -1504,8 +1531,6 @@ const API = (() => {
        * still need `joinByInvite`. A revoked or expired invite is a DataError of kind 'gone'.
        */
       openInvite: (token) => account.open(`${P}/open/invite`, { headers: { 'x-invite': token } }),
-      openInviteAudio: (token, takeId) => account.open(`${P}/open/invite/takes/${encodeURIComponent(takeId)}/audio`,
-        { headers: { 'x-invite': token }, bytes: true, timeout: 120000 }),
       /** Finished ear dramas, newest published first: { productions, next_cursor }. */
       finished: ({ limit, cursor } = {}) => {
         const q = new URLSearchParams();
@@ -1519,6 +1544,22 @@ const API = (() => {
       createClass: (name, under13) => c('POST', `${P}/classes`, { name, under13: !!under13 }),
       joinClass: (code, displayName) =>
         c('POST', `${P}/classes/join`, { code, ...(displayName ? { display_name: displayName } : {}) }),
+      /* The teacher's class page (Decision 082, docs/WORKER.md "Shared plays"). */
+      klass: (id) => c('GET', `${P}/classes/${encodeURIComponent(id)}`),
+      addSeats: (id, text) => c('POST', `${P}/classes/${encodeURIComponent(id)}/seats`, { text }),
+      removeSeat: (id, seat) => c('DELETE', `${P}/classes/${encodeURIComponent(id)}/seats/${encodeURIComponent(seat)}`),
+      releaseSeat: (id, seat) => c('POST', `${P}/classes/${encodeURIComponent(id)}/seats/${encodeURIComponent(seat)}/release`, {}),
+      classProduction: (id, body) => c('POST', `${P}/classes/${encodeURIComponent(id)}/productions`, body),
+      progress: (id) => c('GET', `${P}/classes/${encodeURIComponent(id)}/progress`),
+      assign: (pid, assignments) => c('PUT', `${at(pid)}/assignments`, { assignments }),
+      review: (pid, takeId, state, note) => c('POST', `${at(pid)}/takes/${encodeURIComponent(takeId)}/review`,
+        { state, ...(note ? { note } : {}) }),
+      /* A seat: no account, its key in `x-seat-key` (docs/WORKER.md "Seats"). */
+      seatList: (code) => account.anon('POST', `${P}/seat/list`, { body: { code } }),
+      seatClaim: (code, seat, move) => account.anon('POST', `${P}/seat/claim`, { body: { code, seat, ...(move ? { move: true } : {}) } }),
+      seatHome: (key) => account.anon('GET', `${P}/seat`, { headers: { 'x-seat-key': key } }),
+      seatChoose: (key, pid, takeId) => account.anon('POST', `${P}/seat/productions/${encodeURIComponent(pid)}/chosen`,
+        { headers: { 'x-seat-key': key }, body: { take_id: takeId } }),
     };
   })();
 
@@ -1586,8 +1627,61 @@ const API = (() => {
     };
   })();
 
+  /* ---- Read rooms (Decision 082; docs/WORKER.md "Read rooms", PLAYS-DESIGN §12) ---- */
+
+  /**
+   * No account to read: the member key comes back once, from create or join, and goes out only as
+   * `x-read-key`, or as the socket's first "hello" message; never in a URL. A class room is opened
+   * by its teacher, so create goes through `account.call` (the JWT refreshed first). Every answer
+   * carries `server_time`, so every call is a clock sample for ReadCore.clockOffset (T4's delay
+   * measurement). A refusal's code is the Worker's own (`err.code`).
+   */
+  const read = (() => {
+    const KEY_HEADER = 'x-read-key';
+    const KEEP_SAMPLES = 8;
+    let now = () => Date.now();
+    let samples = [];
+    const at = (code) => `/v1/read/${encodeURIComponent(code)}`;
+    const keep = (t0, data, t1) => {
+      if (data && typeof data.server_time === 'number') {
+        samples.push({ t0, server_time: data.server_time, t1 });
+        if (samples.length > KEEP_SAMPLES) samples.shift();
+      }
+      return data;
+    };
+    async function call(method, path, { key, body } = {}) {
+      const headers = key ? { [KEY_HEADER]: key } : {};
+      const t0 = now();
+      const data = await account.anon(method, path, { headers, body });
+      return keep(t0, data, now());
+    }
+    return {
+      available: () => account.reachable(),
+      /** Opens a room; the creator leads. `body.kind === 'class'` needs the teacher signed in. */
+      create: async (body) => {
+        const t0 = now();
+        const data = body.kind === 'class' ? await account.call('POST', '/v1/read', body) : await account.anon('POST', '/v1/read', { body });
+        return keep(t0, data, now());
+      },
+      join: (code, want = {}) => call('POST', `${at(code)}/join`, { body: want }),
+      poll: (code, key) => call('GET', at(code), { key }),
+      send: (code, key, msg) => call('POST', `${at(code)}/send`, { key, body: msg }),
+      /** A socket to the room, or null where there is none; the caller sends `{ type: 'hello', key }` first. */
+      socket: (code) => {
+        const b = account.base();
+        if (!b || typeof WebSocket === 'undefined') return null;
+        return new WebSocket(`${b.replace(/^http/, 'ws')}${at(code)}/socket`);
+      },
+      /** Records a sample from a socket's pong (t1 is the arrival). */
+      sample: (t0, serverTime, t1 = now()) => keep(t0, { server_time: serverTime }, t1),
+      samples: () => samples.slice(),
+      resetClock() { samples = []; },
+      _test: { clock(fn) { now = fn; } },
+    };
+  })();
+
   return {
-    rooms, plays, isOffline, offlineLine,
+    rooms, read, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
     monogram, blockSize, nameStep, headNameStep, windowFill, eventParts, RUN_AXIS, runSpan, runBars, undatedBare, azLetter, azLetters, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
     manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingNamed, safeLink, aboutParagraphs, aboutLink, showFacts, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, homeShelves, LENGTH_BANDS, seriesPage, episodeDetail, arcOf,

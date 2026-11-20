@@ -155,15 +155,20 @@ const PlaysShare = (() => {
 
   /**
    * Brings the chosen takes of the other members into this browser, so the
-   * phase 1 listen-through can play the whole play. Only takes the Worker shows
-   * this person arrive (blocked and reported ones never do).
+   * phase 1 listen-through can play the whole play. Takes pass through to the
+   * director's device and are never fetched later (Decision 082: no route serves
+   * take audio), so only takes that `delivered` holds (take id to bytes, from the
+   * pickup) arrive; any other line stays open and the device voice reads it.
+   * Only takes the Worker shows this person count (blocked and reported ones never do).
    */
-  async function bringHome({ api, store, localId, rec, script, me }) {
+  async function bringHome({ store, localId, rec, script, me, delivered = new Map() }) {
     const add = [];
     for (const takeId of missingHere(store.production(localId), rec)) {
+      const bytes = delivered.get(takeId);
+      if (!bytes) continue;
       const t = rec.takes.find(x => x.id === takeId);
       const file = `m-${takeId}.wav`;
-      await store.importTake(localId, file, await api.audio(rec.id, takeId));
+      await store.importTake(localId, file, bytes);
       const take = { id: t.id, lineID: t.lineID, part: t.part, file, created: t.created, frames: t.frames,
                      sampleRate: t.sampleRate, capture: t.capture, heard: t.heard || {}, peak: t.peak || 0, bleed: false };
       if (typeof t.loudness === 'number') take.loudness = t.loudness;

@@ -8,7 +8,8 @@
 # last write wins, deletion), Listen Together against a stubbed Worker built
 # from worker/src/room-protocol.js (join, leave, drift, handoff, an ended
 # room, the core golden-checked against the protocol), the label (its golden specs, shared with Swift and
-# Kotlin, and a mutant that must fail them), and two checks a browser
+# Kotlin, and a mutant that must fail them), reading together (the read room's client golden-checked against
+# worker/test/read-golden.json with a mutant, the socket and its polling fallback against a stub Worker, the casting board), and two checks a browser
 # will not show you. Each suite runs the SHIPPED files, so a test can never
 # drift from what actually runs.
 #
@@ -33,6 +34,7 @@ DEFAULT_SUITES="js/api.test.js
   js/account.test.js
   js/export.test.js
   js/together.test.js
+  js/read.test.js
   js/label.test.js
   tools/test_tv_focus.mjs
   tools/test_tv_ua.mjs

@@ -99,7 +99,6 @@ function stubApi({ consentVersion = 'v1', uploads = true, rec = record() } = {})
     },
     get: async () => { calls.push(['get']); return api.rec; },
     choose: async (pid, id) => { calls.push(['choose', id]); return api.rec; },
-    audio: async (pid, takeId) => { calls.push(['audio', takeId]); return new Uint8Array([1, 2, 3, 4]).buffer; },
     create: async (body) => { calls.push(['create', body]); return { ...record(), id: 'pid-new' }; },
     joinByInvite: async (token, part, name) => { calls.push(['join', token, part, name]); return record({ id: 'pid-join' }); },
   };
@@ -254,8 +253,10 @@ test('bringing takes home: theirs arrive, my unsent choice stands, a hidden take
                    capture: 'direct', heard: {}, loudness: -20, peak: 0.2, bleed: false, user_id: THEM };
   const rec = record({ takes: [theirs], chosen: { L0002: 'T-THEM' } });
   ok(!S.inStep(local, script, rec, ME), 'out of step before');
-  const api = stubApi({ rec });
-  const n = await S.bringHome({ api, store, localId: local.id, rec, script, me: ME });
+  // Nothing is fetched (Decision 082): only a take the pickup delivered arrives; another stays open.
+  const n0 = await S.bringHome({ store, localId: local.id, rec, script, me: ME });
+  eq(n0, 0, 'nothing arrives that was not delivered');
+  const n = await S.bringHome({ store, localId: local.id, rec, script, me: ME, delivered: new Map([['T-THEM', new Uint8Array([1, 2, 3, 4]).buffer]]) });
   eq(n, 1, 'one take arrived');
   const after = store.production(local.id);
   eq(after.chosen.L0002, 'T-THEM', 'their take is chosen here');
@@ -264,7 +265,7 @@ test('bringing takes home: theirs arrive, my unsent choice stands, a hidden take
   eq(await store.readTake(local.id, 'm-T-THEM.wav') !== null, true, 'the audio is a file here');
   // They are blocked or reported: the Worker stops showing the take.
   const hidden = record({ takes: [], chosen: {}, hidden_takes: 1 });
-  await S.bringHome({ api: stubApi({ rec: hidden }), store, localId: local.id, rec: hidden, script, me: ME });
+  await S.bringHome({ store, localId: local.id, rec: hidden, script, me: ME });
   eq(store.production(local.id).chosen.L0002, undefined, 'a hidden take is no longer chosen here');
 });
 

@@ -18,6 +18,8 @@
  *   ?room={CODE}                      Listen Together's join sheet, over the view (§4.12)
  *   /invite#{TOKEN}, #invite={TOKEN}  an ear drama invite, its own page (?view=invite; §4.10a)
  *   ?drama={id}                       a finished ear drama (/drama/{id})
+ *   ?read-room={CODE}&screen=1        reading together (/read/{CODE}; WEB-DESIGN §4.17, §4.18)
+ *   ?class={id}&cast={production id}  the teacher's class page and casting board (§4.19)
  * Path twins (/series/{key}, /episode/{id}) are static pages with link previews that hand
  * a person to these (catalog/tools/build_share_pages.py); the router also reads the path
  * form itself and the web shares it. Other twins (/search?q=) are forwarded by 404.html. Harness doors: ?mute=1, ?door_seconds=n.
@@ -38,13 +40,13 @@
   const $ = (id) => document.getElementById(id);
   /* Views are named by their section ids in index.html (view-listen is Home, view-series Browse,
      view-radio Stations); the URL and the nav use the section names. */
-  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'record', 'plays', 'reader', 'invite', 'drama', 'search', 'library'];
+  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'record', 'plays', 'reader', 'readroom', 'class', 'invite', 'drama', 'search', 'library'];
   const VIEW_OF = { home: 'listen', browse: 'series', stations: 'radio', surprise: 'surprise', record: 'record', search: 'search',
                     library: 'library', invite: 'invite' };
   /* Decision 075: five sections. Stations and Surprise are pages Home opens, so they light Home;
      a play and a production light Record. */
   const TAB_OF = { listen: 'home', series: 'browse', show: 'browse', episode: 'browse', person: 'browse', radio: 'home',
-                   surprise: 'home', record: 'record', plays: 'record', reader: 'record', invite: 'record', drama: 'browse', search: 'search', library: 'library' };
+                   surprise: 'home', record: 'record', plays: 'record', reader: 'record', readroom: 'record', class: 'library', invite: 'record', drama: 'browse', search: 'search', library: 'library' };
   /** Older names (Decisions 068, 075): an old ?view= opens the new section, and the address is rewritten. */
   const RENAMED = { listen: 'home', series: 'browse', radio: 'stations', plays: 'record' };
   const PAGE = 60;
@@ -510,6 +512,8 @@
     if (p.get('series')) return { view: 'show', key: p.get('series'), p };
     if (p.get('person')) return { view: 'person', id: p.get('person'), p };
     if (p.get('drama')) return { view: 'drama', id: p.get('drama'), p };
+    if (p.get('read-room') !== null) return { view: 'readroom', p };
+    if (p.get('class')) return { view: 'class', p };
     if (p.get('read')) return { view: 'reader', id: p.get('read'), p };
     if (p.get('production') || p.get('play')) return { view: 'plays', p };
     const old = p.get('view');
@@ -532,7 +536,9 @@
     stopScene();
     // The reader (WEB-DESIGN §4.16) takes the whole height: the tab bar and sidebar step aside.
     document.body.classList.toggle('reading', r.view === 'reader');
-    if (r.view !== 'reader') Reader.close();
+    if (r.view !== 'reader' && r.view !== 'readroom') Reader.close();
+    if (r.view !== 'readroom') ReadUI.pause();
+    if (r.view !== 'class') ClassUI.leave();
     VIEWS.forEach(v => { $(`view-${v}`).hidden = v !== r.view; });
     const tab = TAB_OF[r.view];
     document.querySelectorAll('[data-nav]').forEach(a => {
@@ -542,7 +548,7 @@
     });
     if (r.view !== 'plays' && r.view !== 'invite' && r.view !== 'drama') PlaysUI.leave();
     ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode, person: renderPerson,
-       radio: renderRadio, surprise: renderSurprise, record: renderRecord, plays: renderPlays, reader: renderReader, invite: renderInvite, drama: renderDrama, search: renderSearch,
+       radio: renderRadio, surprise: renderSurprise, record: renderRecord, plays: renderPlays, reader: renderReader, readroom: (r) => ReadUI.render(r, playsHelpers), class: (r) => ClassUI.render(r, playsHelpers), invite: renderInvite, drama: renderDrama, search: renderSearch,
        library: renderLibrary })[r.view](r);
     if (!firstRoute) {
       $('main-content').scrollTop = 0;

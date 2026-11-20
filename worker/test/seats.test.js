@@ -478,3 +478,27 @@ describe("class read rooms on the D1 polling transport hold the same seat-key ru
     expect((await ok.json()).you.parts).toEqual([{ part: partA, from: null, to: null }]);
   });
 });
+
+describe("published works stay (owner 2026-10-29): a class going does not take its published production", () => {
+  it("the teacher's account deletion removes the class; its published production stays listed, detached from the class", async () => {
+    const { teacher, c, p } = await cast2("class-goes");
+    const now = Date.now();
+    await env.DB.batch([
+      env.DB.prepare(
+        "INSERT INTO play_archive_jobs (production_id, user_id, status, take_ids, created_at, updated_at, item_url, published_at) VALUES (?1, ?2, 'published', '[]', ?3, ?3, ?4, ?3)",
+      ).bind(p.id, teacher.user_id, now, `https://archive.org/details/eardrama-${p.id.toLowerCase()}`),
+      env.DB.prepare(
+        "INSERT INTO play_archive_files (production_id, line_id, seq, part, take_id, name, state, updated_at) VALUES (?1, ?2, 1, ?3, 'T-kept', '0001-A.wav', 'sent', ?4)",
+      ).bind(p.id, linesFor(partA)[0], partA, now),
+    ]);
+    expect((await call("GET", `/v1/plays/finished/${p.id}`)).status).toBe(200);
+    expect((await call("DELETE", "/v1/account", { token: teacher.access_token })).status).toBe(200);
+    expect(await env.DB.prepare("SELECT id FROM play_classes WHERE id = ?1").bind(c.id).first()).toBeNull();
+    const row = await env.DB.prepare("SELECT class_id FROM play_productions WHERE id = ?1").bind(p.id).first();
+    expect(row).not.toBeNull();
+    expect(row.class_id).toBeNull();
+    const listed = await (await call("GET", "/v1/plays/finished?limit=50")).json();
+    expect(listed.productions.map((x) => x.id)).toContain(p.id);
+    expect((await call("GET", `/v1/plays/finished/${p.id}`)).status).toBe(200);
+  });
+});

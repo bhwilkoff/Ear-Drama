@@ -448,24 +448,23 @@ test('open plays: an invite and the finished listing are read signed out, with n
   assert(!acct.signedIn(), 'no account');
   const v = await API.plays.openInvite('TOKEN');
   eq(v.title, 'T', 'the invite is read');
-  const bytes = await API.plays.openInviteAudio('TOKEN', 'take 1');
-  eq(bytes.byteLength, 4, 'a take plays');
+  // No take audio route (Decision 082): takes pass through to the director's device, never served after.
+  eq(API.plays.openInviteAudio, undefined, 'no open take audio');
+  eq(API.plays.audio, undefined, 'no member take audio');
   await API.plays.finished({ limit: 5, cursor: '9:ABCDEFGH' });
   await API.plays.finishedOne('P 1');
-  eq(w.calls.length, 4, 'four calls and nothing else (no refresh, no sign-in)');
+  eq(w.calls.length, 3, 'three calls and nothing else (no refresh, no sign-in)');
   assert(w.calls.every(c => !c.auth && c.method === 'GET'), 'no bearer on any of them');
   eq(w.calls[0].invite, 'TOKEN', 'the token rides the x-invite header');
   eq(w.calls[0].search, '', 'never the query');
-  eq(w.calls[1].path, '/v1/plays/open/invite/takes/take%201/audio', 'the audio path');
-  eq(w.calls[2].search, '?limit=5&cursor=9%3AABCDEFGH', 'the listing pages by cursor');
-  eq(w.calls[3].path, '/v1/plays/finished/P%201', 'one finished play');
+  eq(w.calls[1].search, '?limit=5&cursor=9%3AABCDEFGH', 'the listing pages by cursor');
+  eq(w.calls[2].path, '/v1/plays/finished/P%201', 'one finished play');
 });
 
 test('open plays: a revoked or expired invite is kind gone, an unknown one is an error, and a placeholder Worker is not configured', async () => {
   fresh();
   const kind = async (fn) => { try { await fn(); return 'none'; } catch (e) { return `${e.kind}/${e.status}/${e.code}`; } };
   eq(await kind(() => API.plays.openInvite('GONE')), 'gone/410/invite_gone', 'revoked');
-  eq(await kind(() => API.plays.openInviteAudio('GONE', 't')), 'gone/410/invite_gone', 'revoked audio');
   eq(await kind(() => API.plays.openInvite('UNKNOWN')), 'error/404/invite_not_found', 'unknown');
   fresh({ worker: 'REPLACE_WITH_WORKER_BASE_URL' });
   eq(await kind(() => API.plays.finished()), 'not_configured/undefined/undefined', 'placeholder');

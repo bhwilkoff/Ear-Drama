@@ -393,7 +393,8 @@ const PlaysUI = (() => {
     body.replaceChildren(
       playBoard(script, script.title, kindOf(script),
         [C.authorFacts(script), script.year ? String(script.year) : null, `${num.format(parts.length)}\u00a0${parts.length === 1 ? 'part' : 'parts'}`, lines(script.lines.length).replace(' ', '\u00a0')]),
-      h.el('div', { class: 'actions actions-one actions-start ear-drama-only' }, startButton(script, h, { primary: true }), readLink(script.id)),
+      h.el('div', { class: 'actions actions-one actions-start ear-drama-only' }, startButton(script, h, { primary: true }), readLink(script.id),
+        typeof ReadUI !== 'undefined' ? ReadUI.startButton(script, h) : null),
       h.el('section', { class: 'block' },
         h.el('h2', { class: 'section-header', id: 'play-parts-h' }, 'Parts'),
         h.el('ul', { class: 'pl-grid', 'aria-labelledby': 'play-parts-h' },
@@ -768,22 +769,32 @@ const PlaysUI = (() => {
    * reads the open lines live. Publish asks the consent first (consentSheet).
    */
   const dismissedConsent = new Set();
-  function sharedListen(rec, local, script, pid, me, rerender) {
-    let box;
-    if (S.inStep(local, script, rec, me)) {
-      box = listenThrough(store.production(local.id), script, rerender);
-    } else {
-      const status = h.el('p', { class: 'caption', role: 'status' });
-      const go = h.el('button', { type: 'button', class: 'btn btn-primary', onclick: async () => {
-        go.disabled = true;
-        status.textContent = 'Getting the takes';
+  /** The director's pickup (Decision 082): takes pass through to this device while the cast sheet is open. */
+  let pickupRun = 0;
+  function holdPickup(rec, local, script, pid, me, rerender) {
+    const mine = ++pickupRun;
+    (async () => {
+      let wait = 0;
+      while (mine === pickupRun && sharedShown) {
         try {
-          await S.bringHome({ api: API.plays, store, localId: local.id, rec, script, me });
-          rerender();
-        } catch (err) { console.error(err); status.textContent = S.line(err); go.disabled = false; }
-      } }, svg('play', 'i-inline'), 'Listen through');
-      box = h.el('section', { class: 'block listen', 'aria-label': 'Listen through' }, go, status);
-    }
+          const got = await API.plays.inbox(pid);
+          wait = 0;
+          if (!got || mine !== pickupRun) continue;
+          const fresh = await API.plays.get(pid);
+          await S.bringHome({ store, localId: local.id, rec: fresh, script, me, delivered: new Map([[got.take.id, got.bytes]]) });
+          if (mine === pickupRun) rerender();
+          return;
+        } catch (err) {
+          if (err && (err.status === 409 || err.status === 503 || err.status === 403 || err.kind === 'unauthorized')) return;
+          wait = Math.min(30000, wait ? wait * 2 : 2000);
+          await new Promise((r) => setTimeout(r, wait));
+        }
+      }
+    })();
+  }
+  function sharedListen(rec, local, script, pid, me, rerender) {
+    const box = listenThrough(store.production(local.id), script, rerender);
+    if (rec.director === me) holdPickup(rec, local, script, pid, me, rerender);
     if (rec.hidden_takes) {
       box.append(h.el('p', { class: 'caption' }, rec.hidden_takes === 1 ? '1 take is hidden from you.'
         : `${num.format(rec.hidden_takes)} takes are hidden from you.`));
@@ -922,7 +933,7 @@ const PlaysUI = (() => {
     try { list = await API.plays.classes(); } catch (err) { console.error(err); line.textContent = S.line(err); }
     const rows = [
       ...list.teaching.map(c => h.el('li', { class: 'cast-row' },
-        h.el('div', { class: 'cast-main' }, h.el('span', { class: 'body-strong' }, c.name),
+        h.el('div', { class: 'cast-main' }, h.el('a', { class: 'body-strong', href: `?class=${encodeURIComponent(c.id)}` }, c.name),
           c.under13 && !c.school_consent ? h.el('span', { class: 'caption' }, 'Waits for the school’s consent') : null),
         h.el('span', { class: 'class-code tabular body-strong', 'aria-label': `Code ${c.code.split('').join(' ')}` },
           `${c.code.slice(0, 4)} ${c.code.slice(4)}`))),
@@ -1094,27 +1105,12 @@ const PlaysUI = (() => {
 
   /** Another member's part: the lines with the takes the Worker shows this person, each playable and reportable (rule 8). */
   function sharedReadAlong(body, back, local, script, part, rec, pid, my) {
-    let player = null;
-    const play = async (btn, takeId) => {
-      btn.disabled = true;
-      try {
-        const bytes = await API.plays.audio(pid, takeId);
-        if (my !== token) return;
-        if (player) { player.pause(); URL.revokeObjectURL(player.src); }
-        player = new Audio(URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' })));
-        player.muted = muted;
-        if (typeof Player !== 'undefined') Player.pause();
-        await player.play().catch(() => {});
-      } catch (err) { console.error(err); h.announce(S.line(err)); }
-      btn.disabled = false;
-    };
     const items = C.linesFor(script, part).map(l => {
       const li = h.el('li', {}, lineView(l));
       const takeId = rec.chosen[l.id];
       if (takeId) {
         const acts = h.el('div', { class: 'take-row' });
-        const b = h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => play(b, takeId) }, svg('play', 'i-inline'), 'Take');
-        acts.append(b, h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => {
+        acts.append(h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => {
           acts.replaceWith(reportForm(pid, { take_id: takeId }, () => renderPart(body, ++token, local.id, part)));
         } }, 'Report'));
         li.append(acts);
@@ -1404,31 +1400,8 @@ const PlaysUI = (() => {
     const board = script ? playBoard(script, inv.title, 'Ear drama · in progress', facts, dramaArt(inv, script))
       : h.headBoard({ series: { name: inv.title, genre: BOARD, picture: null, ...dramaArt(inv, script) }, kicker: 'Ear drama · in progress', name: inv.title, facts });
 
-    const takeIDs = (part) => {
-      if (!script) return [];
-      return C.linesFor(script, part).map(l => inv.chosen && inv.chosen[l.id]).filter(Boolean);
-    };
-    const allIDs = script ? script.lines.map(l => inv.chosen && inv.chosen[l.id]).filter(Boolean) : [];
-    const buttons = new Map();
-    const listenBtn = h.el('button', { type: 'button', class: 'btn btn-primary' });
-    openPlayer = takePlayer(id => API.plays.openInviteAudio(tok, id), (label) => {
-      listenBtn.replaceChildren(svg(label === 'all' ? 'stop' : 'play', 'i-inline'), label === 'all' ? 'Stop' : 'Listen through');
-      for (const [part, b] of buttons) {
-        const on = label === part;
-        b.replaceChildren(svg(on ? 'stop' : 'play'));
-        b.setAttribute('aria-label', `${on ? 'Stop' : 'Play'} ${b.dataset.who}’s takes`);
-      }
-    });
-    const player = openPlayer;
-    listenBtn.append(svg('play', 'i-inline'), 'Listen through');
-    listenBtn.disabled = !allIDs.length;
-    let playing = null;
-    const toggle = (label, ids) => {
-      if (playing === label) { player.stop(); playing = null; return; }
-      playing = label;
-      player.play(ids, label).then(() => { if (playing === label) playing = null; });
-    };
-    listenBtn.addEventListener('click', () => toggle('all', allIDs));
+    // An invitation shows the play and who holds what; takes pass through to the director's device and are
+    // never served to anyone else (Decision 082), so there is nothing here to listen to.
 
     const performer = h.el('input', { class: 'field-input', type: 'text', name: 'performer', autocomplete: 'name', maxlength: '40',
                                       id: 'pl-performer', placeholder: 'Your name' });
@@ -1440,13 +1413,6 @@ const PlaysUI = (() => {
         const state = { recording: 'Recording', done: 'Recorded', silent: 'Left silent' }[pt.status] || 'Open';
         const status = who ? `${who} · ${state}` : state;
         const acts = h.el('div', { class: 'pl-part-acts' });
-        const ids = takeIDs(part.id);
-        if (ids.length) {
-          const b = h.el('button', { type: 'button', class: 'pl-play-dot', dataset: { who: who || part.title },
-                                     'aria-label': `Play ${who || part.title}’s takes`, onclick: () => toggle(part.id, ids) }, svg('play'));
-          buttons.set(part.id, b);
-          acts.append(b);
-        }
         if (pt.status === 'open' && !busy && !member) {
           acts.append(h.el('button', { type: 'button', class: part.id === inv.next ? 'btn btn-primary' : 'btn btn-way',
             'aria-label': `Take part: ${part.title}`, onclick: async (e) => {
@@ -1467,7 +1433,7 @@ const PlaysUI = (() => {
         return h.el('li', { class: 'pl-part', dataset: { status } },
           h.el('span', { class: 'pl-part-name' }, part.title), h.el('span', { class: 'caption pl-part-who' }, status), acts);
       });
-    const acts = h.el('div', { class: 'actions' }, listenBtn);
+    const acts = h.el('div', { class: 'actions' });
     if (member && script) {
       acts.append(h.el('button', { type: 'button', class: 'btn btn-way', onclick: async () => {
         try {
