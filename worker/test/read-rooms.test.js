@@ -399,12 +399,22 @@ describe("T3: a classroom behind one address", () => {
       limitedCount += rs.filter((r) => r.status === 429).length;
     }
     expect(limitedCount).toBe(0);
-    // Joins 40 to 60 go to a second room (39 went to the first); the 61st join from this address in the minute is refused.
+  }, 60_000);
+
+  it("the 61st join from one address in a minute is refused", async () => {
+    // Miniflare's rate-limit windows are aligned to the wall clock (epoch = floor(now / period)), so
+    // 61 joins that straddle a minute boundary reset the count and this test failed under load
+    // (2026-11-19 mutation run). Start the joins at the top of a window so all 61 land in one.
+    const intoMinute = Date.now() % 60_000;
+    if (intoMinute > 15_000) await new Promise((r) => setTimeout(r, 60_000 - intoMinute + 50));
+    const ip = "203.0.113.42";
+    const first = await open({}, { ip });
+    for (let i = 1; i < P.MAX_MEMBERS; i++) await enter(first.code, {}, { ip });
     const second = await open({}, { ip });
     for (let i = P.MAX_MEMBERS; i <= 60; i++) await enter(second.code, {}, { ip });
     const r = await read("POST", `/${second.code}/join`, { body: {}, ip });
     expect(r.status).toBe(429);
-  }, 60_000);
+  }, 120_000);
 
   it("one member key is limited on its own, so one device cannot use up the class's share", async () => {
     const ip = "203.0.113.41";
