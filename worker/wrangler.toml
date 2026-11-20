@@ -142,3 +142,49 @@ namespace_id = "8312"
 # [[r2_buckets]]
 # binding = "TAKES"
 # bucket_name = "eardrama-takes"
+
+# Read rooms (Decision 082, read-rooms.js): one Durable Object per room holds
+# the live cursor and its members' sockets. Compute only: no audio is ever
+# stored in it (owner 2026-11-19, storage is archive.org). SQLite-backed, the
+# class the free plan allows. Without this binding, read rooms run on D1
+# polling (migrations/0006_read_rooms.sql) with the same messages.
+[[durable_objects.bindings]]
+name = "READ_ROOMS"
+class_name = "ReadRoom"
+
+[[migrations]]
+tag = "v1-read-rooms"
+new_sqlite_classes = ["ReadRoom"]
+
+# Read room limits: by member, never only by address, since a class of 30 sits
+# behind one school address. READ_IP is the address floor for read routes in
+# place of EVERY_IP (40 polling members at one a second is 2,400 a minute).
+# READ_JOIN keeps code guessing slow at a class's size. READ_MEMBER counts one
+# member key's messages and polls. READ_CREATE counts new rooms per address.
+[[ratelimits]]
+name = "READ_IP_LIMITER"
+namespace_id = "8313"
+  [ratelimits.simple]
+  limit = 3000
+  period = 60
+
+[[ratelimits]]
+name = "READ_JOIN_LIMITER"
+namespace_id = "8314"
+  [ratelimits.simple]
+  limit = 60
+  period = 60
+
+[[ratelimits]]
+name = "READ_MEMBER_LIMITER"
+namespace_id = "8315"
+  [ratelimits.simple]
+  limit = 120
+  period = 60
+
+[[ratelimits]]
+name = "READ_CREATE_LIMITER"
+namespace_id = "8316"
+  [ratelimits.simple]
+  limit = 10
+  period = 60

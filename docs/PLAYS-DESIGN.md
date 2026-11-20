@@ -1397,3 +1397,138 @@ Not built yet: the apps' screens for
 replacing or removing a published take (the Worker's side is built, P12), a moderator's view of reports, and a test that the
 Worker's part order matches `js/plays-core.js` and Apple's on every castable
 script (each is checked here against its own suite, not against the others).
+
+---
+
+## §12. Reading together (Decision 082, owner 2026-11-19; binding)
+
+> **Owner, 2026-11-19** (ROUND3-LOOP.md part 2): *"We need to build out how a teacher
+> actually would manage that process. We also need to build out how someone would do this
+> with a bunch of different devices in the same room (whether a classroom of kids or a group
+> of adults doing a table read)."* Rulings: a class owns a production, assigned parts record
+> at once, seats need no account, one cross-platform read room, no SharePlay; *"We are using
+> archive.org for storage, not cloudflare. We already decided that teachers could upload the
+> full recording under their name."* Research: `docs/research/design/R3c-table-reads-and-classes.md`
+> §3 to §6 (its R2 storage is superseded).
+
+### §12.1 The read room
+
+One new object: a **cursor in a room**. A read room holds a castable script (id and
+revision, its cast sheet checked against the manifest as productions are), the production
+when it records, the class when a class reads, the **mode**, the **cursor** (the line now
+being read and a generation number), who leads, and who holds which part. A person always
+moves the play on: nothing advances on a timer, and nothing listens to the room to guess
+where people are. No audio passes through the room.
+
+Rules (the protocol's, `worker/src/read-protocol.js`, held on every stack by
+`worker/test/read-golden.json`):
+
+1. **Only the leader moves the cursor** (Next, Back, a jump to a scene). A move carries the
+   cursor generation it was made from: a repeat changes nothing, a move from an old
+   generation is refused and the device resyncs. Keys: arrows and Space, a page-turn pedal,
+   the volume keys where that opt-in exists.
+2. **Joining**: a six-character code (Listen Together's alphabet, read aloud the same way),
+   or, for a seat, the class's own "Your class is reading" with Join. No account to read.
+   At most 40 members; the 41st sees **This reading is full** (a refusal). The leader may
+   **Lock joining**.
+3. **A late joiner** gets the snapshot: the page at the cursor, their parts, their next line.
+4. **The clock**: every device keeps Listen Together's server-clock estimate (Cristian's
+   algorithm, best round trip), so the cursor's delay can be measured (Decision 082's T4
+   gate: under 300 ms at the 95th percentile on the socket).
+
+### §12.2 Roles
+
+| Role | Who | Does |
+|---|---|---|
+| **Leader** | the teacher, the director, whoever opened the read; or a seat the teacher hands it to | moves the cursor, sets the mode, calls **Again**, locks joining, ends the read, hands the lead on and takes it back |
+| **Reader** | everyone else on their own device | follows the lit line, reads their own lines; in Record, records only their own |
+| **Screen** | an Apple TV, a Google TV, a projector's browser (`/read/CODE?screen`), a Mac window, an Android tablet | shows the page large: the current line, one before and two after, speaker names in part hues, the room code and how many are here; reads open parts aloud only when the leader turns on **Read open parts**, and only between takes. Never leads, holds no part, records nothing |
+
+In a class, only the teacher or the seat the teacher chose leads, and if the leader's device
+drops the room **holds still** ("Waiting for Ms. Ortiz") rather than passing the lead to a
+student. Among adults the reader present longest takes the lead after 2 minutes (Decision
+065's rule).
+
+### §12.3 The four modes
+
+1. **Table read** (live, nobody records). Each reader's device follows: the page turns to
+   the cursor, the current line is lit, the reader's own lines carry the I'm playing tint,
+   and their next line is marked "Next: you, in 3 lines" (a fact). A touch to scroll away
+   stops following; **Back to the line** returns (as Read along). No sound from any phone.
+   Stage directions are a part like any other: the leader holds them, gives them to a
+   reader, or lets the screen show them unread (Decision 076).
+2. **Rehearse**: the table read plus **Hide my lines** (peek on tap), **Again** (the leader
+   jumps back to the scene's start) and private marks (§2.10). Only the screen speaks
+   stand-ins in a room; a reader alone keeps today's solo rehearsal.
+3. **Record in the room**: the cursor reaches a line and **only the device holding that
+   line records**; every other device is silent and shows who is reading. The take ends on
+   one second of silence or a tap (§2.9), the line is marked done, and the cursor moves to
+   the next line someone holds (lines nobody holds are skipped and stay open). The leader
+   may stop, go back, or call **Again** on any line. No headphones: no device plays during a
+   take. Each take records `capture: "room"`. *Quiet while others record* is a refusal-class
+   instruction and passes the essential-words rule. Variant, **one microphone**: the
+   leader's device records every line and the cursor credits each take to its part and
+   seat (the default for a class under 13 and any room with one good device).
+4. **Relay across time**: assigned parts recorded at home, in parallel, each against the
+   takes already in and the device voice for the rest; the teacher's progress list shows
+   who has recorded how many of their lines.
+
+### §12.4 Seats and the class production
+
+A **seat** is a name the teacher typed (a first name, a nickname, "Group 3"), belonging to
+the class, with no account, email, birth date, photo, or voice outside the class's
+production behind it. The teacher adds seats one by one or pastes a list; a student joins
+with the class code and **picks their name**; a printable seat card carries a QR code. The
+device keeps a seat key (stored only as its hash); the teacher can **Release** a seat. A
+seat's takes belong to the teacher's account and go with the class.
+
+A **class production** is visible to the class's seats without an invite and to nobody
+else. The **casting board** lists parts largest first with facts from the script (lines,
+words, scenes, the longest speech) and totals per seat; **Fill evenly** is a deterministic
+proposal the teacher accepts, edits or ignores; a large part can be **split by scene**, a
+seat can **double** small parts. The app never suggests who should read what and never
+labels a reader's level. Parts the teacher assigns may record at once; elsewhere the
+one-part relay (C7) stays.
+
+**Review**: the teacher listens line by line and marks **Approve** or **Again**, with an
+optional typed note to that seat. The student chooses which of their takes is offered; the
+teacher approves what is offered. Counts and links, never a ranking.
+
+### §12.5 Where takes go (pass-through, nothing at rest)
+
+Each device records its own lines and writes each take on the device first, as every take
+is. During the session the take **passes through the Worker to the leader's device** and is
+deleted from the Worker the moment it arrives; with no leader's device present it is
+refused and waits on the recording device, sending when both are present. Relay at home
+works the same way: the take waits until the teacher's app is open. No take audio is stored
+on Cloudflare (no R2, no Durable Object, KV or D1 audio). The full recording is the
+leader's: the teacher uploads it to archive.org **under their own name** through the
+existing uploader (Decision 073), for classes marked **13 and over** only, after each
+performer's CC0 consent; an **under-13 class never publishes** and the teacher exports a
+file.
+
+### §12.6 Failure states
+
+| What happens | What the room does |
+|---|---|
+| A reader's device drops mid-read | Its seat stays assigned. At that reader's line the leader sees "Lucy's phone is away" with **Skip**, **Read it from the screen** (a stand-in, never stored) and **Wait**. On reconnect the device rejoins with its key and jumps to the cursor |
+| The leader's device drops | Class: the room holds still, every device says "Waiting for Ms. Ortiz"; the leader rejoins with the key or hands the lead from another of their devices. Adults: the reader present longest leads after 2 minutes |
+| A late joiner | The snapshot: the page at the cursor, their parts, their next line. In Record, lines already passed show open, recordable later |
+| Two devices claim one seat | The second sees "Lucy is already in on another device" with **Move here**; the first device leaves the seat. The teacher can always Release |
+| Two adults claim one part | The first claim wins (the server decides); the other sees who holds it |
+| The leader's device is not there to receive a take | The take stays on the recording device, marked "on Lucy's device", and sends when the leader's device is present; nothing waits on the Worker |
+| The network drops during a take | The take finishes and is written on the device, then passes through when the network returns; the leader can still move the cursor |
+| A school blocks WebSockets | The polling transport carries the same messages; the screen says nothing unless the cursor is slower than 2 s, then "Slow connection" (a warning) |
+| A student records something unkind | Report and Block as today; in a class the teacher sees the report first and can remove a take; nothing reported is published |
+| The class grows past 40 | **This reading is full**; a second room for the other half works |
+| An under-13 class | Everything but publishing works; the teacher exports a file |
+| Several phones playing aloud | Prevented: in a room only the screen speaks, and only between takes |
+
+### §12.7 Each platform
+
+Same verbs, native idioms (R3c §5.4): the web (`/read/CODE`, `?screen`), iPhone and iPad
+(iPad drag to cast; the open Duo's outer display shows the current line when folded,
+Decision 080), Mac (a window per class, a Reading menu, a second window on the projector),
+Android phone and tablet. Apple TV and Google TV are the shared screen with a pairing code
+and record nothing (tvOS-DESIGN §4.13, ANDROID-DESIGN's TV panel rule). Apple uses the
+Worker's read room, not SharePlay.

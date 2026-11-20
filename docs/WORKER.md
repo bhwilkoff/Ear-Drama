@@ -34,6 +34,10 @@ Cloudflare, Apple, or Google is the owner's.
 | `worker/src/http.js` | JSON responses, CORS, `limited()`, body parsing |
 | `worker/src/room-protocol.js` | Listen Together's protocol and arbiter, pure: state, handoff, expiry, codes, clock, drift |
 | `worker/src/rooms.js` | the rooms' HTTP and D1 adapter, and the room sweep |
+| `worker/src/read-protocol.js` | read rooms' protocol and arbiter, pure: cursor, leading, parts, seats, late join, leader gone, codes, clock |
+| `worker/src/read-rooms.js` | read rooms' transports: the `ReadRoom` Durable Object (sockets and polls) and the D1 polling fallback |
+| `worker/tools/read-golden.mjs`, `worker/test/read-golden.json` | the read protocol's golden cases, shared by every client port |
+| `worker/migrations/0006_read_rooms.sql` | the D1 schema for polled read rooms |
 | `worker/src/plays.js` | shared plays' HTTP, D1, and bucket adapter; deletion's plays step; the plays sweep |
 | `worker/src/plays-open.js` | the reads that need no account: an open invite and its take audio, the finished-drama listing and one finished drama |
 | `worker/src/plays-relay.js` | the cast sheet and the relay (C7), pure: part order, claims and their lapse, done, silent, reopen, completeness |
@@ -288,6 +292,44 @@ What every read answers, and the shape SharePlay is meant to carry:
 - **What is stored.** A room row says what an episode is doing. A member row is
   a random id, the hash of a random key, and two times. No account, name, or
   address. Both go when the member leaves or the room ends.
+
+## Read rooms (Decision 082)
+
+A read room is a place in a script that a group reads together (PLAYS-DESIGN
+§12): one cursor the leader moves, who holds which part, and the mode. Its
+rules are `worker/src/read-protocol.js`, pure and golden-checked
+(`worker/test/read-golden.json`, written by `node tools/read-golden.mjs`, one
+file every client port reads). Two transports carry the same messages
+(`worker/src/read-rooms.js`):
+
+- **A Durable Object per room** (`ReadRoom`, SQLite-backed, binding
+  `READ_ROOMS`): sockets through the hibernation API, presence in memory, the
+  room's state in the object's own storage, ended by its alarm after 6 idle
+  hours. It also answers HTTP polls, so a client without a socket joins the
+  same room.
+- **D1 polling** (`read_rooms`, migration 0006): used when the Worker has no
+  `READ_ROOMS` binding. Writes are guarded by a version column, so the first
+  claim still wins. The hourly sweep deletes idle rows.
+
+No audio ever passes through or rests in either (owner 2026-11-19: storage is
+archive.org). No account to read; a class room is opened by the account that
+owns the class, and its readers join by seat (T2 adds the seat key).
+
+| Method and path | Who | Body | Answer |
+|---|---|---|---|
+| `POST /v1/read` | anyone; a class room needs its teacher's bearer token | `{ script_id, script_revision, cast, mode?, kind?, class_id?, seats?, assignments?, production_id? }` | the snapshot with `member_key` and `transport` (`socket` or `poll`); the creator leads |
+| `POST /v1/read/{code}/join` | anyone with the code | `{ role?: "reader" or "screen", seat?, move? }` | the snapshot with `member_key`; `409 room_full`, `joining_locked`, `seat_in_use`; `400 seat_required` |
+| `GET /v1/read/{code}` | a member (`x-read-key`) | | the snapshot (poll every second) |
+| `POST /v1/read/{code}/send` | a member | a message | the snapshot (and `reply` for a ping), or the refusal |
+| `GET /v1/read/{code}/socket` | a member, by upgrade | first message `{ type: "hello", key }` | snapshots on every change; a `poll_only` room answers `409` |
+
+Messages: `cursor { line, base }`, `line-done { line, base }`, `again { line,
+base }`, `mode { mode }`, `claim { part }`, `release { part }`, `lead { to }`,
+`lock { locked }`, `seat { seat, move? }`, `ping { t0 }` (answered `pong {
+t0, server_time }`), `end`. Refusals: `leader_only`, `stale` (with the current
+cursor generation), `part_taken` (with the holder), `not_your_line`,
+`class_assignments_only`, `readers_only`, `screens_do_not_lead`,
+`not_a_member`, `rate_limited`. The key never travels in a URL.
 
 ## Shared plays
 
@@ -557,9 +599,10 @@ fills them):
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID` | only for Apple token revocation |
 | `SCHOOL_CONSENT_POLICY` | not set: the version of the privacy policy that covers school consent for students under 13. Until the owner sets it, no school consent can be recorded and no under-13 class takes a student |
 
-Bindings: `DB` (D1), and `TAKES` (R2, take audio), which stays commented out in
-`wrangler.toml` until the owner turns R2 on; without it take uploads answer
-`503`.
+Bindings: `DB` (D1); `READ_ROOMS` (the `ReadRoom` Durable Object, migration tag
+`v1-read-rooms`, `new_sqlite_classes`; without it read rooms run on D1 polling);
+and `TAKES` (R2, take audio), which stays commented out in `wrangler.toml`;
+Decision 082 closes that path (storage is archive.org), so it is never turned on.
 
 A value starting `REPLACE_WITH` is never accepted as an audience, and a
 provider with no real audience answers `503 not_configured` rather than
@@ -589,6 +632,10 @@ for the window only):
 | `PLAY_JOIN_LIMITER` | user id | 20 a minute, invite views and claims and class joins |
 | `OPEN_READ_LIMITER` | client address | 60 a minute, an open invite's read and the finished listing, no account |
 | `OPEN_AUDIO_LIMITER` | client address | 300 a minute, an open invite's take audio (a play is hundreds of files) |
+| `READ_IP_LIMITER` | client address | 3,000 a minute, every read room route, in place of `EVERY_IP_LIMITER` (a class of 40 polling once a second behind one school address) |
+| `READ_JOIN_LIMITER` | client address | 60 a minute, joining a read room; a class's size, and the floor under code guessing |
+| `READ_MEMBER_LIMITER` | member id | 120 a minute, each member's polls and messages, socket or HTTP |
+| `READ_CREATE_LIMITER` | client address | 10 a minute, opening a read room |
 
 Every five minutes (`*/5 * * * *`) the cron runs only the archive.org
 uploader. The hourly one (`23 * * * *`) also deletes expired sessions, idle rooms, quiet
@@ -606,8 +653,8 @@ until a TV client signs in and the owner decides how they should.
 ```sh
 cd worker
 npm ci
-npm test                 # 197 tests in workerd with a local D1, a local R2 stand-in, and a fake archive.org
-npm run test:mutations   # 132 deliberate breaks; every one must turn the suite red
+npm test                 # 341 tests in workerd with a local D1, a local Durable Object, a local R2 stand-in, and a fake archive.org
+npm run test:mutations   # 217 deliberate breaks; every one must turn the suite red
 node test/mutations.mjs --check              # every break still matches its source, nothing run
 node test/mutations.mjs --only "name,name"   # just those, after fixing a survivor
 node tools/castable-manifest.mjs             # after every rebuild of the castable scripts

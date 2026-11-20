@@ -793,6 +793,15 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   - Not on a TV: Android TV and Fire TV get the read-along panel of
     tvOS-DESIGN §4.13 (PLAYS-DESIGN §2.11 rule 5), a listen-through panel of
     the line heard with one before and one after, 28 sp body, no focus.
+    **A read room's shared screen** (Decision 082, PLAYS-DESIGN §12.2; added
+    2026-11-19, not built: Round 3 T4): **Show a reading** shows a pairing code
+    the host types on their own device (the TV never asks for typing); paired, the
+    same panel follows the **room's cursor**: the current line, one before and two
+    after, part hues, 28 sp body, the room code and how many are here in a corner.
+    It speaks an unheld line only when the leader turns on Read open parts, never
+    during a take; it records nothing, holds no part, never leads; one **Leave**
+    button holds focus. Fire TV the same (no Play services needed: the room is the
+    Worker's).
   - **Read along** (PLAYS-DESIGN §2.11): a production's Read along opens the
     reader in follow mode; the listen plan's line id drives `follow`; a touch
     stops the turning and **Back to the line** returns. A **finished ear drama's** page
