@@ -60,7 +60,7 @@ def phone_shell_is_five_verbs(text, home):
     return (tabs == ["home", "browse", "record", "search", "library"]
             and "showsSurpriseTab" not in text and "AppTab.surprise" not in text
             and "AppTab.stations" not in text and "store.push(Route.surprise)" in home
-            and "store.push(Route.stations)" in read("apple/Shared/HomeRows.swift"))
+            and "store.push(Route.stations)" in read("apple/Shared/HomeOnAir.swift"))
 
 
 def haptics_through_mapping(files):

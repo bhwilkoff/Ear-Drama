@@ -141,6 +141,14 @@ private struct ListenScreen_tvOS: View {
 
     private static let voiceCount = 12
 
+    /// A show at most once per Home (WEB-DESIGN §4.2r rule 5), in the order On the air, Start a show, By length, the night.
+    private var rows: (start: [HomeChip], length: [HomeChip], above: Set<String>) {
+        let hero: Set<String> = onAir.map { [GrammarSlot.seriesKey($0.episode.id)] } ?? []
+        let start = HomeShows.chips(shelves.start, above: hero)
+        let length = HomeShows.chips(shelves.length, above: start.seen)
+        return (start.chips, length.chips, length.seen)
+    }
+
     private var onAir: OnAirNow? {
         if case let .ready(day, stations) = onAirLoad { return OnAirNow.pick(day: day, stations: stations, now: now) }
         return nil
@@ -155,22 +163,23 @@ private struct ListenScreen_tvOS: View {
             } else if loaded {
                 ScrollView(.vertical) {
                     LazyVStack(alignment: .leading, spacing: TV.rowGap) {
+                        let rows = rows
                         hero
+                        dial
                         continueShelf
-                        doors
-                        HomeChipShelf_tvOS(title: "Start a show", chips: shelves.start)
+                        HomeChipShelf_tvOS(title: "Start a show", chips: rows.start)
                         TodaysScene_tvOS()
-                        HomeChipShelf_tvOS(title: "By length", chips: shelves.length)
-                        nightShelf
-                        if let day, let peak = day.years.peak {
-                            DayStrip_tvOS(model: day, year: peak)
-                        }
+                        HomeChipShelf_tvOS(title: "By length", chips: rows.length)
                         if !voices.isEmpty {
                             TVShelf(title: "Most heard voices") {
                                 Button("All") { app.openBrowseVoices() }
                             } content: {
                                 ForEach(voices) { VoiceLink(row: $0) }
                             }
+                        }
+                        nightShelf(skipping: rows.above)
+                        if let day, let peak = day.years.peak {
+                            DayStrip_tvOS(model: day, year: peak)
                         }
                     }
                     .padding(.bottom, 60)
@@ -218,13 +227,21 @@ private struct ListenScreen_tvOS: View {
     private var fallbackContinue: EpisodeRow? { onAir == nil ? continuing.first : nil }
     private var fallbackLeadID: String? { onAir == nil && continuing.isEmpty ? lead(day)?.id : nil }
 
+    private func heroLabel(_ on: OnAirNow) -> LabelItem {
+        var label = onAirSeries?.labelItem ?? LabelItem(kind: .series, name: on.episode.series, genre: onAirSeries?.genre)
+        label.tickYear = on.tickYear
+        return label
+    }
+
     @ViewBuilder private var hero: some View {
         if let on = onAir {
             let listening = on.isLive(radio)
-            TVHero(kicker: on.kicker, title: on.episode.series, subtitle: on.episode.title,
+            let label = heroLabel(on)
+            TVHero(kicker: "On the air \u{00B7} \(on.kicker)", title: onAirSeries?.name ?? on.episode.series,
+                   subtitle: HomeShows.heroTitle(on.episode.title, id: on.episode.id),
                    facts: ["\(on.minutesIn(now)) min in"],
                    genre: onAirSeries?.genre, art: onAirSeries?.windowArt, pictureName: on.episode.series,
-                   clearance: TV.rootClearance) {
+                   years: onAirSeries?.yearCounts, clearance: TV.rootClearance, label: label) {
                 Button {
                     if listening {
                         on.stopListening(live: radio, player: player)
@@ -248,13 +265,15 @@ private struct ListenScreen_tvOS: View {
         } else if let episode = continuing.first {
             TVHero(kicker: "Continue", title: episode.seriesName, subtitle: episode.displayTitle,
                    facts: [AirDate.medium(episode.airDate), episode.durationText], genre: episode.seriesGenre,
-                   art: episode.seriesWindowArt, progress: history.progress(for: episode.id), clearance: TV.rootClearance) {
+                   art: episode.seriesWindowArt, progress: history.progress(for: episode.id), clearance: TV.rootClearance,
+                   label: episode.labelItem()) {
                 heroActions(episode, verb: "Resume")
             }
         } else if let show = lead(day), let day, let peak = day.years.peak {
             TVHero(kicker: "This day in radio", title: show.series.name, subtitle: show.episode.displayTitle,
                    facts: [day.nightHeading(peak), show.episode.durationText], genre: show.series.genre,
-                   art: show.series.windowArt, clearance: TV.rootClearance) {
+                   art: show.series.windowArt, years: show.series.yearCounts, clearance: TV.rootClearance,
+                   label: show.series.labelItem) {
                 heroActions(show.episode, verb: "Play")
             }
         } else {
@@ -291,31 +310,46 @@ private struct ListenScreen_tvOS: View {
         }
     }
 
-    /// Two doors as wide cards (the third, Record a Play, is absent: the TV records nothing).
-    private var doors: some View {
-        TVShelf {
-            doorCard("Listen", "dot.radiowaves.left.and.right") { app.push(Route.stations) }
-            doorCard("Find a Show", AppTab.browse.symbol) { app.selectResettingPrevious(.browse) }
-        }
-    }
-
-    private func doorCard(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: Spacing.s3) {
-                Image(systemName: symbol).font(.system(size: 64))
-                Text(verbatim: title).font(TypeRamp.sectionHeader)
+    /// The dial (§4.2r rule 2): every genre station as a label, its name and the show on now; a press tunes in.
+    /// The TV has no doors: Find a Show is a tab, and the hero holds All Stations and Surprise.
+    @ViewBuilder private var dial: some View {
+        if case let .ready(_, stations) = onAirLoad {
+            let entries = DialEntry.entries(stations, now: now)
+            if !entries.isEmpty {
+                TVShelf {
+                    ForEach(entries) { entry in
+                        let listening = radio.station == entry.station.genre
+                        Button {
+                            guard let on = entry.on else { return }
+                            if listening {
+                                on.stopListening(live: radio, player: player)
+                            } else {
+                                Task { await on.tuneIn(catalog: catalog, live: radio, player: player, muted: app.isMuted) }
+                            }
+                        } label: {
+                            VStack(spacing: Spacing.s2) {
+                                StationMark(station: entry.station, year: entry.year, side: 140)
+                                Text(verbatim: entry.station.name).font(TypeRamp.bodyStrong).lineLimit(1)
+                                Text(verbatim: entry.show ?? "").font(TypeRamp.caption).lineLimit(1)
+                            }
+                            .frame(width: 240)
+                            .padding(.vertical, Spacing.s3)
+                        }
+                        .buttonStyle(.card)
+                        .disabled(entry.on == nil)
+                        .accessibilityLabel(entry.show.map { "\(listening ? "Listening live to" : "Listen live to") \(entry.station.name): \($0)" }
+                                            ?? "\(entry.station.name): nothing on")
+                    }
+                }
             }
-            .frame(width: TV.wideCard.width, height: TV.wideCard.height)
         }
-        .buttonStyle(.card)
-        .accessibilityIdentifier("door-\(title)")
     }
 
     /// That night's shows, one row of wide cards under their own heading, pictures first.
-    @ViewBuilder private var nightShelf: some View {
+    @ViewBuilder private func nightShelf(skipping above: Set<String>) -> some View {
         let peak = day?.years.peak
         let night = peak.flatMap { day?.night($0) }
-        let others = night?.shows.filter { $0.id != fallbackLeadID } ?? []
+        let others = night?.shows.filter { $0.id != fallbackLeadID && !above.contains($0.series.key) } ?? []
         let shows = others.filter { $0.series.windowArt != nil } + others.filter { $0.series.windowArt == nil }
         if !shows.isEmpty, let day, let peak, let night {
             VStack(alignment: .leading, spacing: Spacing.s6) {
@@ -408,18 +442,6 @@ private struct DayStrip_tvOS: View {
                 Text(verbatim: "\(countText(day.count, "surviving broadcast", "surviving broadcasts")) \u{00B7} \(countText(day.years.count, "year", "years"))").foregroundStyle(Color.brandTextMuted)
             }
             YearStrip(day: day, selected: year, height: DayBoard.stripHeight)
-            HStack(spacing: TV.cardGap) {
-                ForEach(day.genres.filter { !$0.isEmpty }, id: \.self) { genre in
-                    HStack(spacing: Spacing.s1) {
-                        Rectangle().fill(Color.genre(genre) ?? Color.brandTextMuted).frame(width: 20, height: 20)
-                        Text(verbatim: GenreDisplay.name(genre)).lineLimit(1).fixedSize()
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .font(TypeRamp.caption)
-            .foregroundStyle(Color.brandTextMuted)
-            .accessibilityHidden(true)
         }
     }
 }

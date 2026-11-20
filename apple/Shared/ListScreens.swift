@@ -74,15 +74,26 @@ struct ListenScreen: View {
     @State private var year: Int?
     @State private var allNight = false
     @State private var voices: [PersonRow] = []
+    @State private var heroKey: String?
 
     private static let nightFirst = 6
     private static let voiceCount = 12
 
     private var selectedYear: Int? { year ?? day?.years.peak }
 
+    /// A show at most once per Home (WEB-DESIGN §4.2r rule 5): each row skips the shows drawn above it, in the
+    /// order On the air, Start a show, By length, This day in radio. Continue is exempt.
+    private var rows: (start: [HomeChip], length: [HomeChip], above: Set<String>) {
+        let hero: Set<String> = heroKey.map { [$0] } ?? []
+        let start = HomeShows.chips(shelves.start, above: hero)
+        let length = HomeShows.chips(shelves.length, above: start.seen)
+        return (start.chips, length.chips, length.seen)
+    }
+
     var body: some View {
+        let rows = rows
         PageBody {
-            HomeOnAirSection()
+            HomeOnAirSection(heroKey: $heroKey)
             if !continuing.isEmpty {
                 continuingRows
             }
@@ -91,16 +102,9 @@ struct ListenScreen: View {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if loaded {
-                HomeChipSection(title: "Start a show", chips: shelves.start)
+                HomeChipSection(title: "Start a show", chips: rows.start)
                 HomeRecordSection()
-                HomeChipSection(title: "By length", chips: shelves.length)
-                if let day, let selected = selectedYear {
-                    PageSection {
-                        DayBoard(model: day, selected: Binding(get: { selected }, set: { year = $0; allNight = false }))
-                            .gridRow()
-                    }
-                    nightSection(day, selected)
-                }
+                HomeChipSection(title: "By length", chips: rows.length)
                 if !voices.isEmpty {
                     PageSection {
                         VoicesShelf(voices: voices)
@@ -116,6 +120,13 @@ struct ListenScreen: View {
                                 .buttonStyle(.borderless)
                         }
                     }
+                }
+                if let day, let selected = selectedYear {
+                    PageSection {
+                        DayBoard(model: day, selected: Binding(get: { selected }, set: { year = $0; allNight = false }))
+                            .gridRow()
+                    }
+                    nightSection(day, selected, skipping: rows.above)
                 }
                 MadeHereSection(leading: false)
             } else {
@@ -158,16 +169,17 @@ struct ListenScreen: View {
         return PageRows("Continue") { rows }
     }
 
-    @ViewBuilder private func nightSection(_ day: HomeDay, _ selected: Int) -> some View {
+    @ViewBuilder private func nightSection(_ day: HomeDay, _ selected: Int, skipping above: Set<String>) -> some View {
         let night = day.night(selected)
-        if !night.shows.isEmpty {
+        let shows = night.shows.filter { !above.contains($0.series.key) }
+        if !shows.isEmpty {
             PageSection {
-                ShowGrid(items: night.shows, first: allNight ? nil : Self.nightFirst) { show, width in
+                ShowGrid(items: shows, first: allNight ? nil : Self.nightFirst) { show, width in
                     TileLink(value: Route.episode(show.episode.id), series: show.series, width: width, facts: show.facts)
                 }
                 .gridRow()
-                if night.shows.count > Self.nightFirst {
-                    Button(allNight ? "Fewer shows" : "All \(night.shows.count.formatted()) shows that night") {
+                if shows.count > Self.nightFirst {
+                    Button(allNight ? "Fewer shows" : "All \(shows.count.formatted()) shows that night") {
                         allNight.toggle()
                     }
                     .buttonStyle(.borderless)

@@ -3,9 +3,11 @@ package com.example.appname.ui.screens
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -82,6 +84,7 @@ fun TodaysScene(
     onRead: (String) -> Unit,
     onOpenStudio: OpenStudio,
     heading: (@Composable () -> Unit)? = null,
+    wide: Boolean = false,
 ) {
     val plays = LocalAppContainer.current.plays
     val state = rememberPlayRows()
@@ -105,7 +108,7 @@ fun TodaysScene(
                 }
             }
             heading?.invoke()
-            SceneCard(row, whole, onOpenScript, onRead, onOpenStudio)
+            SceneCard(row, whole, onOpenScript, onRead, onOpenStudio, wide)
         }
     }
 }
@@ -117,6 +120,7 @@ private fun SceneCard(
     onOpenScript: (String) -> Unit,
     onRead: (String) -> Unit,
     onOpenStudio: OpenStudio,
+    wide: Boolean = false,
 ) {
     val container = LocalAppContainer.current
     val plays = container.plays
@@ -186,32 +190,26 @@ private fun SceneCard(
         }
     }
 
-    Column(
-        Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)
-            .clip(RoundedCornerShape(12.dp)).background(boardColor(PLAY_BOARD, dark)),
-    ) {
+    val headBlock: @Composable (androidx.compose.ui.graphics.Color, Modifier) -> Unit = { ink, pad ->
         Column(
-            Modifier.fillMaxWidth().tvFocusMark()
-                .clickable(onClickLabel = "Open play") { onOpenScript(row.id) }
-                .padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S4.dp, bottom = Spacing.S3.dp),
+            Modifier.fillMaxWidth().tvFocusMark().clickable(onClickLabel = "Open play") { onOpenScript(row.id) }.then(pad),
             verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp),
         ) {
-            Text("TODAY’S SCENE", style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp), color = on)
+            Text("TODAY’S SCENE", style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp), color = ink)
             Text(
                 row.title,
                 style = MaterialTheme.typography.headlineSmall,
-                color = on,
+                color = ink,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() },
             )
             val v = row.voices
-            EventLine(listOf(row.authorLine.ifEmpty { null }, "$v ${if (v == 1) "voice" else "voices"}", "About ${row.minutes} min"), color = on)
+            EventLine(listOf(row.authorLine.ifEmpty { null }, "$v ${if (v == 1) "voice" else "voices"}", "About ${row.minutes} min"), color = ink)
         }
-        if (opening.isNotEmpty()) {
-            OpeningPage(opening, whole, lit, Modifier.padding(horizontal = Spacing.S4.dp))
-        }
-        ActionRow(Modifier.padding(Spacing.S4.dp)) { fit ->
+    }
+    val buttons: @Composable (androidx.compose.ui.graphics.Color, Modifier) -> Unit = { ink, pad ->
+        ActionRow(pad) { fit ->
             Button(
                 onClick = ::tryLine,
                 enabled = !trying,
@@ -225,12 +223,56 @@ private fun SceneCard(
             if (cast != null && opening.isNotEmpty() && voices.voices().isNotEmpty()) {
                 OutlinedButton(
                     onClick = { hear(cast) },
-                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = on),
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = ink),
                     modifier = Modifier.tvFocusMark(),
                 ) { Text(if (hearing != null) "Stop" else "Hear it", maxLines = 1) }
             }
             FoldButton(Icons.AutoMirrored.Outlined.MenuBook, "Read", fit.folded, { stop(); onRead(row.id) }, description = "Read ${row.title}")
         }
+    }
+    if (wide) {
+        // WEB-DESIGN §4.2r rule 6: the drama board holds only the opening; the words and buttons stand on the page
+        // ground, beside it once the column is wide enough, under it on a phone.
+        val ink = MaterialTheme.colorScheme.onSurface
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
+            val beside = maxWidth >= 560.dp
+            val boardBox: @Composable (Modifier) -> Unit = { m ->
+                if (opening.isNotEmpty()) {
+                    Box(m.clip(RoundedCornerShape(12.dp)).background(boardColor(PLAY_BOARD, dark)).padding(Spacing.S3.dp)) {
+                        OpeningPage(opening, whole, lit)
+                    }
+                }
+            }
+            val words: @Composable (Modifier) -> Unit = { m ->
+                Column(m, verticalArrangement = Arrangement.spacedBy(Spacing.S3.dp)) {
+                    headBlock(ink, Modifier)
+                    buttons(ink, Modifier)
+                    error?.let { ErrorLine(it) }
+                }
+            }
+            if (beside) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    boardBox(Modifier.width(320.dp))
+                    words(Modifier.weight(1f))
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.S3.dp)) {
+                    words(Modifier.fillMaxWidth())
+                    boardBox(Modifier.fillMaxWidth())
+                }
+            }
+        }
+        return
+    }
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)
+            .clip(RoundedCornerShape(12.dp)).background(boardColor(PLAY_BOARD, dark)),
+    ) {
+        headBlock(on, Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S4.dp, bottom = Spacing.S3.dp))
+        if (opening.isNotEmpty()) {
+            OpeningPage(opening, whole, lit, Modifier.padding(horizontal = Spacing.S4.dp))
+        }
+        buttons(on, Modifier.padding(Spacing.S4.dp))
         error?.let { Box(Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, bottom = Spacing.S4.dp)) { ErrorLine(it) } }
     }
 }

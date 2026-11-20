@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -139,17 +137,15 @@ private fun Swatch(color: Color, size: Dp = 10.dp) {
 }
 
 /**
- * The day board: the kicker, the big date, the facts, the years strip (one bar per year, stacked
- * by genre, on one fixed axis from 1930 to the last year; the [selected] year outlined, a tap
- * selects) and the legend of the genres seen.
+ * The day board: the kicker, the big date, the facts, the years strip (one bar per year, in one ink
+ * and no genre key, on one fixed axis from 1930 to the last year; the [selected] year outlined, a tap
+ * selects).
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DayBoard(date: String, data: DayYears, selected: Int?, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val dark = OnAir.colors.dark
     val ground = boardColor(null, dark)
     val on = onBoardColor(null, dark)
-    val colors = genreColors()
     val t = MaterialTheme.typography
     val first = minOf(1930, data.years.firstOrNull()?.year ?: 1930)
     val last = data.years.lastOrNull()?.year ?: first
@@ -188,13 +184,10 @@ fun DayBoard(date: String, data: DayYears, selected: Int?, onSelect: (Int) -> Un
                                 return@drawBehind
                             }
                             val room = size.height - 4.dp.toPx()
-                            var top = size.height
-                            for (g in GENRE_ORDER + "") {
-                                val n = y.genres[g] ?: continue
-                                val h = n.toFloat() / most * room
-                                top -= h
-                                drawRect(if (g.isEmpty()) on.copy(alpha = 0.55f) else colors.getValue(g), Offset(gap / 2, top), Size(w, h))
-                            }
+                            // One ink (WEB-DESIGN §4.2r rule 6): the chart carries no genre key.
+                            val h = y.total.toFloat() / most * room
+                            val top = size.height - h
+                            drawRect(on.copy(alpha = if (isSel) 1f else 0.6f), Offset(gap / 2, top), Size(w, h))
                             if (isSel) {
                                 val pad = 1.5.dp.toPx()
                                 drawRect(
@@ -212,14 +205,6 @@ fun DayBoard(date: String, data: DayYears, selected: Int?, onSelect: (Int) -> Un
             Text("$first", style = t.labelMedium, color = on)
             if (selected != null) Text("$selected", style = t.labelMedium.copy(fontWeight = FontWeight.Bold), color = on)
             Text("$last", style = t.labelMedium, color = on)
-        }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.S3.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
-            data.genres.forEach { g ->
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
-                    Swatch(colors.getValue(g))
-                    Text(DisplayVocabulary.genreName(g) ?: g, style = t.labelMedium, color = on, maxLines = 1)
-                }
-            }
         }
     }
 }

@@ -141,6 +141,9 @@ data class EpisodeRow(
     val transcriptUrl: String? = null,
     /** The broadcast's network (§3.1), so an event line reads show, date, network. */
     val network: String? = null,
+    /** The series' run (first and last air date), so an episode's label draws the show's arc under its date. */
+    val seriesFirst: String? = null,
+    val seriesLast: String? = null,
 ) {
     val seriesWindowArt: Artwork? get() = seriesPicture ?: seriesFace?.art
 }

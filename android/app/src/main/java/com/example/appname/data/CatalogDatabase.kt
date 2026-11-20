@@ -116,7 +116,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             (if ("networks" in cols) "s.networks, " else "NULL, ") +
             (if ("year_counts" in cols) "s.year_counts, " else "NULL, ") +
             (if ("sort_name" in cols) "s.sort_name, " else "NULL, ") +
-            (if (hasAbout) "s.about_text, s.about_source, s.about_url " else "NULL, NULL, NULL ") +
+            (if (hasAbout) "s.about_text, s.about_source, s.about_url, " else "NULL, NULL, NULL, ") +
+            "s.first_date, s.last_date " +
             "FROM series s " +
             (if (faces) "LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait " else "") +
             (if (pictures) "LEFT JOIN art ap ON ap.id = s.picture" else "")
@@ -134,6 +135,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 aboutText = st.textOrNull(21)?.trim()?.takeIf { it.isNotEmpty() },
                 aboutSource = st.textOrNull(22),
                 aboutUrl = st.textOrNull(23),
+                firstDate = st.textOrNull(24),
+                lastDate = st.textOrNull(25),
             )
         }.toMap()
     }
@@ -149,6 +152,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         val aboutText: String? = null,
         val aboutSource: String? = null,
         val aboutUrl: String? = null,
+        val firstDate: String? = null,
+        val lastDate: String? = null,
     )
 
     private fun artwork(st: SQLiteStatement, at: Int): Artwork? = st.textOrNull(at)?.let {
@@ -856,6 +861,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         seriesGenre = seriesLook[st.getText(1)]?.genre,
         seriesFace = seriesLook[st.getText(1)]?.face,
         seriesPicture = seriesLook[st.getText(1)]?.picture,
+        seriesFirst = seriesLook[st.getText(1)]?.firstDate,
+        seriesLast = seriesLook[st.getText(1)]?.lastDate,
     )
 
     private fun SQLiteStatement.textOrNull(i: Int): String? = if (isNull(i)) null else getText(i)

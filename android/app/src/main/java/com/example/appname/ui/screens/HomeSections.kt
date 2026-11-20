@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.HomeShelf
 import com.example.appname.data.SeriesRow
+import com.example.appname.radio.DialEntry
 import com.example.appname.radio.HomeLive
 import com.example.appname.radio.RadioClock
 import com.example.appname.radio.RadioEvening
@@ -139,6 +140,7 @@ fun OnAirBlock(
     onOpenEpisode: (String) -> Unit,
     liveFocus: FocusRequester,
     onSettled: (Boolean) -> Unit,
+    onHero: (String?) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val online = LocalOnline.current
@@ -181,89 +183,39 @@ fun OnAirBlock(
     when {
         loading -> RowSpinner()
         failed -> RowProblem(if (online) "Tonight could not load." else OFFLINE_LINE, onRetry = { attempt += 1 })
-        on != null -> {
+        else -> {
             val liveDay by container.live.day.collectAsState()
             val liveStation by container.live.station.collectAsState()
-            val tuned = on.station?.let { liveStation == it.genre } ?: (liveDay == on.evening?.day)
-            val episode = on.slot.playableEpisode!!
-            ElevatedCard(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
-                Column(Modifier.padding(Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S3.dp)) {
-                    Text(
-                        on.kicker.uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                    Row(
-                        Modifier.fillMaxWidth().tvFocusMark()
-                            // Down goes to Listen live, never past it to All stations (§9.2).
-                            .focusProperties { down = liveFocus }
-                            .clickable(onClickLabel = "Open episode") { onOpenEpisode(episode.id) },
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.S3.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        SeriesKeyWindow(episode.id.substringBefore('|'), episode.series, Modifier.size(64.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(episode.series, style = MaterialTheme.typography.titleMedium, maxLines = 2)
-                            EventLine(listOf(episode.title, "${on.minutesIn(now)} min in"))
-                        }
+            val stations = (state as LiveLoad.Ready).stations
+            val heroKey = on?.slot?.playableEpisode?.id?.substringBefore('|')
+            LaunchedEffect(heroKey) { onHero(heroKey) }
+            val series by rememberCatalogQuery(heroKey) { db -> heroKey?.let { db.series(it) } }
+            fun tune(live: HomeLive) {
+                val tuned = live.station?.let { liveStation == it.genre } ?: (liveDay == live.evening?.day)
+                when {
+                    tuned -> container.live.pauseAndStop()
+                    live.station != null -> scope.launch {
+                        val slots = StationClock.ahead(live.station.slots, Instant.now())
+                        val details = StationClock.details(slots, container.catalog.awaitDb())
+                        container.live.tuneIn(live.station, slots, details)
                     }
-                    on.note?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Button(
-                            onClick = {
-                                when {
-                                    tuned -> container.live.pauseAndStop()
-                                    on.station != null -> scope.launch {
-                                        val slots = StationClock.ahead(on.station.slots, Instant.now())
-                                        val details = StationClock.details(slots, container.catalog.awaitDb())
-                                        container.live.tuneIn(on.station, slots, details)
-                                    }
-                                    else -> container.live.tuneIn(on.evening!!)
-                                }
-                            },
-                            colors = playButtonColors(),
-                            modifier = Modifier.focusRequester(liveFocus).tvFocusMark().semantics {
-                                contentDescription = if (tuned) "Listening live to ${on.kicker}, stop" else "Listen live to ${on.kicker}"
-                            },
-                        ) {
-                            Icon(Icons.Filled.Sensors, contentDescription = null)
-                            Text(if (tuned) "Listening live" else "Listen live", Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
-                        }
-                        OutlinedButton(onClick = onOpenStations, modifier = Modifier.tvFocusMark()) {
-                            Text("All stations", maxLines = 1)
-                        }
-                    }
+                    else -> container.live.tuneIn(live.evening!!)
                 }
             }
-        }
-    }
-}
-
-/** The three doors: the app's three jobs on one row, a Material icon over a verb each; a TV has no Record. */
-@Composable
-fun HomeDoors(onListen: () -> Unit, onFind: () -> Unit, onRecord: () -> Unit) {
-    val television = LocalIsTelevision.current
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
-    ) {
-        Door("Listen", Icons.Filled.Radio, onListen, Modifier.weight(1f))
-        Door("Find a show", Icons.Filled.Explore, onFind, Modifier.weight(1f))
-        if (!television) Door("Record a play", Icons.Filled.Mic, onRecord, Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun Door(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier) {
-    OutlinedCard(onClick = onClick, modifier = modifier.tvFocusMark()) {
-        Column(
-            Modifier.fillMaxWidth().padding(vertical = Spacing.S3.dp, horizontal = Spacing.S1.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp),
-        ) {
-            Icon(icon, contentDescription = null)
-            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            Column {
+                if (on != null) {
+                    OnAirHero(
+                        on, now, (series as? Loadable.Ready)?.value,
+                        tuned = on.station?.let { liveStation == it.genre } ?: (liveDay == on.evening?.day),
+                        onTune = { tune(on) },
+                        onOpenStations = onOpenStations,
+                        onOpenEpisode = onOpenEpisode,
+                        liveFocus = liveFocus,
+                    )
+                }
+                val entries = remember(stations, now) { DialEntry.entries(stations, now) }
+                if (entries.isNotEmpty()) HomeDial(entries, liveStation, onTune = { e -> e.on?.let(::tune) })
+            }
         }
     }
 }

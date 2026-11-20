@@ -19,6 +19,16 @@ nonisolated struct OnAirNow: Equatable, Sendable {
 
     var episode: RadioSlot.Episode { slot.playableEpisode ?? slot.episode! }
 
+    /// The year the label ticks: the evening's, else the broadcast's own.
+    var tickYear: String? {
+        let year: String
+        switch source {
+        case let .evening(day): year = day.year
+        case .station: year = episode.id.split(separator: "|", omittingEmptySubsequences: false).dropFirst().first.map { String($0.prefix(4)) } ?? ""
+        }
+        return year.count == 4 && year.allSatisfy(\.isNumber) ? year : nil
+    }
+
     /// Whole minutes since the slot started.
     func minutesIn(_ now: Date) -> Int { max(0, Int(now.timeIntervalSince(slot.utcStart) / 60)) }
 

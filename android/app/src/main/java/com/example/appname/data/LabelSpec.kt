@@ -307,6 +307,6 @@ fun SeriesRow.labelItem(): LabelItem = LabelItem(LabelKind.Series, name, genre, 
 
 /** The episode's own label: its show's disc with this broadcast's date on it (its number when undated). */
 fun EpisodeRow.labelItem(series: SeriesRow? = null): LabelItem = LabelItem(
-    LabelKind.Episode, seriesName, seriesGenre, series?.firstDate, series?.lastDate, network ?: series?.networks?.firstOrNull(),
+    LabelKind.Episode, seriesName, seriesGenre, series?.firstDate ?: seriesFirst, series?.lastDate ?: seriesLast, network ?: series?.networks?.firstOrNull(),
     date = airDate, num = num?.toString(),
 )

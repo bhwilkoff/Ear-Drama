@@ -100,11 +100,48 @@ enum SceneDoor {
     static var taken = false
 }
 
+/// Home's wide card (WEB-DESIGN §4.2r rule 6): the drama board holds only the page, the words stand on the page ground,
+/// beside the board from 560 pt of column and under it on a phone.
+struct SceneWideLayout<Words: View, Page: View>: View {
+    let hasPage: Bool
+    @ViewBuilder let words: () -> Words
+    @ViewBuilder let page: () -> Page
+    @State private var width: CGFloat = 0
+
+    private static var besideFrom: CGFloat { 560 }
+    private static var boardSide: CGFloat { 320 }
+
+    var body: some View {
+        let beside = width >= Self.besideFrom
+        let board = page()
+            .padding(Spacing.s3)
+            .frame(maxWidth: beside ? Self.boardSide : .infinity, alignment: .leading)
+            .background(Color.board(PlayScript.boardGenre), in: RoundedRectangle(cornerRadius: Radius.card))
+        Group {
+            if beside {
+                HStack(alignment: .center, spacing: Spacing.s6) {
+                    if hasPage { board }
+                    words()
+                }
+            } else {
+                VStack(alignment: .leading, spacing: Spacing.s3) {
+                    words()
+                    if hasPage { board }
+                }
+            }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+    }
+}
+
 /// The card on Home and Record (iOS-DESIGN §4.1 "Today's Scene"; macOS-DESIGN §3.1): the drama board with the kicker,
 /// the title and the event line (the link to the play's page), the opening, then Try a Line, Hear It and Read in one
 /// row that never wraps.
 struct TodaysSceneCard: View {
     let row: PlayRow
+    /// Home's card (WEB-DESIGN §4.2r rule 6): the drama board holds only the opening, the words and buttons stand on the
+    /// page ground, beside the board once the column is wide enough and under it on a phone.
+    var wide = false
     @Environment(PlaysLibrary.self) private var plays
     @Environment(AppStore.self) private var app
     @Environment(AudioPlayer.self) private var player
@@ -121,47 +158,9 @@ struct TodaysSceneCard: View {
     private var ink: Color { Color.onBoard(PlayScript.boardGenre) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s3) {
-            PushLink(value: PlayRoute.script(row.id)) {
-                VStack(alignment: .leading, spacing: Spacing.s1) {
-                    Text("Today\u{2019}s Scene").font(TypeRamp.caption)
-                    Text(verbatim: row.title)
-                        .font(TypeRamp.sectionHeader)
-                        .multilineTextAlignment(.leading)
-                    EventLine(facts: [row.authorLine, row.voicesText, row.minutesText], color: ink)
-                }
-                .foregroundStyle(ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("scene-head")
-            if !opening.isEmpty {
-                ScenePage(opening: opening, hue: { SceneScript.hue(whole, $0) }, current: reading.current)
-            }
-            ActionRow {
-                Button { Task { await tryLine() } } label: { Label("Try a Line", systemImage: "mic") }
-                    .pageAction(primary: true)
-                    .disabled(trying)
-                    .accessibilityIdentifier("scene-try")
-                if whole != nil, !opening.isEmpty, SceneReading.hasVoice {
-                    Button { hear() } label: {
-                        ActionLabel(title: reading.isRunning ? "Stop" : "Hear It",
-                                    systemImage: reading.isRunning ? "stop.fill" : "speaker.wave.2")
-                    }
-                    .pageAction()
-                    .accessibilityIdentifier("scene-hear")
-                    .accessibilityAddTraits(reading.isRunning ? .isSelected : [])
-                }
-                ReadButton(scriptID: row.id)
-            }
-            .environment(\.actionBoard, .some(PlayScript.boardGenre))
-            if let error {
-                Label(error, systemImage: "exclamationmark.triangle").font(TypeRamp.caption).foregroundStyle(ink)
-            }
+        Group {
+            if wide { wideCard } else { boardCard }
         }
-        .padding(Spacing.s4)
-        .background(board, in: RoundedRectangle(cornerRadius: Radius.card))
         .accessibilityIdentifier("todays-scene")
         .task(id: row.id) {
             whole = (try? await plays.script(id: row.id)) ?? nil
@@ -169,6 +168,74 @@ struct TodaysSceneCard: View {
         }
         .onDisappear { reading.stop() }
         .sheet(isPresented: $asking) { SecondProductionSheet() }
+    }
+
+    private func head(ink: Color) -> some View {
+        PushLink(value: PlayRoute.script(row.id)) {
+            VStack(alignment: .leading, spacing: Spacing.s1) {
+                Text("Today\u{2019}s Scene").font(TypeRamp.caption)
+                Text(verbatim: row.title)
+                    .font(TypeRamp.sectionHeader)
+                    .multilineTextAlignment(.leading)
+                EventLine(facts: [row.authorLine, row.voicesText, row.minutesText], color: ink)
+            }
+            .foregroundStyle(ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("scene-head")
+    }
+
+    private var page: some View {
+        ScenePage(opening: opening, hue: { SceneScript.hue(whole, $0) }, current: reading.current)
+    }
+
+    @ViewBuilder private var buttons: some View {
+        ActionRow {
+            Button { Task { await tryLine() } } label: { Label("Try a Line", systemImage: "mic") }
+                .pageAction(primary: true)
+                .disabled(trying)
+                .accessibilityIdentifier("scene-try")
+            if whole != nil, !opening.isEmpty, SceneReading.hasVoice {
+                Button { hear() } label: {
+                    ActionLabel(title: reading.isRunning ? "Stop" : "Hear It",
+                                systemImage: reading.isRunning ? "stop.fill" : "speaker.wave.2")
+                }
+                .pageAction()
+                .accessibilityIdentifier("scene-hear")
+                .accessibilityAddTraits(reading.isRunning ? .isSelected : [])
+            }
+            ReadButton(scriptID: row.id)
+        }
+    }
+
+    private var boardCard: some View {
+        VStack(alignment: .leading, spacing: Spacing.s3) {
+            head(ink: ink)
+            if !opening.isEmpty { page }
+            buttons.environment(\.actionBoard, .some(PlayScript.boardGenre))
+            if let error {
+                Label(error, systemImage: "exclamationmark.triangle").font(TypeRamp.caption).foregroundStyle(ink)
+            }
+        }
+        .padding(Spacing.s4)
+        .background(board, in: RoundedRectangle(cornerRadius: Radius.card))
+    }
+
+    private var wideCard: some View {
+        SceneWideLayout(
+            hasPage: !opening.isEmpty,
+            words: {
+                VStack(alignment: .leading, spacing: Spacing.s3) {
+                    head(ink: Color.brandText)
+                    buttons
+                    if let error {
+                        Label(error, systemImage: "exclamationmark.triangle").font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
+                    }
+                }
+            },
+            page: { page })
     }
 
     private func hear() {
