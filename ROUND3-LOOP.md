@@ -316,3 +316,10 @@ privacy words) is folded in when it arrives, never waited on.
   fix sweep (Android person arc, Android play-head bars, Takes sheet duplicate Again, web pairing
   page centering, web_fit_actions pinned episode, atv harness power-off + stale regex, eardrama://parts
   twin); T7 bench after the Worker deploy; V8 audit when iOS devices are available.
+- **2026-11-20, tick 19**: catalog batch merged locally (catalog 49 suites; dry run green 708 s):
+  106 titles lose uploader tags by class ("#26 Frankenstein" -> composed date title); hero/gallery
+  must say radio (21 files dropped, incl. the Gildersleeve TV still; some real ones lost because the
+  marked-person list lacks them, e.g. "Lewis and Martin.jpg"); H5 adds 11-12 LoC/NPG portraits (all
+  12 checked). Fix-sweep additions: harvest_loc_photos.py overwrites records.json.gz instead of
+  merging. Cache Release needs: loc/q + loc/records.json.gz (catalog worktree a2c27d6...), art_v2,
+  series_art, art_grade.json, wikidata/*, people_wd/* (V2 worktree a019f68...). Mutation run ~half.
