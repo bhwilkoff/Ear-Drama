@@ -1,6 +1,6 @@
 #!/bin/bash
-# LEAVE NOTHING RUNNING. Terminates the app on an Apple device and, for an Apple
-# TV, powers the box back off and READS THE STATE BACK.
+# LEAVE NOTHING RUNNING. Terminates the app on an Apple device and verifies it is
+# gone. It never powers a TV off (owner: never sleep a test device).
 #
 # Written after a film was left playing unmuted on the owner's Apple TV for an
 # hour — it routed to speakers across the house. The dev door started the engine
@@ -8,31 +8,23 @@
 # was taken. A rule you intend to follow is not a safeguard: a harness that touches
 # someone's living room cleans up as a STEP, with an assertion, not an intention.
 #
-#   tools/atv_teardown.sh <udid> [pyatv-address pyatv-id]
-#   tools/atv_teardown.sh --device <bench-name> [--keep-power]
+#   tools/atv_teardown.sh <udid>
+#   tools/atv_teardown.sh --device <bench-name>
 #
 # The executable name comes from APP_EXECUTABLE, else tools/app_config.py.
-# (The Python runners call apple_device.teardown(), which is the same procedure
-# and restores the power state the run FOUND; this script powers a TV off.)
+# (The Python runners call apple_device.teardown(), which is the same procedure.)
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 [ -n "${DEVELOPER_DIR:-}" ] && export DEVELOPER_DIR
-PYATV="${PYATV:-$HOME/.pyatv-venv/bin/atvremote}"
-KEEP_POWER=0
 
 if [ "${1:-}" = "--device" ]; then
   NAME="${2:?bench name}"
-  [ "${3:-}" = "--keep-power" ] && KEEP_POWER=1
   if [ "$(python3 "$HERE/bench.py" role "$NAME")" = "owner-personal-never-touch" ]; then
     echo "REFUSED: $NAME is role owner-personal-never-touch"; exit 1
   fi
   DEV="$(python3 "$HERE/bench.py" get "$NAME" udid)" || { echo "no udid for $NAME"; exit 1; }
-  ADDR="$(python3 "$HERE/bench.py" get "$NAME" address 2>/dev/null || true)"
-  PYID="$(python3 "$HERE/bench.py" get "$NAME" pyatv_id 2>/dev/null || true)"
 else
   DEV="${1:?device udid (or --device <bench-name>)}"
-  ADDR="${2:-}"
-  PYID="${3:-}"
 fi
 EXE="${APP_EXECUTABLE:-$(cd "$HERE" && python3 -c 'import app_config; print(app_config.APPLE_EXECUTABLE)')}"
 
@@ -72,18 +64,4 @@ if [ -n "$PIDS" ]; then
   fi
 else
   echo "$EXE not running on $DEV"
-fi
-
-# 2. For an Apple TV, put the box back as it was found: off, and verified off.
-if [ "$KEEP_POWER" -eq 0 ] && [ -n "$PYID" ] && [ -x "$PYATV" ]; then
-  ARGS=(--id "$PYID" --protocol companion)
-  [ -n "$ADDR" ] && ARGS=(--address "$ADDR" "${ARGS[@]}")
-  "$PYATV" "${ARGS[@]}" turn_off >/dev/null 2>&1
-  sleep 4
-  STATE=$("$PYATV" "${ARGS[@]}" power_state 2>&1 | tail -1)
-  echo "power now: $STATE"
-  case "$STATE" in
-    *Off) ;;
-    *) echo "WARNING: $DEV did not power off — check it by hand"; exit 1 ;;
-  esac
 fi

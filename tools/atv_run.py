@@ -207,6 +207,16 @@ def _main():
         t, n = args.luma.split(":")
         spec["min_center_stddev"] = (float(t), int(n))
 
+    if spec["env"].get(HOOK_START_ITEM) == QA_ITEM_ID:
+        item_id, item_rx = qa_item_from_data()
+        spec["env"][HOOK_START_ITEM] = item_id
+        for key in ("expect_any", "expect_end"):
+            if spec.get(key) == QA_ITEM_RX:
+                spec[key] = item_rx
+        if "expect_seq" in spec:
+            spec["expect_seq"] = [item_rx if r == QA_ITEM_RX else r for r in spec["expect_seq"]]
+        print(f"[atv] item {item_id} chosen from the data (/{item_rx}/)")
+
     entry = bench.require(args.device, allow_owner=args.owner_ok, platforms=("tvos",))
     if not entry.get("udid"):
         raise SystemExit(f"{entry['name']} has no udid in the bench manifest")

@@ -18,6 +18,9 @@ DEVICES. Describe it in a bench manifest instead — see tools/bench.py and
 tools/bench.example.json. DEVICES keeps working when there is no manifest.
 """
 import os
+import re
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 # --- App identity -------------------------------------------------------------
@@ -118,6 +121,33 @@ QA_ITEM_ID = "librivox8944|s1"
 # OCR reads the condensed display face's capital I as "|", "l" or "1" (Android, 2026-10-30);
 # the lookahead keeps Inferno II from passing for I.
 QA_ITEM_RX = r"Inferno [I|l1](?![I|l1])"
+
+def pick_qa_item(fetch):
+    """A finished LibriVox recording chosen from the published data, never pinned:
+    (item id, regex for the text its screen draws). `fetch(path)` returns the parsed JSON
+    under the data root. The most downloaded LibriVox series with a clean, numbered
+    section; the regex is the series' first two words, which every item page draws."""
+    idx = fetch("index/series.json")
+    F = {k: i for i, k in enumerate(idx["fields"])}
+    rows = sorted((r for r in idx["rows"] if str(r[F["key"]]).startswith("librivox")),
+                  key=lambda r: (-(r[F["downloads"]] or 0), r[F["key"]]))
+    for row in rows:
+        ser = fetch(f"series/{urllib.parse.quote(row[F['key']])}.json")
+        EF = {k: i for i, k in enumerate(ser["fields"])}
+        ep = next((e for e in ser["episodes"]
+                   if e[EF["rights"]] == "clean" and (e[EF["num"]] or 0) >= 1), None)
+        words = re.findall(r"[A-Za-z]+", row[F["name"]] or "")[:2]
+        if ep and words:
+            return ep[EF["id"]], r"\s+".join(re.escape(w) for w in words)
+    raise LookupError("no clean LibriVox section in the published data")
+
+
+def qa_item_from_data(base="https://eardrama.org/data/"):
+    def fetch(path):
+        import json
+        return json.load(urllib.request.urlopen(base + path, timeout=30))
+    return pick_qa_item(fetch)
+
 
 # --- Doors are muted and time-bounded by default ------------------------------
 # A harness that plays media on someone's television is in their living room. A
