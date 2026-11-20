@@ -187,7 +187,7 @@ struct ShowGrid<Item: Identifiable, Tile: View>: View {
 
 private func genreFill(_ genre: String) -> Color { Color.genre(genre) ?? Color.brandTextMuted }
 
-/// The years strip: each year a bar stacked by genre in the mark colors, on the fixed axis from
+/// The years strip: each year a bar in one ink (WEB-DESIGN §4.2r rule 6, no genre key), on the fixed axis from
 /// 1930; the selected year is outlined. A tap selects the year nearest the finger.
 struct YearStrip: View {
     let day: ShowLine.Day
@@ -210,13 +210,10 @@ struct YearStrip: View {
                 for y in day.years {
                     present.insert(y.year)
                     let x = CGFloat(y.year - from) * step
-                    var top = size.height
-                    for g in ShowLine.genreOrder + [""] {
-                        guard let n = y.genres[g], n > 0 else { continue }
-                        let h = CGFloat(n) / CGFloat(peak) * usable
-                        top -= h
-                        ctx.fill(Path(CGRect(x: x, y: top, width: bar, height: h)), with: .color(genreFill(g)))
-                    }
+                    let h = CGFloat(y.total) / CGFloat(peak) * usable
+                    let top = size.height - h
+                    ctx.fill(Path(CGRect(x: x, y: top, width: bar, height: h)),
+                             with: .color(y.year == selected ? Color.brandText : Color.brandTextMuted))
                     if y.year == selected {
                         ctx.stroke(Path(CGRect(x: x - 1.5, y: top - 1.5, width: bar + 3, height: size.height - top + 1.5)),
                                    with: .color(Color.brandText), lineWidth: 2)
@@ -318,7 +315,6 @@ struct DayBoard: View {
                 #if !os(tvOS)
                 .sensoryFeedback(Haptic.selection.feedback, trigger: selected)
                 #endif
-            GenreLegend(genres: day.genres)
         }
         .padding(Spacing.s4)
         .frame(maxWidth: .infinity, alignment: .leading)

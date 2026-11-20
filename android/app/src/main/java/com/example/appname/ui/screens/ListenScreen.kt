@@ -30,6 +30,7 @@ import com.example.appname.plays.FinishedList
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.SeriesRow
 import com.example.appname.data.dayYears
+import com.example.appname.data.homeChips
 import com.example.appname.data.nightShows
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.DayBoard
@@ -100,9 +101,16 @@ fun ListenScreen(
     }
     val shelves by rememberCatalogQuery(memo = "home.shelves") { db -> db.homeShelves() }
     val voices by rememberCatalogQuery(memo = "home.voices") { db -> db.voices(TOP) }
+    var heroKey by remember { mutableStateOf<String?>(null) }
     var picked by rememberSaveable(today) { mutableStateOf<Int?>(null) }
     var allNight by rememberSaveable(today, picked) { mutableStateOf(false) }
     val cont = (continuing as? Loadable.Ready)?.value.orEmpty()
+    // A show at most once per Home (WEB-DESIGN §4.2r rule 5): each row skips the shows drawn above it, in the order
+    // On the air, Start a show, By length, This day in radio. Continue is exempt.
+    val published = (shelves as? Loadable.Ready)?.value
+    val start = remember(published, heroKey) { published?.let { homeChips(it.start, setOfNotNull(heroKey)) } }
+    val length = remember(published, start) { published?.let { homeChips(it.length, start?.seen.orEmpty()) } }
+    val above = length?.seen ?: setOfNotNull(heroKey)
     val dayData = (day as? Loadable.Ready)?.value
     val years = remember(dayData) {
         dayData?.let { d -> dayYears(d.rows, { it.airDate }, { d.series[it.seriesKey]?.genre ?: it.seriesGenre }) }
@@ -134,7 +142,7 @@ fun ListenScreen(
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-            item(key = "live") { OnAirBlock(onOpenStations, onOpenEpisode, liveFocus, onSettled = { liveShown = it }) }
+            item(key = "live") { OnAirBlock(onOpenStations, onOpenEpisode, liveFocus, onSettled = { liveShown = it }, onHero = { heroKey = it }) }
             if (cont.isNotEmpty()) {
                 item(key = "cont-h") { SectionHeader("Continue") }
                 // R11b: episodes are rows (the series' window, the date, the length, Play).
@@ -148,19 +156,25 @@ fun ListenScreen(
                     )
                 }
             }
-            item(key = "doors") { HomeDoors(onListen = onOpenStations, onFind = onBrowse, onRecord = onOpenRecord) }
+            if (!television) item(key = "doors") { HomeDoors(onFind = onBrowse, onRecord = onOpenRecord) }
             if (madeLeads) item(key = "made") { NewEarDramas(onOpen = onOpenDrama, onAll = onDramas) }
-            val published = (shelves as? Loadable.Ready)?.value
             if (published == null) {
                 if (shelves is Loadable.Loading) item(key = "start-wait") { RowSpinner() }
             } else {
-                item(key = "start") { ChipShelfRow("Start a show", published.start, onOpenEpisode, onOpenSeries) }
+                item(key = "start") { ChipShelfRow("Start a show", start?.shelves.orEmpty(), onOpenEpisode, onOpenSeries) }
             }
             if (!television) {
                 item(key = "record") { RecordAPlayHome(onOpenScript, onOpenProduction, onRead, onOpenStudio) }
             }
             if (published != null) {
-                item(key = "length") { ChipShelfRow("By length", published.length, onOpenEpisode, onOpenSeries) }
+                item(key = "length") { ChipShelfRow("By length", length?.shelves.orEmpty(), onOpenEpisode, onOpenSeries) }
+            }
+            val heard = (voices as? Loadable.Ready)?.value.orEmpty()
+            if (heard.isNotEmpty()) {
+                item(key = "voices-h") {
+                    SectionHeading("Most heard voices") { TextLink("All voices", onClick = onVoices) }
+                }
+                item(key = "voices") { VoicesShelf(heard, onOpenPerson) }
             }
             if (year != null && years != null && night != null && dayData != null) {
                 item(key = "day") {
@@ -181,7 +195,8 @@ fun ListenScreen(
                     }
                 }
                 item(key = "night") {
-                    val shown = if (allNight) night.shows else night.shows.take(NIGHT_FIRST)
+                    val tonight = night.shows.filter { it.seriesKey !in above }
+                    val shown = if (allNight) tonight else tonight.take(NIGHT_FIRST)
                     TileGrid(
                         shown.map { r ->
                             TileSpec(
@@ -195,22 +210,16 @@ fun ListenScreen(
                         },
                     )
                 }
-                if (!allNight && night.shows.size > NIGHT_FIRST) {
+                val tonightCount = night.shows.count { it.seriesKey !in above }
+                if (!allNight && tonightCount > NIGHT_FIRST) {
                     item(key = "night-more") {
                         TextLink(
-                            "All ${formatCount(night.shows.size)} shows that night",
+                            "All ${formatCount(tonightCount)} shows that night",
                             onClick = { allNight = true },
                             modifier = Modifier.padding(horizontal = Spacing.S4.dp),
                         )
                     }
                 }
-            }
-            val heard = (voices as? Loadable.Ready)?.value.orEmpty()
-            if (heard.isNotEmpty()) {
-                item(key = "voices-h") {
-                    SectionHeading("Most heard voices") { TextLink("All voices", onClick = onVoices) }
-                }
-                item(key = "voices") { VoicesShelf(heard, onOpenPerson) }
             }
             if (!madeLeads) item(key = "made") { NewEarDramas(onOpen = onOpenDrama, onAll = onDramas) }
         }
@@ -223,7 +232,7 @@ private const val MADE_HERE_LEADS = 5
 @Composable
 private fun RecordAPlayHome(onOpenScript: (String) -> Unit, onOpenProduction: (String) -> Unit, onRead: (String) -> Unit, onOpenStudio: OpenStudio) {
     androidx.compose.foundation.layout.Column {
-        TodaysScene(onOpenScript, onRead, onOpenStudio, heading = { SectionHeader("Record a play") })
+        TodaysScene(onOpenScript, onRead, onOpenStudio, heading = { SectionHeader("Record a play") }, wide = true)
         OpenPartsRows(onOpenProduction)
     }
 }

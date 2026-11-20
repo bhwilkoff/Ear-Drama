@@ -14,6 +14,13 @@ data class HomeLive(
     val station: Station?,
     val note: String? = null,
 ) {
+    /** The year the label ticks: the evening's, else the broadcast's own. */
+    val tickYear: String?
+        get() {
+            val year = evening?.day?.year ?: slot.playableEpisode?.id?.substringAfter('|', "")?.take(4).orEmpty()
+            return year.takeIf { it.length == 4 && it.all(Char::isDigit) }
+        }
+
     /** Whole minutes since the slot began. */
     fun minutesIn(now: Instant): Long = ((now.toEpochMilli() - slot.utcStart.toEpochMilli()) / 60_000).coerceAtLeast(0)
 
@@ -40,6 +47,23 @@ data class HomeLive(
                 if (on.slot.playableEpisode != null) return HomeLive(station.name, on.slot, null, station, note)
             }
             return null
+        }
+    }
+}
+
+/**
+ * The dial under On the air (WEB-DESIGN §4.2r rule 2): a genre station, what it has on now ([on], null when nothing
+ * playable is on) and that broadcast's year for the label's tick.
+ */
+data class DialEntry(val station: Station, val on: HomeLive?, val year: Int?) {
+    val show: String? get() = on?.slot?.playableEpisode?.series
+
+    companion object {
+        fun entries(stations: List<Station>, now: Instant): List<DialEntry> = stations.map { station ->
+            val at = StationClock.onNow(station.slots, now)
+            if (at == null || at.slot.playableEpisode == null) return@map DialEntry(station, null, null)
+            val on = HomeLive(station.name, at.slot, null, station)
+            DialEntry(station, on, on.tickYear?.toInt()?.takeIf { it >= 1900 })
         }
     }
 }

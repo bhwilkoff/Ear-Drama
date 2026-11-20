@@ -1,147 +1,10 @@
 #if os(iOS) || os(macOS)
 import SwiftUI
 
-// Home's rows on the iPhone, iPad and Mac (iOS-DESIGN §4.1, macOS-DESIGN §3.1, Decision 075): what is on
-// the air with Listen Live, the three doors, then rows each filled by one published rule. Each row is
+// Home's rows on the iPhone, iPad and Mac (iOS-DESIGN §4.1, macOS-DESIGN §3.1, Decision 075, 081): On the air and the
+// dial (HomeOnAir.swift), the two doors, then rows each filled by one published rule. Each row is
 // its own view with its own states and is absent when its rule yields nothing. The TV draws its own
 // (ContentView_tvOS.swift).
-
-// MARK: - On the air
-
-struct HomeOnAirSection: View {
-    @Environment(CatalogStore.self) private var catalog
-    @Environment(AudioPlayer.self) private var player
-    @Environment(AppStore.self) private var store
-    @Environment(LiveRadio.self) private var radio
-    @State private var load: OnAirLoad = .loading
-    @State private var attempt = 0
-    @State private var now = Date()
-    @State private var tuning = false
-
-    private struct Key: Hashable { let date: String; let attempt: Int }
-
-    var body: some View {
-        Group {
-            switch load {
-            case .loading:
-                PageSection {
-                    ProgressView().frame(maxWidth: .infinity).gridRow()
-                }
-            case .failed:
-                PageSection {
-                    VStack(alignment: .leading, spacing: Spacing.s2) {
-                        Label("Tonight could not load", systemImage: "wifi.slash")
-                            .font(TypeRamp.body)
-                            .foregroundStyle(Color.brandTextMuted)
-                        Button("Try Again") { load = .loading; attempt += 1 }
-                            .pageAction()
-                    }
-                    .gridRow(.words)
-                }
-            case let .ready(day, stations):
-                if let on = OnAirNow.pick(day: day, stations: stations, now: now) { block(on) }
-            }
-        }
-        .task(id: Key(date: RadioClock.localDate(now), attempt: attempt)) {
-            load = await OnAirLoad.load(now: now)
-        }
-        .task {
-            while !Task.isCancelled {
-                guard (try? await Task.sleep(for: .seconds(15))) != nil else { return }
-                now = Date()
-            }
-        }
-    }
-
-    private func block(_ on: OnAirNow) -> some View {
-        let listening = on.isLive(radio)
-        let episode = on.episode
-        return PageSection {
-            VStack(alignment: .leading, spacing: Spacing.s3) {
-                PushLink(value: Route.episode(episode.id)) {
-                    HStack(spacing: Spacing.s3) {
-                        SeriesKeyWindow(key: GrammarSlot.seriesKey(episode.id), name: episode.series, side: 64)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(verbatim: episode.series)
-                                .font(TypeRamp.bodyStrong)
-                                .foregroundStyle(Color.brandText)
-                                .multilineTextAlignment(.leading)
-                            EventLine(facts: on.eventFacts(now))
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("on-air-row")
-                if let note = on.note {
-                    Text(verbatim: note).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
-                }
-                ActionRow {
-                    Button {
-                        if listening {
-                            on.stopListening(live: radio, player: player)
-                        } else {
-                            tuning = true
-                            Task {
-                                await on.tuneIn(catalog: catalog, live: radio, player: player, muted: store.isMuted)
-                                tuning = false
-                            }
-                        }
-                    } label: {
-                        Label(listening ? "Listening Live" : "Listen Live",
-                              systemImage: listening ? "waveform" : "dot.radiowaves.left.and.right")
-                    }
-                    .pageAction(primary: true)
-                    .disabled(tuning)
-                    .accessibilityIdentifier("listen-live")
-                    .accessibilityAddTraits(listening ? .isSelected : [])
-                    Button { store.push(Route.stations) } label: { ActionLabel(title: "All Stations", systemImage: "radio") }
-                        .pageAction()
-                        .accessibilityIdentifier("all-stations")
-                }
-            }
-            .gridRow(.words)
-        } header: {
-            PageSectionTitle(title: on.kicker)
-        }
-    }
-}
-
-// MARK: - The three doors
-
-struct HomeDoors: View {
-    @Environment(AppStore.self) private var store
-
-    var body: some View {
-        PageSection {
-            Grid(horizontalSpacing: Spacing.s3) {
-                GridRow {
-                    door("Listen", "dot.radiowaves.left.and.right") { store.push(Route.stations) }
-                    door("Find a Show", AppTab.browse.symbol) { store.selectedTab = .browse }
-                    door("Record a Play", AppTab.record.symbol) { store.selectedTab = .record }
-                }
-            }
-            .gridRow()
-        }
-    }
-
-    private func door(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: Spacing.s2) {
-                Image(systemName: symbol).font(TypeRamp.sectionHeader)
-                Text(verbatim: title).font(TypeRamp.caption.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
-            }
-            .foregroundStyle(Color.brandText)
-            .frame(maxWidth: .infinity, minHeight: 64)
-            .padding(.vertical, Spacing.s2)
-            .background(Color.brandSurfaceAlt, in: RoundedRectangle(cornerRadius: Radius.control))
-            .contentShape(RoundedRectangle(cornerRadius: Radius.control))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("door-\(title)")
-    }
-}
 
 // MARK: - Start a show and By length
 
@@ -291,7 +154,7 @@ struct HomeRecordSection: View {
             case .ready:
                 if let row = PlayScript.todaysScene(plays.rows, dateKey: RadioClock.localDate()) {
                     PageSection {
-                        TodaysSceneCard(row: row).gridRow()
+                        TodaysSceneCard(row: row, wide: true).gridRow(.words)
                     } header: {
                         SectionHead(title: "Record a play") { EmptyView() }
                     }

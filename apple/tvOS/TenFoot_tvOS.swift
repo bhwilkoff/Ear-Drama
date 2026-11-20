@@ -84,6 +84,8 @@ struct TVHero<Actions: View>: View {
     var years: [Int]? = nil
     var progress: Double? = nil
     var clearance: CGFloat = 0
+    /// What the window's label draws when there is no picture: the show's run and network, the evening's year ticked.
+    var label: LabelItem? = nil
     @ViewBuilder let actions: () -> Actions
 
     var body: some View {
@@ -100,7 +102,7 @@ struct TVHero<Actions: View>: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .contain)
-            PictureWindow(art: art, name: pictureName ?? title, genre: genre, side: side, round: round)
+            PictureWindow(art: art, name: pictureName ?? title, genre: genre, side: side, round: round, label: label)
                 .frame(width: TV.heroPicture, height: TV.heroPicture, alignment: .trailing)
         }
         .padding(.top, clearance)
