@@ -275,8 +275,8 @@ function themeColorMeta(t) {
 // ---- the label (Decision 081): art.label into js/label-core.js ---------------
 
 // The label's geometry with its notes dropped, and the genre keys whose boards it
-// may stand on. Web only until the Swift and Kotlin ports read the same tokens
-// (Round 3 V4); every stack runs catalog/tests/golden/label_spec.json.
+// may stand on. Web gets a block in js/label-core.js, Swift and Kotlin a file each (Round 3
+// V4); every stack runs catalog/tests/golden/label_spec.json.
 export function labelTokens(t) {
   const l = t.art && t.art.label;
   if (!l) return null;
@@ -287,6 +287,35 @@ function labelBlock(t) {
     `const T = ${JSON.stringify(labelTokens(t), null, 2).split('\n').join('\n  ')};`,
     `const GENRES = ${JSON.stringify(genres(t).map((g) => g.name))};`,
   ];
+}
+
+// Swift and Kotlin each get a whole file holding the same JSON, which LabelSpec parses.
+function labelSwift(t) {
+  return [
+    `// The label's tokens (design-tokens.json art.label), ${NOTE}.`,
+    '',
+    'nonisolated enum LabelTokens {',
+    `    static let genres = ${JSON.stringify(genres(t).map((g) => g.name))}`,
+    '    static let json = #"""',
+    ...JSON.stringify(labelTokens(t), null, 2).split('\n').map((l) => '    ' + l),
+    '    """#',
+    '}',
+    '',
+  ].join('\n');
+}
+function labelKotlin(t, pkg) {
+  return [
+    `// The label's tokens (design-tokens.json art.label), ${NOTE}.`,
+    `package ${pkg}`,
+    '',
+    'object LabelTokens {',
+    `    val genres = listOf(${genres(t).map((g) => JSON.stringify(g.name)).join(', ')})`,
+    '    const val JSON = """',
+    ...JSON.stringify(labelTokens(t), null, 2).split('\n'),
+    '"""',
+    '}',
+    '',
+  ].join('\n');
 }
 
 // ---- TV (smart-TV web, Cast receiver, webOS) ----------------------------
@@ -706,10 +735,12 @@ export function targets(t, root = ROOT) {
     ...(labelTokens(t) ? [{ path: 'js/label-core.js', edit: (s, f) => cssBlock(s, f, 'label', labelBlock(t)) }] : []),
     { path: 'tv/webos/appinfo.json', edit: (s) => setJsonFields(s, { bgColor: t.color.brand.background.dark.toUpperCase(), iconColor: (t.color.brand.record || t.color.brand.primary).dark.toUpperCase() }) },
     { path: 'apple/Core/Design.swift', whole: () => appleDesign(t) },
+    ...(labelTokens(t) ? [{ path: 'apple/Core/Catalog/LabelTokens.swift', whole: () => labelSwift(t) }] : []),
     { path: 'apple/Assets.xcassets/AccentColor.colorset/Contents.json', whole: () => appleAccent(t) },
     ...(android ? [
       { path: `${android.dir}/Color.kt`, whole: () => androidColor(t, android.pkg) },
       { path: `${android.dir}/Type.kt`, whole: () => androidType(t, android.pkg, android.rPkg) },
+      ...(labelTokens(t) ? [{ path: `${android.dir.replace(/\/ui\/theme$/, '/data')}/LabelTokens.kt`, whole: () => labelKotlin(t, android.pkg.replace(/\.ui\.theme$/, '.data')) }] : []),
     ] : []),
     { path: 'android/app/src/main/res/values/colors.xml', whole: () => androidColorsXml(t, 'light') },
     { path: 'android/app/src/main/res/values-night/colors.xml', whole: () => androidColorsXml(t, 'dark') },

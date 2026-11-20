@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.appname.data.Artwork
+import com.example.appname.data.LabelItem
 import com.example.appname.data.Face
 import com.example.appname.data.artInitial
 import com.example.appname.ui.theme.OnAir
@@ -274,9 +275,9 @@ fun TypeCard(name: String, line: String?, genre: String?, modifier: Modifier = M
  * else the title block, cropped on the face and held to the size floor.
  */
 @Composable
-fun NowPlayingArt(art: Artwork?, seriesName: String, genre: String?, maxSide: Dp = 200.dp) {
+fun NowPlayingArt(art: Artwork?, seriesName: String, genre: String?, maxSide: Dp = 200.dp, label: LabelItem? = null) {
     BoxWithConstraints(Modifier.fillMaxWidth().clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
         val side = minOf(maxWidth, maxSide)
-        PictureWindow(art, seriesName, genre, Modifier.size(side))
+        PictureWindow(art, seriesName, genre, Modifier.size(side), label = label)
     }
 }

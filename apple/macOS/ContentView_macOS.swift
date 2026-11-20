@@ -113,7 +113,7 @@ struct TransportBar_macOS: View {
                 if let item = player.item {
                     // The picture the system's Now Playing shows (Decision 069, D3-4): the grammar's window.
                     PictureWindow(art: NowPlayingArt.art(item.episode, item.face), name: item.episode.seriesName,
-                                  genre: item.episode.seriesGenre, side: 40)
+                                  genre: item.episode.seriesGenre, side: 40, label: item.episode.labelItem())
                     VStack(alignment: .leading, spacing: 0) {
                         Text(item.episode.displayTitle)
                             .font(TypeRamp.bodyStrong)

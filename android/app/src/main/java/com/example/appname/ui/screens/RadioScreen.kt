@@ -65,6 +65,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.appname.data.EpisodeDetail
+import com.example.appname.data.labelItem
 import com.example.appname.radio.RadioClock
 import com.example.appname.radio.RadioEvening
 import com.example.appname.radio.RadioLoad
@@ -492,7 +493,7 @@ private fun SlotRow(
     GrammarRow(
         title = headline,
         visual = { m ->
-            if (detail != null) PictureWindow(detail.episode.seriesWindowArt, detail.episode.seriesName, detail.episode.seriesGenre, m)
+            if (detail != null) PictureWindow(detail.episode.seriesWindowArt, detail.episode.seriesName, detail.episode.seriesGenre, m, label = detail.episode.labelItem())
             else PictureWindow(null, slot.knownSeries ?: "", null, m)
         },
         onOpen = onOpen,

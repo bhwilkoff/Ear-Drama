@@ -49,11 +49,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.FirstBaseline
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -77,11 +74,12 @@ import com.example.appname.data.Grade
 import com.example.appname.data.SeriesRow
 import com.example.appname.plays.PlayListing
 import com.example.appname.data.WindowFill
-import com.example.appname.data.blockSize
 import com.example.appname.data.dateBlockParts
 import com.example.appname.data.eventParts
 import com.example.appname.data.gradeOf
-import com.example.appname.data.monogram
+import com.example.appname.data.LabelItem
+import com.example.appname.data.LabelKind
+import com.example.appname.data.labelItem
 import com.example.appname.data.headNameStep
 import com.example.appname.data.nameStep
 import com.example.appname.data.runBars
@@ -96,7 +94,6 @@ import com.example.appname.ui.theme.PrintGroundLight
 import com.example.appname.ui.theme.Spacing
 import com.example.appname.ui.theme.boardColor
 import com.example.appname.ui.theme.onBoardColor
-import kotlin.math.roundToInt
 
 // One grammar for every level of content (WEB-DESIGN §6.4b, ANDROID-DESIGN R11b): each object has
 // one skeleton of fixed slots; richer data fills more slots and never adds, moves or resizes one.
@@ -142,47 +139,15 @@ fun gradeMatrix(g: Grade): ColorMatrix {
     )
 }
 
-/** The title block: the monogram as an outline in the board's onBoard color, on the board. */
+/** The title block (Decision 081): the label, drawn from the item's own data on its genre's board. */
 @Composable
-fun TitleBlock(name: String, genre: String?, modifier: Modifier = Modifier, round: Boolean = false) {
-    val on = onBoard(genre)
-    val m = remember(name) { monogram(name) }
-    BoxWithConstraints(
+fun TitleBlock(item: LabelItem, modifier: Modifier = Modifier) {
+    LabelArt(
+        item,
         modifier
             .clip(WindowShape)
-            .background(board(genre))
-            .hairline(on.copy(alpha = 0.32f))
-            .clearAndSetSemantics {},
-    ) {
-        val side = maxWidth
-        val density = LocalDensity.current
-        val style = TextStyle(
-            fontFamily = DisplayFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = with(density) { (side * blockSize(m) / 100f * (if (round) 0.7f else 1f)).toSp() },
-            color = if (genre == null) on.copy(alpha = 0.78f) else on,
-            drawStyle = if (genre == null) Fill else Stroke(width = with(density) { 1.4.dp.toPx() }),
-        )
-        Text(
-            m,
-            style = style,
-            softWrap = false,
-            maxLines = 1,
-            modifier = Modifier.layout { measurable, c ->
-                val p = measurable.measure(Constraints())
-                val base = p[FirstBaseline]
-                layout(c.maxWidth, c.maxHeight) {
-                    if (round) {
-                        // Centered on the ink: the cap height (0.8 of the size), not the line box.
-                        val cap = 0.8f * (side * blockSize(m) / 100f * 0.7f).toPx()
-                        p.place((c.maxWidth - p.width) / 2, (c.maxHeight / 2f + cap / 2f).roundToInt() - base)
-                    } else {
-                        p.place((0.09f * c.maxWidth).roundToInt(), (0.93f * c.maxHeight).roundToInt() - base)
-                    }
-                }
-            },
-        )
-    }
+            .hairline(onBoard(item.genre).copy(alpha = 0.32f)),
+    )
 }
 
 /**
@@ -192,13 +157,22 @@ fun TitleBlock(name: String, genre: String?, modifier: Modifier = Modifier, roun
  * sizes it; it is hidden from accessibility, as the row or tile around it speaks.
  */
 @Composable
-fun PictureWindow(art: Artwork?, name: String, genre: String?, modifier: Modifier = Modifier, round: Boolean = false) {
+fun PictureWindow(
+    art: Artwork?,
+    name: String,
+    genre: String?,
+    modifier: Modifier = Modifier,
+    round: Boolean = false,
+    label: LabelItem? = null,
+) {
     BoxWithConstraints(modifier) {
         val side = maxWidth
         val fill = remember(art, side) { windowFill(art, side.value) }
         var failed by remember(art) { mutableStateOf(false) }
         if (art == null || fill is WindowFill.Block || failed) {
-            TitleBlock(name, genre, Modifier.fillMaxSize(), round)
+            val item = label?.copy(name = label.name ?: name, genre = label.genre ?: genre)
+                ?: LabelItem(if (round) LabelKind.Person else LabelKind.Series, name, genre)
+            TitleBlock(item, Modifier.fillMaxSize())
             return@BoxWithConstraints
         }
         val dark = OnAir.colors.dark
@@ -383,7 +357,7 @@ fun ShowTile(
             )
             .padding(start = TilePad, top = TilePad, end = TilePad, bottom = 10.dp),
     ) {
-        PictureWindow(row.windowArt, row.name, row.genre, Modifier.fillMaxWidth().height(innerWidth(width)))
+        PictureWindow(row.windowArt, row.name, row.genre, Modifier.fillMaxWidth().height(innerWidth(width)), label = row.labelItem())
         Text(
             nameText(row.name),
             style = style,
