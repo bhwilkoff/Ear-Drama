@@ -340,3 +340,8 @@ privacy words) is folded in when it arrives, never waited on.
   four bars are the play label's voice marks (option C). Duo launch check: installed, four doors
   launched, no crash; frames BLIND (display off), so the new Apple screens are not visually
   verified: V8. Pushed. Next: T7 bench, then V8 audit.
+- **2026-11-20, tick 23**: Release catalog-2026-11-20 cut (harvest cache +7,610 files, 7 replaced,
+  0 removed; database byte-identical; staged-cache dry run green) and the publish ran green
+  (run 44711842758). Live: series.network 912, series.hero 22, series.picture 314. Play pictures
+  NOT live: the play library ships from its own plays-library Release; refresh running (Sonnet).
+  Running: T7 bench, play-library refresh.
