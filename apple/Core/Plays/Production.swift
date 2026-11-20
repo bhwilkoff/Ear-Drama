@@ -9,6 +9,8 @@ nonisolated struct Take: Codable, Identifiable, Equatable, Sendable {
         case direct
         /// No headphones: voice processing cancelled the device's own playback.
         case aec
+        /// Taken in a read room (PLAYS-DESIGN §12.10): no cue played, so there is nothing to cancel.
+        case room
     }
 
     let id: String
@@ -68,6 +70,11 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
     /// The chosen takes `mix.m4a` was rendered from; a different set means the
     /// mix is stale and is rebuilt.
     var mixedFrom: String?
+    /// The read room this production keeps takes for (`room: CODE`, PLAYS-DESIGN §12.10), the Worker production a
+    /// class room writes, and the take ids still waiting to be sent to the room's receiver.
+    var room: String?
+    var roomPid: String?
+    var roomOutbox: [String]?
 
     init(id: String = UUID().uuidString, script: PlayScript, created: Date = .now) {
         self.id = id

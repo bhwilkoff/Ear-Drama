@@ -146,6 +146,32 @@ add("joinSnapshot", [adultClaimed, cast, adultMembers, "ann", T + 1000], "an adu
 add("joinSnapshot", [{ ...adultClaimed, owner: "host", owner_name: "Ben", read_open: true }, cast, adultMembers, "ann", T + 1000], "the leader's name and Read open parts travel in the snapshot");
 add("joinSnapshot", [{ ...klass, leader: "d2" }, cast, classMembers, "d1", T + 1000], "a seat that leads is named by its label");
 
+// T5: names on join, the paired screen, Record in the room.
+const named = adultMembers.map((x) => (x.id === "ann" ? { ...x, name: "Ann" } : x.id === "bob" ? { ...x, name: "Bob" } : x));
+add("cleanName", [adult, "  Ann  "], "an adult's name, trimmed");
+add("cleanName", [adult, "   "], "a blank name is none");
+add("cleanName", [adult, "x".repeat(41)], "a name past 40 characters is refused");
+add("cleanName", [adult, "Ann\u0007"], "a control character is refused");
+add("cleanName", [klass, "Ann"], "a class room's names are its seats");
+add("joinRefusal", [{ ...adult, locked: true }, adultMembers, { role: "screen", paired: true }, T], "a paired screen joins a locked room");
+add("joinRefusal", [{ ...adult, locked: true }, adultMembers, { role: "reader", paired: true }, T], "a pairing lets only a screen past the lock");
+add("leaderName", [{ ...adult, leader: "ann" }, named], "an adult who leads is named by the name they gave");
+add("leaderName", [{ ...adult, leader: "host", owner_name: "Ben" }, named], "the owner's own name first");
+add("receiverOf", [{ ...klass, leader: "d1" }], "a class's takes go to its teacher whoever leads");
+add("receiverOf", [{ ...adult, leader: "ann" }], "an adult room's takes go to its leader");
+const adultRecord = { ...adultClaimed, mode: "record" };
+add("recordRefusal", [adultRecord, cast, adultMembers[1], "l4"], "a reader records a line of their part");
+add("recordRefusal", [adultRecord, cast, adultMembers[1], "l3"], "not another part's line");
+add("recordRefusal", [adultClaimed, cast, adultMembers[1], "l4"], "only in Record mode");
+add("recordRefusal", [adultRecord, cast, adultMembers[3], "l4"], "a screen records nothing");
+add("recordRefusal", [adultRecord, cast, adultMembers[0], "l3"], "the receiver records into its own device");
+add("recordRefusal", [record, cast, classMembers[1], "l4"], "a seat records a line in its range, not only the cursor's");
+add("recordRefusal", [record, cast, classMembers[1], "l8"], "not past the seat's range");
+add("recordRefusal", [{ ...record, ended: true }, cast, classMembers[1], "l2"], "an ended room takes nothing");
+add("recordRefusal", [record, cast, classMembers[1], "zz"], "no such line");
+add("joinSnapshot", [{ ...adultRecord, leader: "ann" }, cast, named, "bob", T + 1000], "names travel with members, and the receiver is the leader");
+add("joinSnapshot", [{ ...record, leader: "d2" }, cast, classMembers, "teacher", T + 1000], "the teacher receives while a seat leads");
+
 const constants = {
   PROTOCOL_VERSION: P.PROTOCOL_VERSION,
   CODE_ALPHABET: P.CODE_ALPHABET,

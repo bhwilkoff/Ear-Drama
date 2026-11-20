@@ -20,7 +20,7 @@
  *
  * Shapes:
  *   cast    [[lineId, part], ...] in script order (plays-relay.js parseCast)
- *   member  { id, role: "reader" | "screen", seat: string | null, joined_at, seen_at }
+ *   member  { id, role: "reader" | "screen", seat: string | null, name: string | null, joined_at, seen_at }
  *   room    see newRoom
  */
 
@@ -50,6 +50,22 @@ export const ROLES = ["reader", "screen"];
 export const MAX_SEATS = 64;
 
 const SEAT_ID = /^[A-Za-z0-9_-]{1,32}$/;
+/** An adult reader's own name on join (optional): "Waiting for Ann" (T5). A class's names are its seats. */
+export const NAME_MAX = 40;
+
+/**
+ * An adult reader's name as given on join: trimmed, at most NAME_MAX, no control
+ * characters. Null for none; `false` for a name that is refused. A class room
+ * takes no name (its seats are the names the teacher typed). The transport also
+ * runs plays-names.js's word filter.
+ */
+export function cleanName(room, raw) {
+  if (raw === undefined || raw === null || (typeof raw === "string" && !raw.trim())) return null;
+  if (room.kind === "class") return null;
+  if (typeof raw !== "string" || /[\u0000-\u001f\u007f]/.test(raw)) return false;
+  const name = raw.trim();
+  return name.length > NAME_MAX ? false : name;
+}
 
 /** The same normalization on every stack, or a code read aloud reaches different rooms. */
 export function normalizeCode(typed) {
@@ -317,7 +333,8 @@ export function joinRefusal(room, members, want, now) {
   if (liveMembers(members, now).length >= MAX_MEMBERS) return "room_full";
   const role = want && want.role !== undefined ? want.role : "reader";
   if (!ROLES.includes(role)) return "bad_role";
-  if (room.locked) return "joining_locked";
+  // A screen the leader paired (T5) was let in by the leader's own act, so a lock does not hold it out.
+  if (room.locked && !(role === "screen" && want.paired === true)) return "joining_locked";
   const seat = want && want.seat !== undefined && want.seat !== null ? want.seat : null;
   if (room.kind === "adult" && seat !== null) return "adult_rooms_have_no_seats";
   if (room.kind === "class" && role === "reader" && !room.seats.some((s) => s.id === seat)) return "seat_required";
@@ -512,12 +529,42 @@ export function roomExpired(room, now) {
  * own place in it. No key and no key hash, ever. A late joiner reads the
  * same snapshot: the cursor, their parts, their next line.
  */
-/** Whoever leads, by the name the room knows: a seat's label, or the owner's own name; else null. */
+/** Whoever leads, by the name the room knows: a seat's label, the owner's own name, or the name an adult gave on join; else null. */
 export function leaderName(room, members) {
   const lead = members.find((m) => m.id === room.leader);
   const seat = lead && lead.seat ? room.seats.find((s) => s.id === lead.seat) : null;
   if (seat) return seat.label;
-  return room.leader === room.owner ? room.owner_name || null : null;
+  if (room.leader === room.owner && room.owner_name) return room.owner_name;
+  return (lead && lead.name) || null;
+}
+
+/**
+ * RECORD IN THE ROOM (T5, PLAYS-DESIGN §12.3 mode 3). Whose device receives the
+ * room's takes: a class's teacher (the owner) whoever leads, since a seat that
+ * leads is a student director and the takes are the teacher's (§12.4); an adult
+ * room's leader. A take passes through the Worker to this device and is kept
+ * nowhere on the way (§12.5).
+ */
+export function receiverOf(room) {
+  return room.kind === "class" ? room.owner : room.leader;
+}
+
+/**
+ * Whether a member may send a take of a line now: a refusal string or null.
+ * Only in Record mode, only a reader, and only a line they hold (an adult's
+ * claimed part, a seat's assignment with its range). Any held line, not only
+ * the cursor's: a line passed while a device was away records later (§12.6).
+ * The receiver's own device records into itself and sends nothing.
+ */
+export function recordRefusal(room, cast, member, lineId) {
+  if (room.ended) return "room_ended";
+  if (room.mode !== "record") return "not_recording";
+  if (!member || member.role !== "reader") return "readers_only";
+  const i = indexOf(cast, lineId);
+  if (i < 0) return "no_such_line";
+  if (member.id === receiverOf(room)) return "receiver_records_here";
+  if (!holds(room, cast, member, i)) return "not_your_line";
+  return null;
 }
 
 export function joinSnapshot(room, cast, members, memberId, now) {
@@ -542,10 +589,13 @@ export function joinSnapshot(room, cast, members, memberId, now) {
     leader_name: leaderName(room, members),
     read_open: !!room.read_open,
     waiting_for_leader: leaderGone(room, members, now).waiting,
-    you: me ? { id: me.id, role: me.role, seat: me.seat, leads: canLead(room, me.id), owner: room.owner === me.id, parts: partsOf(room, me) } : null,
+    you: me
+      ? { id: me.id, role: me.role, seat: me.seat, name: me.name || null, leads: canLead(room, me.id), owner: room.owner === me.id, receives: receiverOf(room) === me.id, parts: partsOf(room, me) }
+      : null,
     next_mine: me ? nextMine(room, cast, me, room.cursor) : null,
     reads_now: whoReads(room, cast, members, room.cursor, now),
-    members: members.map((m) => ({ id: m.id, role: m.role, seat: m.seat, live: live.includes(m) })),
+    members: members.map((m) => ({ id: m.id, role: m.role, seat: m.seat, name: m.name || null, live: live.includes(m) })),
+    receiver: receiverOf(room),
     present: live.length,
     claims: room.claims,
     seats: room.seats,

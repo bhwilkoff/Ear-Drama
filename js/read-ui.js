@@ -36,6 +36,14 @@ const ReadUI = (() => {
   const sceneStarts = (script) => C.sectionsOf(script).map((s) => s.index);
   const seatLabel = (snap, id) => { const s = (snap.seats || []).find((x) => x.id === id); return s ? s.label : null; };
   const codeOf = (err) => (err && (err.code || err.kind)) || 'error';
+  const NAME_KEY = 'ed.readName';
+  /** The name an adult reads under: the account's chosen name when signed in, else the last one typed here. */
+  function chosenName() {
+    const a = API.account && API.account.state ? API.account.state() : null;
+    if (a && a.display_name) return a.display_name;
+    try { return localStorage.getItem(NAME_KEY) || ''; } catch { return ''; }
+  }
+  function keepName(v) { try { if (v) localStorage.setItem(NAME_KEY, v); } catch { /* a convenience only */ } }
 
   function codeBlock(code, cls = '') {
     return h.el('p', { class: `rr-code tabular ${cls}`.trim(), 'aria-label': spoken(code) }, split(code));
@@ -77,6 +85,7 @@ const ReadUI = (() => {
     document.body.classList.remove('reading');
     document.body.classList.toggle('read-screen', screen);
     h.setTitle(screen ? 'Screen' : 'Read together');
+    if (screen && raw.toLowerCase() === 'pair') { pairScreen(body, my); return; }
     if (!code) { body.replaceChildren(page(h.el('p', { class: 'body refusal', role: 'alert' }, R.refusal('bad_code')))); return; }
     body.replaceChildren(h.stateBox('loading'));
     session.resume(code).then((back) => {
@@ -95,6 +104,10 @@ const ReadUI = (() => {
     const slot = h.el('div', { class: 'rr-slot' });
     const offline = API.isOffline();
     const go = h.el('button', { type: 'button', class: 'btn btn-primary rr-go', disabled: offline || !API.read.available() }, screen ? 'Show here' : 'Join');
+    // An adult reads under an optional name ("Waiting for Ann", "Ann is reading"); a class's names are its seats.
+    const name = h.el('input', { class: 'field-input rr-name-input', type: 'text', maxlength: String(R.NAME_MAX), autocomplete: 'nickname',
+      placeholder: 'Your name', 'aria-label': 'Your name, optional', value: chosenName() });
+    const nameRow = screen ? null : h.el('label', { class: 'rr-name-field' }, name);
     if (offline) line.textContent = R.refusal('offline');
     else if (!API.read.available()) line.textContent = R.refusal('not_configured');
     go.addEventListener('click', async () => {
@@ -107,11 +120,13 @@ const ReadUI = (() => {
             else if (!['seat_required', 'seat_in_use'].includes(codeOf(err))) throw err;
           }
         }
-        await session.join(code, {});
+        const typed = name.value.trim();
+        await session.join(code, typed ? { name: typed } : {});
+        keepName(typed);
         return done();
       } catch (err) {
         if (my !== token) return;
-        if (codeOf(err) === 'seat_required') { classStep(slot, my, code, line); go.hidden = true; return; }
+        if (codeOf(err) === 'seat_required') { classStep(slot, my, code, line); go.hidden = true; if (nameRow) nameRow.hidden = true; return; }
         console.error(err);
         line.textContent = R.refusal(codeOf(err));
         go.disabled = false;
@@ -120,7 +135,7 @@ const ReadUI = (() => {
     const done = () => { if (my === token) follow(body, my, screen); };
     body.replaceChildren(page(
       h.el('h1', { class: 'section-header rr-h', tabindex: '-1' }, screen ? 'Screen' : 'Read together'),
-      codeBlock(code), h.el('div', { class: 'actions' }, go), slot, line));
+      codeBlock(code), nameRow, h.el('div', { class: 'actions' }, go), slot, line));
   }
 
   /** A class room: the class code, then the class's names (no account, no typing a name). */
@@ -227,12 +242,32 @@ const ReadUI = (() => {
     const parts = el('button', { type: 'button', class: 'btn btn-way rr-parts', hidden: true }, 'Parts');
     const lead = el('div', { class: 'rr-lead', hidden: true }, back, again, next);
     const menu = el('details', { class: 'rr-menu', hidden: true });
+    const recRow = el('div', { class: 'rr-row rr-rec', hidden: true });
     const bar = el('div', { class: 'rr-bar', role: 'region', 'aria-label': 'Reading together' },
-      el('div', { class: 'rr-row' }, fact, skip, parts, here), warn, el('div', { class: 'rr-row rr-row-lead' }, lead, menu));
+      el('div', { class: 'rr-row' }, fact, skip, parts, here), recRow, warn, el('div', { class: 'rr-row rr-row-lead' }, lead, menu));
     api.footer.before(bar);
     let lastCursor = null;
     let lastMine = null;
     let lastMode = null;
+    // Record in the room (PLAYS-DESIGN §12.10): the take machinery on this device, made once the store is open.
+    let rr = null;
+    let litRec = null;
+    PlaysUI.openStore().then((store) => {
+      if (!bar.isConnected) return;
+      rr = ReadRecord.make({
+        api: API, store, session, script, cast,
+        engine: (o) => RecordingSession.create({ ...o, audio: LiveAudio.create({ muted: muted() }), voice: StandInVoice.create({ muted: true }),
+          announce: async () => { const live = document.getElementById('live'); if (live) live.textContent = 'Your line'; } }),
+        onChange: () => paint('rec'),
+      });
+      rr.resume();
+      // One microphone is the default for an under-13 class (§12.10 item 6): no child's voice leaves a device.
+      const s0 = session.state().snap;
+      if (s0 && s0.kind === 'class' && s0.class_id && s0.you && s0.you.receives) {
+        API.plays.klass(s0.class_id).then((c) => { if (c && c.under13 && rr) rr.setOneMic(true); }).catch(() => {});
+      }
+      paint('snapshot');
+    }).catch((e) => console.error('room store', e));
 
     const send = (msg) => session.send(msg).catch((err) => { if (codeOf(err) !== 'stale') warn.textContent = R.refusal(codeOf(err)); });
     const move = (delta) => {
@@ -259,11 +294,47 @@ const ReadUI = (() => {
       const openParts = el('input', { type: 'checkbox', checked: !!s.read_open, onchange: (e) => send({ type: 'read-open', open: e.currentTarget.checked }) });
       menu.replaceChildren(el('summary', { class: 'btn btn-ghost' }, 'Reading'),
         el('div', { class: 'rr-menu-body' },
-          el('fieldset', { class: 'rd-choice' }, el('legend', { class: 'caption' }, 'Mode'), radio('read', 'Table read'), radio('rehearse', 'Rehearse')),
+          el('fieldset', { class: 'rd-choice' }, el('legend', { class: 'caption' }, 'Mode'), radio('read', 'Table read'), radio('rehearse', 'Rehearse'), radio('record', 'Record')),
+          s.mode === 'record' && rr ? el('label', { class: 'check' },
+            el('input', { type: 'checkbox', checked: rr.state().oneMic, onchange: (e) => rr.setOneMic(e.currentTarget.checked) }),
+            el('span', { class: 'body' }, 'Record every line here')) : null,
           el('label', { class: 'check' }, lock, el('span', { class: 'body' }, 'Lock joining')),
           el('label', { class: 'check' }, openParts, el('span', { class: 'body' }, 'Read open parts')),
           el('a', { class: 'btn btn-ghost', href: `?read-room=${s.code}&screen=1`, target: '_blank', rel: 'noopener' }, 'Open the screen'),
+          addScreen(el, s),
           el('button', { type: 'button', class: 'btn btn-ghost rr-end', onclick: () => { if (confirm('End the reading for everyone?')) send({ type: 'end' }); } }, 'End the reading')));
+    }
+
+    /** The Record row (§12.10 items 1-4): Start recording, Recording with Stop, who is reading, waiting takes, Takes. */
+    function paintRec(s) {
+      const on = s.mode === 'record' && !!rr && !!s.you && s.you.role === 'reader';
+      recRow.hidden = !on;
+      const r = rr ? rr.state() : null;
+      const node = r && r.recording ? api.line(r.recording) : null;
+      if (litRec && litRec !== node) litRec.classList.remove('rd-rec');
+      if (node) node.classList.add('rd-rec');
+      litRec = node;
+      if (!on) return;
+      const room = R.roomOf(s);
+      const receives = !!s.you.receives;
+      const holdsAny = R.mineIndexes(room, cast, s.you).length > 0;
+      const records = (holdsAny && !receives) || (receives && r.oneMic);
+      const kids = [];
+      if (r.recording) {
+        kids.push(el('span', { class: 'rr-rec-dot', 'aria-hidden': 'true' }), el('p', { class: 'body-strong rr-fact', role: 'status' }, 'Recording'),
+          el('button', { type: 'button', class: 'btn', onclick: () => rr.stop() }, 'Stop'));
+      } else if (records && !r.armed) {
+        kids.push(el('button', { type: 'button', class: 'btn btn-record', onclick: () => { if (typeof Player !== 'undefined' && Player.pause) Player.pause(); rr.arm(); } }, 'Start recording'));
+        if (r.failed) kids.push(el('p', { class: 'caption refusal', role: 'alert' }, r.failed === 'NotAllowedError' || r.failed === 'SecurityError' ? 'Allow the microphone for this site.' : 'Recording did not start.'));
+      } else {
+        const reads = s.reads_now;
+        const held = reads && (s.kind === 'class' ? !!reads.seat : !!reads.holder);
+        const mineNow = s.next_mine && s.next_mine.in === 0;
+        if (held && !mineNow && !(s.done || []).includes(s.cursor)) kids.push(el('p', { class: 'caption rr-quiet' }, 'Quiet while others record'));
+      }
+      if (r.outbox.length) kids.push(el('span', { class: 'caption tabular' }, r.outbox.length === 1 ? '1 take on this device' : `${num.format(r.outbox.length)} takes on this device`));
+      if (receives) kids.push(el('button', { type: 'button', class: 'btn btn-way rr-takes', onclick: () => takesSheet(api, script, cast, rr).showModal() }, 'Takes'));
+      recRow.replaceChildren(...kids);
     }
 
     function paint(kind) {
@@ -296,8 +367,12 @@ const ReadUI = (() => {
         const n = R.nextLine(s.next_mine);
         const who = reads && (s.kind === 'class' ? (reads.seat ? seatLabel(s, reads.seat) : null) : null);
         const open = reads && (s.kind === 'class' ? !reads.seat : !reads.holder);
-        fact.textContent = n || (reads ? [C.partTitle(reads.part), who, open ? 'Open' : null].filter(Boolean).join(' · ') : '');
+        const mineNow = s.next_mine && s.next_mine.in === 0;
+        const named = s.mode === 'record' && !mineNow ? R.readerName(s, reads) : null;
+        fact.textContent = named ? [`${named} is reading`, n].filter(Boolean).join(' · ')
+          : n || (reads ? [C.partTitle(reads.part), who, open ? 'Open' : null].filter(Boolean).join(' · ') : '');
       }
+      paintRec(s);
       skip.hidden = !away;
       here.textContent = `${num.format(s.present)} here`;
       parts.hidden = s.kind !== 'adult' || !s.you || s.you.role !== 'reader';
@@ -328,8 +403,158 @@ const ReadUI = (() => {
         if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { move(-1); return true; }
         return false;
       },
-      detach() { off(); bar.remove(); },
+      detach() { off(); if (rr) rr.detach(); if (litRec) litRec.classList.remove('rd-rec'); bar.remove(); },
     };
+  }
+
+  /** The leader's Add a screen (§12.10 item 9): the code a TV shows, typed here. */
+  function addScreen(el, s) {
+    const input = el('input', { class: 'field-input rr-pair-input', type: 'text', maxlength: '9', autocomplete: 'off', autocapitalize: 'characters',
+      spellcheck: 'false', placeholder: 'Code on the TV', 'aria-label': 'Code on the TV' });
+    const line = el('p', { class: 'caption refusal', role: 'alert' });
+    const add = el('button', { type: 'submit', class: 'btn' }, 'Add a screen');
+    return el('form', { class: 'rr-pair', onsubmit: async (e) => {
+      e.preventDefault(); add.disabled = true; line.textContent = '';
+      try {
+        await API.read.attachScreen(s.code, session.state().key, input.value);
+        input.value = '';
+        line.className = 'caption'; line.textContent = 'Screen added.';
+      } catch (err) { line.className = 'caption refusal'; line.textContent = R.refusal(codeOf(err)); }
+      add.disabled = false;
+    } }, input, add, line);
+  }
+
+  /**
+   * The receiver's Takes (§12.10 items 4-5): counts per reader, each speaking line's state with Play
+   * and Again (and Approve / Again with a note in a class production), then Listen through, Export,
+   * and, in a class of 13 and over, Publish under my name. Counts, never a ranking.
+   */
+  function takesSheet(api, script, cast, rr) {
+    const el = api.el;
+    const lines = el('ol', { class: 'rr-take-list' });
+    const counts = el('p', { class: 'caption tabular rr-counts' });
+    const foot = el('div', { class: 'rr-take-foot' });
+    const line = el('p', { class: 'caption refusal', role: 'alert' });
+    let player = null;
+    let listen = null;
+    let klass = null;
+    const dlg = el('dialog', { class: 'rd-sheet rr-takes-sheet', 'aria-label': 'Takes' },
+      el('div', { class: 'rd-sheet-head' }, el('h2', { class: 'section-header' }, 'Takes'),
+        el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => dlg.close() }, 'Done')), counts, lines, foot, line);
+    const byId = new Map(script.lines.map((l) => [l.id, l]));
+    const label = (snap, c) => (c.seat ? seatLabel(snap, c.seat) : ((snap.members || []).find((m) => m.id === c.holder) || {}).name) || null;
+    const send = (msg) => session.send(msg).catch((e) => { line.textContent = R.refusal(codeOf(e)); });
+    const STATE = { recorded: 'Recorded', waiting: 'Waiting', open: 'Open' };
+    async function hear(t) {
+      if (player) { player.pause(); player = null; }
+      const bytes = await rr.ensureProduction().then((p) => PlaysUI.openStore().then((store) => store.readTake(p.id, t.file)));
+      player = new Audio(URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' })));
+      player.muted = muted();
+      player.play().catch(() => {});
+    }
+    function paint() {
+      const s = session.state().snap;
+      if (!s) return;
+      const p = rr.production();
+      const arrived = rr.arrivedLines();
+      const { rows, counts: per } = R.takeRows(s, cast, arrived, C.isSpeaking);
+      counts.textContent = per.map((c) => `${label(s, c) || 'A reader'} ${num.format(c.recorded)} of ${num.format(c.lines)}`).join(' · ');
+      lines.replaceChildren(...rows.map((r) => {
+        const l = byId.get(r.line);
+        const words = (C.spokenText(l) || '').slice(0, 80);
+        const who = r.seat ? seatLabel(s, r.seat) : ((s.members || []).find((m) => m.id === r.holder) || {}).name;
+        const state = r.state === 'away' ? `On ${who || 'a reader'}’s device` : STATE[r.state];
+        const take = p && p.chosen[r.line] ? p.takes.find((t) => t.id === p.chosen[r.line]) : null;
+        const acts = [];
+        if (take) acts.push(el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => hear(take) }, 'Play'));
+        if (r.state === 'recorded' || r.state === 'away') acts.push(el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => send({ type: 'again', line: r.line, base: session.state().snap.cursor_gen }) }, 'Again'));
+        if (take && s.production_id && s.kind === 'class') {
+          const note = el('input', { class: 'field-input', type: 'text', maxlength: '500', placeholder: 'Note', 'aria-label': 'Note to the reader' });
+          acts.push(el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => API.plays.review(s.production_id, take.id, 'approved').then(() => { line.textContent = ''; }).catch((e) => { line.textContent = R.refusal(codeOf(e)); }) }, 'Approve'),
+            el('details', { class: 'rr-again-note' }, el('summary', { class: 'btn btn-ghost' }, 'Again with a note'),
+              el('form', { onsubmit: (e) => { e.preventDefault(); API.plays.review(s.production_id, take.id, 'again', note.value.trim()).then(() => send({ type: 'again', line: r.line, base: session.state().snap.cursor_gen })).catch((er) => { line.textContent = R.refusal(codeOf(er)); }); } },
+                note, el('button', { type: 'submit', class: 'btn' }, 'Send'))));
+        }
+        return el('li', { class: 'rr-take-row', dataset: { state: r.state, line: r.line } },
+          el('div', { class: 'cast-main' }, el('span', { class: 'body-strong' }, C.partTitle(r.part)), el('span', { class: 'caption rr-take-words' }, words)),
+          el('span', { class: 'caption rr-take-state' }, state), el('div', { class: 'rr-take-acts' }, ...acts));
+      }));
+      paintFoot(s, p);
+    }
+    function paintFoot(s, p) {
+      const kids = [];
+      if (p) {
+        const lis = el('button', { type: 'button', class: 'btn btn-primary', onclick: () => {
+          if (listen && listen.playing) { listen.stop(); return; }
+          PlaysUI.openStore().then((store) => {
+            listen = ListenThrough.create({ production: store.production(p.id), script, store, audio: LiveAudio.create({ muted: muted() }),
+              voice: StandInVoice.create({ muted: muted() }), onChange: () => { lis.textContent = listen.playing ? 'Stop' : 'Listen through'; } });
+            listen.play();
+          });
+        } }, listen && listen.playing ? 'Stop' : 'Listen through');
+        kids.push(lis);
+        if (C.isComplete(p, script)) {
+          kids.push(el('button', { type: 'button', class: 'btn', onclick: () => PlaysUI.openStore().then((store) => store.exportMix(p.id, LiveAudio.offlineContext)).catch(() => { line.textContent = 'The mix did not export.'; }) }, 'Export'));
+        }
+      }
+      if (s.kind === 'class' && s.production_id) {
+        if (klass && klass.under13) kids.push(el('p', { class: 'caption refusal' }, 'An under-13 class never publishes.'));
+        else if (klass && p && C.isComplete(p, script)) kids.push(publishForm(el, s, line));
+      }
+      foot.replaceChildren(...kids);
+    }
+    if (session.state().snap.kind === 'class' && session.state().snap.class_id) {
+      API.plays.klass(session.state().snap.class_id).then((c) => { klass = c; paint(); }).catch(() => {});
+    }
+    const off = session.onChange(paint);
+    const offRec = setInterval(paint, 2000);
+    // Open at the line the room is on, so the leader starts where the reading is.
+    requestAnimationFrame(() => { const at = lines.querySelector(`[data-line="${CSS.escape(session.state().snap.cursor)}"]`); if (at) at.scrollIntoView({ block: 'center' }); });
+    dlg.addEventListener('close', () => { off(); clearInterval(offRec); if (player) player.pause(); if (listen) listen.stop(); dlg.remove(); });
+    api.root.append(dlg);
+    paint();
+    return dlg;
+  }
+
+  /** Publish under my name (§12.10 item 5): the credit name, the CC0 consent, then each line's file from this device. */
+  function publishForm(el, s, line) {
+    const credit = el('input', { class: 'field-input', type: 'text', maxlength: '40', value: chosenName(), placeholder: 'Credit name', 'aria-label': 'Credit name' });
+    const agree = el('input', { type: 'checkbox' });
+    const terms = el('p', { class: 'caption' });
+    const go = el('button', { type: 'submit', class: 'btn btn-primary', disabled: true }, 'Publish under my name');
+    let consent = null;
+    API.plays.consent().then((c) => { consent = c; terms.textContent = c.publishes === true ? c.text : 'Publishing opens when the Ear Drama archive account is connected.'; go.disabled = c.publishes !== true; }).catch(() => {});
+    return el('form', { class: 'rr-publish', onsubmit: async (e) => {
+      e.preventDefault();
+      if (!agree.checked || !consent) return;
+      go.disabled = true; line.textContent = '';
+      try {
+        await API.plays.agree(s.production_id, consent.version);
+        await API.plays.publish(s.production_id, { credit_name: credit.value.trim() });
+        keepName(credit.value.trim());
+        line.className = 'caption'; line.textContent = 'Queued for archive.org';
+        sendFiles(s.production_id, line);
+      } catch (err) { line.className = 'caption refusal'; line.textContent = R.refusal(codeOf(err)); go.disabled = false; }
+    } }, credit, terms, el('label', { class: 'check' }, agree, el('span', { class: 'body' }, 'I agree')), go);
+  }
+
+  /** The director's device sends each line's chosen take to archive.org, one at a time; not laid out yet waits for the cron. */
+  async function sendFiles(pid, line) {
+    const store = await PlaysUI.openStore();
+    const p = store.productions.find((x) => x.roomPid === pid);
+    if (!p) return;
+    for (const l of (await store.script(p)).lines) {
+      const t = p.chosen[l.id] && p.takes.find((x) => x.id === p.chosen[l.id]);
+      if (!t) continue;
+      for (let tries = 0; tries < 30; tries++) {
+        try { await API.plays.sendFile(pid, l.id, await store.readTake(p.id, t.file)); break; } catch (err) {
+          if (codeOf(err) === 'already_sent') break;
+          if (codeOf(err) === 'not_ready' || err.status === 503) { await new Promise((r) => setTimeout(r, 60000)); continue; }
+          line.className = 'caption refusal'; line.textContent = R.refusal(codeOf(err)); return;
+        }
+      }
+    }
+    line.className = 'caption'; line.textContent = 'On archive.org';
   }
 
   /** An adult room's parts: Take (first claim wins) or Release; a taken part says so. */
@@ -407,6 +632,8 @@ const ReadUI = (() => {
       // Read open parts: only a line nobody holds, only on the screen, only live (PLAYS-DESIGN §5).
       const reads = s.reads_now;
       const open = reads && (s.kind === 'class' ? !reads.seat : !reads.holder);
+      // The voice stops the moment the cursor moves, so it never sounds during a take (§12.10 item 10).
+      if (spokenAt && spokenAt !== s.cursor) { voice.cancel(); if (!open || !s.read_open) spokenAt = null; }
       if (s.read_open && voice.available() && open && spokenAt !== s.cursor && lines[i] && lines[i].kind === 'speech') {
         spokenAt = s.cursor;
         voice.speak(C.spokenText(lines[i]), C.linePart(lines[i]));
@@ -418,6 +645,46 @@ const ReadUI = (() => {
     paint();
     const stop = () => { off(); };
     window.addEventListener('popstate', stop, { once: true });
+  }
+
+  /**
+   * A TV or projector with no code yet (`?read-room=pair&screen=1`, `/read/pair?screen`; §12.10 item 9):
+   * it shows a pairing code and waits; the leader types it under Reading, Add a screen. A code lasts
+   * 10 minutes and is replaced without a word.
+   */
+  function pairScreen(body, my) {
+    document.body.classList.add('read-screen');
+    h.setTitle('Show a reading');
+    const codeEl = h.el('p', { class: 'rs-pair-code tabular' });
+    const status = h.el('p', { class: 'caption rs-status', role: 'status' });
+    body.replaceChildren(h.el('div', { class: 'rs rs-pair' }, h.el('div', { class: 'rs-page' },
+      h.el('h1', { class: 'section-header' }, 'Show a reading'), codeEl,
+      h.el('p', { class: 'body' }, 'On the leader’s device: Reading, then Add a screen.'), status)));
+    let pair = null;
+    const fresh = async () => {
+      try {
+        pair = await API.read.pair();
+        codeEl.textContent = split(pair.pair_code);
+        codeEl.setAttribute('aria-label', spoken(pair.pair_code));
+        status.textContent = '';
+      } catch (err) { status.textContent = R.refusal(codeOf(err)); pair = null; }
+    };
+    const wait = async () => {
+      if (my !== token) return;
+      if (!pair) await fresh();
+      else {
+        try {
+          const r = await API.read.pairWait(pair.pair_code, pair.pair_key);
+          if (my !== token) return;
+          if (r && r.type === 'snapshot') { session.adopt(r, 'screen'); follow(body, my, true); return; }
+        } catch (err) {
+          if (['pair_expired', 'no_such_pair'].includes(codeOf(err))) pair = null;
+          else status.textContent = R.refusal(codeOf(err));
+        }
+      }
+      setTimeout(wait, 2000);
+    };
+    wait();
   }
 
   /** Leaving the page pauses the room on this device; its key stays for coming back. */

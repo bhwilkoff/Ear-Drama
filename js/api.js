@@ -1459,7 +1459,10 @@ const API = (() => {
       return opts.bytes ? resp.arrayBuffer() : resp.json();
     }
 
-    /** A call that needs no account (a seat, a read room): no bearer; `opts.headers` carries its own key. */
+    /**
+     * A call that needs no account (a seat, a read room): no bearer; `opts.headers` carries its own key.
+     * `opts.raw` sends bytes (a take) instead of JSON; `opts.response` answers the Response itself.
+     */
     async function anon(method, path, opts = {}) {
       const b = base();
       if (!b) throw new DataError('not_configured', path);
@@ -1468,11 +1471,12 @@ const API = (() => {
         resp = await fetch(b + path, {
           method,
           headers: { ...(opts.body !== undefined ? { 'content-type': 'application/json' } : {}), ...(opts.headers || {}) },
-          body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+          body: opts.raw !== undefined ? opts.raw : opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
           signal: AbortSignal.timeout(opts.timeout || TIMEOUT_MS),
         });
       } catch (e) { throw netError(e, path); }
       if (!resp.ok) throw await problemOf(resp, path);
+      if (opts.response) return resp.status === 204 ? null : resp;
       return resp.status === 204 ? null : resp.json();
     }
 
@@ -1574,7 +1578,10 @@ const API = (() => {
         return take ? { take, bytes: await r.arrayBuffer() } : null;
       },
       choose: (pid, takeId) => c('POST', `${at(pid)}/chosen`, { take_id: takeId }),
-      publish: (pid) => c('POST', `${at(pid)}/publish`, {}),
+      publish: (pid, body = {}) => c('POST', `${at(pid)}/publish`, body),
+      /** The director's device sends one line's chosen take to archive.org through the Worker (Decision 073). */
+      sendFile: (pid, lineId, bytes) => c('PUT', `${at(pid)}/archive/files/${encodeURIComponent(lineId)}`, null,
+        { raw: bytes, headers: { 'content-type': 'audio/wav' }, timeout: 180000 }),
       removeLine: (pid, lineId, reason) => c('POST', `${at(pid)}/archive/lines/${encodeURIComponent(lineId)}/remove`, { reason }),
       report: (body) => c('POST', `${P}/reports`, body),
       block: (userId) => c('POST', `${P}/blocks`, { user_id: userId }),
@@ -1725,6 +1732,24 @@ const API = (() => {
         if (!b || typeof WebSocket === 'undefined') return null;
         return new WebSocket(`${b.replace(/^http/, 'ws')}${at(code)}/socket`);
       },
+      /**
+       * Record in the room (PLAYS-DESIGN §12.10): a take of a line this member holds, passing through
+       * to the room's receiving device. `201` once it arrived; a refusal's code is the Worker's.
+       */
+      sendTake: (code, key, takeId, bytes, meta) => account.anon('PUT', `${at(code)}/takes/${encodeURIComponent(takeId)}`,
+        { raw: bytes, headers: { [KEY_HEADER]: key, 'content-type': 'audio/wav', 'x-take': JSON.stringify(meta) }, timeout: 180000 }),
+      /** The receiving device's pickup: `{ take, bytes }` (`take` from `x-take`), or null after 25 s with none. */
+      inbox: async (code, key) => {
+        const r = await account.anon('GET', `${at(code)}/takes/inbox`, { headers: { [KEY_HEADER]: key }, response: true, timeout: 40000 });
+        if (!r) return null;
+        let take = null;
+        try { take = JSON.parse(r.headers.get('x-take') || 'null'); } catch { take = null; }
+        return take ? { take, bytes: await r.arrayBuffer() } : null;
+      },
+      /* Pairing a TV (§12.10 item 9): the TV asks for a code and waits; the leader types it. */
+      pair: () => account.anon('POST', '/v1/read/pair', { body: {} }),
+      pairWait: (pairCode, pairKey) => account.anon('GET', `/v1/read/pair/${encodeURIComponent(pairCode)}`, { headers: { 'x-pair-key': pairKey } }),
+      attachScreen: (code, key, pairCode) => call('POST', `${at(code)}/pair`, { key, body: { code: pairCode } }),
       /** Records a sample from a socket's pong (t1 is the arrival). */
       sample: (t0, serverTime, t1 = now()) => keep(t0, { server_time: serverTime }, t1),
       samples: () => samples.slice(),

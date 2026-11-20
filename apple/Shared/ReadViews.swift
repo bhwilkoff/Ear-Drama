@@ -2,64 +2,102 @@
 import SwiftUI
 
 // Reading together on iPhone, iPad and Mac (PLAYS-DESIGN §12, iOS-DESIGN §4.19, macOS-DESIGN §4.9): join a room by
-// code, follow the lit line, lead with Back/Next/Again, and the teacher's class page with its casting board. The
-// rules are ReadCore's and the transport ReadSession's; these views only draw what the snapshot says.
+// code (the room itself is the script reader, ReadRoomReader.swift), and the teacher's class page with its casting
+// board. The rules are ReadCore's and the transport ReadSession's; these views only draw what the snapshot says.
 
 // MARK: - The room
 
+/// The door to a room: the name and Join (an adult room), a class's seat picker, a refusal in its own words; once
+/// joined, the reader itself (`ScriptReaderView(room:)`) follows the room (PLAYS-DESIGN §12.5, §12.10).
 struct ReadRoomScreen: View {
     let code: String
     var seat: String?
     @Environment(PlaysLibrary.self) private var plays
-    @Environment(AppStore.self) private var app
-    @State private var session = ReadHandover.take() ?? ReadSession.system()
+    @State private var held: ReadSession?
+    @State private var session = ReadSession.system()
     @State private var script: PlayScript?
+    @State private var roomModel: RoomReaderModel?
     @State private var failure: String?
     @State private var needsSeat = false
-    @State private var following = true
-    @State private var hideMine = false
+    @State private var joining = false
+    @State private var name = ReadName.remembered
     @State private var classCode = ""
     @State private var seatList: ReadSeatList?
-    @State private var sending = false
-    @State private var ending = false
     @State private var attempt = 0
-    @State private var partsOpen = false
-    #if os(macOS)
-    @Environment(\.openWindow) private var openWindow
-    #endif
 
     private let classWire = WorkerReadClass(api: .shared)
 
+    init(code: String, seat: String? = nil) {
+        self.code = code
+        self.seat = seat
+        _held = State(initialValue: ReadHandover.peek(code: code))
+    }
+
     var body: some View {
         Group {
-            if let snap = session.snapshot, session.ended == nil {
-                room(snap)
+            if let roomModel, session.ended == nil {
+                ScriptReaderView(scriptID: roomModel.script.id, room: roomModel)
             } else if let ended = session.ended {
                 ContentUnavailableView(ReadCore.refusal(ended), systemImage: "waveform.slash")
+            } else if session.snapshot != nil {
+                ProgressView()
             } else if needsSeat {
                 seatPicker
-            } else if let failure {
-                VStack(spacing: Spacing.s4) {
-                    Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
-                    Button("Try Again") { self.failure = nil; attempt += 1 }
-                }
+            } else if held == nil {
+                joinForm
             } else {
                 ProgressView()
             }
         }
         .navigationTitle(script?.title ?? "Reading")
-        .task(id: attempt) { await join() }
-        .onChange(of: session.snapshot?.scriptID) { _, id in
-            guard let id, let rev = session.snapshot?.scriptRevision else { return }
-            Task {
-                let exact = await plays.script(id: id, revision: rev)
-                if let exact { script = exact } else { script = (try? await plays.script(id: id)) ?? nil }
-            }
+        .task(id: attempt) { await begin() }
+        .onChange(of: session.snapshot?.scriptID) { _, id in loadScript(id) }
+        .onChange(of: script?.id) { _, _ in makeModel() }
+        .onDisappear { roomModel?.end(); session.pause() }
+    }
+
+    private func begin() async {
+        if let h = held, session.snapshot == nil {
+            session = h
+            held = nil
+            ReadHandover.release(h)
+            loadScript(h.snapshot?.scriptID)
+            return
         }
-        .onDisappear { session.pause() }
+        #if DEBUG
+        if seat != nil, session.snapshot == nil { await join() }
+        #endif
+    }
+
+    private func loadScript(_ id: String?) {
+        guard let id, let rev = session.snapshot?.scriptRevision, script == nil else { return }
+        Task {
+            let exact = await plays.script(id: id, revision: rev)
+            if let exact { script = exact } else { script = (try? await plays.script(id: id)) ?? nil }
+            makeModel()
+        }
+    }
+
+    private func makeModel() {
+        guard roomModel == nil, let script, session.snapshot != nil else { return }
+        roomModel = RoomReaderModel(session: session, script: script, store: plays.store, publishing: WorkerPlays(api: .shared))
     }
 
     // MARK: Joining
+
+    private var joinForm: some View {
+        Form {
+            Section {
+                Text(verbatim: ReadScreenText.grouped(ReadCore.normalizeCode(code) ?? code)).font(TypeRamp.tabular)
+                TextField("Your name", text: $name)
+                    .autocorrectionDisabled()
+                    .accessibilityIdentifier("read-name")
+                Button("Join") { Task { await join() } }.disabled(joining)
+                    .accessibilityIdentifier("read-join")
+            }
+            if let failure { Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError) }
+        }
+    }
 
     private func join(seatKey: String? = nil, seatID: String? = nil, move: Bool = false) async {
         guard session.snapshot == nil else { return }
@@ -67,9 +105,16 @@ struct ReadRoomScreen: View {
         var want: [String: Any] = [:]
         if let seatID, let seatKey { want["seat"] = seatID; want["seat_key"] = seatKey }
         if move { want["move"] = true }
+        let typed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !typed.isEmpty, seatID == nil { want["name"] = typed }
+        joining = true
+        defer { joining = false }
+        failure = nil
         do {
             try await session.join(code: normal, want)
             needsSeat = false
+            ReadName.keep(typed)
+            loadScript(session.snapshot?.scriptID)
         } catch let f as ReadFailure {
             if f.code == "seat_required" || f.code == "seat_key_required" {
                 needsSeat = true
@@ -139,174 +184,13 @@ struct ReadRoomScreen: View {
             failure = ReadCore.refusal("error")
         }
     }
-
-    // MARK: Following
-
-    private func room(_ snap: ReadSnapshot) -> some View {
-        let lines = script?.lines ?? []
-        let cast = lines.map { ($0.id, $0.part.rawValue) }
-        let me = snap.meMember
-        let roomState = snap.room
-        let mine = Set(ReadCore.mineIndexes(roomState, cast: cast, member: me))
-        let next = snap.nextMine.map { ReadCore.Next(line: $0.line, inLines: $0.in) }
-        let leads = snap.you?.leads == true
-        let isScreen = snap.you?.role == "screen"
-        return VStack(spacing: 0) {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: Spacing.s3) {
-                        ForEach(Array(lines.enumerated()), id: \.element.id) { i, line in
-                            lineRow(line, index: i, current: line.id == snap.cursor, mine: mine.contains(i), rehearse: snap.mode == "rehearse")
-                                .id(line.id)
-                        }
-                    }
-                    .padding(Spacing.s4)
-                }
-                .simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { _ in following = false })
-                .onChange(of: snap.cursor) { _, cursor in
-                    if following { withAnimation { proxy.scrollTo(cursor, anchor: .center) } }
-                }
-                .onChange(of: following) { _, on in
-                    if on { withAnimation { proxy.scrollTo(snap.cursor, anchor: .center) } }
-                }
-                .overlay(alignment: .bottomTrailing) {
-                    if !following {
-                        Button("Back to the Line") { following = true }.buttonStyle(.borderedProminent).padding(Spacing.s4)
-                    }
-                }
-            }
-            Divider()
-            footer(snap, next: next, leads: leads, isScreen: isScreen, cast: cast)
-        }
-        #if os(iOS)
-        .toolbar { ToolbarItem(placement: .primaryAction) { readingMenu(snap, leads: leads) } }
-        #else
-        .toolbar { ToolbarItem { readingMenu(snap, leads: leads) } }
-        #endif
-    }
-
-    private func lineRow(_ line: ScriptLine, index: Int, current: Bool, mine: Bool, rehearse: Bool) -> some View {
-        ReadLineRow(line: line, current: current, mine: mine, hidden: mine && hideMine && rehearse && !current)
-    }
-
-    private func footer(_ snap: ReadSnapshot, next: ReadCore.Next?, leads: Bool, isScreen: Bool, cast: [(String, String)]) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.s2) {
-            let line = ReadScreenText.status(session)
-            let fact = ReadCore.nextLine(next) ?? ""
-            if !line.isEmpty || !fact.isEmpty {
-                Text(verbatim: line.isEmpty ? fact : line).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
-            }
-            if let r = session.refusal { Label(ReadCore.refusal(r), systemImage: "exclamationmark.triangle").font(TypeRamp.caption).foregroundStyle(Color.semanticError) }
-            HStack {
-                if snap.mode == "rehearse" && !leads {
-                    Toggle("Hide My Lines", isOn: $hideMine).toggleStyle(.switch).font(TypeRamp.caption)
-                }
-                Spacer()
-                if leads {
-                    Button("Back") { move(snap, cast, -1) }.keyboardShortcut(.leftArrow, modifiers: [])
-                    if snap.mode == "rehearse" {
-                        Button("Again") { again(snap, cast) }
-                    }
-                    Button("Next") { move(snap, cast, 1) }.keyboardShortcut(.rightArrow, modifiers: []).buttonStyle(.borderedProminent)
-                } else if snap.kind == "adult" && !isScreen {
-                    Button("Parts") { partsOpen = true }
-                }
-            }
-        }
-        .padding(Spacing.s4)
-        .sheet(isPresented: $partsOpen) { partsSheet(snap) }
-    }
-
-    private func move(_ snap: ReadSnapshot, _ cast: [(String, String)], _ delta: Int) {
-        guard let line = ReadCore.step(cast, cursor: snap.cursor, delta: delta) else { return }
-        send(["type": "cursor", "line": line, "base": snap.cursorGen])
-    }
-
-    private func again(_ snap: ReadSnapshot, _ cast: [(String, String)]) {
-        guard let script else { return }
-        let starts = ScriptReading.sectionsOf(script).filter { $0.level != .part }.map(\.index)
-        if let line = ReadCore.sceneStart(cast, cursor: snap.cursor, starts: starts), line != snap.cursor {
-            send(["type": "cursor", "line": line, "base": snap.cursorGen])
-        }
-    }
-
-    private func send(_ msg: [String: Any]) {
-        Task { try? await session.send(msg) }
-    }
-
-    private func readingMenu(_ snap: ReadSnapshot, leads: Bool) -> some View {
-        Menu("Reading", systemImage: "ellipsis.circle") {
-            if leads {
-                Picker("Mode", selection: Binding(get: { snap.mode }, set: { send(["type": "mode", "mode": $0]) })) {
-                    Text("Table Read").tag("read")
-                    Text("Rehearse").tag("rehearse")
-                }
-                Toggle("Lock Joining", isOn: Binding(get: { snap.locked }, set: { send(["type": "lock", "locked": $0]) }))
-                Toggle("Read Open Parts", isOn: Binding(get: { snap.readOpen == true }, set: { send(["type": "read-open", "open": $0]) }))
-                Button("Open the Screen") { openScreen(snap.code) }
-                Button("End the Reading", role: .destructive) { ending = true }
-            }
-            Text(verbatim: ReadScreenText.grouped(snap.code))
-        }
-        .confirmationDialog("End the reading for everyone?", isPresented: $ending) {
-            Button("End the Reading", role: .destructive) { send(["type": "end"]) }
-        }
-    }
-
-    private func openScreen(_ code: String) {
-        #if os(macOS)
-        openWindow(id: ReadScreenWindow_macOS.id, value: code)
-        #else
-        app.push(Route.readScreen(code))
-        #endif
-    }
-
-    private func partsSheet(_ snap: ReadSnapshot) -> some View {
-        NavigationStack {
-            List {
-                ForEach(script?.roles ?? [], id: \.name) { role in
-                    let id = PartID.role(role.name).rawValue
-                    let holder = snap.claims[id]
-                    let mineHeld = holder != nil && holder == snap.you?.id
-                    HStack {
-                        Text(verbatim: role.name).font(TypeRamp.body)
-                        Spacer()
-                        if mineHeld {
-                            Button("Release") { send(["type": "release", "part": id]) }
-                        } else if holder == nil {
-                            Button("Take") { send(["type": "claim", "part": id]) }
-                        } else {
-                            Text("Taken").font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Parts")
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { partsOpen = false } } }
-        }
-    }
 }
 
-/// One line of the script as a reader sees it in a room: the speaker, the words, my lines tinted, the lit line marked.
-struct ReadLineRow: View {
-    let line: ScriptLine
-    let current: Bool
-    let mine: Bool
-    let hidden: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s1) {
-            if line.kind == .speech { Text(verbatim: line.part.title).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted) }
-            Text(verbatim: hidden ? "\u{2026}" : (line.spokenText.isEmpty ? (line.source ?? "") : line.spokenText))
-                .font(current ? TypeRamp.bodyStrong : TypeRamp.body)
-        }
-        .padding(Spacing.s2)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(mine ? Color.brandSecondary.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(alignment: .leading) { if current { Rectangle().fill(Color.brandSecondary).frame(width: 3) } }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(current ? .isSelected : [])
-    }
+/// The name an adult reads under: the last one typed on this device, kept as a convenience (the app has no chosen name).
+nonisolated enum ReadName {
+    static let key = "ed.readName"
+    static var remembered: String { UserDefaults.standard.string(forKey: key) ?? "" }
+    static func keep(_ name: String) { if !name.isEmpty { UserDefaults.standard.set(String(name.prefix(ReadCore.nameMax)), forKey: key) } }
 }
 
 #if os(macOS)
@@ -349,7 +233,9 @@ struct ReadStartButton: View {
 enum ReadHandover {
     private static var held: ReadSession?
     static func hold(_ s: ReadSession) { held = s }
-    static func take() -> ReadSession? { defer { held = nil }; return held }
+    /// Read without taking: a view may be built more than once before it keeps its state.
+    static func peek(code: String) -> ReadSession? { held?.code == ReadCore.normalizeCode(code) ? held : nil }
+    static func release(_ s: ReadSession) { if held === s { held = nil } }
 }
 
 nonisolated enum ReadOpening {
@@ -358,6 +244,7 @@ nonisolated enum ReadOpening {
             "script_id": script.id, "script_revision": script.revision, "mode": mode,
             "cast": script.lines.map { ["id": $0.id, "part": $0.part.rawValue] },
         ]
+        if classID == nil, !ReadName.remembered.isEmpty { o["owner_name"] = String(ReadName.remembered.prefix(ReadCore.nameMax)) }
         if let classID { o["kind"] = "class"; o["class_id"] = classID }
         if let productionID { o["production_id"] = productionID }
         return o

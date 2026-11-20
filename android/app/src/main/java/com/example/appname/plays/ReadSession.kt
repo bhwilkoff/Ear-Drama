@@ -57,6 +57,7 @@ data class ReadSnapshot(
     @SerialName("next_mine") val nextMine: NextMine? = null,
     @SerialName("reads_now") val readsNow: ReadsNow? = null,
     val members: List<Member> = emptyList(),
+    val receiver: String? = null,
     val present: Int = 0,
     val claims: Map<String, String> = emptyMap(),
     val seats: List<Seat> = emptyList(),
@@ -64,8 +65,8 @@ data class ReadSnapshot(
     val done: List<String> = emptyList(),
     @SerialName("server_time") val serverTime: Double = 0.0,
 ) {
-    @Serializable data class You(val id: String, val role: String, val seat: String? = null, val leads: Boolean = false, val owner: Boolean = false)
-    @Serializable data class Member(val id: String, val role: String, val seat: String? = null, val live: Boolean = true)
+    @Serializable data class You(val id: String, val role: String, val seat: String? = null, val name: String? = null, val leads: Boolean = false, val owner: Boolean = false, val receives: Boolean = false)
+    @Serializable data class Member(val id: String, val role: String, val seat: String? = null, val name: String? = null, val live: Boolean = true)
     @Serializable data class Seat(val id: String, val label: String)
     @Serializable data class AssignmentRow(val part: String, val seat: String, val from: String? = null, val to: String? = null)
     @Serializable data class NextMine(val line: String, @SerialName("in") val inLines: Int)
@@ -76,6 +77,7 @@ data class ReadSnapshot(
         get() = ReadCore.Room(
             kind, mode, cursor, cursorGen, generation, leader, claims,
             seats.map { ReadCore.Seat(it.id, it.label) }, assignments.map { ReadCore.Assignment(it.part, it.seat, it.from, it.to) }, done, locked, ended,
+            owner = if (kind == "class") receiver else null,
         )
 
     val meMember: ReadCore.Member? get() = you?.let { ReadCore.Member(it.id, it.role, it.seat, 0.0, serverTime) }
@@ -85,6 +87,12 @@ data class ReadSnapshot(
         prev == null || prev.code != code || generation > prev.generation || (generation == prev.generation && serverTime >= prev.serverTime)
 
     /** Whether a line nobody holds is the device voice's to read ("Read open parts"). */
+    /**
+     * The line the screen's live stand-in voice reads now (PLAYS-DESIGN §12.10 item 10): the cursor's, only while the leader's
+     * Read open parts is on and nobody holds it. The voice stops when this changes, so it never sounds over a take; never stored.
+     */
+    fun openVoiceLine(): String? = if (readOpen && !ended && readsOpenLine) cursor else null
+
     val readsOpenLine: Boolean get() = readsNow?.let { if (kind == "class") it.seat == null else it.holder == null } ?: false
 }
 
@@ -92,6 +100,25 @@ data class ReadSnapshot(
 class ReadFailure(val code: String) : Exception(code)
 
 data class ReadJoined(val snapshot: ReadSnapshot, val key: String, val transport: String)
+
+/** A take as the receiver's pickup hands it over: the `x-take` fields and the WAV bytes (the Worker keeps nothing). */
+@Serializable
+data class ReadTakeFields(
+    val id: String,
+    val lineID: String,
+    val part: String,
+    val file: String = "",
+    val frames: Int = 0,
+    val sampleRate: Double = 0.0,
+    val capture: String? = null,
+    val seat: String? = null,
+    val member: String? = null,
+)
+
+class ReadTakeIn(val take: ReadTakeFields, val bytes: ByteArray)
+
+/** A TV's pairing code and the key that reads its answer; [expiresAt] is the Worker's clock in milliseconds. */
+data class PairStart(val code: String, val key: String, val expiresAt: Double)
 
 /** One socket, as the session needs it (OkHttp's below; a fake in tests). */
 interface ReadSocket {
@@ -111,6 +138,12 @@ interface ReadWire {
     suspend fun join(code: String, body: JsonObject): ReadJoined
     suspend fun poll(code: String, key: String): ReadSnapshot
     suspend fun send(code: String, key: String, message: JsonObject): ReadSnapshot?
+    suspend fun sendTake(code: String, key: String, takeId: String, bytes: ByteArray, meta: JsonObject)
+    suspend fun inbox(code: String, key: String): ReadTakeIn?
+    suspend fun pairStart(): PairStart
+    /** The TV's wait: null until a leader attaches it, then the room as its screen. */
+    suspend fun pairPoll(pairCode: String, pairKey: String): ReadJoined?
+    suspend fun attach(code: String, key: String, pairCode: String)
     fun socket(code: String, listener: ReadSocketListener): ReadSocket?
 }
 
@@ -157,6 +190,39 @@ class WorkerReadWire(private val worker: WorkerApi, private val ok: OkHttpClient
         }.getOrElse { if (it is WorkerException) throw it else null }
     }
 
+    override suspend fun sendTake(code: String, key: String, takeId: String, bytes: ByteArray, meta: JsonObject) {
+        guarded {
+            worker.anonBytes(
+                HttpMethod.Put, at(code) + "/takes/" + URLEncoder.encode(takeId, "UTF-8"), bytes,
+                mapOf(KEY_HEADER to key, "content-type" to "audio/wav", "x-take" to enc(meta)),
+            )
+        }
+    }
+
+    override suspend fun inbox(code: String, key: String): ReadTakeIn? = guarded {
+        val (bytes, header) = worker.anonBytes(HttpMethod.Get, at(code) + "/takes/inbox", null, mapOf(KEY_HEADER to key)) ?: return@guarded null
+        val fields = header?.let { runCatching { ShareJson.decodeFromString(ReadTakeFields.serializer(), it) }.getOrNull() } ?: return@guarded null
+        ReadTakeIn(fields, bytes)
+    }
+
+    override suspend fun pairStart(): PairStart = guarded {
+        val o = ShareJson.parseToJsonElement(worker.anonText(HttpMethod.Post, "/v1/read/pair", "{}")).jsonObject
+        PairStart(
+            o["pair_code"]?.jsonPrimitive?.contentOrNull ?: throw ReadFailure("error"),
+            o["pair_key"]?.jsonPrimitive?.contentOrNull ?: throw ReadFailure("error"),
+            o["expires_at"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+        )
+    }
+
+    override suspend fun pairPoll(pairCode: String, pairKey: String): ReadJoined? = guarded {
+        val text = worker.anonText(HttpMethod.Get, "/v1/read/pair/" + URLEncoder.encode(pairCode, "UTF-8"), null, mapOf("x-pair-key" to pairKey))
+        if (ShareJson.parseToJsonElement(text).jsonObject["member_key"] == null) null else joined(text)
+    }
+
+    override suspend fun attach(code: String, key: String, pairCode: String) {
+        guarded { worker.anonText(HttpMethod.Post, at(code) + "/pair", enc(buildJsonObject { put("code", JsonPrimitive(pairCode)) }), mapOf(KEY_HEADER to key)) }
+    }
+
     override fun socket(code: String, listener: ReadSocketListener): ReadSocket? {
         val url = worker.socketUrl(at(code) + "/socket") ?: return null
         val ws: WebSocket = ok.newWebSocket(
@@ -199,14 +265,21 @@ data class ReadState(
     val code: String? = null,
 )
 
+/** What the take machinery needs of a room membership: the state, the member key, and a message to the room (a fake in tests). */
+interface RoomLink {
+    val state: StateFlow<ReadState>
+    val memberKey: String?
+    suspend fun send(message: JsonObject)
+}
+
 class ReadSession(
     private val wire: ReadWire,
     private val scope: CoroutineScope,
     private val now: () -> Double = { System.currentTimeMillis().toDouble() },
     private val diag: Boolean = false,
-) {
+) : RoomLink {
     private val _state = MutableStateFlow(ReadState())
-    val state: StateFlow<ReadState> = _state
+    override val state: StateFlow<ReadState> = _state
 
     private var key: String? = null
     private var forcePoll = false
@@ -225,6 +298,20 @@ class ReadSession(
     suspend fun open(body: JsonObject, teacher: Boolean) = enter(wire.create(body, teacher))
 
     suspend fun join(code: String, want: JsonObject = JsonObject(emptyMap())) = enter(wire.join(code, want))
+
+    /** A pairing's answer: the room as a screen, already joined (a TV that was paired by a leader). */
+    fun adopt(joined: ReadJoined) = enter(joined)
+
+    /** The leader's Add a screen: attaches the TV showing [pairCode] to this room. The Worker's refusal is thrown as a [ReadFailure]. */
+    suspend fun attach(pairCode: String) {
+        val code = _state.value.code
+        val k = key
+        if (code == null || k == null) throw ReadFailure("not_a_member")
+        wire.attach(code, k, pairCode)
+    }
+
+    /** This device's member key for the room; it never leaves memory and never goes in a URL. */
+    override val memberKey: String? get() = key
 
     fun leave() {
         stopTransport()
@@ -246,7 +333,7 @@ class ReadSession(
     // ---- Messages ----
 
     /** One message to the room. On a socket the answer is the next snapshot; over HTTP the snapshot or the refusal is thrown. */
-    suspend fun send(message: JsonObject) {
+    override suspend fun send(message: JsonObject) {
         val code = _state.value.code
         val k = key
         if (code == null || k == null || _state.value.ended != null) throw ReadFailure(_state.value.ended ?: "not_a_member")

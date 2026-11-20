@@ -345,7 +345,7 @@ object PlaysShare {
         put("created", t.created)
         put("frames", t.frames)
         put("sampleRate", t.sampleRate)
-        put("capture", if (t.capture == Take.Capture.Aec) "aec" else "direct")
+        put("capture", when (t.capture) { Take.Capture.Aec -> "aec"; Take.Capture.Room -> "room"; Take.Capture.Direct -> "direct" })
         put("heard", JsonObject(t.heard.mapValues { JsonPrimitive(it.value) }))
         put("peak", t.peak.toDouble())
         put("bleed", t.bleed)
@@ -444,7 +444,7 @@ object PlaysShare {
             add += Take(
                 id = t.id, lineID = t.lineID, part = PartID(t.part), file = file, created = System.currentTimeMillis() / 1000.0, frames = t.frames,
                 sampleRate = t.sampleRate,
-                capture = if (t.capture == "aec") Take.Capture.Aec else Take.Capture.Direct,
+                capture = when (t.capture) { "aec" -> Take.Capture.Aec; "room" -> Take.Capture.Room; else -> Take.Capture.Direct },
                 heard = emptyMap(), loudness = null, peak = 0f, bleed = false,
             )
         }

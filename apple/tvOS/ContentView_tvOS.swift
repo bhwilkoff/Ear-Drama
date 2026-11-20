@@ -1066,6 +1066,11 @@ private struct LibraryScreen_tvOS: View {
                             }
                         }
                         SharedEarDramasSection_tvOS()
+                        NavigationLink { ReadPairHost() } label: {
+                            Label("Show a Reading", systemImage: "tv")
+                        }
+                        .frame(maxWidth: 640)
+                        .focusSection()
                         VStack(alignment: .leading, spacing: Spacing.s4) {
                             AccountRow()
                                 .frame(maxWidth: 640)

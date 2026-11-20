@@ -694,6 +694,9 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
     struct Marks {
         /// The role of the part being played, or nil.
         var role: String? = nil
+        /// A read room's lines that are mine (script line indexes), of any part or range: tinted in their own part's hue
+        /// and hidden by Hide My Lines like a played part's (PLAYS-DESIGN §12.5).
+        var mineLines: Set<Int>? = nil
         var hide = false
         /// Hidden lines the person has tapped open.
         var peeked: Set<Int> = []
@@ -887,16 +890,18 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
             _ = CTLineGetTypographicBounds(line, &asc, &desc, &lead)
             let band = ReaderLayout.band(origin: origins[i], asc: asc, desc: desc, style: style)
             info.append((asc, desc, band))
-            guard let me = marks.role else { continue }
+            guard marks.role != nil || marks.mineLines != nil else { continue }
             let loc = CTLineGetStringRange(line).location
             guard loc < string.length else { continue }
             let attrs = string.attributes(at: loc, effectiveRange: nil)
-            guard (attrs[.edRole] as? String) == me, let speech = attrs[.edSpeech] as? Int else { continue }
+            let role = attrs[.edRole] as? String
+            let mineHere = (marks.role != nil && role == marks.role) || ((attrs[.edLine] as? Int).map { marks.mineLines?.contains($0) == true } ?? false)
+            guard mineHere, let speech = attrs[.edSpeech] as? Int else { continue }
             if let last = tints.last, last.speech == speech {
                 tints[tints.count - 1].lo = min(last.lo, band.minY)
                 tints[tints.count - 1].hi = max(last.hi, band.maxY)
             } else {
-                tints.append(Tint(lo: band.minY, hi: band.maxY, hue: hueByRole[me] ?? -1, speech: speech))
+                tints.append(Tint(lo: band.minY, hi: band.maxY, hue: role.flatMap { hueByRole[$0] } ?? -1, speech: speech))
             }
         }
         for t in tints {
@@ -909,13 +914,13 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         }
 
         // The studio's current line: outlined in ink, dashed record red while its cue plays, solid while the microphone is open.
-        if let current = marks.current, let me = marks.role {
+        if let current = marks.current, marks.role != nil || marks.mineLines != nil {
             var lo = CGFloat.greatestFiniteMagnitude, hi = -CGFloat.greatestFiniteMagnitude
             for (i, line) in lines.enumerated() {
                 let loc = CTLineGetStringRange(line).location
                 guard loc < string.length else { continue }
                 let attrs = string.attributes(at: loc, effectiveRange: nil)
-                guard (attrs[.edLine] as? Int) == current, (attrs[.edRole] as? String) == me else { continue }
+                guard (attrs[.edLine] as? Int) == current, marks.role == nil || (attrs[.edRole] as? String) == marks.role else { continue }
                 lo = min(lo, info[i].band.minY)
                 hi = max(hi, info[i].band.maxY)
             }
@@ -964,6 +969,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
             let origin = origins[i]
             let (asc, desc, _) = info[i]
             var hidden: [(CGFloat, CGFloat)] = []
+            var hiddenHue = -1
             var block: (CGFloat, CGFloat)?
             let runs = CTLineGetGlyphRuns(line) as! [CTRun]
             for run in runs {
@@ -996,7 +1002,9 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
                         cg.draw(g, in: CGRect(x: origin.x + x0 - glyphWidth + 1, y: origin.y - 1, width: w, height: h))
                     }
                 }
-                if marks.hide, let me = marks.role, role == me, inkValue == .said, ((attrs[NSAttributedString.Key.edOffset] as? Int) ?? -1) >= 0, !marks.peeked.contains(runLine) {
+                let mineRun = (marks.role != nil && role == marks.role) || marks.mineLines?.contains(runLine) == true
+                if marks.hide, mineRun, inkValue == .said, ((attrs[NSAttributedString.Key.edOffset] as? Int) ?? -1) >= 0, !marks.peeked.contains(runLine) {
+                    hiddenHue = role.flatMap { hueByRole[$0] } ?? -1
                     let x0 = CTLineGetOffsetForStringIndex(line, rr.location, nil)
                     let x1 = CTLineGetOffsetForStringIndex(line, rr.location + rr.length, nil)
                     if let last = hidden.last, abs(last.1 - x0) < 6 { hidden[hidden.count - 1].1 = x1 } else { hidden.append((x0, x1)) }
@@ -1019,7 +1027,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
             }
             for span in hidden {
                 let rect = CGRect(x: origin.x + span.0 - 2, y: origin.y - desc * 0.5, width: span.1 - span.0 + 4, height: (asc + desc) * 0.8)
-                let h = marks.role.flatMap { hueByRole[$0] } ?? -1
+                let h = hiddenHue
                 cg.setFillColor(hueColor(h).copy(alpha: 0.30) ?? hueColor(h))
                 cg.addPath(CGPath(roundedRect: rect, cornerWidth: rect.height / 2.8, cornerHeight: rect.height / 2.8, transform: nil))
                 cg.fillPath()

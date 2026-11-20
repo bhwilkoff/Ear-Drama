@@ -169,6 +169,18 @@ class WorkerApi(
         return ok(send(method, path, body, null, null, headers)).bodyAsText()
     }
 
+    /**
+     * A read room's take route, no account: sends [raw] bytes (a take) or reads the answer as bytes with its `x-take` header
+     * (the receiver's pickup); null on a 204. [headers] carries the member key.
+     */
+    suspend fun anonBytes(method: HttpMethod, path: String, raw: ByteArray? = null, headers: Map<String, String> = emptyMap()): Pair<ByteArray, String?>? {
+        if (!config.workerReady) throw WorkerException(503, "not_configured")
+        val r = send(method, path, null, null, raw, headers)
+        if (r.status.value == 204) return null
+        ok(r)
+        return r.bodyAsBytes() to r.headers["x-take"]
+    }
+
     /** The `wss://` form of a Worker path, for a read room's socket; null when no Worker is configured. */
     fun socketUrl(path: String): String? {
         if (!config.workerReady) return null

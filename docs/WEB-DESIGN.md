@@ -1109,6 +1109,23 @@ web app follows today.
   8. **The clock**: every answer and pong is a sample (`API.read.samples()`), and the session's
      `offset()` is ReadCore.clockOffset for T4's delay gate; `?readdiag=1` logs it, nothing on
      screen.
+  9. **Record in the room** (T5; PLAYS-DESIGN §12.10 is binding; `js/read-record.js`, no DOM, over
+     the studio's `RecordingSession.recordInRoom`). The Reading menu's Mode gains **Record**. In
+     Record mode a row joins the room bar: a reader who holds lines taps **Start recording** once
+     (`btn-record`, red: Decision 064, red means recording); then their microphone opens by itself
+     when the cursor reaches their line, the line wears `rd-rec` (the studio's red outline), and the
+     row says **Recording** with **Stop**. Other devices' fact reads "{name} is reading" and the row
+     "Quiet while others record". Waiting takes read "{n} takes on this device". The receiving
+     device's row holds **Takes** (a `<dialog>` sheet): counts per reader, each speaking line's
+     state (Recorded, On {name}'s device, Waiting, Open) with Play and Again, Approve and Again with
+     a note in a class production, then Listen through, Export, and Publish under my name (13 and
+     over, with the CC0 consent; "An under-13 class never publishes." otherwise). The menu adds
+     **Record every line here** (One microphone) in Record mode.
+  10. **Names on join**: the join page carries an optional "Your name" field (the account's name
+      when it has one, else the last typed on this device, `localStorage` `ed.readName`, a
+      convenience); hidden once the room turns out to be a class's.
+  11. **Add a screen**: the Reading menu holds a field "Code on the TV" and **Add a screen**
+      (`API.read.attachScreen`), its refusals one line under it.
 
 - **§4.18 The shared screen** (`?read-room={CODE}&screen=1`; PLAYS-DESIGN §12.2 "Screen"; R3c
   §3.2). A projector's browser, full screen: joins as `role: "screen"` (no seat, holds nothing,
@@ -1120,7 +1137,13 @@ web app follows today.
   aloud by the existing live stand-in voice (`StandInVoice`, PLAYS-DESIGN §5: never stored,
   never mixed), and only by the screen. (The protocol carries no leader switch for it yet, so the
   person at the screen, the leader in a classroom, turns it on there; T4 asks for the message.)
-  `?mute=1` keeps it silent. Waiting and ended states read as §4.17 item 6.
+  `?mute=1` keeps it silent. Waiting and ended states read as §4.17 item 6. (T5) The protocol now
+  carries Read open parts (`read_open`, the leader's message, which the screen obeys); the voice
+  stops the moment the cursor moves, so it never sounds during a take. **Pairing**:
+  `?read-room=pair&screen=1` (`/read/pair?screen`) is the screen with no code yet: "Show a reading",
+  the pairing code large in tabular figures split 3 + 3, and one line, "On the leader's device:
+  Reading, then Add a screen."; it waits (every 2 s) and becomes the room's screen when a leader
+  adds it, a fresh code replacing an expired one without a word (PLAYS-DESIGN §12.10 item 9).
 
 - **§4.19 The class page** (`?class={id}`, lighting Library; R3c §4.1-§4.6; PLAYS-DESIGN §12.4;
   `learner-experience-design` §2-§3). Reached from Library's Ear dramas, where each class the

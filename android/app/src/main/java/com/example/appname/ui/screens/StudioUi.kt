@@ -245,7 +245,7 @@ class LazyStandIn(
     fun close() { inner?.close() }
 }
 
-private class SilentStandIn : StandInVoice {
+internal class SilentStandIn : StandInVoice {
     override suspend fun render(text: String, part: PartID, rate: Float): StandInAudio? = null
 }
 
@@ -253,7 +253,7 @@ private class SilentStandIn : StandInVoice {
  * DEBUG only (appname_studio_stub): opens no microphone and plays nothing. A line "heard" is a synthetic tone, never room
  * audio, so the take path can be seen working without anyone being recorded. [hold] keeps the tone going until Stop.
  */
-private class StubLiveAudio(private val hold: Boolean) : LiveAudio {
+internal class StubLiveAudio(private val hold: Boolean) : LiveAudio {
     private val main = Handler(Looper.getMainLooper())
     private var ticker: Runnable? = null
     private var captures = 0

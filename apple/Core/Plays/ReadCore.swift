@@ -16,6 +16,7 @@ nonisolated enum ReadCore {
     static let modes = ["read", "rehearse", "record"]
     /// §12.6: a polled cursor slower than this shows "Slow connection".
     static let slowMS: Double = 2000
+    static let nameMax = 40
 
     struct Member: Equatable, Sendable {
         var id: String
@@ -23,6 +24,7 @@ nonisolated enum ReadCore {
         var seat: String?
         var joinedAt: Double
         var seenAt: Double
+        var name: String?
     }
 
     struct Seat: Equatable, Sendable, Identifiable { var id: String; var label: String }
@@ -44,6 +46,8 @@ nonisolated enum ReadCore {
         var cursorGen = 0
         var generation = 0
         var leader = ""
+        var owner = ""
+        var ownerName: String?
         var claims: [String: String] = [:]
         var seats: [Seat] = []
         var assignments: [Assignment] = []
@@ -218,9 +222,109 @@ nonisolated enum ReadCore {
         return m?.seat.flatMap { id in snap.seats.first { $0.id == id }?.label }
     }
 
+    // MARK: - Names, the receiver, Record in the room (PLAYS-DESIGN §12.10)
+
+    /// An adult's name on join: trimmed, at most 40, no control characters. `.none` for none, `.refused` for a bad one.
+    enum Name: Equatable, Sendable { case none, refused, name(String) }
+
+    static func cleanName(_ room: Room, _ raw: String?) -> Name {
+        guard let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .none }
+        if room.kind == "class" { return .none }
+        if raw.unicodeScalars.contains(where: { $0.value < 0x20 || $0.value == 0x7f }) { return .refused }
+        let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.count > nameMax ? .refused : .name(name)
+    }
+
+    /// Whose device receives the room's takes: a class's teacher whoever leads, an adult room's leader.
+    static func receiverOf(_ room: Room) -> String { room.kind == "class" ? room.owner : room.leader }
+
+    /// Whether a member may send a take of a line: the refusal's code, or nil.
+    static func recordRefusal(_ room: Room, cast: [(String, String)], member: Member?, lineID: String) -> String? {
+        if room.ended { return "room_ended" }
+        if room.mode != "record" { return "not_recording" }
+        guard let member, member.role == "reader" else { return "readers_only" }
+        guard let i = indexOf(cast, lineID) else { return "no_such_line" }
+        if member.id == receiverOf(room) { return "receiver_records_here" }
+        if !holds(room, cast, member, i) { return "not_your_line" }
+        return nil
+    }
+
+    static func leaderName(_ room: Room, members: [Member]) -> String? {
+        let lead = members.first { $0.id == room.leader }
+        if let seat = lead?.seat, let label = room.seats.first(where: { $0.id == seat })?.label { return label }
+        if room.leader == room.owner, let n = room.ownerName { return n }
+        return lead?.name
+    }
+
+    /// Who reads a line, by name: a seat's label, or the name an adult gave; nil when nobody named holds it.
+    static func readerName(_ snap: ReadSnapshot, _ reads: ReadSnapshot.ReadsNow?) -> String? {
+        guard let reads else { return nil }
+        if let seat = reads.seat { return snap.seats.first { $0.id == seat }?.label }
+        let id = reads.holder ?? reads.members.first
+        return id.flatMap { id in snap.members.first { $0.id == id }?.name }
+    }
+
+    /// Whether this device opens its microphone now: Record mode, a line this member holds at the cursor and not done,
+    /// never the receiving device, and not twice for the same arming (`justDid`).
+    static func shouldRecord(_ snap: ReadSnapshot?, cast: [(String, String)], justDid: String?) -> Bool {
+        guard let snap, !snap.ended, snap.mode == "record", let you = snap.you, you.role == "reader" else { return false }
+        if you.receives == true { return false }
+        guard let i = indexOf(cast, snap.cursor), holds(snap.room, cast, snap.meMember, i) else { return false }
+        if snap.done.contains(snap.cursor) { return false }
+        return justDid != snap.cursor
+    }
+
+    /// `justDid` after a snapshot: kept while the line stays at the cursor and undone, else cleared.
+    static func settleJustDid(_ snap: ReadSnapshot?, _ justDid: String?) -> String? {
+        guard let justDid, let snap else { return justDid }
+        return snap.cursor != justDid || snap.done.contains(justDid) ? nil : justDid
+    }
+
+    struct TakeRow: Equatable, Sendable, Identifiable {
+        enum State: String, Sendable { case recorded, away, waiting, open }
+        var line: String
+        var part: String
+        var state: State
+        var seat: String?
+        var holder: String?
+        var id: String { line }
+    }
+
+    struct TakeCount: Equatable, Sendable, Identifiable {
+        var key: String
+        var seat: String?
+        var holder: String?
+        var lines: Int
+        var recorded: Int
+        var id: String { key }
+    }
+
+    /// The receiver's Takes sheet: each speaking line in script order with its state, and the counts per reader.
+    static func takeRows(_ snap: ReadSnapshot, cast: [(String, String)], arrived: Set<String>, speaking: (String) -> Bool)
+        -> (rows: [TakeRow], counts: [TakeCount]) {
+        let room = snap.room
+        let done = Set(snap.done)
+        let members = snap.members.map { Member(id: $0.id, role: $0.role, seat: $0.seat, joinedAt: 0, seenAt: $0.live ? 0 : -.infinity, name: $0.name) }
+        var rows: [TakeRow] = []
+        var counts: [TakeCount] = []
+        for (line, part) in cast where speaking(part) {
+            guard let who = whoReads(room, cast: cast, members: members, lineID: line, now: 0) else { continue }
+            let key: String? = room.kind == "class" ? who.seat.map { "seat:\($0)" } : who.holder.map { "member:\($0)" }
+            let state: TakeRow.State = arrived.contains(line) ? .recorded : done.contains(line) ? .away : key != nil ? .waiting : .open
+            rows.append(TakeRow(line: line, part: part, state: state, seat: who.seat, holder: who.holder))
+            if let key {
+                var at = counts.firstIndex { $0.key == key }
+                if at == nil { counts.append(TakeCount(key: key, seat: who.seat, holder: who.holder, lines: 0, recorded: 0)); at = counts.count - 1 }
+                counts[at!].lines += 1
+                if state == .recorded { counts[at!].recorded += 1 }
+            }
+        }
+        return (rows, counts)
+    }
+
     static let refusals: [String: String] = [
         "bad_code": "That is not a reading code.",
-        "no_such_room": "No reading has that code.",
+        "no_such_room": "No reading with that code.",
         "room_ended": "This reading has ended.",
         "room_full": "This reading is full.",
         "joining_locked": "Joining is locked.",
@@ -236,6 +340,12 @@ nonisolated enum ReadCore {
         "class_not_found": "No class has that code.",
         "revision_mismatch": "This play has changed since it was cast.",
         "not_castable": "This play cannot be read together.",
+        "bad_name": "That name is not allowed.",
+        "no_such_pair": "No screen shows that code.",
+        "pair_expired": "That code has expired.",
+        "not_recording": "The reading is not recording.",
+        "not_your_line": "That line is someone else\u{2019}s.",
+        "school_consent_required": "Waits for the school\u{2019}s consent.",
     ]
     static func refusal(_ code: String) -> String { refusals[code] ?? "Ear Drama could not be reached." }
 
@@ -323,10 +433,12 @@ nonisolated struct ReadSnapshot: Codable, Equatable, Sendable {
         var id: String
         var role: String
         var seat: String?
+        var name: String?
         var leads: Bool
         var owner: Bool
+        var receives: Bool?
     }
-    struct Member: Codable, Equatable, Sendable { var id: String; var role: String; var seat: String?; var live: Bool }
+    struct Member: Codable, Equatable, Sendable { var id: String; var role: String; var seat: String?; var name: String?; var live: Bool }
     struct Seat: Codable, Equatable, Sendable, Identifiable { var id: String; var label: String }
     struct Assignment: Codable, Equatable, Sendable { var part: String; var seat: String; var from: String?; var to: String? }
     struct NextMine: Codable, Equatable, Sendable {
@@ -355,6 +467,7 @@ nonisolated struct ReadSnapshot: Codable, Equatable, Sendable {
     var leader: String
     var leaderName: String?
     var readOpen: Bool?
+    var receiver: String?
     var waitingForLeader: Bool
     var you: You?
     var nextMine: NextMine?
@@ -368,7 +481,7 @@ nonisolated struct ReadSnapshot: Codable, Equatable, Sendable {
     var serverTime: Double
 
     enum CodingKeys: String, CodingKey {
-        case code, kind, mode, cursor, generation, locked, ended, leader, you, members, present, claims, seats, assignments, done
+        case code, kind, mode, cursor, generation, locked, ended, leader, you, members, present, claims, seats, assignments, done, receiver
         case scriptID = "script_id", scriptRevision = "script_revision", productionID = "production_id", classID = "class_id"
         case cursorGen = "cursor_gen", leaderName = "leader_name", readOpen = "read_open", waitingForLeader = "waiting_for_leader"
         case nextMine = "next_mine", readsNow = "reads_now", serverTime = "server_time"
@@ -377,12 +490,12 @@ nonisolated struct ReadSnapshot: Codable, Equatable, Sendable {
     /// The room as the protocol's functions read it, rebuilt from a snapshot.
     var room: ReadCore.Room {
         ReadCore.Room(kind: kind, mode: mode, cursor: cursor, cursorGen: cursorGen, generation: generation, leader: leader,
-                      claims: claims, seats: seats.map { ReadCore.Seat(id: $0.id, label: $0.label) },
+                      owner: kind == "class" ? receiver ?? "" : "", claims: claims, seats: seats.map { ReadCore.Seat(id: $0.id, label: $0.label) },
                       assignments: assignments.map { ReadCore.Assignment(part: $0.part, seat: $0.seat, from: $0.from, to: $0.to) },
                       done: done, locked: locked, ended: ended)
     }
 
     var meMember: ReadCore.Member? {
-        you.map { ReadCore.Member(id: $0.id, role: $0.role, seat: $0.seat, joinedAt: 0, seenAt: serverTime) }
+        you.map { ReadCore.Member(id: $0.id, role: $0.role, seat: $0.seat, joinedAt: 0, seenAt: serverTime, name: $0.name) }
     }
 }

@@ -20,7 +20,7 @@ object ReadCore {
     /** §12.6: a polled cursor slower than this shows "Slow connection". */
     const val SLOW_MS = 2000L
 
-    data class Member(val id: String, val role: String, val seat: String?, val joinedAt: Double, val seenAt: Double)
+    data class Member(val id: String, val role: String, val seat: String?, val joinedAt: Double, val seenAt: Double, val name: String? = null)
     data class Seat(val id: String, val label: String)
     data class Assignment(val part: String, val seat: String, val from: String? = null, val to: String? = null)
     data class Room(
@@ -36,6 +36,8 @@ object ReadCore {
         val done: List<String> = emptyList(),
         val locked: Boolean = false,
         val ended: Boolean = false,
+        val owner: String? = null,
+        val ownerName: String? = null,
     )
     data class PartRange(val part: String, val from: String?, val to: String?)
     data class Next(val line: String, val inLines: Int)
@@ -144,6 +146,103 @@ object ReadCore {
         return next.firstOrNull()?.let { Lead(it.id, false) } ?: Lead(room.leader, true)
     }
 
+    // ---- Names, the receiver, Record in the room (PLAYS-DESIGN §12.10; golden-checked) ----
+
+    const val NAME_MAX = 40
+
+    /** [cleanName]'s answer for a name the room refuses (the golden `false`). */
+    const val NAME_REFUSED = "\u0000refused"
+
+    /** An adult's name on join: trimmed, at most 40, no control characters; null for none, [NAME_REFUSED] when not allowed. */
+    fun cleanName(room: Room, raw: String?): String? {
+        if (raw == null || raw.isBlank()) return null
+        if (room.kind == "class") return null
+        if (raw.any { it.code < 0x20 || it.code == 0x7f }) return NAME_REFUSED
+        val name = raw.trim()
+        return if (name.length > NAME_MAX) NAME_REFUSED else name
+    }
+
+    /** Whose device receives the room's takes: a class's teacher whoever leads, an adult room's leader. */
+    fun receiverOf(room: Room): String? = if (room.kind == "class") room.owner else room.leader
+
+    /** Whether a member may send a take of a line: a refusal code or null (any held line, in Record mode). */
+    fun recordRefusal(room: Room, cast: List<Pair<String, String>>, member: Member?, lineId: String): String? {
+        if (room.ended) return "room_ended"
+        if (room.mode != "record") return "not_recording"
+        if (member == null || member.role != "reader") return "readers_only"
+        val i = indexOf(cast, lineId)
+        if (i < 0) return "no_such_line"
+        if (member.id == receiverOf(room)) return "receiver_records_here"
+        if (!holds(room, cast, member, i)) return "not_your_line"
+        return null
+    }
+
+    fun leaderName(room: Room, members: List<Member>): String? {
+        val lead = members.firstOrNull { it.id == room.leader }
+        val seat = lead?.seat?.let { id -> room.seats.firstOrNull { it.id == id } }
+        if (seat != null) return seat.label
+        if (room.leader == room.owner && room.ownerName != null) return room.ownerName
+        return lead?.name
+    }
+
+    /** Who reads a line, by name: a seat's label, or the name an adult gave; null when nobody named holds it. */
+    fun readerName(snap: ReadSnapshot, reads: Reads?): String? {
+        if (reads == null) return null
+        if (reads.seat != null) return snap.seats.firstOrNull { it.id == reads.seat }?.label
+        val id = reads.holder ?: reads.members.firstOrNull() ?: return null
+        return snap.members.firstOrNull { it.id == id }?.name
+    }
+
+    /**
+     * Whether this device opens its microphone now: Record mode only, a line this member holds at the cursor and not done,
+     * never on the receiving device (it records only in One microphone), and not twice for the same arming.
+     */
+    fun shouldRecord(snap: ReadSnapshot?, cast: List<Pair<String, String>>, justDid: String?): Boolean {
+        val you = snap?.you ?: return false
+        if (snap.ended || snap.mode != "record" || you.role != "reader" || you.receives) return false
+        val i = indexOf(cast, snap.cursor)
+        if (i < 0 || !holds(snap.room, cast, snap.meMember, i)) return false
+        if (snap.cursor in snap.done) return false
+        return justDid != snap.cursor
+    }
+
+    /** `justDid` after a snapshot: kept while the line stays at the cursor and undone, else cleared. */
+    fun settleJustDid(snap: ReadSnapshot?, justDid: String?): String? {
+        if (justDid == null || snap == null) return justDid
+        return if (snap.cursor != justDid || justDid in snap.done) null else justDid
+    }
+
+    enum class TakeState { Recorded, Away, Waiting, Open }
+    data class TakeRow(val line: String, val part: String, val state: TakeState, val seat: String?, val holder: String?)
+    data class TakeCount(val key: String, val seat: String?, val holder: String?, var lines: Int, var recorded: Int)
+
+    /** The receiver's Takes sheet: each speaking line in script order with its state, and counts per reader (never a ranking). */
+    fun takeRows(snap: ReadSnapshot, cast: List<Pair<String, String>>, arrived: Set<String>, speaking: (String) -> Boolean): Pair<List<TakeRow>, List<TakeCount>> {
+        val room = snap.room
+        val done = snap.done.toSet()
+        val members = snap.members.map { Member(it.id, it.role, it.seat, 0.0, if (it.live) 0.0 else Double.NEGATIVE_INFINITY, it.name) }
+        val rows = mutableListOf<TakeRow>()
+        val counts = LinkedHashMap<String, TakeCount>()
+        for ((line, part) in cast) {
+            if (!speaking(part)) continue
+            val who = whoReads(room, cast, members, line, 0.0) ?: continue
+            val key = if (room.kind == "class") who.seat?.let { "seat:$it" } else who.holder?.let { "member:$it" }
+            val state = when {
+                line in arrived -> TakeState.Recorded
+                line in done -> TakeState.Away
+                key != null -> TakeState.Waiting
+                else -> TakeState.Open
+            }
+            rows += TakeRow(line, part, state, who.seat, who.holder)
+            if (key != null) {
+                val c = counts.getOrPut(key) { TakeCount(key, who.seat, who.holder, 0, 0) }
+                c.lines += 1
+                if (state == TakeState.Recorded) c.recorded += 1
+            }
+        }
+        return rows to counts.values.toList()
+    }
+
     // ---- The client's own rules ----
 
     /** The leader's Next and Back: the line after or before the cursor, or null at either end. */
@@ -178,7 +277,7 @@ object ReadCore {
 
     private val REFUSALS = mapOf(
         "bad_code" to "That is not a reading code.",
-        "no_such_room" to "No reading has that code.",
+        "no_such_room" to "No reading with that code.",
         "room_ended" to "This reading has ended.",
         "room_full" to "This reading is full.",
         "joining_locked" to "Joining is locked.",
@@ -194,6 +293,12 @@ object ReadCore {
         "class_not_found" to "No class has that code.",
         "revision_mismatch" to "This play has changed since it was cast.",
         "not_castable" to "This play cannot be read together.",
+        "bad_name" to "That name is not allowed.",
+        "no_such_pair" to "No screen shows that code.",
+        "pair_expired" to "That code has expired.",
+        "not_recording" to "The reading is not recording.",
+        "not_your_line" to "That line is someone else's.",
+        "school_consent_required" to "Waits for the school's consent.",
     )
 
     fun refusal(code: String): String = REFUSALS[code] ?: "Ear Drama could not be reached."

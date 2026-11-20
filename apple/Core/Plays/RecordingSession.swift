@@ -157,7 +157,8 @@ final class RecordingSession {
 
     /// Opens the microphone on a line until it ends (or Stop) and keeps the line window as a new take.
     /// The stand-ins held for the bleed check are released here, win or lose.
-    private func listenAndKeep(_ lineID: String, heard: [String: String]) async -> Take? {
+    private func listenAndKeep(_ lineID: String, heard: [String: String], part takePart: PartID? = nil,
+                               capture takeCapture: Take.Capture? = nil) async -> Take? {
         await announce()
         guard !ended else { heldStandIns = []; return nil }
         phase = .listening(lineID: lineID)
@@ -183,9 +184,9 @@ final class RecordingSession {
         do {
             let take = try store.withTakeWrite(production.id) {
                 let file = try store.writeTake(kept, production: production, lineID: lineID)
-                let take = Take(id: UUID().uuidString, lineID: lineID, part: part, file: file, created: .now,
+                let take = Take(id: UUID().uuidString, lineID: lineID, part: takePart ?? part, file: file, created: .now,
                                 frames: kept.samples.count, sampleRate: kept.sampleRate,
-                                capture: echoCancelled ? .aec : .direct, heard: heard,
+                                capture: takeCapture ?? (echoCancelled ? .aec : .direct), heard: heard,
                                 loudness: BS1770.integratedLoudness(kept.samples, sampleRate: kept.sampleRate),
                                 peak: BS1770.samplePeak(kept.samples), bleed: bleed)
                 mutate { $0.add(take) }
@@ -237,6 +238,17 @@ final class RecordingSession {
         } else {
             phase = mode == .step ? .review(lineID: lineID) : .idle
         }
+    }
+
+    /// Record in the room (PLAYS-DESIGN §12.10 item 1): the microphone opens on the line now, no cue played, and the
+    /// take is kept as the line's chosen one, credited to `part` (the reader's, not the session's) with capture `room`.
+    func recordInRoom(_ lineID: String, part: PartID) async -> Take? {
+        guard started, !isBusy, !ended else { return nil }
+        heldStandIns = []
+        cancelled = false
+        let take = await listenAndKeep(lineID, heard: [:], part: part, capture: .room)
+        if !failed { phase = .idle }
+        return take
     }
 
     /// Run through (owner ruling 4): the play runs straight through from the line's cue, other parts in

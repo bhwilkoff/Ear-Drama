@@ -258,7 +258,7 @@ struct StudioDoor {
 }
 
 /// Opens no microphone and plays nothing: room tone and every take come back empty, so nothing is written.
-private final class StubLiveAudio: LiveAudio {
+final class StubLiveAudio: LiveAudio {
     func outputRoute() -> AudioRoute { .headphones }
     func start(echoCancelled: Bool) throws {}
     func play(_ cue: CueAudio) async {}
@@ -267,7 +267,7 @@ private final class StubLiveAudio: LiveAudio {
     func stop() {}
 }
 
-private final class SilentStandIn: StandInVoice {
+final class SilentStandIn: StandInVoice {
     func render(_ text: String, part: PartID, rate: Float) async -> StandInAudio? { nil }
 }
 

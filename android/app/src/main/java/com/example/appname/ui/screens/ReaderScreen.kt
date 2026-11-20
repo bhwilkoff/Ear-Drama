@@ -199,6 +199,7 @@ import com.example.appname.plays.FinishedList
 import com.example.appname.data.EpisodeRow
 import com.example.appname.ui.PLAY_BOARD
 import com.example.appname.plays.ReadAlong
+import com.example.appname.plays.ReadCore
 import com.example.appname.plays.TableRead
 import com.example.appname.ui.VoicePickerSheet
 import com.example.appname.ui.VoicesSheet
@@ -251,7 +252,7 @@ private sealed interface Loaded {
 }
 
 /** A finished drama's read-along: its production id and the line each of its files speaks. */
-private class DramaAlong(val pid: String, val plan: List<ReadAlong.DramaLine>)
+internal class DramaAlong(val pid: String, val plan: List<ReadAlong.DramaLine>)
 
 /** The reader over one play, full screen: it opens at [startLine], else where this device last left off. */
 @Composable
@@ -264,6 +265,7 @@ fun ReaderScreen(
     drama: String? = null,
     onBack: () -> Unit,
     onOpenStudio: (String, String, String?) -> Unit = { _, _, _ -> },
+    room: RoomSeam? = null,
 ) {
     val container = LocalAppContainer.current
     val plays = container.plays
@@ -295,7 +297,7 @@ fun ReaderScreen(
         is Loaded.Ready -> ReaderBody(
             l.script, startLine, if (productionId != null && part != null) StudioTarget(productionId, PartID(part)) else null,
             onBack, onOpenStudio, alongProduction = productionId.takeIf { along && part == null },
-            alongDrama = l.drama.takeIf { along },
+            alongDrama = l.drama.takeIf { along }, room = room,
         )
     }
 }
@@ -1133,6 +1135,7 @@ private fun DrawScope.drawSlice(
     hidden: Boolean,
     flash: Boolean,
     underline: Boolean,
+    lit: Boolean = false,
     studio: StudioPaint? = null,
     marks: MarkLayer? = null,
 ) {
@@ -1140,6 +1143,11 @@ private fun DrawScope.drawSlice(
     val tone = blk.hue ?: ink.accent
     val x0 = ink.insetPx + blk.xOffEm * ink.bodyPx
     val shift = top - layout.getLineTop(from)
+    if (lit) {
+        val up = if (from == 0 && blk.gapEm < GAP_EM) blk.gapEm * ink.bodyPx else ink.pad
+        val down = if (blk.speechEnd) ink.pad else 0f
+        drawRect(tone.copy(alpha = 0.2f), Offset(0f, top - up), Size(size.width, bottom - top + up + down))
+    }
     if (tint) {
         val up = if (from == 0 && blk.gapEm < GAP_EM) blk.gapEm * ink.bodyPx else ink.pad
         val down = if (blk.speechEnd) ink.pad else 0f
@@ -1267,8 +1275,13 @@ private fun DrawScope.drawSlice(
     }
 }
 
-private fun hideable(b: Blk, mineRole: String?, hiding: Boolean, peeked: Int?) =
-    hiding && mineRole != null && b.kind == Kind.Text && b.role == mineRole && b.owner != peeked
+/** Whose lines are mine: a role (I'm playing), or in a room the exact lines this reader or seat holds (claims, assignment ranges). */
+private class Mine(val role: String?, val lines: Set<Int>?, val lit: Int? = null) {
+    fun has(b: Blk) = if (lines != null) b.role != null && b.owner in lines else role != null && b.role == role
+}
+
+private fun hideable(b: Blk, mine: Mine, hiding: Boolean, peeked: Int?) =
+    hiding && mine.has(b) && b.kind == Kind.Text && b.owner != peeked
 
 /** One page: its slices of the blocks it holds, measured now from the same text and width the pagination used. */
 @Composable
@@ -1277,7 +1290,7 @@ private fun PageView(
     page: ReaderPagination.Page?,
     flow: ReaderFlow,
     pal: Palette,
-    mineRole: String?,
+    mine: Mine,
     hiding: Boolean,
     peeked: Int?,
     flash: Int?,
@@ -1292,10 +1305,10 @@ private fun PageView(
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     val segs = page?.segs.orEmpty()
-    val layouts = remember(page, flow, hiding, mineRole, peeked) {
+    val layouts = remember(page, flow, hiding, mine, peeked) {
         segs.map { seg ->
             val b = flow.blocks[seg.block]
-            measureBlk(measurer, flow, b, hideable(b, mineRole, hiding, peeked))
+            measureBlk(measurer, flow, b, hideable(b, mine, hiding, peeked))
         }
     }
     val ink = rememberInk(pal, flow)
@@ -1312,10 +1325,10 @@ private fun PageView(
         head?.let { measurer.measure(it, TextStyle(fontSize = with(density) { (CAPTION_EM * flow.bodyPx).toSp() })) }
     }
     val description = remember(page, flow) { segs.joinToString(" ") { flow.blocks[it.block].description } }
-    val geos = remember(segs, layouts, flow, hiding, mineRole, peeked, ink, headPx) {
+    val geos = remember(segs, layouts, flow, hiding, mine, peeked, ink, headPx) {
         segs.mapIndexed { s, seg ->
             val b = flow.blocks[seg.block]
-            SegGeo(seg.block, b, layouts[s], seg.top + headPx, seg.bottom + headPx, seg.from, seg.to, ink.insetPx + b.xOffEm * ink.bodyPx, hideable(b, mineRole, hiding, peeked))
+            SegGeo(seg.block, b, layouts[s], seg.top + headPx, seg.bottom + headPx, seg.from, seg.to, ink.insetPx + b.xOffEm * ink.bodyPx, hideable(b, mine, hiding, peeked))
         }
     }
     var origin by remember { mutableStateOf(Offset.Zero) }
@@ -1353,19 +1366,20 @@ private fun PageView(
                     val b = flow.blocks[seg.block]
                     drawSlice(
                         layouts[s], b, seg.from, seg.top, seg.bottom, ink,
-                        tint = mineRole != null && b.role == mineRole && b.kind != Kind.Heading,
-                        hidden = hideable(b, mineRole, hiding, peeked), flash = b.owner == flash,
-                        underline = mineRole != null && b.cueRole == mineRole,
+                        tint = mine.has(b) && b.kind != Kind.Heading,
+                        hidden = hideable(b, mine, hiding, peeked), flash = b.owner == flash,
+                        underline = mine.role != null && b.cueRole == mine.role,
+                        lit = mine.lit == b.owner && b.kind != Kind.Heading,
                         studio = studio,
                         marks = MarkLayer(if (ui.model.show) ui.model.byLine[flow.ids[b.owner]].orEmpty() else emptyList(), selRange(sel, seg.block, b.text.length), selTint),
                     )
                 }
                 if (studio?.current != null) {
-                    val mine = segs.filter { flow.blocks[it.block].let { b -> b.owner == studio.current && b.role == studio.role } }
-                    if (mine.isNotEmpty()) {
+                    val current = segs.filter { flow.blocks[it.block].let { b -> b.owner == studio.current && b.role == studio.role } }
+                    if (current.isNotEmpty()) {
                         val margin = 6.dp.toPx()
-                        val top = mine.first().top - ink.pad - margin
-                        val bottom = mine.last().bottom + ink.pad + margin
+                        val top = current.first().top - ink.pad - margin
+                        val bottom = current.last().bottom + ink.pad + margin
                         val stroke = when (studio.outline) {
                             StudioOutline.Ink -> Stroke(1.5.dp.toPx())
                             StudioOutline.Armed -> Stroke(2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())))
@@ -1423,7 +1437,7 @@ private fun PageView(
         }
         segs.forEach { seg ->
             val b = flow.blocks[seg.block]
-            if (hideable(b, mineRole, hiding, peeked)) {
+            if (hideable(b, mine, hiding, peeked)) {
                 val top = seg.top + headPx
                 Box(
                     Modifier
@@ -1460,11 +1474,11 @@ private fun rememberInk(pal: Palette, flow: ReaderFlow): Ink {
 /** One block in Scroll: the whole of it, its width the column's. */
 @Composable
 private fun ScrollBlock(
-    blk: Blk, index: Int, flow: ReaderFlow, pal: Palette, mineRole: String?, hiding: Boolean, peeked: Int?, flash: Boolean, ui: MarkUi, onPeek: (Int) -> Unit,
+    blk: Blk, index: Int, flow: ReaderFlow, pal: Palette, mine: Mine, hiding: Boolean, peeked: Int?, flash: Boolean, ui: MarkUi, onPeek: (Int) -> Unit,
 ) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val hidden = hideable(blk, mineRole, hiding, peeked)
+    val hidden = hideable(blk, mine, hiding, peeked)
     val m = remember(blk, flow, hidden) { measureBlk(measurer, flow, blk, hidden) }
     val ink = rememberInk(pal, flow)
     val height = with(density) { m.text.size.height.toDp() }
@@ -1500,8 +1514,9 @@ private fun ScrollBlock(
     ) {
         drawSlice(
             m, blk, 0, 0f, m.text.size.height.toFloat(), ink,
-            tint = mineRole != null && blk.role == mineRole && blk.kind != Kind.Heading, hidden = hidden, flash = flash,
-            underline = mineRole != null && blk.cueRole == mineRole,
+            tint = mine.has(blk) && blk.kind != Kind.Heading, hidden = hidden, flash = flash,
+            underline = mine.role != null && blk.cueRole == mine.role,
+            lit = mine.lit == blk.owner && blk.kind != Kind.Heading,
             marks = MarkLayer(if (ui.model.show) ui.model.byLine[flow.ids[blk.owner]].orEmpty() else emptyList(), selRange(sel, index, blk.text.length), selTint),
         )
         if (sel != null) drawHandles(geos, sel, handleColor, handleR, 2.dp.toPx())
@@ -1543,7 +1558,7 @@ private fun readerKeyName(key: Key): String? = when (key) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-private fun ReaderBody(
+internal fun ReaderBody(
     script: PlayScript,
     startLine: String?,
     studioTarget: StudioTarget?,
@@ -1551,6 +1566,8 @@ private fun ReaderBody(
     onOpenStudio: (String, String, String?) -> Unit,
     alongProduction: String? = null,
     alongDrama: DramaAlong? = null,
+    room: RoomSeam? = null,
+    marksDao: com.example.appname.plays.MarkDao? = null,
 ) {
     val context = LocalContext.current
     val store = remember { ReaderStore(context.getSharedPreferences("ed.reader", android.content.Context.MODE_PRIVATE)) }
@@ -1561,8 +1578,9 @@ private fun ReaderBody(
     val container = LocalAppContainer.current
     val muted = com.example.appname.navigation.LocalPlayerMuted.current
     val television = LocalIsTelevision.current
-    val deviceVoices = rememberDeviceVoices()
-    val castHandle = rememberCast(deviceVoices, script, studioTarget?.production)
+    // A reader in a room makes no sound (PLAYS-DESIGN §12.3), so it has no cast to hear.
+    val deviceVoices = if (room == null) rememberDeviceVoices() else null
+    val castHandle = deviceVoices?.let { rememberCast(it, script, studioTarget?.production) }
     val studio = rememberStudio(studioTarget, script, startLine, castHandle)
     var prefs by remember { mutableStateOf(store.prefs()) }
     var volumeKeys by remember { mutableStateOf(store.volumeKeys) }
@@ -1585,7 +1603,7 @@ private fun ReaderBody(
     val snackbar = remember { SnackbarHostState() }
     val marksModel = remember(script.id) {
         MarksModel(
-            script, MarksRepository(MarksDatabase.get(context).marks()),
+            script, MarksRepository(marksDao ?: MarksDatabase.get(context).marks()),
             MarksPrefsStore(context.getSharedPreferences("ed.marks", android.content.Context.MODE_PRIVATE)), scope,
         )
     }
@@ -1599,6 +1617,21 @@ private fun ReaderBody(
     var pageLabel by remember { mutableStateOf("") }
     val posIndex = remember(posId, script) { script.lines.indexOfFirst { it.id == posId }.coerceAtLeast(0) }
     val mineRole = part?.let { PartID(it).roleName }
+    // The room seam (PLAYS-DESIGN §12, ANDROID-DESIGN §4.19): the reader follows the room's cursor and tints the lines this device holds.
+    val roomState = room?.session?.state?.collectAsState()?.value
+    val roomSnap = roomState?.snapshot
+    val roomCast = remember(script) { script.lines.map { it.id to it.part.raw } }
+    val roomMine: Set<Int>? = remember(roomSnap?.generation, roomSnap?.you, roomSnap?.claims, roomSnap?.assignments) {
+        val s = roomSnap
+        if (s == null || s.you?.role == "screen") null
+        else script.lines.indices.filter { ReadCore.holds(s.room, roomCast, s.meMember, it) }.toSet()
+    }
+    val roomIdx = roomSnap?.cursor?.let { id -> script.lines.indexOfFirst { it.id == id }.takeIf { it >= 0 } }
+    val mine = remember(mineRole, roomMine, roomIdx, room == null) { Mine(if (room == null) mineRole else null, roomMine, roomIdx) }
+    var roomHide by rememberSaveable(script.id) { mutableStateOf(false) }
+    val roomHiding = roomHide && roomSnap?.mode == "rehearse"
+    val roomFollow = remember(script.id) { ReadAlong.Follow() }
+    var roomAway by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
     val turner = remember { Turner() }
     val animationsOff = remember {
@@ -1690,6 +1723,10 @@ private fun ReaderBody(
     }
     fun follow(id: String) = goTo(script.lines.indexOfFirst { it.id == id }, outline = false)
     SideEffect { studio?.studio?.onFollow = { id -> follow(id) } }
+    LaunchedEffect(roomSnap?.cursor) {
+        val cursor = roomSnap?.cursor ?: return@LaunchedEffect
+        if (roomFollow.line(cursor).turn) follow(cursor)
+    }
 
     // Read along (PLAYS-DESIGN §2.11): the production's listen-through, the page following the line heard.
     val alongMode = alongProduction != null || alongDrama != null
@@ -1699,7 +1736,10 @@ private fun ReaderBody(
     var backShown by remember { mutableStateOf(false) }
     var alongListen by remember { mutableStateOf<LiveListen?>(null) }
     var alongJob by remember { mutableStateOf<Job?>(null) }
-    fun alongAway() { if (alongMode && alongFollow.following) alongFollow.away() }
+    fun alongAway() {
+        if (alongMode && alongFollow.following) alongFollow.away()
+        if (room != null && roomFollow.following) { roomFollow.away(); roomAway = true }
+    }
     fun stopAlong() {
         if (dramaOn) { dramaOn = false; container.playback.stop() }
         alongJob?.cancel()
@@ -1932,6 +1972,8 @@ private fun ReaderBody(
                     style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     color = genreColor(script.partHue(studio.part), dark) ?: onSurface,
                 )
+            } else if (room != null) {
+                Box(Modifier.weight(1f))
             } else {
                 var menu by remember { mutableStateOf(false) }
                 Box(Modifier.weight(1f)) {
@@ -1976,12 +2018,12 @@ private fun ReaderBody(
                     IconButton(onClick = { myLine(1) }) { Icon(Icons.Filled.VerticalAlignBottom, contentDescription = "Next line") }
                 }
             }
-            if (part != null) {
+            if (part != null && room == null) {
                 IconToggleButton(checked = hiding, onCheckedChange = { hiding = it; peeked = null; haptics(Haptic.Selection) }) {
                     Icon(if (hiding) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = "Hide my lines")
                 }
             }
-            if (studio == null && part != null && !television && !alongMode) {
+            if (studio == null && part != null && !television && !alongMode && room == null) {
                 IconButton(onClick = { record() }) { Icon(Icons.Filled.Mic, contentDescription = "Record") }
             }
             // A review hides the page count and the Studio button so its three buttons fit at 320 dp.
@@ -2006,8 +2048,8 @@ private fun ReaderBody(
     val stage: @Composable () -> Unit = {
         BoxWithConstraints(
             Modifier.fillMaxSize().clipToBounds().focusRequester(focus).focusable().then(keys)
-                .pointerInput(alongMode) {
-                    if (alongMode) awaitEachGesture { awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial); alongAway() }
+                .pointerInput(alongMode, room == null) {
+                    if (alongMode || room != null) awaitEachGesture { awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial); alongAway() }
                 },
         ) {
             val shownPrefs = if (studio != null && !prefs.pages) prefs.copy(layout = "pages") else prefs
@@ -2032,7 +2074,7 @@ private fun ReaderBody(
                 }
                 f.paged != null -> key(f) {
                     PagesStage(
-                        f, f.paged, posIndex = posIndex, jump = jump, mineRole = mineRole, hiding = hiding, peeked = peeked, flash = heardIdx ?: flash,
+                        f, f.paged, posIndex = posIndex, jump = jump, mine = mine, hiding = if (room != null) roomHiding else hiding, peeked = if (roomHiding) peeked ?: roomIdx else peeked, flash = heardIdx ?: flash,
                         pal = pal, headPx = headPx, animationsOff = animationsOff, turner = turner, haptics = { haptics(Haptic.Selection) },
                         vertical = vertical, gap = gapPx, ui = ui,
                         onPos = { posId = script.lines[it].id },
@@ -2049,7 +2091,7 @@ private fun ReaderBody(
                 }
                 else -> key(f) {
                     ScrollStage(
-                        f, posIndex = posIndex, jump = jump, mineRole = mineRole, hiding = hiding, peeked = peeked, flash = heardIdx ?: flash, pal = pal,
+                        f, posIndex = posIndex, jump = jump, mine = mine, hiding = if (room != null) roomHiding else hiding, peeked = if (roomHiding) peeked ?: roomIdx else peeked, flash = heardIdx ?: flash, pal = pal,
                         turner = turner, margin = marginPx, vertical = vertical, ui = ui,
                         onPos = { posId = script.lines[it].id }, onPeek = { peeked = it }, onLabel = { pageLabel = it },
                     )
@@ -2081,7 +2123,7 @@ private fun ReaderBody(
                 },
                 navigationIcon = { IconButton(onClick = { stopHearing(); stopAlong(); onBack() }) { Icon(Icons.Filled.Close, contentDescription = "Close") } },
                 actions = {
-                    if (castHandle != null) IconButton(onClick = { sheet = "voices" }) { Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Voices") }
+                    if (castHandle != null && room == null) IconButton(onClick = { sheet = "voices" }) { Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Voices") }
                     IconButton(onClick = { sheet = "marks" }) { Icon(Icons.Filled.Bookmark, contentDescription = "Marks") }
                     IconButton(onClick = { sheet = "contents" }) { Icon(Icons.AutoMirrored.Filled.Toc, contentDescription = "Contents") }
                     IconButton(onClick = { sheet = "search" }) { Icon(Icons.Filled.Search, contentDescription = "Search") }
@@ -2102,6 +2144,13 @@ private fun ReaderBody(
                                 color = MaterialTheme.colorScheme.primary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (room != null && roomSnap != null) {
+                            RoomBar(
+                                room, roomState, roomSnap, script, roomCast, roomHide, onHide = { roomHide = it },
+                                away = roomAway, onBackToLine = { roomAway = false; roomFollow.back()?.let { follow(it) } },
+                                hasMine = !roomMine.isNullOrEmpty(),
                             )
                         }
                         if (backShown) {
@@ -2206,7 +2255,7 @@ private fun PagesStage(
     paged: ReaderPagination.Paged,
     posIndex: Int,
     jump: Int,
-    mineRole: String?,
+    mine: Mine,
     hiding: Boolean,
     peeked: Int?,
     flash: Int?,
@@ -2271,7 +2320,7 @@ private fun PagesStage(
     SideEffect { turner.turn = turn }
 
     Box(
-        Modifier.fillMaxSize().pointerInput(flow, mineRole, hiding, peeked, studio?.role) {
+        Modifier.fillMaxSize().pointerInput(flow, mine, hiding, peeked, studio?.role) {
             detectTapGestures { off ->
                 val spreadW = per * flow.colPx + (per - 1) * gap
                 val left = (size.width - spreadW) / 2
@@ -2283,7 +2332,7 @@ private fun PagesStage(
                     onSelect(hit.owner)
                     return@detectTapGestures
                 }
-                if (hit != null && hideable(hit, mineRole, hiding, peeked)) {
+                if (hit != null && hideable(hit, mine, hiding, peeked)) {
                     onPeek(hit.owner)
                     return@detectTapGestures
                 }
@@ -2303,7 +2352,7 @@ private fun PagesStage(
             ) {
                 for (k in 0 until per) {
                     PageView(
-                        spread * per + k, paged.pages.getOrNull(spread * per + k), flow, pal, mineRole, hiding, peeked, flash, headPx, onPeek,
+                        spread * per + k, paged.pages.getOrNull(spread * per + k), flow, pal, mine, hiding, peeked, flash, headPx, onPeek,
                         Modifier.width(with(density) { flow.colPx.toDp() }).fillMaxSize(),
                         ui = ui, studio = studio, onTakes = onTakes, onRing = onRing,
                     )
@@ -2318,7 +2367,7 @@ private fun ScrollStage(
     flow: ReaderFlow,
     posIndex: Int,
     jump: Int,
-    mineRole: String?,
+    mine: Mine,
     hiding: Boolean,
     peeked: Int?,
     flash: Int?,
@@ -2368,7 +2417,7 @@ private fun ScrollStage(
         items(flow.blocks.size, key = { it }) { b ->
             val blk = flow.blocks[b]
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                ScrollBlock(blk, b, flow, pal, mineRole, hiding, peeked, blk.owner == flash, ui, onPeek)
+                ScrollBlock(blk, b, flow, pal, mine, hiding, peeked, blk.owner == flash, ui, onPeek)
             }
         }
     }

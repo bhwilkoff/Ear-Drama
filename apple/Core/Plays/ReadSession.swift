@@ -9,6 +9,27 @@ import Observation
 /// A Worker refusal or a transport failure, by the Worker's own code (`ReadCore.refusal` words it).
 nonisolated struct ReadFailure: Error, Equatable, Sendable {
     var code: String
+
+    /// A refusal as the Worker wrote it. The Worker's own `error` code wins; a body without one (a route the Worker
+    /// does not know, a proxy's page) reads by its status, so an unknown room is "No reading with that code." and
+    /// never "could not be reached" (PLAYS-DESIGN §12.10 item 8).
+    static func of(status: Int, data: Data) -> ReadFailure {
+        let o = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        if let code = o?["error"] as? String, code != "not_found" { return ReadFailure(code: code) }
+        switch status {
+        case 404: return ReadFailure(code: "no_such_room")
+        case 410: return ReadFailure(code: "room_ended")
+        case 429: return ReadFailure(code: "rate_limited")
+        default: return ReadFailure(code: "error")
+        }
+    }
+}
+
+/// The code a TV shows and the key it waits with (`POST /v1/read/pair`).
+nonisolated struct ReadPairing: Equatable, Sendable {
+    var code: String
+    var key: String
+    var expiresAt: Double
 }
 
 nonisolated struct ReadJoined: Sendable {
@@ -32,6 +53,14 @@ nonisolated protocol ReadWire: Sendable {
     func poll(code: String, key: String) async throws -> ReadSnapshot
     func send(code: String, key: String, message: Data) async throws -> ReadSnapshot?
     func socket(code: String) -> (any ReadSocket)?
+    /// A reader's take of a line it holds, passing through to the room's receiver (`PUT /v1/read/{code}/takes/{id}`).
+    func sendTake(code: String, key: String, takeID: String, audio: Data, contentType: String, meta: TakeMeta) async throws
+    /// The receiver's pickup: the next take, or nil after the Worker's 25 second wait.
+    func inbox(code: String, key: String) async throws -> PickedTake?
+    /// A TV asks for a pairing code, then waits; a leader attaches it to a room.
+    func pair() async throws -> ReadPairing
+    func pairWait(_ pairing: ReadPairing) async throws -> ReadJoined?
+    func attachScreen(code: String, key: String, pairCode: String) async throws
 }
 
 nonisolated struct WorkerReadWire: ReadWire {
@@ -42,20 +71,19 @@ nonisolated struct WorkerReadWire: ReadWire {
         "/v1/read/" + (code.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? code)
     }
 
-    private func failure(_ status: Int, _ data: Data) -> ReadFailure {
-        let o = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-        if let code = o?["error"] as? String { return ReadFailure(code: code) }
-        return ReadFailure(code: status == 429 ? "rate_limited" : "error")
-    }
+    private func failure(_ status: Int, _ data: Data) -> ReadFailure { ReadFailure.of(status: status, data: data) }
 
-    private func run(_ method: String, _ path: String, body: Data? = nil, key: String? = nil, bearer: Bool = false) async throws -> Data {
-        let headers = key.map { [Self.keyHeader: $0] } ?? [:]
+    private func run(_ method: String, _ path: String, body: Data? = nil, key: String? = nil, keyHeader: String = WorkerReadWire.keyHeader,
+                     bearer: Bool = false) async throws -> Data {
+        let headers = key.map { [keyHeader: $0] } ?? [:]
         let data: Data
         let status: Int
         do {
             (data, status) = bearer
                 ? try await api.workerResponse(method, path: path, body: body, headers: headers)
                 : try await api.anonWorkerResponse(method, path: path, body: body, headers: headers)
+        } catch WorkerError.notConfigured {
+            throw ReadFailure(code: "not_configured")
         } catch {
             throw ReadFailure(code: "offline")
         }
@@ -93,6 +121,61 @@ nonisolated struct WorkerReadWire: ReadWire {
     func socket(code: String) -> (any ReadSocket)? {
         guard let url = api.workerSocketURL(path: Self.at(code) + "/socket") else { return nil }
         return URLSessionReadSocket(url: url)
+    }
+
+    func sendTake(code: String, key: String, takeID: String, audio: Data, contentType: String, meta: TakeMeta) async throws {
+        let header = String(decoding: try JSONEncoder().encode(meta), as: UTF8.self)
+        let data: Data
+        let status: Int
+        do {
+            (data, status) = try await api.anonWorkerResponse("PUT", path: Self.at(code) + "/takes/" + Self.escape(takeID), body: audio,
+                                                             headers: [Self.keyHeader: key, "x-take": header, "Content-Type": contentType])
+        } catch WorkerError.notConfigured {
+            throw ReadFailure(code: "not_configured")
+        } catch {
+            throw ReadFailure(code: "offline")
+        }
+        guard 200...299 ~= status else { throw failure(status, data) }
+    }
+
+    func inbox(code: String, key: String) async throws -> PickedTake? {
+        let data: Data
+        let status: Int
+        let header: String?
+        do {
+            (data, status, header) = try await api.anonInboxResponse(path: Self.at(code) + "/takes/inbox", headers: [Self.keyHeader: key])
+        } catch {
+            throw ReadFailure(code: "offline")
+        }
+        if status == 204 { return nil }
+        guard 200...299 ~= status else { throw failure(status, data) }
+        guard let header, let fields = try? JSONDecoder().decode(PickedTake.Fields.self, from: Data(header.utf8)) else {
+            throw ReadFailure(code: "error")
+        }
+        return PickedTake(fields: fields, data: data)
+    }
+
+    func pair() async throws -> ReadPairing {
+        let data = try await run("POST", "/v1/read/pair", body: Data("{}".utf8))
+        guard let o = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let code = o["pair_code"] as? String, let key = o["pair_key"] as? String else { throw ReadFailure(code: "error") }
+        return ReadPairing(code: code, key: key, expiresAt: (o["expires_at"] as? NSNumber)?.doubleValue ?? 0)
+    }
+
+    func pairWait(_ pairing: ReadPairing) async throws -> ReadJoined? {
+        let data = try await run("GET", "/v1/read/pair/" + Self.escape(pairing.code), key: pairing.key, keyHeader: "x-pair-key")
+        let o = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        if o?["paired"] as? Bool == false { return nil }
+        return try joined(data)
+    }
+
+    func attachScreen(code: String, key: String, pairCode: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["code": pairCode])
+        _ = try await run("POST", Self.at(code) + "/pair", body: body, key: key)
+    }
+
+    private static func escape(_ s: String) -> String {
+        s.addingPercentEncoding(withAllowedCharacters: .alphanumerics.union(CharacterSet(charactersIn: "-_.~"))) ?? s
     }
 }
 
@@ -177,6 +260,9 @@ final class ReadSession {
         enter(try await wire.join(code: code, body: Self.json(want)))
     }
 
+    /// A TV that was paired becomes this room's screen with the snapshot and key the pairing answered with.
+    func adopt(_ joined: ReadJoined) { enter(joined) }
+
     func leave() {
         stopTransport()
         key = nil; code = nil; snapshot = nil; ended = nil
@@ -217,6 +303,32 @@ final class ReadSession {
             else { refusal = f.code }
             throw f
         }
+    }
+
+    // MARK: - Takes and screens (PLAYS-DESIGN §12.10)
+
+    /// A reader's take of a line it holds, to the room's receiver. The Worker's refusal is thrown with its code; a room
+    /// that is gone ends the session.
+    func sendTake(takeID: String, audio: Data, meta: TakeMeta) async throws {
+        guard let code, let key, ended == nil else { throw ReadFailure(code: ended ?? "not_a_member") }
+        do {
+            try await wire.sendTake(code: code, key: key, takeID: takeID, audio: audio, contentType: meta.file.lowercased().hasSuffix(".wav") ? "audio/wav" : "audio/flac", meta: meta)
+        } catch let f as ReadFailure {
+            if Self.gone.contains(f.code) { end(f.code) }
+            throw f
+        }
+    }
+
+    /// The receiver's pickup (a long poll): the next take, or nil when none came.
+    func pickup() async throws -> PickedTake? {
+        guard let code, let key, ended == nil else { throw ReadFailure(code: ended ?? "not_a_member") }
+        return try await wire.inbox(code: code, key: key)
+    }
+
+    /// The leader's Add a Screen: the code a TV shows, typed here.
+    func attachScreen(pairCode: String) async throws {
+        guard let code, let key, ended == nil else { throw ReadFailure(code: ended ?? "not_a_member") }
+        try await wire.attachScreen(code: code, key: key, pairCode: pairCode)
     }
 
     // MARK: - State

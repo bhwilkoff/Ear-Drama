@@ -12,6 +12,8 @@ class DeepLinkTest {
         assertEquals(InboxRequest.ReadRoom("ABC123", true), DeepLink.parse("https://eardrama.org/read/ABC123?screen=1"))
         assertEquals(null, DeepLink.parse("eardrama://read/ABCDEU"))
         assertEquals(null, DeepLink.parse("https://eardrama.org/read"))
+        assertEquals(InboxRequest.ReadPair, DeepLink.parse("eardrama://read/pair"))
+        assertEquals(InboxRequest.ReadPair, DeepLink.parse("https://eardrama.org/read/pair"))
     }
 
     @Test fun `a series link and its twin open the series`() {

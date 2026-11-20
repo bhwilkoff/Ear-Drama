@@ -1,6 +1,7 @@
 package com.example.appname.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.core.content.edit
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,15 +10,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -37,6 +34,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.unit.sp
+import com.example.appname.ui.ClaimTvFocus
+import com.example.appname.ui.LocalIsTelevision
+import com.example.appname.ui.rememberCast
+import com.example.appname.ui.rememberDeviceVoices
+import com.example.appname.ui.tvFocusMark
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -71,7 +77,7 @@ import kotlinx.serialization.json.buildJsonObject
 // page with its casting board. Rules are ReadCore's and the transport ReadSession's; these only draw the snapshot.
 
 /** Where the Library's classes and a play's Read together lead (provided once by AppRoot). */
-class ReadNav(val openClass: (String) -> Unit = {}, val openRoom: (String) -> Unit = {})
+class ReadNav(val openClass: (String) -> Unit = {}, val openRoom: (String) -> Unit = {}, val showReading: () -> Unit = {})
 
 val LocalReadNav = androidx.compose.runtime.staticCompositionLocalOf { ReadNav() }
 
@@ -123,26 +129,22 @@ private fun n(count: Int, noun: String) = if (count == 1) "1 $noun" else "$count
 
 private fun say(e: Exception): String = if (e is ReadFailure) ReadCore.refusal(e.code) else ReadCore.refusal("error")
 
-private fun msg(vararg pairs: Pair<String, Any>): JsonObject = buildJsonObject {
-    pairs.forEach { (k, v) ->
-        when (v) {
-            is Boolean -> put(k, JsonPrimitive(v))
-            is Number -> put(k, JsonPrimitive(v))
-            else -> put(k, JsonPrimitive(v.toString()))
-        }
-    }
-}
-
 // ---- The room ----
 
+/** A reader's join screen, then the reader itself with the room attached (ANDROID-DESIGN §4.19): no separate line list. */
 @Composable
 fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> Unit, seatDoor: String? = null) {
     val container = LocalAppContainer.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val session = remember { ReadHandover.take() ?: ReadSession(container.readWire, scope, diag = BuildConfig.DEBUG && LaunchDoors.diag) }
     val state by session.state.collectAsState()
+    val prefs = remember { context.getSharedPreferences("ed.read", android.content.Context.MODE_PRIVATE) }
     var failure by remember { mutableStateOf<String?>(null) }
+    var gone by remember { mutableStateOf(false) }
     var needsSeat by remember { mutableStateOf(false) }
+    var asking by remember { mutableStateOf(session.state.value.snapshot == null && !(BuildConfig.DEBUG && seatDoor != null)) }
+    var name by remember { mutableStateOf(prefs.getString("name", "").orEmpty()) }
     var attempt by remember { mutableIntStateOf(0) }
     var script by remember { mutableStateOf<PlayScript?>(null) }
     val wire = container.readClass
@@ -150,43 +152,93 @@ fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> U
     suspend fun join(seatKey: String? = null, seatId: String? = null, move: Boolean = false) {
         if (session.state.value.snapshot != null) return
         val normal = ReadCore.normalizeCode(code) ?: run { failure = ReadCore.refusal("bad_code"); return }
+        val typed = name.trim()
         val want = buildJsonObject {
             if (seatId != null && seatKey != null) { put("seat", JsonPrimitive(seatId)); put("seat_key", JsonPrimitive(seatKey)) }
+            else if (typed.isNotEmpty()) put("name", JsonPrimitive(typed))
             if (move) put("move", JsonPrimitive(true))
         }
         try {
             session.join(normal, want)
             needsSeat = false
+            prefs.edit { putString("name", typed) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: ReadFailure) {
-            if (e.code == "seat_required" || e.code == "seat_key_required") needsSeat = true else failure = ReadCore.refusal(e.code)
+            if (e.code == "seat_required" || e.code == "seat_key_required") needsSeat = true
+            else { failure = ReadCore.refusal(e.code); gone = e.code in ReadSession.GONE }
         } catch (e: Exception) {
             failure = say(e)
         }
     }
 
-    LaunchedEffect(attempt) { if (!needsSeat) join() }
+    LaunchedEffect(attempt, asking) { if (!asking && !needsSeat) join() }
     LaunchedEffect(state.snapshot?.scriptId) {
         val id = state.snapshot?.scriptId ?: return@LaunchedEffect
         script = container.plays.script(id)
     }
     DisposableEffect(Unit) { onDispose { session.pause() } }
 
-    Scaffold(topBar = { BackBar(onBack, script?.title ?: "Reading") }) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            val snap = state.snapshot
-            when {
-                state.ended != null -> Text(ReadCore.refusal(state.ended!!), Modifier.padding(Spacing.S4.dp), style = MaterialTheme.typography.bodyMedium)
-                snap != null -> ReadRoomContent(snap, state, script, session, onOpenScreen)
-                needsSeat -> SeatPicker(wire, seatDoor, onClaimed = { seatKey, seatId, move -> scope.launch { join(seatKey, seatId, move) } })
-                failure != null -> Column(Modifier.padding(Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
-                    Text(failure!!, color = MaterialTheme.colorScheme.error)
-                    OutlinedButton(onClick = { failure = null; attempt += 1 }) { Text("Try again") }
+    val snap = state.snapshot
+    val s = script
+    when {
+        snap != null && s != null -> {
+            val record = remember(s.id) { roomRecord(container, context, session, s, scope) }
+            LaunchedEffect(record) { record.start(); record.resume() }
+            DisposableEffect(record) { onDispose { record.detach() } }
+            val seam = remember(record) { RoomSeam(session, record, wire, scope, onOpenScreen, onLeave = onBack) }
+            com.example.appname.ui.screens.ReaderScreen(s.id, startLine = snap.cursor, onBack = onBack, room = seam)
+        }
+        snap != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
+        }
+        else -> Scaffold(topBar = { BackBar(onBack, "Reading") }) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding)) {
+                when {
+                    state.ended != null -> Text(ReadCore.refusal(state.ended!!), Modifier.padding(Spacing.S4.dp), style = MaterialTheme.typography.bodyMedium)
+                    needsSeat -> SeatPicker(wire, seatDoor, onClaimed = { seatKey, seatId, move -> scope.launch { join(seatKey, seatId, move) } })
+                    failure != null -> Column(Modifier.padding(Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+                        Text(failure!!, color = MaterialTheme.colorScheme.error)
+                        if (!gone) OutlinedButton(onClick = { failure = null; attempt += 1 }) { Text("Try again") }
+                    }
+                    asking -> Column(Modifier.padding(Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+                        Text(ReadText.grouped(ReadCore.normalizeCode(code) ?: code), style = MaterialTheme.typography.headlineSmall)
+                        OutlinedTextField(
+                            name, { name = it.take(ReadCore.NAME_MAX) }, label = { Text("Your name, optional") }, singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(autoCorrectEnabled = false),
+                        )
+                        Button(onClick = { asking = false }) { Text("Join") }
+                    }
                 }
             }
         }
     }
+}
+
+/** The take machinery for a room on this device: the studio's session with no cue, the DEBUG stub microphone behind its door. */
+private fun roomRecord(
+    container: com.example.appname.app.AppContainer,
+    context: android.content.Context,
+    session: ReadSession,
+    script: PlayScript,
+    scope: kotlinx.coroutines.CoroutineScope,
+): com.example.appname.plays.ReadRecord {
+    val first = script.castParts.firstOrNull { it.id.isSpeaking }?.id ?: com.example.appname.plays.PartID.DIRECTIONS
+    val api = com.example.appname.plays.PlaysApi(container.accounts.worker)
+    return com.example.appname.plays.ReadRecord(
+        wire = container.readWire, session = session, store = container.plays.store, script = script, scope = scope,
+        engineFor = { production ->
+            val stub = BuildConfig.DEBUG && com.example.appname.navigation.StudioDoor.stub
+            val audio: com.example.appname.plays.LiveAudio = if (stub) StubLiveAudio(hold = false) else com.example.appname.plays.DeviceLiveAudio(context)
+            com.example.appname.plays.SessionRoomEngine(
+                com.example.appname.plays.RecordingSession(
+                    production, script, first, container.plays.store, audio, SilentStandIn(),
+                    wait = if (stub) ({ kotlinx.coroutines.delay(150) }) else ({ ms -> kotlinx.coroutines.delay(ms) }),
+                ),
+            )
+        },
+        upload = { pid, takeId, bytes, meta -> api.upload(pid, takeId, bytes, meta) },
+    )
 }
 
 @Composable
@@ -236,135 +288,16 @@ private fun SeatPicker(wire: com.example.appname.plays.ReadClassWire, seatDoor: 
     }
 }
 
-@Composable
-fun ReadRoomContent(snap: ReadSnapshot, state: ReadState, script: PlayScript?, session: ReadSession?, onOpenScreen: (String) -> Unit) {
-    val scope = rememberCoroutineScope()
-    val lines = script?.lines.orEmpty()
-    val cast = lines.map { it.id to it.part.raw }
-    val roomState = snap.room
-    val me = snap.meMember
-    val mine = remember(snap.generation, lines.size, snap.you) { cast.indices.filter { ReadCore.holds(roomState, cast, me, it) }.toSet() }
-    val next = snap.nextMine?.let { ReadCore.Next(it.line, it.inLines) }
-    val leads = snap.you?.leads == true
-    val isScreen = snap.you?.role == "screen"
-    var following by remember { mutableStateOf(true) }
-    var hideMine by remember { mutableStateOf(false) }
-    var menu by remember { mutableStateOf(false) }
-    var parts by remember { mutableStateOf(false) }
-    var ending by remember { mutableStateOf(false) }
-    val listState = rememberLazyListState()
-    val cursorIndex = lines.indexOfFirst { it.id == snap.cursor }
-
-    fun send(m: JsonObject) { scope.launch { try { session?.send(m) } catch (e: CancellationException) { throw e } catch (_: Exception) { } } }
-    fun move(delta: Int) { ReadCore.step(cast, snap.cursor, delta)?.let { send(msg("type" to "cursor", "line" to it, "base" to snap.cursorGen)) } }
-    fun again() {
-        val starts = script?.let { s -> ScriptReading.sectionsOf(s).filter { it.level != ScriptReading.Level.Part }.map { it.index } } ?: return
-        ReadCore.sceneStart(cast, snap.cursor, starts)?.takeIf { it != snap.cursor }?.let { send(msg("type" to "cursor", "line" to it, "base" to snap.cursorGen)) }
-    }
-
-    LaunchedEffect(snap.cursor, following, lines.size) {
-        if (following && cursorIndex >= 0) listState.animateScrollToItem(maxOf(0, cursorIndex - 1))
-    }
-    LaunchedEffect(listState) {
-        // Only a finger leaves the line; the scroll that follows the cursor is the app's own.
-        listState.interactionSource.interactions.collect { if (it is androidx.compose.foundation.interaction.DragInteraction.Start) following = false }
-    }
-
-    Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f)) {
-            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = androidx.compose.foundation.layout.PaddingValues(Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S3.dp)) {
-                itemsIndexed(lines, key = { _, l -> l.id }) { i, line ->
-                    LineRow(line, current = line.id == snap.cursor, mine = i in mine, hidden = i in mine && hideMine && snap.mode == "rehearse" && line.id != snap.cursor)
-                }
-            }
-            if (!following) {
-                Button(onClick = { following = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.S4.dp)) { Text("Back to the line") }
-            }
-        }
-        HorizontalDivider()
-        Column(Modifier.fillMaxWidth().padding(Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
-            val status = ReadText.status(state)
-            val fact = ReadCore.nextLine(next).orEmpty()
-            if (status.isNotEmpty() || fact.isNotEmpty()) Text(status.ifEmpty { fact }, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            state.refusal?.let { Text(ReadCore.refusal(it), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error) }
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (snap.mode == "rehearse" && !leads) {
-                    TextButton(onClick = { hideMine = !hideMine }) { Text(if (hideMine) "Show my lines" else "Hide my lines") }
-                }
-                Box(Modifier.weight(1f))
-                if (leads) {
-                    OutlinedButton(onClick = { move(-1) }) { Text("Back") }
-                    if (snap.mode == "rehearse") OutlinedButton(onClick = { again() }) { Text("Again") }
-                    Button(onClick = { move(1) }) { Text("Next") }
-                    Box {
-                        TextButton(onClick = { menu = true }) { Text("Reading") }
-                        DropdownMenu(menu, { menu = false }) {
-                            DropdownMenuItem(text = { Text(if (snap.mode == "rehearse") "Table read" else "Rehearse") }, onClick = { menu = false; send(msg("type" to "mode", "mode" to if (snap.mode == "rehearse") "read" else "rehearse")) })
-                            DropdownMenuItem(text = { Text(if (snap.locked) "Unlock joining" else "Lock joining") }, onClick = { menu = false; send(msg("type" to "lock", "locked" to !snap.locked)) })
-                            DropdownMenuItem(text = { Text(if (snap.readOpen) "Stop reading open parts" else "Read open parts") }, onClick = { menu = false; send(msg("type" to "read-open", "open" to !snap.readOpen)) })
-                            DropdownMenuItem(text = { Text("Open the screen") }, onClick = { menu = false; onOpenScreen(snap.code) })
-                            DropdownMenuItem(text = { Text("End the reading") }, onClick = { menu = false; ending = true })
-                        }
-                    }
-                } else if (snap.kind == "adult" && !isScreen) {
-                    TextButton(onClick = { parts = true }) { Text("Parts") }
-                }
-            }
-        }
-    }
-    if (ending) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { ending = false },
-            title = { Text("End the reading for everyone?") },
-            confirmButton = { TextButton(onClick = { ending = false; send(msg("type" to "end")) }) { Text("End the reading") } },
-            dismissButton = { TextButton(onClick = { ending = false }) { Text("Cancel") } },
-        )
-    }
-    if (parts) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { parts = false },
-            title = { Text("Parts") },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    script?.roles.orEmpty().forEach { role ->
-                        val id = com.example.appname.plays.PartID.role(role.name).raw
-                        val holder = snap.claims[id]
-                        ListItem(
-                            headlineContent = { Text(role.name) },
-                            trailingContent = {
-                                when {
-                                    holder != null && holder == snap.you?.id -> TextButton(onClick = { send(msg("type" to "release", "part" to id)) }) { Text("Release") }
-                                    holder == null -> TextButton(onClick = { send(msg("type" to "claim", "part" to id)) }) { Text("Take") }
-                                    else -> Text("Taken", style = MaterialTheme.typography.labelMedium)
-                                }
-                            },
-                        )
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { parts = false }) { Text("Done") } },
-        )
-    }
-}
-
-@Composable
-private fun LineRow(line: ScriptLine, current: Boolean, mine: Boolean, hidden: Boolean) {
-    val tint = if (mine) MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f) else androidx.compose.ui.graphics.Color.Transparent
-    Column(Modifier.fillMaxWidth().background(tint).padding(Spacing.S2.dp)) {
-        if (line.kind == ScriptLine.Kind.Speech) Text(line.part.title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        val words = if (hidden) "…" else line.spokenText.ifEmpty { line.source.orEmpty() }
-        Text(words, style = if (current) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium)
-    }
-}
-
 // ---- The shared screen ----
 
-/** The room's current line large, the code, who is here. A TV pairs as this and holds no part (rule 12). */
+/** The room's current line large, the code, who is here. A TV pairs as this and holds no part (rule 12); on a TV one Leave button holds focus. */
 @Composable
-fun ReadScreenContent(state: ReadState, script: PlayScript?) {
+fun ReadScreenContent(state: ReadState, script: PlayScript?, onLeave: (() -> Unit)? = null) {
     val snap = state.snapshot
     val lines = script?.lines.orEmpty()
     val i = maxOf(0, lines.indexOfFirst { it.id == snap?.cursor })
+    val leave = remember { FocusRequester() }
+    if (onLeave != null) ClaimTvFocus(leave, Unit)
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(Spacing.S6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.S8.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
             if (lines.isNotEmpty()) {
@@ -374,7 +307,8 @@ fun ReadScreenContent(state: ReadState, script: PlayScript?) {
             } else snap?.readsNow?.let { Text(com.example.appname.plays.PartID(it.part).title, style = MaterialTheme.typography.displaySmall) }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            Text(ReadText.status(state), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (onLeave != null) OutlinedButton(onClick = onLeave, Modifier.focusRequester(leave).tvFocusMark()) { Text("Leave") }
+            Text(ReadText.status(state), Modifier.padding(start = Spacing.S4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Box(Modifier.weight(1f))
             if (snap != null) {
                 Text(ReadText.grouped(snap.code), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { contentDescription = snap.code.toList().joinToString(" ") })
@@ -398,24 +332,48 @@ private fun ScreenLine(line: ScriptLine?, large: Boolean) {
     }
 }
 
-/** Joins as role "screen" and shows the room. On a TV this is the whole pairing; it records nothing. */
+/**
+ * Read open parts on a screen (PLAYS-DESIGN §12.10 item 10): the live stand-in voice reads the cursor's line only while the
+ * leader's switch is on and nobody holds the line, and stops the moment the cursor moves. Text only; nothing is stored.
+ */
+@Composable
+private fun ScreenVoice(state: ReadState, script: PlayScript?) {
+    val handle = rememberCast(rememberDeviceVoices(), script, null)
+    val line = state.snapshot?.openVoiceLine()
+    LaunchedEffect(line, handle) {
+        val h = handle ?: return@LaunchedEffect
+        val l = script?.lines?.firstOrNull { it.id == line } ?: return@LaunchedEffect
+        if (l.kind != ScriptLine.Kind.Speech || l.spokenText.isBlank()) return@LaunchedEffect
+        try { h.speaker.speak(l.spokenText, l.part) } finally { h.speaker.cancel() }
+    }
+}
+
+/** A room as its shared screen: the line large and, while Read open parts is on, the voice. Records nothing, holds no part. */
+@Composable
+private fun ReadScreenBody(session: ReadSession, onBack: () -> Unit) {
+    val container = LocalAppContainer.current
+    val state by session.state.collectAsState()
+    var script by remember { mutableStateOf<PlayScript?>(null) }
+    LaunchedEffect(state.snapshot?.scriptId) { state.snapshot?.scriptId?.let { script = container.plays.script(it) } }
+    ScreenVoice(state, script)
+    ReadScreenContent(state, script, onLeave = if (LocalIsTelevision.current) onBack else null)
+}
+
+/** Joins as role "screen" and shows the room (a deep link, or a phone's Open the screen); it records nothing. */
 @Composable
 fun ReadScreenScreen(code: String, onBack: () -> Unit) {
     val container = LocalAppContainer.current
     val scope = rememberCoroutineScope()
     val session = remember { ReadSession(container.readWire, scope, diag = BuildConfig.DEBUG && LaunchDoors.diag) }
-    val state by session.state.collectAsState()
     var failure by remember { mutableStateOf<String?>(null) }
     var attempt by remember { mutableIntStateOf(0) }
-    var script by remember { mutableStateOf<PlayScript?>(null) }
     LaunchedEffect(attempt) {
         val normal = ReadCore.normalizeCode(code) ?: run { failure = ReadCore.refusal("bad_code"); return@LaunchedEffect }
         try { session.join(normal, buildJsonObject { put("role", JsonPrimitive("screen")) }) } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }
     }
-    LaunchedEffect(state.snapshot?.scriptId) { state.snapshot?.scriptId?.let { script = container.plays.script(it) } }
     DisposableEffect(Unit) { onDispose { session.leave() } }
     Box(Modifier.fillMaxSize()) {
-        ReadScreenContent(state, script)
+        ReadScreenBody(session, onBack)
         failure?.let { f ->
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.S4.dp)) {
                 Text(f, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleMedium)
@@ -423,6 +381,46 @@ fun ReadScreenScreen(code: String, onBack: () -> Unit) {
                 TextButton(onClick = onBack) { Text("Back") }
             }
         }
+    }
+}
+
+/**
+ * Show a reading (a Google TV, ANDROID-DESIGN §4.19): the pairing code large, split 3 + 3, with the one line that says what
+ * to do; it asks again every 2 seconds, and once a leader adds it, becomes that room's screen. One Leave button holds focus.
+ */
+@Composable
+fun ReadPairScreen(onBack: () -> Unit) {
+    val container = LocalAppContainer.current
+    val scope = rememberCoroutineScope()
+    val pairing = remember { com.example.appname.plays.ReadPairing(container.readWire, scope) }
+    val st by pairing.state.collectAsState()
+    val session = remember { ReadSession(container.readWire, scope, diag = BuildConfig.DEBUG && LaunchDoors.diag) }
+    DisposableEffect(pairing) {
+        pairing.start()
+        onDispose { pairing.stop(); session.leave() }
+    }
+    LaunchedEffect(st.paired) { st.paired?.let { session.adopt(it) } }
+    if (st.paired != null) ReadScreenBody(session, onBack) else PairContent(st.code, st.refusal, onBack)
+}
+
+@Composable
+internal fun PairContent(code: String?, refusal: String?, onLeave: () -> Unit) {
+    val leave = remember { FocusRequester() }
+    ClaimTvFocus(leave, Unit)
+    Column(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(Spacing.S6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.S6.dp, Alignment.CenterVertically),
+    ) {
+        Text("Show a reading", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+        Text(
+            code?.let(com.example.appname.plays.ReadPairing::split).orEmpty(),
+            style = MaterialTheme.typography.displaySmall.let { it.copy(fontSize = it.fontSize * 2, lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified, letterSpacing = 8.sp) },
+            modifier = Modifier.semantics { contentDescription = code.orEmpty().toList().joinToString(" ") },
+        )
+        Text("On the leader's device: Reading, then Add a screen.", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        refusal?.let { Text(it, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error) }
+        OutlinedButton(onClick = onLeave, Modifier.focusRequester(leave).tvFocusMark()) { Text("Leave") }
     }
 }
 

@@ -50,6 +50,8 @@ sealed interface Route : NavKey {
     @Serializable data class Drama(val id: String) : Route
     /** A read room (DEEP_LINKS.md `read/{CODE}`): a reader on a phone or tablet; the shared screen on a TV or with [screen]. */
     @Serializable data class ReadRoom(val code: String, val screen: Boolean = false, val seat: String? = null) : Route
+    /** A Google TV's Show a reading: it shows a pairing code and becomes the room's screen once a leader adds it (ANDROID-DESIGN §4.19). */
+    @Serializable data object ReadPair : Route
     /** The teacher's class page and its casting board (PLAYS-DESIGN §12.4). Not on a TV. */
     @Serializable data class ClassPage(val id: String) : Route
     @Serializable data class ClassCasting(val classId: String, val productionId: String) : Route

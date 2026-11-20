@@ -49,6 +49,7 @@ const SHELL = [
   'js/reader.js',
   'js/read-core.js',
   'js/read-session.js',
+  'js/read-record.js',
   'js/read-ui.js',
   'js/class-ui.js',
   'js/marks-core.js',

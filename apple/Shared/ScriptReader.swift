@@ -94,6 +94,12 @@ final class ReaderModel {
     var studio: StudioModel?
     /// The read-along (PLAYS-DESIGN §2.11): a production's listen-through, the reader following the line heard.
     var along: AlongModel?
+    /// The read room this reader follows (PLAYS-DESIGN §12.5, §12.10): its cursor is the line lit and turned to (the
+    /// read-along's seam), its claims or seat ranges are my lines, its bar and Record row are the reader's chrome.
+    var room: RoomReaderModel?
+    /// The room's lines that are mine (any part or range), and the cursor's line index.
+    private(set) var roomMine: Set<Int>?
+    private(set) var roomCursor: Int?
     /// The line heard, lit on the page, and whether Back to the Line is offered.
     private(set) var alongLine: Int?
     private(set) var backToLine = false
@@ -308,10 +314,27 @@ final class ReaderModel {
         if step.turn, let id { go(to: id) }
     }
 
-    /// A touch on the page: the read-along stops turning it.
+    /// A touch on the page: the read-along, or the room, stops turning it.
     func userMoved() {
-        guard along != nil, follow.following else { return }
+        guard along != nil || room != nil, follow.following else { return }
         follow.away()
+        if room != nil { backToLine = true }
+    }
+
+    /// The room's snapshot moved: my lines, Hide My Lines in Rehearse, and the cursor lit and turned to (the page turns
+    /// unless the person turned away, and Back to the Line returns).
+    func roomChanged(_ snap: ReadSnapshot?) {
+        guard let room, let snap else { return }
+        let mineNow = Set(ReadCore.mineIndexes(snap.room, cast: room.cast, member: snap.meMember))
+        if roomMine != mineNow { roomMine = mineNow; mine = mineNow }
+        let wantHide = room.hideMine && snap.mode == "rehearse" && snap.you?.leads != true
+        if hide != wantHide { hide = wantHide }
+        let cursor = structure.indexByID[snap.cursor]
+        if roomCursor != cursor {
+            roomCursor = cursor
+            alongHeard(snap.cursor)
+        }
+        room.recorder.onSnapshot()
     }
 
     func backToTheLine() {
@@ -496,6 +519,7 @@ final class ReaderModel {
     // MARK: Keeping the place
 
     private func persist() {
+        guard room == nil else { return }
         saveTask?.cancel()
         let id = script.id, line = script.lines.indices.contains(position) ? script.lines[position].id : nil, part = part?.rawValue
         saveTask = Task { [defaults] in
@@ -538,6 +562,8 @@ struct ScriptReaderView: View {
     var studio: StudioTarget?
     var dock: AnyView?
     var controller: ReaderController?
+    /// A read room: the reader follows its cursor and carries its bar (PLAYS-DESIGN §12.5).
+    var room: RoomReaderModel?
     @Environment(PlaysLibrary.self) private var plays
     @Environment(AppStore.self) private var app
     @State private var script: PlayScript?
@@ -567,6 +593,14 @@ struct ScriptReaderView: View {
 
     private func load() async {
         failed = false
+        if let room {
+            let made = ReaderModel(script: room.script, startLine: room.snapshot?.cursor, door: nil)
+            made.room = room
+            made.part = nil
+            controller?.model = made
+            model = made
+            return
+        }
         if let target = studio, target.isDrama {
             let play: FinishedPlay?
             if let known = FinishedStore.shared.plays.first(where: { $0.id == target.production }) { play = known }
@@ -641,15 +675,21 @@ private struct ReaderScreen: View {
 
     var body: some View {
         #if os(macOS)
-        NavigationSplitView {
-            VStack(spacing: 0) {
-                ReaderContents(model: model)
-                Divider()
-                MarksNotebook(model: model)
+        Group {
+            if model.room != nil {
+                reader
+            } else {
+                NavigationSplitView {
+                    VStack(spacing: 0) {
+                        ReaderContents(model: model)
+                        Divider()
+                        MarksNotebook(model: model)
+                    }
+                    .navigationSplitViewColumnWidth(min: 220, ideal: 260)
+                } detail: {
+                    reader
+                }
             }
-            .navigationSplitViewColumnWidth(min: 220, ideal: 260)
-        } detail: {
-            reader
         }
         .modifier(StudioInspector(studio: studio, voices: model.voices))
         .focusedSceneValue(\.reader, model)
@@ -764,6 +804,9 @@ private struct ReaderScreen: View {
         .onChange(of: model.along?.lineID) { _, id in model.alongHeard(id) }
         .onChange(of: studio?.studio.current) { _, id in if let id { model.go(to: id) } }
         .onChange(of: studio?.listen.current?.lineID) { _, id in if let id { model.go(to: id) } }
+        .onChange(of: model.room?.snapshot, initial: true) { _, snap in model.roomChanged(snap) }
+        .onChange(of: model.room?.hideMine) { model.roomChanged(model.room?.snapshot) }
+        .task { await model.room?.begin() }
         #if os(iOS)
         .onChange(of: wide) { _, now in if now { studio?.sheet = false } }
         .sheet(isPresented: Binding(get: { (studio?.sheet ?? false) && !wide }, set: { studio?.sheet = $0 })) {
@@ -804,7 +847,7 @@ private struct ReaderScreen: View {
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         #if os(iOS)
         ToolbarItem(placement: .cancellationAction) {
-            Button { app.reading = nil } label: { Label("Close", systemImage: "xmark") }
+            if model.room == nil { Button { app.reading = nil } label: { Label("Close", systemImage: "xmark") } }
         }
         ToolbarItemGroup(placement: .primaryAction) {
             Button { sheet = .contents } label: { Label("Contents", systemImage: "list.bullet") }
@@ -841,7 +884,9 @@ private struct ReaderScreen: View {
     }
 
     @ViewBuilder private var bottomBar: some View {
-        if let studio { studioBar(studio) } else if let along = model.along { alongBar(along) } else { readerBar }
+        if let room = model.room {
+            RoomBar(room: room, pageLabel: model.pageLabel) { player.pause() }
+        } else if let studio { studioBar(studio) } else if let along = model.along { alongBar(along) } else { readerBar }
     }
 
     /// Read along (§2.11): Listen Through is the transport; Back to the Line shows after a touch turned the page away.
@@ -1147,6 +1192,16 @@ private struct ReaderPageView: View {
         marks.lineIndex = model.structure.indexByID
         marks.selection = model.selection
         marks.along = model.alongLine
+        if let mine = model.roomMine, let room = model.room {
+            marks.mineLines = mine
+            if let lit = model.roomCursor {
+                marks.peeked.insert(lit)
+                if mine.contains(lit) {
+                    marks.current = lit
+                    marks.outline = room.recorder.recording == model.script.lines[lit].id ? .recording : .ink
+                }
+            }
+        }
         if let studio = model.studio {
             marks.current = studio.studio.current.flatMap { model.structure.indexByID[$0] }
             marks.outline = Self.outline(studio)
@@ -1256,7 +1311,8 @@ private struct ReaderLineView: View {
                 block(line)
             }
         }
-        .background(model.alongLine == index ? Color.brandText.opacity(0.10) : Color.clear)
+        .background(model.alongLine == index ? Color.brandText.opacity(0.10)
+                    : model.roomMine?.contains(index) == true ? hueColor(line.role ?? "").opacity(0.10) : Color.clear)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(model.isHidden(index) ? "Show line" : ReaderPageView.spoken(line))
         .accessibilityAddTraits(model.isHidden(index) ? .isButton : [])
