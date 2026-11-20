@@ -355,6 +355,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     marks, sitelinks = star_evidence(s, same)
     served_series = {series_of[e] for e in served if e in series_of}
     show_rows = served_show_rows(s, served_series, live)
+    radio_rows = served_show_rows(s, served_series, live, radio_only=True)
     show_images = {sk: AP.pick_show(r, names.get(sk)) for sk, r in show_rows.items()}
     face_of = {sk: AP.series_face(credited_by_series.get(sk, {}), faces, marks.get(sk, ()), sitelinks)
                for sk in show_images}
@@ -382,7 +383,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     pictures, heroes, galleries = {}, {}, {}
     for sk, row in sorted(show_images.items()):
         pictures[sk] = (art_id(row), "show", row[1])
-        rows = show_rows[sk]
+        rows = radio_rows.get(sk, [])
         hero = AP.pick_hero(rows)
         if hero:
             heroes[sk] = art_id(hero)
@@ -1036,11 +1037,12 @@ def star_evidence(s, same=None):
     return marks, sitelinks
 
 
-def served_show_rows(s, series_keys, live=None):
+def served_show_rows(s, series_keys, live=None, radio_only=False):
     """{series key: [(file, source, cls, template, author, width, height, face, tie)]}: every show image
     art_policy serves for each series (show_served and names_the_show, and for a Commons name hit
     name_hit_served again), checked again here from the source rows, none whose file a liveness check found
-    gone (H9). The picture, hero and gallery are chosen from these. A source without series_art (a
+    gone (H9). The picture is chosen from these; the hero and gallery from the same with `radio_only` (a file that
+    says radio, names a marked person without being a screen capture, or sits in a radio publicity category). A source without series_art (a
     fixture, an older build) serves none."""
     tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     if "series_art" not in tables:
@@ -1067,7 +1069,8 @@ def served_show_rows(s, series_keys, live=None):
                                                 when, *reversed(run.get(sk, (None, None))), own_work,
                                                 deaths.get(sk)) and \
                 AP.names_the_show(file, cats, names.get(sk), people.get(sk, ()), p373.get(sk), nets.get(sk)) and \
-                (src != AP.NAME_SOURCE or AP.name_hit_served(file, cats, when, names.get(sk), *run.get(sk, (None, None)))):
+                (src != AP.NAME_SOURCE or AP.name_hit_served(file, cats, when, names.get(sk), *run.get(sk, (None, None)))) and \
+                (not radio_only or AP.gallery_is_radio(file, cats, template, author, people.get(sk, ()), nets.get(sk))):
             rows.setdefault(sk, []).append((file, src, cls, template, author, w, h, AP.face_text(AP.face_list(face)),
                                             identity))
     return rows

@@ -739,6 +739,30 @@ def lead_image_served(page_image_free, commons_status):
     return bool(page_image_free) and commons_status == "ok"
 
 
+# A screen capture or a screen producer's credit: "episode screenshot (NBC)", "NBC Productions", "Universal Pictures".
+SCREEN_CREDIT = re.compile(r"\b(screen\s?shots?|screen\s?captures?|still from|frame from|productions?|studios?|pictures|"
+                           r"television|tv|films?)\b", re.I)
+
+
+def gallery_is_radio(file, categories, template=None, author=None, people=(), networks=()):
+    """A gallery or hero file is radio (R3b section 5.2 rule 4, owner 2026-11-19): it has "radio" in its own name or
+    categories, or it names a person the program's records mark and is no screen capture, or it sits in a network's
+    radio publicity category. Television and film words refuse (`show_served`), and so does a screen capture or a
+    screen producer's credit when radio is not in the words: The Great Gildersleeve's 1955 television stills sit in
+    the program's own category and name Willard Waterman, so the category and the name alone do not make them radio."""
+    cats = list(categories or ())
+    hay = [file or ""] + cats
+    own = hay + [x for x in (template, author) if x]   # the file page's credit is its own words too ("CBS Radio")
+    if TELEVISION.search(" ".join(own)):
+        return False
+    if any(RADIO.search(h) for h in own):
+        return True
+    if SCREEN_CREDIT.search(" ".join(x for x in (template, author) if x)):
+        return False
+    folded = [_nt(h) for h in hay]
+    return any(len(_nt(p)) >= PERSON_MIN and any(_nt(p) in h for h in folded) for p in people or ())
+
+
 HERO_MIN_WIDTH = 600   # a hero fills a page header or Home's lead; narrower is soft at that size
 GALLERY_MAX = 6
 

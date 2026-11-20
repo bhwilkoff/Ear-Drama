@@ -118,6 +118,27 @@ check("control: a crop of a photograph already in the gallery is the same pictur
 check("control: nor the picture's own crop", [r[0] for r in AP.pick_gallery([row("Cast 1937 (cropped).jpg")], {"Cast 1937.jpg"})], [])
 check("control: a file listed twice is one entry", [r[0] for r in AP.pick_gallery([row("a.jpg"), row("a.jpg")])], ["a.jpg"])
 
+# --- Gallery and hero files must say radio (R3b section 5.2 rule 4; owner 2026-11-19) ------------------------
+GR = lambda f, cats=(), t=None, a=None, ppl=("Willard Waterman",), nets=("NBC",): AP.gallery_is_radio(f, list(cats), t, a, ppl, nets)
+check("radio: a network radio publicity category", GR("Mary Lee Rob 1948 NBC photo.jpg", ["NBC Radio publicity photos"], ppl=()), True)
+check("radio: the word in the file's own name", GR("Fibber and Molly radio studio 1941.jpg", ppl=()), True)
+check("radio: the page's credit says radio", GR("Hattie McDaniel Beulah 1948.jpg", ["Beulah (given name)"], "PD-Pre1978", "CBS Radio", ()), True)
+check("radio: a marked person named in the file, no screen credit", GR("Willard Waterman 1952.jpg", ["Willard Waterman"]), True)
+check("the Gildersleeve 1955 television still: the program's category, a marked person, an episode screenshot: refused",
+      GR("Willard Waterman in The Great Gildersleeve (The Expectant Father).jpg", ["The Great Gildersleeve", "Willard Waterman"],
+         "PD-US-not renewed", "episode screenshot (NBC)"), False)
+check("...and the same program's 1955 still credited to a producer is refused", GR(
+      "Great Gildersleeve 1.jpg", ["Stephanie Griffin", "The Great Gildersleeve", "Willard Waterman"], "PD-US-not renewed",
+      "NBC Productions"), False)
+check("control: a television word refuses even a marked person", GR("Willard Waterman Gildersleeve television 1955.jpg",
+      ["Willard Waterman"]), False)
+check("control: television in the page's credit refuses a radio publicity category", GR(
+      "Life of Riley cast 1953.JPG", ["NBC Radio publicity photos"], "PD-Pre1978", "NBC Television", ()), False)
+check("control: a plain publicity category without radio is not a radio category (the twins sit there)", GR(
+      "Lewis and Martin.jpg", ["Publicity photos"], ppl=()), False)
+check("control: a place that shares the program's name names no person", GR("Prairie Home Cemetery, Moorhead.jpg", ["Cemeteries"],
+      ppl=("Garrison Keillor",)), False)
+
 # --- H9: liveness ------------------------------------------------------------------------------
 check("liveness: 200 and a redirect chain's last 200 are ok", [AP.liveness_verdict(s) for s in (200, 301)], ["ok", "ok"])
 check("liveness: 404 and 410 are gone", [AP.liveness_verdict(s) for s in (404, 410)], ["gone", "gone"])
