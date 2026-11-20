@@ -87,6 +87,11 @@ the entry retire when circumstances change).
 | Outreach to RadioEchoes, Goldin/UMKC, OTRR, archive.org | Owner: skip for now (060); harvests stay polite | a harvest needs an export or a contact |
 | Archive Watch film cross-links in 1.0 | Owner left them out of 1.0 (058) | 1.x |
 | A separate Fire TV build without Google Play services | Owner 2026-10-28: "I don't think that the fire tv needs its own separate build if there are so few benefits." One Android build; Fire TV is guarded at run time (no Cast button, no Google sign-in without Play services) | Amazon rejects the build, or a Play-services library crashes on Fire TV |
+| A speech-following cursor in a read room (advance when the line is heard) | The reader who stumbles becomes the one the room waits on, publicly; a person always moves the play on (082, R3c §7) | a reader asks for hands-free paging for themselves alone, on their own device, never moving the room |
+| Reading-level labels, or casting suggested by ability | It labels children; the casting board shows the script's facts and the teacher decides (082, owner rule 2026-10-23 on invented ratings) | never, unless the owner reopens it |
+| Leaderboards, fluency scores, or ranking readers | Ranks children and scores performances (PLAYS-DESIGN §8 rule 6; `learner-experience-design` §5) | never, unless the owner reopens it |
+| Every phone speaking stand-ins in sync in a read room | Needs sub-100 ms timing between devices and fills a room with competing voices; only the screen speaks, between takes (082) | a bench measurement shows clock alignment under 50 ms on every platform and teachers ask for it |
+| The exquisite-corpse relay (each person hears only the line before theirs) | Hides the play from its performers, failing "does it deepen understanding" (R3c §3.5, §7) | a writing exercise, not a reading one, is proposed with its own learning test |
 
 ---
 

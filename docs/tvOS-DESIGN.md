@@ -304,6 +304,19 @@ The only shapes; a new one needs a new rule.
   phone, tablet or Mac, and each device keeps its own). Built 2026-11-14: the shared
   play's Listen Through sets `VoiceCast.production(rec.id, script:)` on its speaker
   before the run; build-verified only (no TV pass this round).
+  **The shared screen of a read room** (Decision 082, PLAYS-DESIGN §12.2; added
+  2026-11-19, not built: Round 3 T4). **Show a reading** (in Library, beside Listen
+  together) shows a short pairing code at 76 pt or larger; the teacher or host types it
+  on their own device, so the TV never asks for typing (the Jackbox direction of entry).
+  Paired, the TV joins the room as its screen and the same panel is driven by the
+  **room's cursor** instead of the audio: the current line with one before and two
+  after, speaker names in part hues, 29 pt or larger, and in a corner the room code and
+  how many are here (a fact). When the leader turns on **Read open parts**, the TV
+  speaks an unheld line with the device cast, never during a take. The TV records
+  nothing, holds no part, never leads, and takes no focus from the panel but one
+  **Leave** button. A dropped socket falls back to polling silently; the panel says
+  "Slow connection" only past 2 s (a warning). "Waiting for Ms. Ortiz" appears when a
+  class's leader is away (the room holds still).
 
 ## §5 The player
 

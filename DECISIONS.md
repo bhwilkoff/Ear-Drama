@@ -95,6 +95,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md` and 046-065 in `doc
 - 077: Audio starts without reading the whole file; Play on the loaded episode resumes it
 - 078: Kokoro voices: phonemes built in the catalog; apps first; the web on WebGPU only (answered 2026-11-15)
 - 079: A first take needs no account; empty productions stay out of sight; Today's scene everywhere (answered 2026-11-15)
+- 082: Reading together: read rooms, classes that own productions, takes that pass through (owner 2026-11-19)
 
 ---
 
@@ -137,6 +138,10 @@ is true. Every person table goes in USER_TABLES, and any person
 column that is not `user_id` in OTHER_PERSON_COLUMNS. Owner items P1 to P8
 (R2, consent words, a vetted deny list, report handling, school consent, the
 archive.org account, C6/C7, class ownership) are in PLAYS-DESIGN §11.6.
+
+**Superseded in part, 2026-11-19 (Decision 082)**: the R2 take store is not the
+path. Storage is archive.org; takes pass through the Worker to the leader's
+device and are deleted on arrival. P1 (turn on R2) is closed.
 
 ---
 
@@ -677,3 +682,95 @@ Core (`RecordingSession`, the `LiveAudio` engine), never in a view: a re-layout
 starts and stops nothing, and the engine rebuilds its tap into the same capture when
 the hardware reconfigures. PARITY rows "Now Playing beside its queue" and "Folding
 during a take". Android foldables and tablets may mirror both later (⏳).
+
+## 082: Reading together: read rooms, classes that own productions, takes that pass through (owner 2026-11-19)
+
+*Date: 2026-11-19*
+
+**Rule**: a group reads a play together in a **read room**: one shared cursor (a
+line id and a generation) that a person moves, on every device in the room, in
+four modes (Table read, Rehearse, Record in the room, Relay across time;
+PLAYS-DESIGN §12). Its rules live in the pure `worker/src/read-protocol.js`;
+each room is carried by its own **Durable Object over WebSockets**, with D1
+polling as the fallback for a client or a Worker without a socket, both with
+the same messages. A **class owns a production**, seen only by its seats; the
+parts its teacher assigns may record at once (elsewhere the one-part relay,
+C7, stays); a **seat** (a name the teacher typed) reads and records without an
+account, its takes belonging to the teacher's account. **Takes pass through**:
+each device records its own lines, and a take travels through the Worker to the
+leader's device during the session and is deleted the moment it arrives;
+nothing is kept at rest on Cloudflare (no R2, no audio in a Durable Object, KV,
+or D1). The finished recording goes to **archive.org**, uploaded by the
+teacher under their own name through the existing uploader (Decision 073),
+for classes marked 13 and over only, with the CC0 consent; an under-13 class's
+work is never published, and the teacher exports a file. One cross-platform
+read room, Apple included; no SharePlay.
+
+**Why**: the owner set the scope on 2026-11-19 (ROUND3-LOOP.md part 2): *"We need
+to build out how a teacher actually would manage that process. We also need to
+build out how someone would do this with a bunch of different devices in the
+same room (whether a classroom of kids or a group of adults doing a table
+read)."* Then the rulings: *"We are using archive.org for storage, not
+cloudflare. We already decided that teachers could upload the full recording
+under their name."* The classes bundle (rulings 3 to 5) was adopted as R3c
+recommended, except its storage. Decision 065 chose D1 polling for Listen
+Together "because Durable Objects are not on the free plan"; Cloudflare's
+pricing page now puts SQLite-backed Durable Objects on the free plan (R3c §1.3,
+fetched 2026-11-19), so that reason no longer holds **for read rooms**. The
+reasons to move them are measured: a reader's own line should light before
+they need it (one round trip on a socket against half a poll interval plus a
+round trip); 30 devices polling at 1 s behind one school address is the load
+Listen Together's per-address limits were set to refuse; and polled presence
+writes would spend the Worker's whole free D1 allowance at about 25 class
+periods a day, where an object keeps presence in memory. Listen Together stays
+on D1 until it has a reason of its own to move. Decision 066's R2 take store is
+not the path: it needed a payment method on file and kept every child's voice
+on Cloudflare, and the owner's ruling puts storage on archive.org.
+
+**How to apply**:
+- **The transport gate (T4)**: the socket must show a cursor delay under 300 ms
+  at the 95th percentile on the real bench (each device logs when it drew the
+  lit line, corrected by the protocol's `clockOffset`; 100 presses; polling's
+  numbers recorded beside it). Until T4 passes, polling is not removed and the
+  socket is not called done.
+- **The protocol** imports nothing (a test fails if it gains an import,
+  `fetch`, `WebSocket`, `env.`, `Date.now`, or `crypto.`). The web, Swift and
+  Kotlin ports are held to `worker/test/read-golden.json`, written by
+  `node worker/tools/read-golden.mjs` from the protocol itself, one file for
+  every stack. Codes, member keys, the clock and presence are Listen
+  Together's, copied with their constants (a test holds the two equal).
+- **Rules carried in the protocol**: only the leader moves the cursor; a move
+  carries the cursor generation it was made from, a repeat is a no-op, an old
+  generation is `stale`; in Record only the device holding the line ends it,
+  and the cursor skips lines nobody holds; an adult room's first claim of a
+  part wins; a class's parts come only from its assignments, which may split a
+  part by scene; a class room holds still for its leader (the teacher or the
+  seat they chose) and never passes the lead to a random student, while an
+  adult room hands it after 2 minutes to the reader present longest; a screen
+  never leads or holds a part; 40 members at most ("This reading is full").
+- **Limits by member or seat, never only by address**: read routes have their
+  own address floor (`READ_IP_LIMITER`, 3,000 a minute, in place of the
+  Worker-wide 600), a per-address join floor of 60 a minute against code
+  guessing, and 120 messages a minute per member key.
+- **Pass-through takes (T2)**: a take is refused when no leader's device is
+  present to receive it; it waits on the recording device (written there
+  first, as every take is) and sends when both are present. The Worker holds
+  it only in flight. No route, table or binding stores take audio.
+- **Publishing**: the teacher's Publish uploads the full recording under their
+  own name via `plays-archive.js` (073), 13-and-over classes only, after each
+  performer's CC0 consent at the current version; an under-13 class has Export
+  and no Publish (Decision 059's school route stays blocked until P5).
+- **TVs record nothing**: Apple TV and Google TV join as the shared screen with
+  a pairing code (tvOS-DESIGN §4.13, ANDROID-DESIGN's TV panel rule).
+- Out of scope (SCRATCHPAD): a speech-following cursor, reading-level labels or
+  casting by ability, leaderboards and fluency scores, every phone speaking
+  stand-ins in sync, the exquisite-corpse relay.
+
+**Who was in the room, who gains, who pays:** the owner ruled on storage,
+classes, seats and the transport's purpose; R3c's research and the agent chose
+the Durable Object, the limits and the protocol's rules. Students gain a part
+in a whole-class recording with no account and no email; teachers gain the
+casting and the room, and pay the upload under their own name. Under-13 voices
+never reach a public archive. The cost is a second transport to keep honest
+(polling beside sockets) and recordings that exist only on the leader's device
+until the teacher uploads or exports them.
