@@ -273,3 +273,10 @@ privacy words) is folded in when it arrives, never waited on.
   hero drew a gray placeholder circle in the render rig: device check must confirm the real photo
   or label shows. Web dial fixed to draw genre letters (31ce491). Push held for the device check
   (iPhone 12, Pixel, Apple TV, Google TV). Running: V2, T5, device check.
+- **2026-11-19, tick 14**: device check passed and V6 pushed (1.0.145): no crashes on iPad (iPhone 12
+  behind a Screen Time limit: owner must lift it), Pixel (real hero photo, not gray), Google TV, Apple
+  TV (left on). Faults for V8: Google TV hero photo sits small at the top of a mostly empty window;
+  focus on Listen live scrolls the hero's top off screen; tvOS hero drew the label for Columbia
+  Workshop (check whether a photo exists). Owner notes: an Apple Account sign-in alert appeared on the
+  iPad ("iPhone near Lake Forest, IL"); an iPadOS 27.3 beta update prompt; the Android :wear module
+  fails installDebug with a version downgrade.
