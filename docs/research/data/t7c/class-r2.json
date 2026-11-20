@@ -1,0 +1,176 @@
+{
+ "tag": "r2",
+ "worker": "http://localhost:8799",
+ "site": "http://127.0.0.1:61716",
+ "tests": {
+  "T10": {
+   "seat_logs": []
+  },
+  "T11": {
+   "a_lines": [],
+   "b_lines": [],
+   "shown": {
+    "text": false,
+    "tinted": [],
+    "count": ""
+   }
+  },
+  "T12": {}
+ },
+ "steps": [
+  {
+   "test": "T10",
+   "step": "a test teacher signs in through the shared client",
+   "ok": true,
+   "answer": true
+  },
+  {
+   "test": "T10",
+   "step": "the Classes box shows for a signed-in teacher",
+   "ok": false
+  },
+  {
+   "test": "T11",
+   "step": "a test teacher signs in through the shared client",
+   "ok": true,
+   "answer": true
+  },
+  {
+   "test": "T11",
+   "step": "the Classes box shows for a signed-in teacher",
+   "ok": true
+  },
+  {
+   "test": "T11",
+   "step": "Make a class (13 and over)",
+   "ok": true,
+   "class_id": "fd416ffe-03b3-4816-9e3e-8105300ff94c",
+   "code": "VJN1K7CA"
+  },
+  {
+   "test": "T11",
+   "step": "the class page opens",
+   "ok": true
+  },
+  {
+   "test": "T11",
+   "step": "4 seats from a pasted list",
+   "ok": true,
+   "seats": 4
+  },
+  {
+   "test": "T11",
+   "step": "a class production of a castable play",
+   "ok": true,
+   "script": "gut-7364",
+   "production": "2D5FB454-A594-4449-B36E-AB335D72EF80"
+  },
+  {
+   "test": "T11",
+   "step": "cast with Fill evenly and Save",
+   "ok": true
+  },
+  {
+   "test": "T11",
+   "step": "Start a reading",
+   "ok": true,
+   "room": "60THX6"
+  },
+  {
+   "test": "T11",
+   "step": "the teacher switches the reading to Record",
+   "ok": true
+  },
+  {
+   "test": "T11",
+   "step": "seat Ada joins on the second device; its lines are tinted",
+   "ok": false,
+   "lines": 0,
+   "first": null
+  },
+  {
+   "test": "T11",
+   "step": "seat Ben joins on the second device; its lines are tinted",
+   "ok": false,
+   "lines": 0,
+   "first": null
+  },
+  {
+   "test": "T11",
+   "step": "as seat B: none of seat A's lines are tinted",
+   "ok": true,
+   "overlap": []
+  },
+  {
+   "test": "T11",
+   "step": "as seat B: seat A's name is not on the page",
+   "ok": true
+  },
+  {
+   "test": "T11",
+   "step": "as seat B: no take of seat A's is counted on this device",
+   "ok": true,
+   "rec_row": ""
+  },
+  {
+   "test": "T12",
+   "step": "a test teacher signs in through the shared client",
+   "ok": true,
+   "answer": true
+  },
+  {
+   "test": "T12",
+   "step": "the Classes box shows for a signed-in teacher",
+   "ok": true
+  },
+  {
+   "test": "T12",
+   "step": "Make a class (under 13)",
+   "ok": true,
+   "class_id": "01b0647d-ad54-487b-875c-4f0e6bc5ee8e",
+   "code": "KV8HRK65"
+  },
+  {
+   "test": "T12",
+   "step": "the class page opens",
+   "ok": true
+  },
+  {
+   "test": "T12",
+   "step": "3 seats from a pasted list",
+   "ok": true,
+   "seats": 3
+  },
+  {
+   "test": "T12",
+   "step": "a class production of a castable play",
+   "ok": true,
+   "script": "gut-7364",
+   "production": "4C904CA4-B1FF-4BEB-AE5A-E1800CF5C91B"
+  },
+  {
+   "test": "T12",
+   "step": "cast with Fill evenly and Save",
+   "ok": true
+  },
+  {
+   "test": "T12",
+   "step": "Start a reading",
+   "ok": true,
+   "room": "K59GB6"
+  },
+  {
+   "test": "T12",
+   "step": "the teacher switches the reading to Record",
+   "ok": true
+  },
+  {
+   "test": "T12",
+   "step": "seat Ada joins on the second device; its lines are tinted",
+   "ok": false,
+   "lines": 0,
+   "first": null
+  }
+ ],
+ "worker_stopped": true
+}

@@ -330,7 +330,7 @@ test('read-along: the line heard comes from the listen plan; a mix finds its lin
 test('read-along: the reader turns itself while following; scrolling away stops it; Back to the line returns', () => {
   const f = R.alongFollow();
   eq(f.line('L1'), { turn: true, back: false }, 'first line turns the page');
-  f.away();
+  eq(f.away(), { turn: false, back: true }, 'away offers the return at once, before the next line');
   eq(f.line('L2'), { turn: false, back: true }, 'away: no turn, the return is offered');
   eq(f.line('L3'), { turn: false, back: true }, 'still away');
   eq(f.back(), 'L3', 'back returns to the line now heard');
@@ -338,7 +338,7 @@ test('read-along: the reader turns itself while following; scrolling away stops 
   f.away();
   f.line(null);
   eq(f.back(), null, 'nothing heard, nothing to return to');
-  f.away();
+  eq(f.away(), { turn: false, back: false }, 'away with nothing heard offers nothing');
   eq(f.line(null), { turn: false, back: false }, 'no return offered when nothing plays');
 });
 

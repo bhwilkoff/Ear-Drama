@@ -15,6 +15,8 @@
  *   {"cmd":"collect","on":true|false}                                                 -> hold the pickup in the background (a take is only accepted
  *                                                                                         while a receiver is there); every take lands in the list below
  *   {"cmd":"takes"}                                                                   -> {"takes":[{take,bytes,at}]} collected so far
+ *   {"cmd":"history"}                                                                 -> {"history":[{at,cursor,gen,generation,done}]}: every snapshot the
+ *                                                                                         leader's socket saw, the Worker's own sequence of states (T7c)
  *   {"cmd":"end"}                                                                     -> closes the room and exits
  */
 import fs from "node:fs";
@@ -65,6 +67,7 @@ if (made.status !== 201 && made.status !== 200) { out({ error: "create_failed", 
 const code = made.json.code;
 const key = made.json.member_key;
 let snap = made.json;
+const history = [];
 let ws = null;
 let wsOpen = false;
 const pending = [];
@@ -81,6 +84,7 @@ function openSocket() {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.type === "snapshot") {
         snap = m;
+        history.push({ at: t1, cursor: m.cursor, gen: m.cursor_gen, generation: m.generation, done: (m.done || []).slice() });
         if (typeof m.server_time === "number") { /* a snapshot's clock is not a round trip; only pongs are samples */ }
         for (const [line, f] of wait) if (m.cursor === line) { f(t1); wait.delete(line); }
       } else if (m.type === "pong") samples.push({ t0: m.t0, server_time: m.server_time, t1 });
@@ -107,6 +111,7 @@ async function press(n, intervalMs, via, from) {
     i = (i + 1) % cast.length;
     const line = cast[i].id;
     const base = snap.cursor_gen;
+    const cursorBefore = snap.cursor;
     const t0 = Date.now();
     const off = offsetNow();
     let ack = null;
@@ -118,7 +123,7 @@ async function press(n, intervalMs, via, from) {
       if (r.json && r.json.type === "snapshot") { snap = r.json; wait.delete(line); ack = Date.now(); } else err = r.json || r.status;
     }
     if (via === "socket") ack = await acked;
-    presses.push({ n: k + 1, line, base, press_local_ms: t0, press_server_ms: t0 + (off ? off.offset : NaN), ack_local_ms: ack, err });
+    presses.push({ n: k + 1, line, base, cursor_before: cursorBefore, press_local_ms: t0, press_server_ms: t0 + (off ? off.offset : NaN), ack_local_ms: ack, err });
     await sleep(intervalMs);
   }
   return presses;
@@ -158,6 +163,7 @@ for await (const raw of rl) {
       }
       out({ takes: got });
     } else if (c.cmd === "collect") { const was = collecting; collecting = !!c.on; if (collecting && !was) void collectLoop(); out({ collecting }); }
+    else if (c.cmd === "history") out({ history: history.slice() });
     else if (c.cmd === "takes") out({ takes: collected.slice(), errors: collectErrors.slice(-5) });
     else if (c.cmd === "end") { await http("POST", `/v1/read/${code}/send`, { key, body: { type: "end" } }); out({ ended: true }); break; }
     else out({ error: "unknown_cmd" });

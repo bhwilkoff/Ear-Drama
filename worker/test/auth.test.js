@@ -229,3 +229,35 @@ describe("the Worker's own session", () => {
     expect(r.status).toBe(503);
   });
 });
+
+describe("the local bench's test keys (tools/class_bench.py)", () => {
+  const testEnv = () => ({ LOCAL_TEST_JWKS: JSON.stringify({ keys: [keys.forger.publicJwk] }) });
+
+  it("on this machine, a token signed by the bench's own key signs a test teacher in, with no provider fetched", async () => {
+    vi.restoreAllMocks();
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (u) => { throw new Error(`fetched ${u}`); });
+    const r = await call("POST", "/v1/auth/apple", { body: { id_token: await mint(appleClaims("bench-teacher"), { key: keys.forger }) }, envOverride: testEnv(), base: "http://127.0.0.1:8787" });
+    expect(r.status).toBe(200);
+    expect(spy).not.toHaveBeenCalled();
+    const lan = await call("POST", "/v1/auth/apple", { body: { id_token: await mint(appleClaims("bench-teacher"), { key: keys.forger }) }, envOverride: testEnv(), base: "http://10.0.0.20:8787" });
+    expect(lan.status).toBe(200);
+  });
+
+  it("a Worker carrying the test keys answers no public host at all: a deploy that had them would refuse everything", async () => {
+    const signIn = await call("POST", "/v1/auth/apple", { body: { id_token: await mint(appleClaims("x"), { key: keys.forger }) }, envOverride: testEnv() });
+    expect(signIn.status).toBe(503);
+    expect((await signIn.json()).error).toBe("test_auth_refused");
+    const workersDev = await call("GET", "/v1/account", { envOverride: testEnv(), base: "https://eardrama-api.benwilkoff.workers.dev" });
+    expect(workersDev.status).toBe(503);
+  });
+
+  it("without them, the bench's key is a forger's key", async () => {
+    const r = await call("POST", "/v1/auth/apple", { body: { id_token: await mint(appleClaims("x"), { key: keys.forger }) }, base: "http://127.0.0.1:8787" });
+    expect(r.status).toBe(401);
+  });
+
+  it("wrangler.toml never carries them", async () => {
+    const toml = (await import("../wrangler.toml?raw")).default;
+    expect(toml).not.toMatch(/LOCAL_TEST_JWKS/);
+  });
+});

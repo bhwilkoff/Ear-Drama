@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application>
+    <!-- DEBUG only: plain http to the read bench's local Worker (LaunchDoors.workerUrl). Never in a release build. -->
+    <application android:usesCleartextTraffic="true">
         <!-- DEBUG only: the Kokoro bench (R2-kokoro-feasibility §6 S6a). Never in a release build. -->
         <activity
             android:name="com.example.appname.KokoroBenchActivity"

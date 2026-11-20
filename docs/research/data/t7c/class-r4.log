@@ -1,0 +1,47 @@
+[T10] ok   a test teacher signs in through the shared client {"answer": true}
+[T10] ok   the Classes box shows for a signed-in teacher 
+[T10] ok   Make a class (13 and over) {"class_id": "5d73408a-c963-4f49-b2b6-b81da3e0a2e2", "code": "9AH5CXCC"}
+[T10] ok   the class page opens 
+[T10] ok   25 seats from a pasted list {"seats": 25}
+[T10] ok   a class production of a castable play {"script": "gut-7364", "production": "B49DACE0-AE3B-4877-8146-B5F5C1429667"}
+[T10] ok   cast with Fill evenly and Save 
+[T10] ok   Start a reading {"room": "QRK3XX"}
+[T10] ok   the teacher switches the reading to Record 
+[T10] ok   seat Ada joins on the second device; its lines are tinted {"lines": 62, "first": "L0008"}
+[T10] ok   the teacher's Next reaches the seat's first line {"line": "L0008"}
+[T10] ok   the seat's microphone opens on L0008, Stop ends the take {"stop_pressed": true}
+[T10] ok   the seat's microphone opened on its line once 
+[T10] ok   the seat's microphone opens on L0009, Stop ends the take {"stop_pressed": true}
+[T10] ok   the take arrives: the Worker holds its row in the class production {"takes": 2, "status": 200}
+[T10] ok   the take is in the class page's Review {"rows": 2}
+[T10] ok   Approve, then Again on the next take: the Worker's reviews say so {"approve_pressed": true, "again_pressed": true, "reviews": ["again", "approved"]}
+[T11] ok   a test teacher signs in through the shared client {"answer": true}
+[T11] ok   the Classes box shows for a signed-in teacher 
+[T11] ok   Make a class (13 and over) {"class_id": "1b32f691-e5d4-4cc6-a127-f39ebff5c9a7", "code": "TND7PZBW"}
+[T11] ok   the class page opens 
+[T11] ok   4 seats from a pasted list {"seats": 4}
+[T11] ok   a class production of a castable play {"script": "gut-7364", "production": "9CBA7006-297D-4202-A791-889293F29166"}
+[T11] ok   cast with Fill evenly and Save 
+[T11] ok   Start a reading {"room": "T45WEZ"}
+[T11] ok   the teacher switches the reading to Record 
+[T11] ok   seat Ada joins on the second device; its lines are tinted {"lines": 62, "first": "L0008"}
+[T11] ok   the seat's microphone opens on L0008, Stop ends the take {"stop_pressed": true}
+[T11] ok   seat A ends the session with Close 
+[T11] ok   seat Ben joins on the second device; its lines are tinted {"lines": 58, "first": "L0003"}
+[T11] ok   as seat B: none of seat A's lines are tinted {"overlap": []}
+[T11] FAIL as seat B: seat A's name is not on the page 
+[T11] ok   as seat B: no take of seat A's is counted on this device {"rec_row": "Start recording"}
+[T12] ok   a test teacher signs in through the shared client {"answer": true}
+[T12] ok   the Classes box shows for a signed-in teacher 
+[T12] ok   Make a class (under 13) {"class_id": "b6baa987-bab3-4be4-b2a2-cd9ee8577ade", "code": "BY56GWZY"}
+[T12] ok   the class page opens 
+[T12] ok   3 seats from a pasted list {"seats": 3}
+[T12] ok   a class production of a castable play {"script": "gut-7364", "production": "33288DC9-873D-4748-8590-6FC8B6D46906"}
+[T12] ok   cast with Fill evenly and Save 
+[T12] ok   Start a reading {"room": "G09Q9S"}
+[T12] ok   the teacher switches the reading to Record 
+[T12] ok   seat Ada joins on the second device; its lines are tinted {"lines": 66, "first": "L0008"}
+[T12] ok   the seat's microphone opens on L0008, Stop ends the take {"stop_pressed": true}
+[T12] ok   the take stays on the seat's device {"takes_on_device": 1}
+[T12] ok   no take reaches the Worker or the teacher {"worker_takes": 0, "status": 200}
+[class] 45 of 46 steps ok; worker stopped; report /Users/bhwilkoff/Documents/GitHub/Ear-Drama/.claude/worktrees/agent-af3ac18c70afc809c/docs/research/data/t7c/class-r4.json

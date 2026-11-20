@@ -1,5 +1,5 @@
 {
- "protocol_sha256": "0f090fdea172e8cb8b418f428ac07ec7f997a627bae7b1c3bfefe129dd98e338",
+ "protocol_sha256": "cb9b746e344f5ac83ad3a3c1f4abc832141269119fe9567a30be8005e9099457",
  "constants": {
   "PROTOCOL_VERSION": 1,
   "CODE_ALPHABET": "0123456789ABCDEFGHJKMNPQRSTVWXYZ",
@@ -5460,6 +5460,395 @@
      }
     ],
     "changed": false
+   }
+  },
+  {
+   "fn": "applyMessage",
+   "note": "a take that ends after the leader moved the cursor away marks its line done; the cursor stays (T7c)",
+   "args": [
+    {
+     "room": {
+      "v": 1,
+      "code": "KLS456",
+      "kind": "class",
+      "script_id": "gut-1",
+      "script_revision": "r1",
+      "production_id": null,
+      "class_id": "C1",
+      "mode": "record",
+      "cursor": "l1",
+      "cursor_gen": 2,
+      "generation": 1,
+      "owner": "teacher",
+      "leader": "teacher",
+      "locked": false,
+      "read_open": false,
+      "owner_name": null,
+      "claims": {},
+      "seats": [
+       {
+        "id": "s1",
+        "label": "Lucy"
+       },
+       {
+        "id": "s2",
+        "label": "Tom"
+       },
+       {
+        "id": "s3",
+        "label": "Group 3"
+       }
+      ],
+      "assignments": [
+       {
+        "part": "role:LUCY",
+        "seat": "s1",
+        "from": "l2",
+        "to": "l4"
+       },
+       {
+        "part": "role:LUCY",
+        "seat": "s3",
+        "from": "l8",
+        "to": "l8"
+       },
+       {
+        "part": "role:TOM",
+        "seat": "s2",
+        "from": null,
+        "to": null
+       }
+      ],
+      "done": [],
+      "ended": false,
+      "created_at": 1763500000000,
+      "touched_at": 1763500000000
+     },
+     "cast": [
+      [
+       "l1",
+       "directions"
+      ],
+      [
+       "l2",
+       "role:LUCY"
+      ],
+      [
+       "l3",
+       "role:TOM"
+      ],
+      [
+       "l4",
+       "role:LUCY"
+      ],
+      [
+       "l5",
+       "sound"
+      ],
+      [
+       "l6",
+       "role:TOM"
+      ],
+      [
+       "l7",
+       "role:NURSE"
+      ],
+      [
+       "l8",
+       "role:LUCY"
+      ]
+     ],
+     "members": [
+      {
+       "id": "teacher",
+       "role": "reader",
+       "seat": null,
+       "joined_at": 1763500000000,
+       "seen_at": 1763500000000
+      },
+      {
+       "id": "d1",
+       "role": "reader",
+       "seat": "s1",
+       "joined_at": 1763500000100,
+       "seen_at": 1763500000100
+      },
+      {
+       "id": "d2",
+       "role": "reader",
+       "seat": "s2",
+       "joined_at": 1763500000200,
+       "seen_at": 1763500000200
+      },
+      {
+       "id": "d3",
+       "role": "reader",
+       "seat": "s3",
+       "joined_at": 1763500000300,
+       "seen_at": 1763500000300
+      },
+      {
+       "id": "tv",
+       "role": "screen",
+       "seat": null,
+       "joined_at": 1763500000050,
+       "seen_at": 1763500000050
+      }
+     ]
+    },
+    "d1",
+    {
+     "type": "line-done",
+     "line": "l2",
+     "base": 1
+    },
+    1763500001000
+   ],
+   "expect": {
+    "room": {
+     "v": 1,
+     "code": "KLS456",
+     "kind": "class",
+     "script_id": "gut-1",
+     "script_revision": "r1",
+     "production_id": null,
+     "class_id": "C1",
+     "mode": "record",
+     "cursor": "l1",
+     "cursor_gen": 2,
+     "generation": 2,
+     "owner": "teacher",
+     "leader": "teacher",
+     "locked": false,
+     "read_open": false,
+     "owner_name": null,
+     "claims": {},
+     "seats": [
+      {
+       "id": "s1",
+       "label": "Lucy"
+      },
+      {
+       "id": "s2",
+       "label": "Tom"
+      },
+      {
+       "id": "s3",
+       "label": "Group 3"
+      }
+     ],
+     "assignments": [
+      {
+       "part": "role:LUCY",
+       "seat": "s1",
+       "from": "l2",
+       "to": "l4"
+      },
+      {
+       "part": "role:LUCY",
+       "seat": "s3",
+       "from": "l8",
+       "to": "l8"
+      },
+      {
+       "part": "role:TOM",
+       "seat": "s2",
+       "from": null,
+       "to": null
+      }
+     ],
+     "done": [
+      "l2"
+     ],
+     "ended": false,
+     "created_at": 1763500000000,
+     "touched_at": 1763500001000
+    },
+    "members": [
+     {
+      "id": "teacher",
+      "role": "reader",
+      "seat": null,
+      "joined_at": 1763500000000,
+      "seen_at": 1763500000000
+     },
+     {
+      "id": "d1",
+      "role": "reader",
+      "seat": "s1",
+      "joined_at": 1763500000100,
+      "seen_at": 1763500001000
+     },
+     {
+      "id": "d2",
+      "role": "reader",
+      "seat": "s2",
+      "joined_at": 1763500000200,
+      "seen_at": 1763500000200
+     },
+     {
+      "id": "d3",
+      "role": "reader",
+      "seat": "s3",
+      "joined_at": 1763500000300,
+      "seen_at": 1763500000300
+     },
+     {
+      "id": "tv",
+      "role": "screen",
+      "seat": null,
+      "joined_at": 1763500000050,
+      "seen_at": 1763500000050
+     }
+    ],
+    "changed": true
+   }
+  },
+  {
+   "fn": "applyMessage",
+   "note": "the line at the cursor from an old generation is stale",
+   "args": [
+    {
+     "room": {
+      "v": 1,
+      "code": "KLS456",
+      "kind": "class",
+      "script_id": "gut-1",
+      "script_revision": "r1",
+      "production_id": null,
+      "class_id": "C1",
+      "mode": "record",
+      "cursor": "l2",
+      "cursor_gen": 3,
+      "generation": 1,
+      "owner": "teacher",
+      "leader": "teacher",
+      "locked": false,
+      "read_open": false,
+      "owner_name": null,
+      "claims": {},
+      "seats": [
+       {
+        "id": "s1",
+        "label": "Lucy"
+       },
+       {
+        "id": "s2",
+        "label": "Tom"
+       },
+       {
+        "id": "s3",
+        "label": "Group 3"
+       }
+      ],
+      "assignments": [
+       {
+        "part": "role:LUCY",
+        "seat": "s1",
+        "from": "l2",
+        "to": "l4"
+       },
+       {
+        "part": "role:LUCY",
+        "seat": "s3",
+        "from": "l8",
+        "to": "l8"
+       },
+       {
+        "part": "role:TOM",
+        "seat": "s2",
+        "from": null,
+        "to": null
+       }
+      ],
+      "done": [],
+      "ended": false,
+      "created_at": 1763500000000,
+      "touched_at": 1763500000000
+     },
+     "cast": [
+      [
+       "l1",
+       "directions"
+      ],
+      [
+       "l2",
+       "role:LUCY"
+      ],
+      [
+       "l3",
+       "role:TOM"
+      ],
+      [
+       "l4",
+       "role:LUCY"
+      ],
+      [
+       "l5",
+       "sound"
+      ],
+      [
+       "l6",
+       "role:TOM"
+      ],
+      [
+       "l7",
+       "role:NURSE"
+      ],
+      [
+       "l8",
+       "role:LUCY"
+      ]
+     ],
+     "members": [
+      {
+       "id": "teacher",
+       "role": "reader",
+       "seat": null,
+       "joined_at": 1763500000000,
+       "seen_at": 1763500000000
+      },
+      {
+       "id": "d1",
+       "role": "reader",
+       "seat": "s1",
+       "joined_at": 1763500000100,
+       "seen_at": 1763500000100
+      },
+      {
+       "id": "d2",
+       "role": "reader",
+       "seat": "s2",
+       "joined_at": 1763500000200,
+       "seen_at": 1763500000200
+      },
+      {
+       "id": "d3",
+       "role": "reader",
+       "seat": "s3",
+       "joined_at": 1763500000300,
+       "seen_at": 1763500000300
+      },
+      {
+       "id": "tv",
+       "role": "screen",
+       "seat": null,
+       "joined_at": 1763500000050,
+       "seen_at": 1763500000050
+      }
+     ]
+    },
+    "d1",
+    {
+     "type": "line-done",
+     "line": "l2",
+     "base": 1
+    },
+    1763500001000
+   ],
+   "expect": {
+    "error": "stale",
+    "detail": 3
    }
   },
   {

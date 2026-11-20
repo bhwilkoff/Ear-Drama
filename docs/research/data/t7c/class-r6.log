@@ -1,0 +1,18 @@
+[T11] ok   a test teacher signs in through the shared client {"answer": true}
+[T11] ok   the Classes box shows for a signed-in teacher 
+[T11] ok   Make a class (13 and over) {"class_id": "7fa3622a-38e8-4e3a-99e1-6481748e6ded", "code": "ZF01VTDG"}
+[T11] ok   the class page opens 
+[T11] ok   4 seats from a pasted list {"seats": 4}
+[T11] ok   a class production of a castable play {"script": "gut-7364", "production": "2EF7144E-F4AF-4518-8A92-BE7EF95171E4"}
+[T11] ok   cast with Fill evenly and Save 
+[T11] ok   Start a reading {"room": "72D7RF"}
+[T11] ok   the teacher switches the reading to Record 
+[T11] ok   note: the join page did not draw in 20 s; navigated once more 
+[T11] ok   seat Ada joins on the second device; its lines are tinted {"lines": 62, "first": "L0008"}
+[T11] ok   the seat's microphone opens on L0008, Stop ends the take {"stop_pressed": true}
+[T11] ok   seat A ends the session with Close 
+[T11] ok   seat Ben joins on the second device; its lines are tinted {"lines": 58, "first": "L0003"}
+[T11] ok   as seat B: none of seat A's lines are tinted {"overlap": []}
+[T11] FAIL as seat B: seat A's name is nowhere but the room's own fact (who reads the line at the cursor, shown to every member) {"visible": ["rd-said: \u201cIn taking her for a cook? I\u2019ve no doubt she did. But I don\u2019"]}
+[T11] ok   as seat B: no take of seat A's is counted on this device {"rec_row": "Start recording"}
+[class] 16 of 17 steps ok; worker stopped; report /Users/bhwilkoff/Documents/GitHub/Ear-Drama/.claude/worktrees/agent-af3ac18c70afc809c/docs/research/data/t7c/class-r6.json

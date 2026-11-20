@@ -1,0 +1,7 @@
+[T10] ok   a test teacher signs in through the shared client {"answer": true}
+[T10] FAIL the Classes box shows for a signed-in teacher 
+[T11] ok   a test teacher signs in through the shared client {"answer": true}
+[T11] FAIL the Classes box shows for a signed-in teacher 
+[T12] ok   a test teacher signs in through the shared client {"answer": true}
+[T12] FAIL the Classes box shows for a signed-in teacher 
+[class] 3 of 6 steps ok; worker stopped; report /Users/bhwilkoff/Documents/GitHub/Ear-Drama/.claude/worktrees/agent-af3ac18c70afc809c/docs/research/data/t7c/class-r1.json

@@ -269,6 +269,7 @@ const ReadUI = (() => {
           announce: async () => { const live = document.getElementById('live'); if (live) live.textContent = 'Your line'; } }),
         onChange: () => paint('rec'),
         diag: (line) => { if (params().get('readdiag') === '1') console.log('[readdiag]', 'rec', line, 'at', Date.now(), 'offset', session.state().offset); },
+        trace: (...words) => { if (params().get('readdiag') === '1') console.log('[readdiag]', ...words); },
       });
       rr.resume();
       const door = roomDoor();

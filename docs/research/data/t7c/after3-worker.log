@@ -1,0 +1,174 @@
+
+ ⛅️ wrangler 4.152.0 (update available 4.165.0)
+───────────────────────────────────────────────
+Your Worker has access to the following bindings:
+Binding                                                                   Resource                  Mode
+env.READ_ROOMS (ReadRoom)                                                 Durable Object            local
+env.TAKE_RELAY (TakeRelay)                                                Durable Object            local
+env.DB (eardrama)                                                         D1 Database               local
+env.EVERY_IP_LIMITER (600 requests/60s)                                   Rate Limit                local
+env.AUTH_LIMITER (30 requests/60s)                                        Rate Limit                local
+env.USER_LIMITER (120 requests/60s)                                       Rate Limit                local
+env.ROOM_LIMITER (300 requests/60s)                                       Rate Limit                local
+env.ROOM_CREATE_LIMITER (10 requests/60s)                                 Rate Limit                local
+env.ROOM_JOIN_LIMITER (20 requests/60s)                                   Rate Limit                local
+env.ROOM_MEMBER_LIMITER (60 requests/60s)                                 Rate Limit                local
+env.PLAY_UPLOAD_LIMITER (30 requests/60s)                                 Rate Limit                local
+env.PLAY_JOIN_LIMITER (20 requests/60s)                                   Rate Limit                local
+env.OPEN_READ_LIMITER (60 requests/60s)                                   Rate Limit                local
+env.TAKEDOWN_LIMITER (3 requests/60s)                                     Rate Limit                local
+env.READ_IP_LIMITER (3000 requests/60s)                                   Rate Limit                local
+env.READ_JOIN_LIMITER (60 requests/60s)                                   Rate Limit                local
+env.READ_MEMBER_LIMITER (120 requests/60s)                                Rate Limit                local
+env.READ_CREATE_LIMITER (10 requests/60s)                                 Rate Limit                local
+env.SEAT_JOIN_LIMITER (60 requests/60s)                                   Rate Limit                local
+env.SEAT_LIMITER (120 requests/60s)                                       Rate Limit                local
+env.APPLE_AUDIENCES ("app.eardrama,app.eardrama.signin")                  Environment Variable      local
+env.GOOGLE_AUDIENCES ("1083349339355-hmed22o33qemdc3dfhbqhkt...")         Environment Variable      local
+env.ALLOWED_ORIGINS ("https://eardrama.org,https://www.eard...")          Environment Variable      local
+env.APPLE_TEAM_ID ("")                                                    Environment Variable      local
+env.APPLE_KEY_ID ("")                                                     Environment Variable      local
+env.SESSION_SECRET ("(hidden)")                                           Environment Variable      local
+env.READ_DIAG ("(hidden)")                                                Environment Variable      local
+
+⎔ Starting local server...
+Wrangler detected this dev session is running in an AI agent.
+The Local Explorer API is available at http://127.0.0.1:8799/cdn-cgi/local/explorer/api
+Useful routes:
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/workers - local Workers and bindings
+  POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/scheduled?worker=<name> - invoke a Worker's scheduled handler; cron is required (see the OpenAPI schema for the full request)
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/storage/kv/namespaces - KV namespaces
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/d1/database - D1 databases
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/r2/buckets - R2 buckets
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/workers/durable_objects/namespaces - Durable Object namespaces
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api/workflows - Workflows
+  POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/observability/query - run a read-only SQL query (SELECT/WITH only) over captured request traces and console logs. Tables: spans, logs (read attributes via json(attributes)). Example:
+    curl -X POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/observability/query -H 'Content-Type: application/json' -d '{"sql":"SELECT service, name, outcome, duration_ms FROM spans WHERE parent_id IS NULL LIMIT 20"}'
+  POST http://127.0.0.1:8799/cdn-cgi/local/explorer/api/local/observability/clear - clear all captured traces and logs
+If the routes above don't cover what you need, fetch the full OpenAPI schema (large - use only as a last resort):
+  GET http://127.0.0.1:8799/cdn-cgi/local/explorer/api - OpenAPI schema
+[wrangler:info] Ready on http://0.0.0.0:8799
+[wrangler:info] - http://127.0.0.1:8799
+[wrangler:info] - http://10.0.0.90:8799
+[wrangler:info] POST /v1/read 200 OK (36ms)
+[wrangler:info] GET /v1/read/TVK9HV/socket 101 Switching Protocols (3ms)
+[readdiag] worker mode by sWspp7REdYqTCnaj line - base - at cursor L0001 gen 0 -> cursor L0001 gen 0 done 0
+[wrangler:info] POST /v1/read/TVK9HV/send 200 OK (7ms)
+[wrangler:info] POST /v1/read/TVK9HV/join 200 OK (22ms)
+[wrangler:info] GET /v1/read/TVK9HV/socket 101 Switching Protocols (8ms)
+[wrangler:info] GET /v1/plays/finished 200 OK (11ms)
+[wrangler:info] GET /v1/plays/finished 200 OK (10ms)
+[readdiag] worker claim by 3vO8unjOr9dx7kOW line - base - at cursor L0001 gen 0 -> cursor L0001 gen 0 done 0
+[wrangler:info] POST /v1/read/TVK9HV/join 200 OK (17ms)
+[wrangler:info] GET /v1/read/TVK9HV/socket 101 Switching Protocols (8ms)
+[readdiag] worker claim by mm6swOxHX5KotCQl line - base - at cursor L0001 gen 0 -> cursor L0001 gen 0 done 0
+[wrangler:info] OPTIONS /v1/read/TVK9HV/join 204 No Content (27ms)
+[wrangler:info] POST /v1/read/TVK9HV/join 200 OK (25ms)
+[wrangler:info] GET /v1/read/TVK9HV/socket 101 Switching Protocols (17ms)
+[readdiag] worker claim by n3BhCHNn7XWUJVti line - base - at cursor L0001 gen 0 -> cursor L0001 gen 0 done 0
+[wrangler:info] GET /v1/read/TVK9HV 200 OK (10ms)
+[readdiag] worker line-done by n3BhCHNn7XWUJVti line L0001 base 0 at cursor L0001 gen 0 -> cursor L0002 gen 1 done 1
+[wrangler:info] OPTIONS /v1/read/TVK9HV/takes/8B4BA204-BF3C-44AC-AF83-812AF4854606 204 No Content (9ms)
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (23567ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/8B4BA204-BF3C-44AC-AF83-812AF4854606 201 Created (36ms)
+[readdiag] worker line-done by n3BhCHNn7XWUJVti line L0002 base 1 at cursor L0002 gen 1 -> cursor L0003 gen 2 done 2
+[wrangler:info] OPTIONS /v1/read/TVK9HV/takes/11A66ACD-8ABF-4A04-8D0A-8C85AA1E705A 204 No Content (3ms)
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (3428ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/11A66ACD-8ABF-4A04-8D0A-8C85AA1E705A 201 Created (11ms)
+[readdiag] worker line-done by 3vO8unjOr9dx7kOW line L0003 base 2 at cursor L0003 gen 2 -> cursor L0004 gen 3 done 3
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (3214ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/D48110B5-9A40-46B4-88BC-B838917A299B 201 Created (35ms)
+[readdiag] worker line-done by n3BhCHNn7XWUJVti line L0004 base 3 at cursor L0004 gen 3 -> cursor L0005 gen 4 done 4
+[wrangler:info] OPTIONS /v1/read/TVK9HV/takes/2B4522F5-D11A-4CA3-B904-B0830FFA09E0 204 No Content (2ms)
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (3367ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/2B4522F5-D11A-4CA3-B904-B0830FFA09E0 201 Created (9ms)
+[readdiag] worker line-done by 3vO8unjOr9dx7kOW line L0005 base 4 at cursor L0005 gen 4 -> cursor L0006 gen 5 done 5
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (3045ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/3F290DB6-40D3-411A-B3B5-DB75D91F7E5E 201 Created (13ms)
+[readdiag] worker line-done by n3BhCHNn7XWUJVti line L0006 base 5 at cursor L0006 gen 5 -> cursor L0007 gen 6 done 6
+[wrangler:info] OPTIONS /v1/read/TVK9HV/takes/9D23C17E-8D38-4AFB-8B30-65C2724A15E4 204 No Content (2ms)
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (3391ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/9D23C17E-8D38-4AFB-8B30-65C2724A15E4 201 Created (12ms)
+[readdiag] worker line-done by n3BhCHNn7XWUJVti line L0007 base 6 at cursor L0007 gen 6 -> cursor L0008 gen 7 done 7
+[wrangler:info] OPTIONS /v1/read/TVK9HV/takes/50BDFEB0-67B8-4158-8098-2F47AF008620 204 No Content (3ms)
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (3414ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/50BDFEB0-67B8-4158-8098-2F47AF008620 201 Created (9ms)
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0002 base 7 at cursor L0008 gen 7 -> cursor L0002 gen 8 done 7
+[readdiag] worker line-done by mm6swOxHX5KotCQl line L0008 base 8 at cursor L0002 gen 8 -> cursor L0002 gen 8 done 8
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (3019ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/6E8ACB56-A035-4051-A861-B59458F65170 201 Created (48ms)
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0003 base 8 at cursor L0002 gen 8 -> cursor L0003 gen 9 done 8
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0004 base 9 at cursor L0003 gen 9 -> cursor L0004 gen 10 done 8
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0005 base 10 at cursor L0004 gen 10 -> cursor L0005 gen 11 done 8
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0006 base 11 at cursor L0005 gen 11 -> cursor L0006 gen 12 done 8
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 204 No Content (25012ms)
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0007 base 12 at cursor L0006 gen 12 -> cursor L0007 gen 13 done 8
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0008 base 13 at cursor L0007 gen 13 -> cursor L0008 gen 14 done 8
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0009 base 14 at cursor L0008 gen 14 -> cursor L0009 gen 15 done 8
+[readdiag] worker line-done by mm6swOxHX5KotCQl line L0009 base 15 at cursor L0009 gen 15 -> cursor L0010 gen 16 done 9
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (16007ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/CFCF17F3-BF4A-4E75-8EB6-2CE0E6423932 201 Created (48ms)
+[readdiag] worker line-done by 3vO8unjOr9dx7kOW line L0010 base 16 at cursor L0010 gen 16 -> cursor L0011 gen 17 done 10
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (2977ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/8173EABF-B360-441E-93E4-3890EA794474 201 Created (20ms)
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0010 base 17 at cursor L0011 gen 17 -> cursor L0010 gen 18 done 10
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0011 base 18 at cursor L0010 gen 18 -> cursor L0011 gen 19 done 10
+[readdiag] worker line-done by mm6swOxHX5KotCQl line L0011 base 19 at cursor L0011 gen 19 -> cursor L0012 gen 20 done 11
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (8675ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/AAB0C6A1-274A-4846-ADA3-C9C27A414496 201 Created (132ms)
+[readdiag] worker line-done by 3vO8unjOr9dx7kOW line L0012 base 20 at cursor L0012 gen 20 -> cursor L0013 gen 21 done 12
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (2884ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/2EB40117-B47F-49B4-84A8-93263ABA6437 201 Created (11ms)
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0012 base 21 at cursor L0013 gen 21 -> cursor L0012 gen 22 done 12
+[readdiag] worker line-done by mm6swOxHX5KotCQl line L0013 base 22 at cursor L0012 gen 22 -> cursor L0012 gen 22 done 13
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (2690ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/ED17DE85-294F-43E1-A2C1-9BC379BFD2CE 201 Created (41ms)
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0013 base 22 at cursor L0012 gen 22 -> cursor L0013 gen 23 done 13
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0014 base 23 at cursor L0013 gen 23 -> cursor L0014 gen 24 done 13
+[readdiag] worker line-done by 3vO8unjOr9dx7kOW line L0014 base 24 at cursor L0014 gen 24 -> cursor L0015 gen 25 done 14
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (12809ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/28069D55-C531-4565-8AF0-E5BDF11A1782 201 Created (22ms)
+[readdiag] worker line-done by mm6swOxHX5KotCQl line L0015 base 25 at cursor L0015 gen 25 -> cursor L0016 gen 26 done 15
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (2805ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/D1AD4C8C-B377-4887-A1DA-7535F663D6D8 201 Created (32ms)
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0015 base 26 at cursor L0016 gen 26 -> cursor L0015 gen 27 done 15
+[readdiag] worker line-done by mm6swOxHX5KotCQl line L0016 base 27 at cursor L0015 gen 27 -> cursor L0015 gen 27 done 16
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (2591ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/18C8D520-2FED-4D31-8C97-943F20B9A083 201 Created (35ms)
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0016 base 27 at cursor L0015 gen 27 -> cursor L0016 gen 28 done 16
+[readdiag] worker cursor by sWspp7REdYqTCnaj line L0017 base 28 at cursor L0016 gen 28 -> cursor L0017 gen 29 done 16
+[readdiag] worker line-done by mm6swOxHX5KotCQl line L0017 base 29 at cursor L0017 gen 29 -> cursor L0018 gen 30 done 17
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (12150ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/4A7D6561-AA72-4AA6-A1E0-026CB6D38588 201 Created (37ms)
+[readdiag] worker line-done by 3vO8unjOr9dx7kOW line L0018 base 30 at cursor L0018 gen 30 -> cursor L0019 gen 31 done 18
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (3099ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/B9D16C25-4FFE-46A6-B7FA-D422DFDCD64D 201 Created (22ms)
+[readdiag] worker line-done by mm6swOxHX5KotCQl line L0019 base 31 at cursor L0019 gen 31 -> cursor L0020 gen 32 done 19
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (2717ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/22DCCB4F-B05C-4AFC-B5AD-60A57343C6A0 201 Created (38ms)
+[readdiag] worker line-done by 3vO8unjOr9dx7kOW line L0020 base 32 at cursor L0020 gen 32 -> cursor L0021 gen 33 done 20
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (2989ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/EF70F9B2-3FB1-4982-917C-2DBE6B15FA38 201 Created (19ms)
+[readdiag] worker line-done by 3vO8unjOr9dx7kOW line L0021 base 33 at cursor L0021 gen 33 -> cursor L0022 gen 34 done 21
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (3016ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/1B075052-CA8D-4D27-9BF1-B21896682B45 201 Created (16ms)
+[readdiag] worker line-done by mm6swOxHX5KotCQl line L0022 base 34 at cursor L0022 gen 34 -> cursor L0023 gen 35 done 22
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (2663ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/6AD86544-4442-41E4-8EB4-04E362B963C2 201 Created (32ms)
+[readdiag] worker line-done by 3vO8unjOr9dx7kOW line L0023 base 35 at cursor L0023 gen 35 -> cursor L0024 gen 36 done 23
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (3074ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/C07699E1-A5D7-4B1C-944C-E84E0299B298 201 Created (15ms)
+[readdiag] worker line-done by mm6swOxHX5KotCQl line L0024 base 36 at cursor L0024 gen 36 -> cursor L0025 gen 37 done 24
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (2648ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/234C8283-96BA-409E-A5FA-66909B869B5D 201 Created (46ms)
+[readdiag] worker line-done by 3vO8unjOr9dx7kOW line L0025 base 37 at cursor L0025 gen 37 -> cursor L0026 gen 38 done 25
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (2990ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/FBFAEA11-BF87-4AA4-AECB-E0C2A773136F 201 Created (21ms)
+[readdiag] worker line-done by mm6swOxHX5KotCQl line L0026 base 38 at cursor L0026 gen 38 -> cursor L0027 gen 39 done 26
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (2698ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/2301CD22-C3BF-4E9F-A470-A6F3A06B603A 201 Created (41ms)
+[readdiag] worker line-done by 3vO8unjOr9dx7kOW line L0027 base 39 at cursor L0027 gen 39 -> cursor L0028 gen 40 done 27
+[wrangler:info] GET /v1/read/TVK9HV/takes/inbox 200 OK (3092ms)
+[wrangler:info] PUT /v1/read/TVK9HV/takes/ACDA2905-D135-4EF0-B1AD-DEF635AC8C25 201 Created (16ms)
+[readdiag] worker end by sWspp7REdYqTCnaj line - base - at cursor L0028 gen 40 -> cursor L0028 gen 40 done 27
+[wrangler:info] POST /v1/read/TVK9HV/send 200 OK (14ms)

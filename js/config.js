@@ -7,8 +7,14 @@
  * that provider's sign-in shows as not available, with no error.
  */
 const CONFIG = Object.freeze({
-  // The deployed Worker, e.g. https://api.eardrama.org (no trailing slash).
-  worker: 'https://eardrama-api.benwilkoff.workers.dev',
+  // The deployed Worker, e.g. https://api.eardrama.org (no trailing slash). A page served from this machine may name a
+  // local `wrangler dev` instead with `?worker=http://localhost:PORT` (tools/class_bench.py); a deployed page never can.
+  worker: (() => {
+    const deployed = 'https://eardrama-api.benwilkoff.workers.dev';
+    if (typeof location === 'undefined' || !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return deployed;
+    const w = new URLSearchParams(location.search).get('worker') || '';
+    return /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(w) ? w : deployed;
+  })(),
   apple: {
     // The Services ID made for the web (it is also in the Worker's APPLE_AUDIENCES).
     servicesId: 'app.eardrama.signin',

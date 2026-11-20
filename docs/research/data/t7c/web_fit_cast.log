@@ -1,0 +1,10 @@
+script gut-49295 (729 lines, 15 roles)
+ok   320 light 
+ok   375 light 
+ok   430 light 
+ok   1440 light 
+ok   320 dark 
+ok   375 dark 
+ok   430 dark 
+ok   1440 dark 
+PASS: 0 problems

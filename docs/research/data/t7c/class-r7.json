@@ -1,0 +1,422 @@
+{
+ "tag": "r7",
+ "worker": "http://localhost:8799",
+ "site": "http://127.0.0.1:49370",
+ "tests": {
+  "T10": {
+   "room": "DQJBCW",
+   "class_id": "c86db912-1585-499f-969e-b07461f62bb0",
+   "code": "9GXYVXRP",
+   "production": "22DAB9A3-ADB0-4FD7-81AF-5A7435DD676E",
+   "seat_lines": [
+    "L0008",
+    "L0009",
+    "L0011",
+    "L0013",
+    "L0015"
+   ],
+   "review_states": [
+    "again",
+    "approved"
+   ],
+   "seat_logs": [
+    "[readdiag] lit L0001 gen 0 at 1795181386404 offset ",
+    "[readdiag] clock offset -2 samples 1",
+    "[readdiag] transport socket",
+    "[readdiag] lit L0002 gen 1 at 1795181395091 offset -2",
+    "[readdiag] lit L0003 gen 2 at 1795181395389 offset -2",
+    "[readdiag] lit L0004 gen 3 at 1795181395752 offset -2",
+    "[readdiag] lit L0005 gen 4 at 1795181396108 offset -2",
+    "[readdiag] clock offset -1 samples 2",
+    "[readdiag] lit L0006 gen 5 at 1795181396472 offset -1",
+    "[readdiag] lit L0007 gen 6 at 1795181396829 offset -1",
+    "[readdiag] lit L0008 gen 7 at 1795181397193 offset -1",
+    "[readdiag] rec L0008 at 1795181397194 offset -1",
+    "[readdiag] take L0008 start gen 7",
+    "[readdiag] take L0008 end cursor L0008 gen 7 done 0",
+    "[readdiag] line-done L0008 base 7 sent ",
+    "[readdiag] lit L0009 gen 8 at 1795181401594 offset -1",
+    "[readdiag] justDid L0008 cleared cursor L0009 gen 8 recording -",
+    "[readdiag] rec L0009 at 1795181401595 offset -1",
+    "[readdiag] take L0009 start gen 8",
+    "[readdiag] clock offset -0.5 samples 3",
+    "[readdiag] take L0009 end cursor L0009 gen 8 done 0",
+    "[readdiag] line-done L0009 base 8 sent ",
+    "[readdiag] lit L0010 gen 9 at 1795181410155 offset -0.5",
+    "[readdiag] justDid L0009 cleared cursor L0010 gen 9 recording -",
+    "[readdiag] clock offset -0.5 samples 4"
+   ]
+  },
+  "T11": {
+   "a_lines": [
+    "L0008",
+    "L0009",
+    "L0011",
+    "L0013",
+    "L0015"
+   ],
+   "b_lines": [
+    "L0003",
+    "L0005",
+    "L0010",
+    "L0012",
+    "L0014"
+   ],
+   "shown": {
+    "text": [],
+    "tinted": [
+     "L0003",
+     "L0005",
+     "L0010",
+     "L0012",
+     "L0014",
+     "L0018",
+     "L0020",
+     "L0021",
+     "L0023",
+     "L0025",
+     "L0027",
+     "L0029",
+     "L0032",
+     "L0036",
+     "L0038",
+     "L0040",
+     "L0042",
+     "L0045",
+     "L0047",
+     "L0049",
+     "L0052",
+     "L0054",
+     "L0056",
+     "L0058",
+     "L0059",
+     "L0061",
+     "L0065",
+     "L0067",
+     "L0069",
+     "L0070",
+     "L0076",
+     "L0077",
+     "L0079",
+     "L0081",
+     "L0085",
+     "L0087",
+     "L0089",
+     "L0090",
+     "L0096",
+     "L0098",
+     "L0100",
+     "L0108",
+     "L0110",
+     "L0112",
+     "L0114",
+     "L0117",
+     "L0119",
+     "L0121",
+     "L0122",
+     "L0125",
+     "L0127",
+     "L0128",
+     "L0130",
+     "L0132",
+     "L0148",
+     "L0154",
+     "L0156",
+     "L0158"
+    ],
+    "count": "Start recording"
+   }
+  },
+  "T12": {
+   "refusals": [],
+   "kept": 1
+  }
+ },
+ "steps": [
+  {
+   "test": "T10",
+   "step": "a test teacher signs in through the shared client",
+   "ok": true,
+   "answer": true
+  },
+  {
+   "test": "T10",
+   "step": "the Classes box shows for a signed-in teacher",
+   "ok": true
+  },
+  {
+   "test": "T10",
+   "step": "Make a class (13 and over)",
+   "ok": true,
+   "class_id": "c86db912-1585-499f-969e-b07461f62bb0",
+   "code": "9GXYVXRP"
+  },
+  {
+   "test": "T10",
+   "step": "the class page opens",
+   "ok": true
+  },
+  {
+   "test": "T10",
+   "step": "25 seats from a pasted list",
+   "ok": true,
+   "seats": 25
+  },
+  {
+   "test": "T10",
+   "step": "a class production of a castable play",
+   "ok": true,
+   "script": "gut-7364",
+   "production": "22DAB9A3-ADB0-4FD7-81AF-5A7435DD676E"
+  },
+  {
+   "test": "T10",
+   "step": "cast with Fill evenly and Save",
+   "ok": true
+  },
+  {
+   "test": "T10",
+   "step": "Start a reading",
+   "ok": true,
+   "room": "DQJBCW"
+  },
+  {
+   "test": "T10",
+   "step": "the teacher switches the reading to Record",
+   "ok": true
+  },
+  {
+   "test": "T10",
+   "step": "note: the join page did not draw in 20 s; navigated once more",
+   "ok": true
+  },
+  {
+   "test": "T10",
+   "step": "seat Ada joins on the second device; its lines are tinted",
+   "ok": true,
+   "lines": 62,
+   "first": "L0008"
+  },
+  {
+   "test": "T10",
+   "step": "the teacher's Next reaches the seat's first line",
+   "ok": true,
+   "line": "L0008"
+  },
+  {
+   "test": "T10",
+   "step": "the seat's microphone opens on L0008, Stop ends the take",
+   "ok": true,
+   "stop_pressed": true
+  },
+  {
+   "test": "T10",
+   "step": "the seat's microphone opened on its line once",
+   "ok": true
+  },
+  {
+   "test": "T10",
+   "step": "the seat's microphone opens on L0009, Stop ends the take",
+   "ok": true,
+   "stop_pressed": true
+  },
+  {
+   "test": "T10",
+   "step": "the take arrives: the Worker holds its row in the class production",
+   "ok": true,
+   "takes": 2,
+   "status": 200
+  },
+  {
+   "test": "T10",
+   "step": "the take is in the class page's Review",
+   "ok": true,
+   "rows": 2
+  },
+  {
+   "test": "T10",
+   "step": "Approve, then Again on the next take: the Worker's reviews say so",
+   "ok": true,
+   "approve_pressed": true,
+   "again_pressed": true,
+   "reviews": [
+    "again",
+    "approved"
+   ]
+  },
+  {
+   "test": "T11",
+   "step": "a test teacher signs in through the shared client",
+   "ok": true,
+   "answer": true
+  },
+  {
+   "test": "T11",
+   "step": "the Classes box shows for a signed-in teacher",
+   "ok": true
+  },
+  {
+   "test": "T11",
+   "step": "Make a class (13 and over)",
+   "ok": true,
+   "class_id": "bb9b5cf9-af93-4ae7-aae6-7902bba98ac0",
+   "code": "H2NKR669"
+  },
+  {
+   "test": "T11",
+   "step": "the class page opens",
+   "ok": true
+  },
+  {
+   "test": "T11",
+   "step": "4 seats from a pasted list",
+   "ok": true,
+   "seats": 4
+  },
+  {
+   "test": "T11",
+   "step": "a class production of a castable play",
+   "ok": true,
+   "script": "gut-7364",
+   "production": "930AB336-9906-4DE5-935C-7CDBB6F0A10E"
+  },
+  {
+   "test": "T11",
+   "step": "cast with Fill evenly and Save",
+   "ok": true
+  },
+  {
+   "test": "T11",
+   "step": "Start a reading",
+   "ok": true,
+   "room": "V8YKDP"
+  },
+  {
+   "test": "T11",
+   "step": "the teacher switches the reading to Record",
+   "ok": true
+  },
+  {
+   "test": "T11",
+   "step": "seat Ada joins on the second device; its lines are tinted",
+   "ok": true,
+   "lines": 62,
+   "first": "L0008"
+  },
+  {
+   "test": "T11",
+   "step": "the seat's microphone opens on L0008, Stop ends the take",
+   "ok": true,
+   "stop_pressed": true
+  },
+  {
+   "test": "T11",
+   "step": "seat A ends the session with Close",
+   "ok": true
+  },
+  {
+   "test": "T11",
+   "step": "seat Ben joins on the second device; its lines are tinted",
+   "ok": true,
+   "lines": 58,
+   "first": "L0003"
+  },
+  {
+   "test": "T11",
+   "step": "as seat B: none of seat A's lines are tinted",
+   "ok": true,
+   "overlap": []
+  },
+  {
+   "test": "T11",
+   "step": "as seat B: seat A's name is nowhere but the room's own fact (who reads the line at the cursor, shown to every member)",
+   "ok": true,
+   "visible": []
+  },
+  {
+   "test": "T11",
+   "step": "as seat B: no take of seat A's is counted on this device",
+   "ok": true,
+   "rec_row": "Start recording"
+  },
+  {
+   "test": "T12",
+   "step": "a test teacher signs in through the shared client",
+   "ok": true,
+   "answer": true
+  },
+  {
+   "test": "T12",
+   "step": "the Classes box shows for a signed-in teacher",
+   "ok": true
+  },
+  {
+   "test": "T12",
+   "step": "Make a class (under 13)",
+   "ok": true,
+   "class_id": "aac678f4-d315-42fe-aeee-f848f41e0839",
+   "code": "AK2VH3PB"
+  },
+  {
+   "test": "T12",
+   "step": "the class page opens",
+   "ok": true
+  },
+  {
+   "test": "T12",
+   "step": "3 seats from a pasted list",
+   "ok": true,
+   "seats": 3
+  },
+  {
+   "test": "T12",
+   "step": "a class production of a castable play",
+   "ok": true,
+   "script": "gut-7364",
+   "production": "03F10F9C-449D-41E6-B6CE-AEC879F8BB0D"
+  },
+  {
+   "test": "T12",
+   "step": "cast with Fill evenly and Save",
+   "ok": true
+  },
+  {
+   "test": "T12",
+   "step": "Start a reading",
+   "ok": true,
+   "room": "BYFES6"
+  },
+  {
+   "test": "T12",
+   "step": "the teacher switches the reading to Record",
+   "ok": true
+  },
+  {
+   "test": "T12",
+   "step": "seat Ada joins on the second device; its lines are tinted",
+   "ok": true,
+   "lines": 66,
+   "first": "L0008"
+  },
+  {
+   "test": "T12",
+   "step": "the seat's microphone opens on L0008, Stop ends the take",
+   "ok": true,
+   "stop_pressed": true
+  },
+  {
+   "test": "T12",
+   "step": "the take stays on the seat's device",
+   "ok": true,
+   "takes_on_device": 1
+  },
+  {
+   "test": "T12",
+   "step": "no take reaches the Worker or the teacher",
+   "ok": true,
+   "worker_takes": 0,
+   "status": 200
+  }
+ ],
+ "worker_stopped": true
+}

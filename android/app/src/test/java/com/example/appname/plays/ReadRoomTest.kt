@@ -198,11 +198,14 @@ class ReadRoomTest {
         override var started = false
         override val failed: String? = null
         val recorded = mutableListOf<Pair<String, PartID>>()
+        /** Runs while the take is open, before it ends (T7c: the leader moves the cursor during a take). */
+        var during: (() -> Unit)? = null
         override suspend fun begin() { started = true }
         override fun stopListening() {}
         override fun end() { started = false }
         override suspend fun record(line: String, credit: PartID): Take? {
             recorded += line to credit
+            during?.invoke()
             return store.takeWrite(productionId) {
                 val p = store.production(productionId)!!
                 val file = store.writeTake(MicrophoneCapture(FloatArray(4_800) { 0.1f }, 48_000.0), p, line)
@@ -254,6 +257,23 @@ class ReadRoomTest {
         assertTrue("the outbox emptied", r.record.state.value.outbox.isEmpty())
         val done = r.link.sent.single { it.type() == "line-done" }
         assertEquals("L0003", done["line"]!!.jsonPrimitive.content)
+        r.record.detach()
+    }
+
+    /** T7c: a take that ended after the leader moved the cursor was never marked done, so the cursor coming back opened it again. */
+    @Test fun `a take that ends after the leader moved the cursor still sends its line-done, and the line opens no second microphone`() = runTest {
+        val r = rig(snap("L0003"))
+        r.record.arm()
+        r.engine()!!.during = { r.link.push(snap("L0002", gen = 2)) }
+        settle()
+        assertEquals(listOf("L0003" to molly), r.engine()!!.recorded)
+        val done = r.link.sent.single { it.type() == "line-done" }
+        assertEquals("the take's line is done although the cursor moved", "L0003", done["line"]!!.jsonPrimitive.content)
+        assertEquals("2", done["base"]!!.jsonPrimitive.content)
+        r.engine()!!.during = null
+        r.link.push(snap("L0003", gen = 3, done = listOf("L0003")))
+        settle()
+        assertEquals("the cursor back on the done line opens no second microphone", 1, r.engine()!!.recorded.size)
         r.record.detach()
     }
 

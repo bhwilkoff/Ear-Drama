@@ -1,0 +1,165 @@
+    0.00  WORKER  cursor L0001 gen 0 done ...[]
+   21.49  web1    rec L0001 at 1795177809536 offset 74
+   21.49  web1    take L0001 start gen 0
+   24.88  web1    take L0001 end cursor L0001 gen 0 done 0
+   24.88  web1    line-done L0001 base 0 sent
+   24.90  WORKER  cursor L0002 gen 1 done ...['L0001']
+   24.93  web1    justDid L0001 cleared cursor L0002 gen 1 recording -
+   24.93  web1    rec L0002 at 1795177812981 offset 74
+   24.93  web1    take L0002 start gen 1
+   28.30  web1    take L0002 end cursor L0002 gen 1 done 0
+   28.33  WORKER  cursor L0003 gen 2 done ...['L0001', 'L0002']
+   28.36  web1    line-done L0002 base 1 sent
+   28.36  web1    justDid L0002 cleared cursor L0003 gen 2 recording -
+   28.36  duo     rec L0003 at 1795177816437.1592 offset 1.73681640625
+   28.37  duo     take L0003 start gen 2
+   31.36  duo     take L0003 end cursor L0003 gen 2 done 0
+   31.37  duo     line-done L0003 base 2 sent
+   31.41  WORKER  cursor L0004 gen 3 done ...['L0001', 'L0002', 'L0003']
+   31.42  duo     justDid L0003 cleared cursor L0004 gen 3 recording -
+   31.44  web1    rec L0004 at 1795177819494 offset 7.5
+   31.44  web1    take L0004 start gen 3
+   34.88  WORKER  cursor L0005 gen 4 done ...['L0002', 'L0003', 'L0004']
+   34.88  web1    take L0004 end cursor L0004 gen 3 done 0
+   34.88  web1    line-done L0004 base 3 sent
+   34.88  web1    justDid L0004 cleared cursor L0005 gen 4 recording -
+   34.98  duo     rec L0005 at 1795177822974.231 offset 1.73681640625
+   34.98  duo     take L0005 start gen 4
+   37.91  duo     take L0005 end cursor L0005 gen 4 done 0
+   37.92  duo     line-done L0005 base 4 sent
+   37.95  WORKER  cursor L0006 gen 5 done ...['L0003', 'L0004', 'L0005']
+   37.96  duo     justDid L0005 cleared cursor L0006 gen 5 recording -
+   37.99  web1    rec L0006 at 1795177826032 offset 7.5
+   37.99  web1    take L0006 start gen 5
+   41.37  web1    take L0006 end cursor L0006 gen 5 done 0
+   41.37  web1    line-done L0006 base 5 sent
+   41.47  WORKER  cursor L0007 gen 6 done ...['L0004', 'L0005', 'L0006']
+   41.49  web1    justDid L0006 cleared cursor L0007 gen 6 recording -
+   41.49  web1    rec L0007 at 1795177829550 offset 7.5
+   41.49  web1    take L0007 start gen 6
+   44.85  web1    take L0007 end cursor L0007 gen 6 done 0
+   44.91  web1    line-done L0007 base 6 sent
+   44.97  WORKER  cursor L0008 gen 7 done ...['L0005', 'L0006', 'L0007']
+   45.02  web1    justDid L0007 cleared cursor L0008 gen 7 recording -
+   45.14  pixel   rec L0008 at 1.795177835447E12 offset -2326.0
+   45.14  pixel   take L0008 start gen 7
+   45.15  LEADER  press L0002 base 7 (cursor was L0008)
+   45.20  WORKER  cursor L0002 gen 8 done ...['L0005', 'L0006', 'L0007']
+   45.23  pixel   justDid L0008 cleared cursor L0002 gen 8 recording L0008
+   47.86  pixel   take L0008 end cursor L0002 gen 8 done 0
+   47.86  pixel   line-done L0008 skipped cursor L0002
+   51.20  LEADER  press L0003 base 8 (cursor was L0002)
+   51.27  WORKER  cursor L0003 gen 9 done ...['L0005', 'L0006', 'L0007']
+   57.27  LEADER  press L0004 base 9 (cursor was L0003)
+   57.31  WORKER  cursor L0004 gen 10 done ...['L0005', 'L0006', 'L0007']
+   63.31  LEADER  press L0005 base 10 (cursor was L0004)
+   63.35  WORKER  cursor L0005 gen 11 done ...['L0005', 'L0006', 'L0007']
+   69.36  LEADER  press L0006 base 11 (cursor was L0005)
+   69.40  WORKER  cursor L0006 gen 12 done ...['L0005', 'L0006', 'L0007']
+   75.40  LEADER  press L0007 base 12 (cursor was L0006)
+   75.44  WORKER  cursor L0007 gen 13 done ...['L0005', 'L0006', 'L0007']
+   81.44  LEADER  press L0008 base 13 (cursor was L0007)
+   81.48  WORKER  cursor L0008 gen 14 done ...['L0005', 'L0006', 'L0007']
+   81.66  pixel   rec L0008 at 1.795177872008E12 offset -2327.5
+   81.66  pixel   take L0008 start gen 14
+   84.27  WORKER  cursor L0009 gen 15 done ...['L0006', 'L0007', 'L0008']
+   84.27  pixel   take L0008 end cursor L0008 gen 14 done 0
+   84.27  pixel   line-done L0008 base 14 sent
+   84.27  pixel   justDid L0008 cleared cursor L0009 gen 15 recording -
+   84.27  pixel   rec L0009 at 1.795177874636E12 offset -2327.5
+   84.27  pixel   take L0009 start gen 15
+   86.73  pixel   take L0009 end cursor L0009 gen 15 done 0
+   86.74  pixel   line-done L0009 base 15 sent
+   86.77  WORKER  cursor L0010 gen 16 done ...['L0007', 'L0008', 'L0009']
+   86.78  pixel   justDid L0009 cleared cursor L0010 gen 16 recording -
+   86.88  duo     rec L0010 at 1795177874873.433 offset -1.973876953125
+   86.90  duo     take L0010 start gen 16
+   87.48  LEADER  press L0009 base 16 (cursor was L0010)
+   87.61  WORKER  cursor L0009 gen 17 done ...['L0007', 'L0008', 'L0009']
+   87.62  duo     justDid L0010 cleared cursor L0009 gen 17 recording L0010
+   89.81  duo     take L0010 end cursor L0009 gen 17 done 0
+   89.82  duo     line-done L0010 skipped cursor L0009
+   93.61  LEADER  press L0010 base 17 (cursor was L0009)
+   93.74  WORKER  cursor L0010 gen 18 done ...['L0007', 'L0008', 'L0009']
+   93.76  duo     rec L0010 at 1795177881839.71 offset -1.973876953125
+   93.76  duo     take L0010 start gen 18
+   96.85  duo     take L0010 end cursor L0010 gen 18 done 0
+   96.85  WORKER  cursor L0011 gen 19 done ...['L0008', 'L0009', 'L0010']
+   96.86  duo     line-done L0010 base 18 sent
+   96.86  duo     justDid L0010 cleared cursor L0011 gen 19 recording -
+   96.91  pixel   rec L0011 at 1.795177887272E12 offset -2327.5
+   96.91  pixel   take L0011 start gen 19
+   99.47  WORKER  cursor L0012 gen 20 done ...['L0009', 'L0010', 'L0011']
+   99.47  pixel   take L0011 end cursor L0011 gen 19 done 0
+   99.48  pixel   line-done L0011 base 19 sent
+   99.48  pixel   justDid L0011 cleared cursor L0012 gen 20 recording -
+   99.52  duo     rec L0012 at 1795177887594.728 offset -1.973876953125
+   99.52  duo     take L0012 start gen 20
+   99.74  LEADER  press L0011 base 20 (cursor was L0012)
+   99.79  WORKER  cursor L0011 gen 21 done ...['L0009', 'L0010', 'L0011']
+   99.80  duo     justDid L0012 cleared cursor L0011 gen 21 recording L0012
+  102.52  duo     take L0012 end cursor L0011 gen 21 done 0
+  102.90  duo     line-done L0012 skipped cursor L0011
+  105.79  LEADER  press L0012 base 21 (cursor was L0011)
+  105.84  WORKER  cursor L0012 gen 22 done ...['L0009', 'L0010', 'L0011']
+  105.97  duo     rec L0012 at 1795177894046.0352 offset -1.973876953125
+  105.97  duo     take L0012 start gen 22
+  108.97  duo     take L0012 end cursor L0012 gen 22 done 0
+  108.98  duo     line-done L0012 base 22 sent
+  109.00  WORKER  cursor L0013 gen 23 done ...['L0010', 'L0011', 'L0012']
+  109.11  duo     justDid L0012 cleared cursor L0013 gen 23 recording -
+  109.11  pixel   rec L0013 at 1.79517789945E12 offset -2327.5
+  109.11  pixel   take L0013 start gen 23
+  111.58  pixel   take L0013 end cursor L0013 gen 23 done 0
+  111.59  pixel   line-done L0013 base 23 sent
+  111.62  WORKER  cursor L0014 gen 24 done ...['L0011', 'L0012', 'L0013']
+  111.72  duo     rec L0014 at 1795177899725.1868 offset -1.973876953125
+  111.72  duo     take L0014 start gen 24
+  111.73  pixel   justDid L0013 cleared cursor L0014 gen 24 recording -
+  111.84  LEADER  press L0013 base 24 (cursor was L0014)
+  111.88  WORKER  cursor L0013 gen 25 done ...['L0011', 'L0012', 'L0013']
+  111.89  duo     justDid L0014 cleared cursor L0013 gen 25 recording L0014
+  114.67  duo     take L0014 end cursor L0013 gen 25 done 0
+  114.68  duo     line-done L0014 skipped cursor L0013
+  117.88  LEADER  press L0014 base 25 (cursor was L0013)
+  117.92  WORKER  cursor L0014 gen 26 done ...['L0011', 'L0012', 'L0013']
+  118.05  duo     rec L0014 at 1795177906124.5908 offset -1.973876953125
+  118.05  duo     take L0014 start gen 26
+  121.06  duo     take L0014 end cursor L0014 gen 26 done 0
+  121.06  duo     line-done L0014 base 26 sent
+  121.17  WORKER  cursor L0015 gen 27 done ...['L0012', 'L0013', 'L0014']
+  121.17  duo     justDid L0014 cleared cursor L0015 gen 27 recording -
+  121.24  pixel   rec L0015 at 1.795177911638E12 offset -2327.5
+  121.24  pixel   take L0015 start gen 27
+  123.80  pixel   take L0015 end cursor L0015 gen 27 done 0
+  123.81  pixel   line-done L0015 base 27 sent
+  123.84  WORKER  cursor L0016 gen 28 done ...['L0013', 'L0014', 'L0015']
+  123.86  pixel   justDid L0015 cleared cursor L0016 gen 28 recording -
+  123.86  pixel   rec L0016 at 1.795177914259E12 offset -2327.5
+  123.86  pixel   take L0016 start gen 28
+  123.92  LEADER  press L0015 base 28 (cursor was L0016)
+  123.96  WORKER  cursor L0015 gen 29 done ...['L0013', 'L0014', 'L0015']
+  123.99  pixel   justDid L0016 cleared cursor L0015 gen 29 recording L0016
+  126.40  pixel   take L0016 end cursor L0015 gen 29 done 0
+  126.41  pixel   line-done L0016 skipped cursor L0015
+  129.96  LEADER  press L0016 base 29 (cursor was L0015)
+  130.07  WORKER  cursor L0016 gen 30 done ...['L0013', 'L0014', 'L0015']
+  130.09  pixel   rec L0016 at 1.795177920431E12 offset -2327.5
+  130.09  pixel   take L0016 start gen 30
+  132.70  pixel   take L0016 end cursor L0016 gen 30 done 0
+  132.71  pixel   line-done L0016 base 30 sent
+  132.87  WORKER  cursor L0017 gen 31 done ...['L0014', 'L0015', 'L0016']
+  132.91  pixel   justDid L0016 cleared cursor L0017 gen 31 recording -
+  132.91  pixel   rec L0017 at 1.795177923309E12 offset -2327.5
+  132.91  pixel   take L0017 start gen 31
+  135.42  pixel   take L0017 end cursor L0017 gen 31 done 0
+  135.42  pixel   line-done L0017 base 31 sent
+  135.47  pixel   justDid L0017 cleared cursor L0018 gen 32 recording -
+  135.47  WORKER  cursor L0018 gen 32 done ...['L0015', 'L0016', 'L0017']
+  135.48  duo     rec L0018 at 1795177923556.184 offset 2.15185546875
+  135.48  duo     take L0018 start gen 32
+  136.08  LEADER  press L0017 base 32 (cursor was L0018)
+  136.21  WORKER  cursor L0017 gen 33 done ...['L0015', 'L0016', 'L0017']
+  136.25  duo     justDid L0018 cleared cursor L0017 gen 33 recording L0018
+  138.48  duo     take L0018 end cursor L0017 gen 33 done 0
+  138.49  duo     line-done L0018 skipped cursor L0017

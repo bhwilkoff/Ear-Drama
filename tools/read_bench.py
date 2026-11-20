@@ -44,6 +44,9 @@ ACTIVITY = app_config.ANDROID_MAIN_ACTIVITY
 BASE_URL = "https://eardrama-api.benwilkoff.workers.dev"
 DOOR_SECONDS = "1500"
 SP = Path(os.environ.get("READ_BENCH_TMP", "/tmp/read-bench"))
+# --local-worker: the base the devices are pointed at by their DEBUG doors (Android appname_worker_url, Apple
+# APP_WORKER_URL, web ?worker=); None means each build's own Worker (the deployed one).
+WORKER_DOOR = {"lan": None, "local": None}
 
 DEVICES = {
     # name: (kind, lease key, address, role, what it is)
@@ -92,7 +95,7 @@ class Events:
                 if ln in self.seen:
                     continue
                 self.seen.add(ln)
-                self.raw.append(ln.strip()[-200:])
+                self.raw.append(f"{host:.0f} " + ln.strip()[-200:])
                 m = LIT.search(ln)
                 if m:
                     off = num(m.group(4))
@@ -212,6 +215,8 @@ class AndroidDevice(Device):
         args = ["shell", "am", "start", "-n", f"{PKG}/{ACTIVITY}",
                 "--ez", "appname_skip_onboard", "true", "--ez", "appname_mute", "true", "--ei", "appname_door_seconds", DOOR_SECONDS,
                 "--ez", "appname_read_diag", "true", "--es", "appname_start_read_room", code]
+        if WORKER_DOOR["lan"]:
+            args += ["--es", "appname_worker_url", WORKER_DOOR["lan"]]
         if screen:
             args += ["--ez", "appname_start_screen", "true"]
         else:
@@ -324,6 +329,8 @@ class AppleDevice(Device):
 
     def start(self, code, screen=False, claim=None):
         env = {"APP_SKIP_ONBOARD": "1", "APP_MUTE": "1", "APP_DOOR_SECONDS": DOOR_SECONDS, "APP_READ_DIAG": "1", "APP_START_READ_ROOM": code}
+        if WORKER_DOOR["lan"]:
+            env["APP_WORKER_URL"] = WORKER_DOOR["lan"]
         if screen:
             env["APP_START_SCREEN"] = "1"
         else:
@@ -406,6 +413,8 @@ class WebDevice(Device):
         self.b.ws.call("Emulation.setDeviceMetricsOverride", {"width": 600, "height": 844, "deviceScaleFactor": 1, "mobile": False} if not screen else
                        {"width": 1280, "height": 720, "deviceScaleFactor": 1, "mobile": False})
         url = f"{WebDevice.SITE}/?read-room={code}&readdiag=1&mute=1" + ("&screen=1" if screen else "")
+        if WORKER_DOOR["local"]:
+            url += f"&worker={WORKER_DOOR['local']}"
         if claim:
             from urllib.parse import quote
             url += f"&read-part={quote(claim)}&read-record=1"
@@ -534,6 +543,7 @@ def main():
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--only", help="comma list of device names")
     ap.add_argument("--skip", help="comma list of device names to leave out")
+    ap.add_argument("--local-worker", type=int, metavar="PORT", help="run the Worker in this tree locally (tools/local_worker.py) on PORT and point every device at it: a protocol change on real devices before any deploy")
     ap.add_argument("--base", default=BASE_URL, help="the Worker (the deployed one by default; `wrangler dev` on the LAN works too)")
     ap.add_argument("--script", default="gut-7364")
     ap.add_argument("--presses", type=int, default=100)
@@ -559,6 +569,13 @@ def main():
     SP.mkdir(parents=True, exist_ok=True)
     report = dict(tag=a.tag, base=a.base, script=a.script, devices={}, tests={})
 
+    lw = None
+    if a.local_worker:
+        import local_worker
+        lw = local_worker.LocalWorker(a.local_worker, scratch=SP / f"local-worker-{a.local_worker}", log=out / f"{a.tag}-worker.log").start()
+        a.base = lw.local_base
+        WORKER_DOOR.update(lan=lw.lan_base, local=lw.local_base)
+        print(f"[bench] local Worker {lw.local_base} (devices: {lw.lan_base})", flush=True)
     srv, site = serve_site()
     WebDevice.SITE = site
     report["site"] = site
@@ -626,6 +643,7 @@ def main():
                 t5["devices"][d.name] = dict(joined_by_log=joined, transports=[t for _, t in d.ev.transports], first_lit=(lits[0]["line"] if lits else None), log_tail=d.ev.raw[-3:])
                 if not joined:
                     print(f"[bench] {d.name:8} no [readdiag] after join", flush=True)
+                    t5["devices"][d.name]["console_head"] = (getattr(d, "head", None) or [])[-25:]
             t5["room_members"] = len(members)
             t5["started"] = len(started)
             report["tests"]["T5"] = t5
@@ -694,6 +712,11 @@ def main():
                           rec_events={d.name: [e["line"] for e in d.ev.rec] for d in started},
                           note="Apple's stub microphone returns an empty take (nothing is written), so an Apple device opens its microphone but sends no take")
                 report["tests"]["T7"] = t7
+                # The trace (T7c): the Worker's sequence of states as the leader's socket saw them, each press with the cursor it
+                # left, and every device's [readdiag] lines (take start/end, line-done sent/skipped/refused, justDid cleared).
+                hist = (leader.cmd({"cmd": "history"}) or {}).get("history") or []
+                (out / f"{a.tag}-T7-trace.json").write_text(json.dumps(dict(presses=presses, history=hist,
+                                                                            devices={d.name: d.ev.raw for d in started}), indent=1))
                 print(f"[T7] exactly one: {exact}, missed: {missed}, wrong/extra: {extra}, repeated: {repeats}; takes {len(tk)} arrived of {len(expect_take)} expected", flush=True)
                 for d in started:
                     d.frame(frames / f"{a.tag}-{d.name}-T7-after.png")
@@ -777,6 +800,9 @@ def main():
                 td[d.name] = dict(gone=ok, detail=detail)
                 print(f"[bench] teardown {d.name:8} {'OK ' if ok else 'FAIL '}{detail}", flush=True)
             report["teardown"] = td
+            if lw:
+                report["local_worker"] = dict(base=lw.lan_base, stopped=lw.stop(), diag_lines=len(lw.diag()))
+                print(f"[bench] local Worker {'stopped' if report['local_worker']['stopped'] else 'STILL RUNNING'}", flush=True)
             (out / f"{a.tag}-report.json").write_text(json.dumps(report, indent=1))
             srv.shutdown()
     print(f"[bench] report {out / (a.tag + '-report.json')}")

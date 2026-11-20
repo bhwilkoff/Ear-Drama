@@ -139,7 +139,7 @@ class AppContainer(context: Context, scope: CoroutineScope) {
         val worker = WorkerApi(
             api.client,
             WorkerConfig(
-                baseUrl = BuildConfig.WORKER_BASE_URL,
+                baseUrl = com.example.appname.navigation.LaunchDoors.workerUrl ?: BuildConfig.WORKER_BASE_URL,
                 googleWebClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID,
                 appleServicesId = BuildConfig.APPLE_SERVICES_ID,
                 appleReturnUrl = BuildConfig.APPLE_RETURN_URL,

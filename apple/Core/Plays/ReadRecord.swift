@@ -152,6 +152,13 @@ final class ReadRoomRecorder {
 
     // MARK: Recording a line
 
+    /// `[readdiag]` lines for the record state machine (DEBUG, APP_READ_DIAG=1): take start and end, line-done, justDid.
+    private func trace(_ words: @autoclosure () -> String) {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["APP_READ_DIAG"] == "1" { print("[readdiag] \(words())") }
+        #endif
+    }
+
     private func startRecording(_ line: String, credit: Bool) {
         recording = line
         justDid = line
@@ -160,6 +167,7 @@ final class ReadRoomRecorder {
             print("[readdiag] rec \(line) at \(Date().timeIntervalSince1970 * 1000) offset \((link as? ReadSession)?.clockOffsetMS ?? .nan)")
         }
         #endif
+        trace("take \(line) start gen \(link.snapshot?.cursorGen ?? -1)")
         Task { await record(line, credit: credit) }
     }
 
@@ -170,6 +178,7 @@ final class ReadRoomRecorder {
         if stopped { return }
         guard let take else { justDid = nil; return }
         let now = link.snapshot
+        trace("take \(line) end cursor \(now?.cursor ?? "-") gen \(now?.cursorGen ?? -1) done \(now?.done.contains(line) == true ? 1 : 0)")
         if credit {
             await creditOwn(take, snap: now)
             if let next = ReadCore.step(cast, cursor: line, delta: 1), let now, now.cursor == line {
@@ -178,7 +187,14 @@ final class ReadRoomRecorder {
         } else {
             outbox.append(take.id)
             saveOutbox()
-            if let now, now.cursor == line { try? await link.send(["type": "line-done", "line": line, "base": now.cursorGen]) }
+            // Sent even when the leader has moved the cursor away: the take exists, so the line is done and its microphone
+            // does not open again when the cursor comes back (T7c; the Worker leaves the cursor where the leader put it).
+            if let now {
+                trace("line-done \(line) base \(now.cursorGen) sent\(now.cursor == line ? "" : " cursor \(now.cursor)")")
+                do { try await link.send(["type": "line-done", "line": line, "base": now.cursorGen]) } catch {
+                    trace("line-done \(line) refused \((error as? ReadFailure)?.code ?? "error")")
+                }
+            }
             await flush()
         }
     }
@@ -283,7 +299,9 @@ final class ReadRoomRecorder {
     /// Settles `justDid`, opens the microphone when it is this device's line, holds or drops the pickup, sends the outbox.
     func onSnapshot() {
         guard !stopped, let s = link.snapshot else { return }
+        let had = justDid
         justDid = ReadCore.settleJustDid(s, justDid)
+        if let had, justDid == nil { trace("justDid \(had) cleared cursor \(s.cursor) gen \(s.cursorGen) recording \(recording ?? "-")") }
         if s.ended { dropPickup(); return }
         let isRecordMode = s.mode == "record"
         if isRecordMode, s.you?.receives == true { holdPickup() } else if pickupTask != nil { dropPickup() }
