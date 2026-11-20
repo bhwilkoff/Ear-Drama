@@ -133,7 +133,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
   dark, read by the main thread.
 - [x] **V6 Home composition, Apple and Android (Sonnet, Opus review).** iPhone, Duo open, iPad, Mac,
   Apple TV (focus does the work), Pixel, Google TV.
-- [ ] **V7 Detail pages (Opus web, Sonnet ports).** Series, episode, person, play pages with R3a §4.3:
+- [x] **V7 Detail pages (Opus web, Sonnet ports).** Series, episode, person, play pages with R3a §4.3:
   hero or label, gallery when there is one, an episode's own label, the recordings section quieter.
 - [ ] **V8 Visual audit on every device (Opus).** Every screen touched, light and dark, the 56 px
   row tile on the iPhone 12 and the Duo, a TV hero across the room; faults fixed on every platform.
@@ -280,3 +280,8 @@ privacy words) is folded in when it arrives, never waited on.
   Workshop (check whether a photo exists). Owner notes: an Apple Account sign-in alert appeared on the
   iPad ("iPhone near Lake Forest, IL"); an iPadOS 27.3 beta update prompt; the Android :wear module
   fails installDebug with a version downgrade.
+- **2026-11-19, tick 15**: V7 ports merged locally (1.0.146; macOS 494, Android 600, 0 warnings):
+  item pages on Apple and Android; tvOS hero draws pictures at their shape; Google TV head + buttons
+  one list item, Home hero photo at its shape. Renders read: Android person label lacks the
+  credit-years arc (web has it); Android play head shows four gray placeholder-like bars (V3 removed
+  that pattern on web): both for V8. Push held for device check 4. Running: V2, T5, device check.
