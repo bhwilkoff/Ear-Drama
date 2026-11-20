@@ -115,9 +115,6 @@ class OpenPlaysApi(private val worker: WorkerApi) {
     /** The token rides the `x-invite` header, never the path. */
     suspend fun openInvite(token: String): OpenInvite = decode("$p/open/invite", mapOf(INVITE_HEADER to token))
 
-    suspend fun audio(token: String, takeId: String): ByteArray =
-        read("$p/open/invite/takes/${enc(takeId)}/audio", mapOf(INVITE_HEADER to token))
-
     suspend fun finished(limit: Int? = null, cursor: String? = null): FinishedPage {
         val query = listOfNotNull(limit?.let { "limit=$it" }, cursor?.let { "cursor=${enc(it)}" })
         return decode("$p/finished" + if (query.isEmpty()) "" else "?" + query.joinToString("&"))

@@ -40,6 +40,11 @@ import Foundation
 ///   finished drama (none is published yet): the page opens over a bundled script and the panel steps through its
 ///   lines on a timer, playing nothing (DEBUG, tvOS)
 ///
+/// - APP_START_READ_ROOM=<CODE>: open that read room (Decision 082; the `eardrama://read/CODE` twin). APP_START_SEAT=
+///   <class code>:<seat id or label> takes that seat of a class room first (a debug stand-in for picking a name);
+///   APP_START_SCREEN=1 opens the room as the shared screen (the Apple TV's only mode). APP_READ_DIAG=1 prints the
+///   transport, the cursor delay and the clock offset
+///
 /// - APP_SCROLL_Y=<points> (iOS): scrolls the page on screen that far down APP_SCROLL_DELAY seconds after launch
 ///   (default 6), for frames of the open iPhone Duo below the first screen (ScrollDoor_iOS)
 ///
@@ -64,6 +69,9 @@ struct LaunchDoors: Sendable, Equatable {
     var production: String?
     var picker: String?
     var along: String?
+    var readRoom: String?
+    var readSeat: String?
+    var readScreen = false
 
     var isEmpty: Bool { self == LaunchDoors() }
 
@@ -101,7 +109,10 @@ struct LaunchDoors: Sendable, Equatable {
                                    inkDemo: environment["APP_READER_INK_DEMO"] == "1"),
             production: environment["APP_PRODUCTION"],
             picker: environment["APP_PICKER"],
-            along: environment["APP_START_ALONG"].flatMap { $0.isEmpty ? nil : $0 }
+            along: environment["APP_START_ALONG"].flatMap { $0.isEmpty ? nil : $0 },
+            readRoom: environment["APP_START_READ_ROOM"].flatMap { $0.isEmpty ? nil : $0 },
+            readSeat: environment["APP_START_SEAT"].flatMap { $0.isEmpty ? nil : $0 },
+            readScreen: environment["APP_START_SCREEN"] == "1"
         )
     }
 

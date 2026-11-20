@@ -156,6 +156,26 @@ class WorkerApi(
     /** Shared plays (docs/WORKER.md): a signed-in call with a JSON body, answered as text. */
     suspend fun callText(method: HttpMethod, path: String, body: String? = null): String = authed(method, path, body)
 
+    /** The takes inbox long poll (docs/WORKER.md): signed in, the bytes with the `x-take` header, or null on a 204. */
+    suspend fun callInbox(path: String): Pair<ByteArray, String?>? {
+        val r = authedResponse(HttpMethod.Get, path)
+        if (r.status.value == 204) return null
+        return r.bodyAsBytes() to r.headers["x-take"]
+    }
+
+    /** A call that needs no account (a read room, a seat): no bearer, no refresh; [headers] carries its own key. */
+    suspend fun anonText(method: HttpMethod, path: String, body: String? = null, headers: Map<String, String> = emptyMap()): String {
+        if (!config.workerReady) throw WorkerException(503, "not_configured")
+        return ok(send(method, path, body, null, null, headers)).bodyAsText()
+    }
+
+    /** The `wss://` form of a Worker path, for a read room's socket; null when no Worker is configured. */
+    fun socketUrl(path: String): String? {
+        if (!config.workerReady) return null
+        val base = config.baseUrl.trimEnd('/')
+        return if (base.startsWith("http")) "ws" + base.substring(4) + path else null
+    }
+
     /**
      * A signed-in call that sends [raw] bytes (a take's audio) with [headers],
      * or reads the answer as bytes, through the same refresh and one retry.

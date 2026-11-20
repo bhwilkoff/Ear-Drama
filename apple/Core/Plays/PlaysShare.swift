@@ -291,15 +291,17 @@ enum PlaysShare {
                           script: PlayScript, me: String?) async throws -> Int {
         guard let start = store.production(localID) else { return 0 }
         var add: [Take] = []
-        for takeID in missingHere(start, rec) {
-            guard let t = rec.takes.first(where: { $0.id == takeID }) else { continue }
-            let data = try await api.audio(rec.id, takeID: takeID)
-            let file = importedFile(takeID, data)
-            try store.importTake(localID, file: file, data: data)
+        // Takes are on the devices that made them (Decision 082): the director's device picks up what was sent
+        // to it, one at a time, from the takes inbox, never by fetching a stored file.
+        for _ in missingHere(start, rec) {
+            guard let picked = try await api.nextTake(rec.id) else { break }
+            let t = picked.fields
+            let file = importedFile(t.id, picked.data)
+            try store.importTake(localID, file: file, data: picked.data)
             add.append(Take(id: t.id, lineID: t.lineID, part: PartID(rawValue: t.part), file: file,
-                            created: Date(timeIntervalSinceReferenceDate: t.created ?? 0), frames: t.frames,
+                            created: Date(), frames: t.frames,
                             sampleRate: t.sampleRate, capture: Take.Capture(rawValue: t.capture ?? "") ?? .direct,
-                            heard: t.heard ?? [:], loudness: t.loudness, peak: Float(t.peak ?? 0), bleed: false))
+                            heard: [:], loudness: nil, peak: 0, bleed: false))
         }
         guard var n = store.production(localID) else { return 0 }
         n.takes.append(contentsOf: add)

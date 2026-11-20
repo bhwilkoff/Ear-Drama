@@ -191,15 +191,10 @@ struct SharedPlayScreen_tvOS: View {
     private func listen(_ rec: SharedRecord, _ script: PlayScript) async {
         line = nil
         fetching = true
-        var files = cached()
+        let files = cached()
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            for id in SharedListen.toFetch(rec, have: Set(files.keys)) {
-                let data = try await api.audio(rec.id, takeID: id)
-                let name = SharedListen.fileName(id, data)
-                try data.write(to: folder.appending(path: name), options: .atomic)
-                files[id] = name
-            }
+            // No route serves another person's take (Decision 082); the TV plays what is on it and the voice reads the rest.
         } catch {
             line = PlaysShare.line(error)
         }

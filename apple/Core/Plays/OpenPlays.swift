@@ -127,10 +127,6 @@ struct WorkerOpenPlays {
         try decode(OpenInvite.self, try await get("\(Self.root)/open/invite", headers: [Self.inviteHeader: token]))
     }
 
-    func audio(_ token: String, takeID: String) async throws -> Data {
-        try await get("\(Self.root)/open/invite/takes/\(Self.escape(takeID))/audio", headers: [Self.inviteHeader: token])
-    }
-
     func finished(limit: Int? = nil, cursor: String? = nil) async throws -> FinishedPage {
         var query: [String] = []
         if let limit { query.append("limit=\(limit)") }

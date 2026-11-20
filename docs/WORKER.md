@@ -332,11 +332,11 @@ the room opened join the next room.
 
 Messages: `cursor { line, base }`, `line-done { line, base }`, `again { line,
 base }`, `mode { mode }`, `claim { part }`, `release { part }`, `lead { to }`,
-`lock { locked }`, `seat { seat, seat_key, move? }`, `ping { t0 }` (answered `pong {
+`lock { locked }`, `read-open { open }` (the leader's "Read open parts", carried in the snapshot as `read_open`; the screen obeys it), `seat { seat, seat_key, move? }`, `ping { t0 }` (answered `pong {
 t0, server_time }`), `end`. Refusals: `leader_only`, `stale` (with the current
 cursor generation), `part_taken` (with the holder), `not_your_line`,
 `class_assignments_only`, `readers_only`, `screens_do_not_lead`,
-`not_a_member`, `seat_key_required`, `rate_limited`. The key never travels in a URL.
+`not_a_member`, `seat_key_required`, `rate_limited`. The key never travels in a URL. The snapshot carries `leader_name` (the leader's seat label, or the room owner's own `owner_name` given when the room opens; else null) so readers see "Waiting for <name>", and `read_open`.
 
 ## Shared plays
 

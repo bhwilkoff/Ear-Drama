@@ -173,6 +173,7 @@ async function createInput(request, env) {
     mode: body.mode,
     production_id: body.production_id,
     class_id: body.class_id,
+    owner_name: body.owner_name,
     seats: body.seats,
     assignments: body.assignments,
   };

@@ -8,6 +8,7 @@
           { "/": "/episode/?*", "comment": "an episode" },
           { "/": "/person/?*", "comment": "a person" },
           { "/": "/drama/?*", "comment": "a finished ear drama" },
+          { "/": "/read/?*", "comment": "a read room, its code in the path (?screen for the shared screen)" },
           { "/": "/search", "comment": "search, its query in ?q=" },
           { "/": "/library", "comment": "the Library tab" },
           { "/": "/library/" },

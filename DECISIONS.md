@@ -835,3 +835,6 @@ casting and the room, and pay the upload under their own name. Under-13 voices
 never reach a public archive. The cost is a second transport to keep honest
 (polling beside sockets) and recordings that exist only on the leader's device
 until the teacher uploads or exports them.
+
+**Addendum 2026-11-19 (T4, owner-rule decisions by the main thread)**: (a) the leader's name travels in the read snapshot (`leader_name`: a seat's label, or the owner's `owner_name`), so readers see "Waiting for <name>"; (b) "Read open parts" is a leader message (`read-open`, snapshot `read_open`) the screen obeys, not a local switch; (c) a seat key lasts for the session or app run only on a shared device: the web keeps it per tab, Apple and Android keep it in memory, never in the keychain or on disk.
+**Why:** a class device is shared by students; a key at rest would let the next student read as the last. **How to apply:** `read-protocol.js` + `read-golden.json` carry (a) and (b); `ReadSeatKeys` (Swift and Kotlin) is the only holder of seat keys on a device.

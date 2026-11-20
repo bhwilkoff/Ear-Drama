@@ -29,9 +29,26 @@ class LaunchDoorsTest {
         val doors = LaunchDoors.from(extras, debug = true)
         assertEquals(LaunchDoors("library", "item-42", mute = true, doorSeconds = 180), doors)
         assertEquals(
-            listOf(InboxRequest.Tab("library"), InboxRequest.Item("item-42")),
+            listOf(InboxRequest.Tab("library"), InboxRequest.Series("item-42")),
             doors.requests(),
         )
+    }
+
+    /** An episode id carries `|`, a series key never does: the item door opens either, as Apple's does (found 2026-11-19). */
+    @Test
+    fun theItemDoorOpensASeriesKeyOrAnEpisode() {
+        assertEquals(listOf(InboxRequest.Series("suspense")), LaunchDoors(startItem = "suspense").requests())
+        assertEquals(listOf(InboxRequest.Item("sus|1943-05-25")), LaunchDoors(startItem = "sus|1943-05-25").requests())
+    }
+
+    /** Decision 082: the read room doors, and their twins on the other platforms. */
+    @Test
+    fun theReadRoomDoors() {
+        val extras = mapOf<String, Any?>("appname_start_read_room" to "abc-123", "appname_start_seat" to "KLS456:Lucy", "appname_start_screen" to "1")
+        val doors = LaunchDoors.from(extras, debug = true)
+        assertEquals(listOf(InboxRequest.ReadRoom("ABC123", true, "KLS456:Lucy")), doors.requests())
+        assertEquals(LaunchDoors(), LaunchDoors.from(extras, debug = false))
+        assertEquals(emptyList<InboxRequest>(), LaunchDoors(startReadRoom = "ABCDEU").requests())
     }
 
     /** Decision 075: five tabs; Stations and Surprise are Home pushes, and the old names still open. */

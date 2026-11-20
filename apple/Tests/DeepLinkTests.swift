@@ -25,6 +25,10 @@ struct DeepLinkTests {
 
     @Test func aDramaLinkAndItsTwinOpenTheFinishedDrama() {
         #expect(parse("eardrama://drama/P1abc") == .drama("P1abc"))
+        #expect(parse("eardrama://read/abc-123") == .readRoom("ABC123", screen: false))
+        #expect(parse("https://eardrama.org/read/ABC123?screen") == .readRoom("ABC123", screen: true))
+        #expect(parse("eardrama://read/ABCDEU") == nil)
+        #expect(parse("https://eardrama.org/read") == nil)
         #expect(parse("https://eardrama.org/drama/P1abc") == .drama("P1abc"))
         #expect(parse("https://eardrama.org/drama/") == nil)
         #expect(parse("https://example.com/drama/P1abc") == nil)

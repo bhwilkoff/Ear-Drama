@@ -193,6 +193,8 @@ export function newRoom(input, cast, creatorId, now) {
       owner: creatorId,
       leader: creatorId,
       locked: false,
+      read_open: false,
+      owner_name: typeof input.owner_name === "string" && input.owner_name.trim() ? input.owner_name.trim().slice(0, 40) : null,
       claims: {},
       seats,
       assignments,
@@ -471,6 +473,11 @@ export function applyMessage(world, memberId, msg, now) {
       if (r.error) return r;
       return out({ room: { ...room, generation: room.generation + 1, touched_at: now }, members: r.members, changed: true });
     }
+    case "read-open":
+      if (!canLead(room, memberId)) return { error: "leader_only" };
+      if (typeof msg.open !== "boolean") return { error: "bad_message" };
+      if (msg.open === room.read_open) return out({});
+      return out({ room: { ...room, read_open: msg.open, generation: room.generation + 1, touched_at: now }, changed: true });
     case "end":
       if (memberId !== room.leader && memberId !== room.owner) return { error: "leader_only" };
       return out({ room: { ...room, ended: true, generation: room.generation + 1, touched_at: now }, changed: true });
@@ -505,6 +512,14 @@ export function roomExpired(room, now) {
  * own place in it. No key and no key hash, ever. A late joiner reads the
  * same snapshot: the cursor, their parts, their next line.
  */
+/** Whoever leads, by the name the room knows: a seat's label, or the owner's own name; else null. */
+export function leaderName(room, members) {
+  const lead = members.find((m) => m.id === room.leader);
+  const seat = lead && lead.seat ? room.seats.find((s) => s.id === lead.seat) : null;
+  if (seat) return seat.label;
+  return room.leader === room.owner ? room.owner_name || null : null;
+}
+
 export function joinSnapshot(room, cast, members, memberId, now) {
   const me = members.find((m) => m.id === memberId) || null;
   const live = liveMembers(members, now);
@@ -524,6 +539,8 @@ export function joinSnapshot(room, cast, members, memberId, now) {
     locked: room.locked,
     ended: room.ended,
     leader: room.leader,
+    leader_name: leaderName(room, members),
+    read_open: !!room.read_open,
     waiting_for_leader: leaderGone(room, members, now).waiting,
     you: me ? { id: me.id, role: me.role, seat: me.seat, leads: canLead(room, me.id), owner: room.owner === me.id, parts: partsOf(room, me) } : null,
     next_mine: me ? nextMine(room, cast, me, room.cursor) : null,

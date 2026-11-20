@@ -44,7 +44,11 @@ import com.example.appname.navigation.Tab
 import com.example.appname.navigation.navigateTo
 import com.example.appname.plays.PartID
 import com.example.appname.ui.screens.EpisodeScreen
+import com.example.appname.ui.screens.CastingBoardScreen
+import com.example.appname.ui.screens.ClassPageScreen
 import com.example.appname.ui.screens.DramaScreen
+import com.example.appname.ui.screens.ReadRoomScreen
+import com.example.appname.ui.screens.ReadScreenScreen
 import com.example.appname.ui.screens.InvitationScreen
 import com.example.appname.ui.screens.LibraryScreen
 import com.example.appname.ui.screens.ListenScreen
@@ -131,7 +135,8 @@ fun AppRoot(
                     // A TV records nothing: its Record door opens nothing.
                     else -> Tab.named(request.tab)?.takeUnless { it == Tab.Record && container.isTelevision }?.let { selected = it }
                 }
-                is InboxRequest.Item -> stacks.getValue(selected).navigateTo(Route.Episode(request.id))
+                is InboxRequest.Item -> stacks.getValue(selected).navigateTo(if ('|' in request.id) Route.Episode(request.id) else Route.Series(request.id))
+                is InboxRequest.ReadRoom -> stacks.getValue(selected).navigateTo(Route.ReadRoom(request.code, request.screen || container.isTelevision, request.seat))
                 is InboxRequest.Series -> stacks.getValue(selected).navigateTo(Route.Series(request.key))
                 is InboxRequest.Person -> stacks.getValue(selected).navigateTo(Route.Person(request.id))
                 is InboxRequest.Search -> {
@@ -200,6 +205,10 @@ fun AppRoot(
         LocalPlayerMuted provides muted,
         LocalAppContainer provides container,
         LocalOnline provides online,
+        com.example.appname.ui.screens.LocalReadNav provides com.example.appname.ui.screens.ReadNav(
+            openClass = { id -> stack.navigateTo(Route.ClassPage(id)) },
+            openRoom = { code -> stack.navigateTo(Route.ReadRoom(code)) },
+        ),
     ) {
         HapticEvents()
         // §9.2a: on a TV the whole app sits inside the safe area; the background still fills the screen.
@@ -327,7 +336,15 @@ fun AppRoot(
                             entry<Route.Drama> { route ->
                                 DramaScreen(route.id, onBack = back, onReadAlong = { play, _ -> stack.add(Route.Reader(play.scriptId, null, null, null, along = true, drama = play.id)) })
                             }
-                            entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
+                            entry<Route.ReadRoom> { route ->
+                if (route.screen) ReadScreenScreen(route.code, onBack = back)
+                else ReadRoomScreen(route.code, onBack = back, onOpenScreen = { stack.add(Route.ReadRoom(it, screen = true)) }, seatDoor = route.seat)
+            }
+            entry<Route.ClassPage> { route ->
+                ClassPageScreen(route.id, onBack = back, onCasting = { c, p -> stack.add(Route.ClassCasting(c, p)) }, onOpenRoom = { stack.add(Route.ReadRoom(it)) })
+            }
+            entry<Route.ClassCasting> { route -> CastingBoardScreen(route.classId, route.productionId, onBack = back) }
+            entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
                             entry<Route.Script> { route ->
                                 ScriptScreen(route.id, onBack = back, onRead = openReader, onOpenProduction = { id ->
                                     // Starting one replaces the play's page with its cast sheet: depth stays two (§1.4).

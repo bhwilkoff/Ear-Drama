@@ -70,15 +70,6 @@ struct OpenPlaysTests {
         #expect(vault.load() == nil)
     }
 
-    @Test func aTakePlaysWithTheSameHeader() async throws {
-        OpenStub.answer = { _ in (200, Data([1, 2, 3, 4])) }
-        let data = try await plays.audio("TOKEN-0123456789012345", takeID: "T 1")
-        #expect(data.count == 4)
-        #expect(OpenStub.seen[0].path == "/v1/plays/open/invite/takes/T 1/audio")
-        #expect(OpenStub.seen[0].invite == "TOKEN-0123456789012345")
-        #expect(OpenStub.seen[0].bearer == nil)
-    }
-
     @Test func aRevokedOrExpiredInviteIsGoneAndAnUnknownOneIsNot() async throws {
         let goneBody = json(["error": "invite_gone"])
         OpenStub.answer = { _ in (410, goneBody) }

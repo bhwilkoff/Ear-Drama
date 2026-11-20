@@ -88,7 +88,8 @@ class PlaysShareTest {
             log("upload $takeId")
             uploaded += Triple(takeId, bytes, meta)
         }
-        override suspend fun audio(pid: String, takeId: String): ByteArray { log("audio $takeId"); return byteArrayOf(1, 2, 3) }
+        private val inbox = ArrayDeque(listOf(PickedFields("theirs", "L0002", "role:FIBBER", 4800, 48000.0, "aec")))
+        override suspend fun nextTake(pid: String): PickedTake? { val f = inbox.removeFirstOrNull() ?: return null; log("audio ${f.id}"); return PickedTake(f, byteArrayOf(1, 2, 3)) }
         override suspend fun choose(pid: String, takeId: String): SharedRecord { log("choose $takeId"); return record() }
         override suspend fun publish(pid: String): PublishAnswer { log("publish"); return PublishAnswer("pending_owner_account") }
         override suspend fun removeLine(pid: String, lineId: String, reason: String) { log("remove $lineId $reason") }

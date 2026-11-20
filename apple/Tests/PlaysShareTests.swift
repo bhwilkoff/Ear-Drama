@@ -111,9 +111,11 @@ private final class StubWorker: PlaysTransport {
     func upload(_ pid: String, takeID: String, audio: Data, contentType: String, meta: TakeMeta) async throws {
         uploaded.append(takeID)
     }
-    func audio(_ pid: String, takeID: String) async throws -> Data {
-        audioFetched.append(takeID)
-        return audio[takeID] ?? Data("RIFF....WAVE".utf8)
+    func nextTake(_ pid: String) async throws -> PickedTake? {
+        guard let id = rec.chosen.values.sorted().first(where: { !audioFetched.contains($0) }), let t = rec.takes.first(where: { $0.id == id }) else { return nil }
+        audioFetched.append(id)
+        return PickedTake(fields: .init(id: t.id, lineID: t.lineID, part: t.part, frames: t.frames, sampleRate: t.sampleRate, capture: t.capture, seat: nil),
+                          data: audio[id] ?? Data("RIFF....WAVE".utf8))
     }
     func choose(_ pid: String, takeID: String) async throws -> SharedRecord { rec }
 

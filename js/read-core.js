@@ -184,6 +184,7 @@ const ReadCore = (() => {
 
   /** The label of whoever a class room waits for, or null for "the teacher" (the owner leads). */
   function waitingFor(snap) {
+    if (snap.leader_name) return snap.leader_name;
     const m = (snap.members || []).find((x) => x.id === snap.leader);
     const seat = m && m.seat ? (snap.seats || []).find((s) => s.id === m.seat) : null;
     return seat ? seat.label : null;

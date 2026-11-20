@@ -519,7 +519,7 @@ struct ClassesSection: View {
             if let classes = shared.classes {
                 ForEach(classes.teaching) { c in
                     VStack(alignment: .leading, spacing: Spacing.s1) {
-                        Text(verbatim: c.name).font(TypeRamp.body)
+                        PushLink(value: Route.classPage(c.id)) { Text(verbatim: c.name).font(TypeRamp.body) }
                         if let code = c.code {
                             Text(verbatim: SharedPlays.grouped(code)).font(TypeRamp.tabular).textSelection(.enabled)
                         }

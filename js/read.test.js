@@ -66,6 +66,13 @@ test('golden: every ported case in worker/test/read-golden.json (every client po
   ok(!bad.length, bad.slice(0, 3).join('\n    '));
 });
 
+test('the leader\'s name travels in the snapshot, and the snapshot carries Read open parts', () => {
+  const snaps = golden.cases.filter((c) => c.fn === 'joinSnapshot').map((c) => c.expect);
+  ok(snaps.some((x) => x.leader_name === 'Ben' && x.read_open === true), 'golden snapshot has leader_name and read_open');
+  eq(C.waitingFor({ leader_name: 'Ben', members: [], seats: [] }), 'Ben');
+  eq(C.waitingFor({ members: [], seats: [] }), null);
+});
+
 test('golden: the constants are the protocol\'s', () => {
   for (const k of ['PROTOCOL_VERSION', 'CODE_ALPHABET', 'CODE_LENGTH', 'MAX_MEMBERS', 'MEMBER_GONE_MS', 'LEADER_GONE_MS', 'POLL_MS', 'MODES']) {
     eq(C[k], golden.constants[k], k);

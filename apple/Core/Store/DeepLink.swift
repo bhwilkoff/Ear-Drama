@@ -5,7 +5,7 @@ import Foundation
 nonisolated enum DeepLink {
     /// Every `eardrama://` link and its `https://eardrama.org` twin share a path:
     /// `series/{key}`, `episode/{id}`, `person/{id}`, `drama/{pid}`, `search?q=`, `library`,
-    /// `invite#{token}`. Anything else (another host, the OAuth callback, an
+    /// `read/{CODE}` (`?screen` for the shared screen), `invite#{token}`. Anything else (another host, the OAuth callback, an
     /// unknown path) opens nothing, so the app stays where it was.
     static func parse(_ url: URL) -> AppStore.InboxRequest? {
         if let token = inviteToken(url) { return .invite(token) }
@@ -23,6 +23,10 @@ nonisolated enum DeepLink {
             let q = raw.replacingOccurrences(of: "+", with: " ")
             return .search(q.removingPercentEncoding ?? q)
         case "library": return .tab("library")
+        case "read":
+            guard let value, let code = ReadCore.normalizeCode(value) else { return nil }
+            let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            return .readRoom(code, screen: items.contains { $0.name == "screen" })
         default: return nil
         }
     }

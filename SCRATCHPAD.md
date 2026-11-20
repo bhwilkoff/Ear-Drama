@@ -66,6 +66,8 @@ notes go at the top of this file's Current State.
 <!-- Add questions as they arise; remove when resolved. Don't
      accumulate. Every question should have a path to resolution. -->
 
+- **T4 gaps (2026-11-19), each with its path**: (1) the TV shows its own pairing code (tvOS-DESIGN §4.13) needs a Worker pairing route (a screen asks for a code, the leader binds it); today a TV is joined by the deep link or the debug door. (2) The open iPhone Duo's outer display showing the current line when folded (Decision 080) needs a device check. (3) Mac menu-bar commands for the Reading menu and Android drag-onto-a-part on the casting board. (4) "Read open parts" on the Apple and Android screens is carried in the snapshot (`read_open`) but the device voice that speaks it is not wired there yet. (5) No device run of any T4 screen (T7 bench).
+
 ---
 
 ## Out of scope (intentionally)

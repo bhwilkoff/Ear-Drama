@@ -210,11 +210,11 @@ fun InvitationScreen(onBack: () -> Unit, onOpenProduction: (String) -> Unit) {
                     onName = { name = it },
                     onPlayPart = { part ->
                         if (player.playing == part) player.stop()
-                        else player.play(part, OpenPlaysView.playOrder(inv, lineOrder, part), scope, context.cacheDir) { id -> container.openPlays.audio(t, id) }
+                        else player.play(part, OpenPlaysView.playOrder(inv, lineOrder, part), scope, context.cacheDir) { _ -> throw PlaysException("", PlaysException.Kind.Refused) }
                     },
                     onListenAll = {
                         if (player.playing == ALL) player.stop()
-                        else player.play(ALL, OpenPlaysView.playOrder(inv, lineOrder), scope, context.cacheDir) { id -> container.openPlays.audio(t, id) }
+                        else player.play(ALL, OpenPlaysView.playOrder(inv, lineOrder), scope, context.cacheDir) { _ -> throw PlaysException("", PlaysException.Kind.Refused) }
                     },
                     onTake = { part ->
                         val v = view
