@@ -349,3 +349,10 @@ privacy words) is folded in when it arrives, never waited on.
   live asset; ids, scripts, phonemes byte-identical; only new fields), site deploy 44715639088 green;
   live titlePage 176 / authorArt 275 / picture 394 of 803; 5 image URLs HEAD 200. Note:
   refresh_play_library.sh re-harvests and needs the phoneme venv (missing locally). Running: T7.
+- **2026-11-20, tick 25**: T7 bench merged (1.0.150): tools/read_bench.py + leader; production
+  Worker, 10 members (leader + Pixel, Google TV, iPhone 12, Duo, Apple TV, 3 web). T4 GATE PASSES:
+  socket p95 80-235 ms on every device (web polling p95 833 ms); 100/100 cursor changes everywhere.
+  T5 join pass; T9 Google TV screen pass; T8 drop/rejoin pass (Pixel airplane, web offline).
+  T6 Back to the line inconclusive (needs real touch: tap tier); T7-lite Record not automatable yet
+  (no door to claim a part and press Record): build doors/UITests for it. Skipped: iPad (locked),
+  Android TV 10.0.0.139 (adb unreachable). People still needed: H1-H4 (owner).
