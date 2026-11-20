@@ -101,6 +101,30 @@ check("control: words and a number are a title", DT.readable_title("Apollo 13"),
 check("control: a number then words", DT.readable_title("3 Skeleton Key"), True)
 check("control: one word, no number", DT.readable_title("Marathon"), True)
 
+# Round 3 (owner 2026-11-19): upload tags in episode titles, removed by class; the words left are the title.
+dt = lambda t, s, air=None, num=None: DT.decide_episode(t, s, air, num)
+check("initials with a spelled small word and a number", dt("AbyM #026 The Girl on Shipwreck Island Pt 03", "Adventures by Morse")[0],
+      "The Girl on Shipwreck Island Pt 03")
+check("initials with abbreviated small words", dt("AwtL #007 Sightseeing at Paris", "Abroad with the Lockharts")[0], "Sightseeing at Paris")
+check("a word of the series' own name and a number", dt("AFRS #76, Guest Jose Iturbi", "AFRS Transcription Discs")[0], "Guest Jose Iturbi")
+check("control: a number after words that are not the series' label stays", dt("Chapter #4 The Cellar", "Adventures by Morse")[0], "Chapter #4 The Cellar")
+check("control: initials of another series stay", dt("AbyM #001 The City of the Dead", "Suspense")[0], "AbyM #001 The City of the Dead")
+check("initials and a six-digit date code", dt("AC400320 - Lion Hunting", "Abbott and Costello Show", "1940-03-20")[0], "Lion Hunting")
+check("initials and an eight-digit date code", dt("AA 19431008 Andys New Wife", "Amos and Andy Show")[0], "Andys New Wife")
+check("a series word, a date code and a number in brackets", dt("Clock 461110 (02) The Actor", "The Clock")[0], "The Actor")
+check("a date code with nothing after it composes from the record", dt("AC400320", "Abbott and Costello Show", "1940-03-20"),
+      ("Abbott and Costello Show, March 20, 1940", "composed", ["series.name", "episodes.air_date"], None))
+check("control: a code that is not the series' initials stays", dt("XQ400320 - Lion Hunting", "Abbott and Costello Show")[0], "XQ400320 - Lion Hunting")
+check("a season tag in the series' initials", dt("GG Season 05 The Picnic", "The Great Gildersleeve")[0], "The Picnic")
+check("control: Season in the title's own words stays", dt("Season 5 Opener", "Dragnet")[0], "Season 5 Opener")
+check("a bare number tag", dt("#35 Old Story Re-Told", "Dr Jekyll and Mr Hyde")[0], "Old Story Re-Told")
+check("a number run onto the last word", dt("Lou Substitutes for Joe Dimaggio397", "Abbott and Costello Show")[0], "Lou Substitutes for Joe Dimaggio")
+check("control: a short word and its number stays", dt("Colgate Cavalcade Ep136", "Colgate Cavalcade")[0], "Colgate Cavalcade Ep136")
+check("control: a spaced number stays", dt("Apollo 113", "Space Hour")[0], "Apollo 113")
+check("a network, program, title and series audition", dt("CBS Forecast-The Lodger-Suspense audition", "Suspense")[0], "The Lodger (audition)")
+check("control: the same frame in another series stays", dt("CBS Forecast-The Lodger-Suspense audition", "Dragnet")[0],
+      "CBS Forecast-The Lodger-Suspense audition")
+
 # P-7 job C: a grab bag named by a count or a genre and a year (only when an upload named it).
 check("a counted bag", DT.series_withheld("500 Christmas Shows", "500christmasshows", True), "series_is_an_uploaders_grab_bag")
 check("a genre and a year", DT.series_withheld("Science Fiction 1968", "sciencefiction1968", True), "series_is_an_uploaders_grab_bag")

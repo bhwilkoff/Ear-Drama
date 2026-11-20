@@ -45,12 +45,14 @@ def check(name, got, want):
 
 CONTRACT = {
     "every image's class is served": "SELECT COUNT(*) FROM art WHERE license NOT IN ({})".format(
-        ",".join(f"'{c}'" for c in AP.SERVED_CLASSES)),
+        ",".join(f"'{c}'" for c in AP.SERVED_CLASSES + ("no_known_restrictions",))),   # H5: a Library of Congress record's own statement
     "an image owes a credit exactly when its license does": "SELECT COUNT(*) FROM art WHERE (credit IS NOT NULL) != "
         "(license IN ({}))".format(",".join(f"'{c}'" for c in AP.NEEDS_CREDIT)),
     "a credit names an author": "SELECT COUNT(*) FROM art WHERE credit IS NOT NULL AND (author IS NULL OR author = '')",
-    "every image is a Commons file with its file page": "SELECT COUNT(*) FROM art WHERE url NOT LIKE '{}%' OR "
-        "evidence_url NOT LIKE '{}%'".format(AP.FILEPATH, AP.FILE_PAGE),
+    "every image is a Commons file with its file page, or an archive portrait with its record page":
+        "SELECT COUNT(*) FROM art WHERE (url NOT LIKE '{}%' OR evidence_url NOT LIKE '{}%') AND NOT (source IN ({}) "
+        "AND url LIKE 'https://%' AND evidence_url LIKE 'https://%')".format(
+            AP.FILEPATH, AP.FILE_PAGE, ",".join(f"'{v}'" for v in AP.ARCHIVE_VIA.values())),
     "no image is published that no person or series wears": "SELECT COUNT(*) FROM art a WHERE NOT EXISTS "
         "(SELECT 1 FROM people p WHERE p.portrait = a.id) AND NOT EXISTS (SELECT 1 FROM series s WHERE s.picture = a.id "
         "OR s.hero = a.id OR EXISTS (SELECT 1 FROM json_each(s.gallery) j WHERE j.value = a.id))",
@@ -65,8 +67,9 @@ CONTRACT = {
     "a series with a hero or a gallery has a show picture": "SELECT COUNT(*) FROM series WHERE (hero IS NOT NULL OR "
         "gallery IS NOT NULL) AND picture_kind IS NOT 'show'",
     "every show image has a source from the show's own records and a tie": "SELECT COUNT(*) FROM art a WHERE "
-        "(a.source IS NULL OR a.tie IS NULL OR a.source NOT IN ({}, 'wikidata:P18')) AND EXISTS (SELECT 1 FROM series s "
-        "WHERE s.picture = a.id OR s.hero = a.id)".format(",".join(f"'{x}'" for x in AP.SHOW_SOURCES)),
+        "(a.source IS NULL OR a.tie IS NULL OR a.source NOT IN ({}, 'wikidata:P18', {})) AND EXISTS (SELECT 1 FROM series s "
+        "WHERE s.picture = a.id OR s.hero = a.id)".format(",".join(f"'{x}'" for x in AP.SHOW_SOURCES),
+                                                          ",".join(f"'{v}'" for v in AP.ARCHIVE_VIA.values())),
     "a series' picture is a published image of a known kind, with its source": "SELECT COUNT(*) FROM series s WHERE "
         "(picture IS NULL) != (picture_kind IS NULL) OR (picture IS NULL) != (picture_source IS NULL) OR "
         "picture_kind NOT IN ({}) OR (picture IS NOT NULL AND NOT EXISTS (SELECT 1 FROM art a WHERE a.id = s.picture))"
@@ -142,8 +145,11 @@ def retrace(projection, source):
             owners.add(pid)
         elif AP.alternate(basis, cls, usable, via, author, own_work, when, died, n):
             stand_ins.add((pid, AP.evidence_url(file)))
-    s.close()
     ok |= {(pid, ev) for pid, ev in stand_ins if pid in owners}   # a stand-in only for a person with an own image
+    # H5: an archive portrait is judged again by the same predicate, only for a person with no Commons portrait
+    everyone = dict(s.execute("SELECT id, name FROM people"))
+    ok |= {(pid, row[7]) for pid, row in B.served_archive_portraits(s, everyone, None, {}, owners).items()}
+    s.close()
     return sorted(published - ok) + retrace_shows(projection, source)
 
 

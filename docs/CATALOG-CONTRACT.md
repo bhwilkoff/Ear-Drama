@@ -314,7 +314,11 @@ none on the web), never as a skip. Segment times are never estimated.
   it arrives (WEB-DESIGN §6.4a; wide past 1.15). MEASURED 2026-10-28: all 3,765
   harvested files sized; the 271 series stars are 222 upright, 25 square, 24 wide. `license` is the
   class (`pd_us`, `pd_us_gov`, `cc0`, `pd_release`, `free_use`, `cc_by`,
-  `cc_by_sa`); `credit` ("Author, CC BY-SA 3.0") is set exactly when the license
+  `cc_by_sa`, and for an archive portrait `no_known_restrictions`: a Library of Congress record's own statement,
+  H5); a portrait from the Library of Congress or the Smithsonian has `url` its image address (LoC's tile file;
+  the Smithsonian's 960 px delivery ending in `&w=`, so a client's `?width=` falls into that parameter and the
+  file is served as it is), `evidence_url` its record page, `source` `loc:record-title` or `smithsonian:sitter`,
+  and a person only when they have no Commons portrait; `credit` ("Author, CC BY-SA 3.0") is set exactly when the license
   requires attribution, and a client shows it wherever the image is shown at
   header size or in the Detail credits; `evidence_url` is the file page.
   `face` is where a small crop centers (§3.3a), or NULL. **`grade`** (the web's `art` array carries

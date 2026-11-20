@@ -58,6 +58,7 @@ CREATE TABLE archive_photos (
   image_master TEXT,        -- TIFF master when listed
   width INTEGER, height INTEGER,
   subjects TEXT, found_via TEXT,
+  object_type TEXT,         -- the holder's own kind of object (Smithsonian: Photograph, Print, Drawing, Painting ...); LoC photos: Photograph
   PRIMARY KEY (source, record_id)
 );
 DROP TABLE IF EXISTS archive_photo_links;
@@ -158,7 +159,7 @@ def loc_rows():
             "image_url": (big or {}).get("url") or r.get("image_largest"), "image_master": r.get("image_master"),
             "width": (big or {}).get("width"), "height": (big or {}).get("height"),
             "subjects": r.get("subject_headings") or r.get("subjects") or [], "found_via": r.get("queries"),
-            "text": text, "headings": r.get("subject_headings") or [],
+            "text": text, "headings": r.get("subject_headings") or [], "object_type": "Photograph",
         })
     return out
 
@@ -190,6 +191,7 @@ def si_rows():
                 "width": pick.get("width"), "height": pick.get("height"),
                 "subjects": r.get("topics") or [], "found_via": ["bulk:" + (r.get("unit") or "")],
                 "text": text, "headings": [], "sitters": M.sitters(r.get("names")),
+                "object_type": "; ".join(r.get("object_type") or []) or None,
             })
     return out
 
@@ -359,11 +361,11 @@ def main():
     targets = collections.defaultdict(set)
     for row in all_rows:
         usable = int(row["rights_class"] in M.USABLE and bool(row["online"]) and bool(row["image_url"]))
-        c.execute("insert or replace into archive_photos values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+        c.execute("insert or replace into archive_photos values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             row["source"], row["record_id"], row["title"], row["date"], row["year"], row["collection"],
             json.dumps(row["creators"]), row["rights_statement"], row["rights_class"], row["rights_why"], usable,
             row["evidence_url"], row["image_url"], row["image_master"], row["width"], row["height"],
-            json.dumps(row["subjects"][:30]), json.dumps(row["found_via"])))
+            json.dumps(row["subjects"][:30]), json.dumps(row["found_via"]), row.get("object_type")))
         links, refused = link(row, series, name_index, years)
         for n, why in refused:
             rep["refused"][re.sub(r"\d+", "N", why)[:70]] += 1
