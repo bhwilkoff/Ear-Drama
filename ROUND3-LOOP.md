@@ -125,7 +125,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
   pure `labelSpec(item)` with golden cases; drawn for series, episodes (date on the label), people
   (groove ring), finished ear dramas (part colors), plays (script page + voice marks); 56 px to TV
   hero, light and dark. `web_fit_home.py` checks.
-- [ ] **V4 The label, Apple and Android (Sonnet).** Same goldens pass in Swift and Kotlin
+- [x] **V4 The label, Apple and Android (Sonnet).** Same goldens pass in Swift and Kotlin
   (`cross-platform-determinism`); drawn natively (SwiftUI Canvas, Compose Canvas); tvOS hero; lock
   screen and Now Playing art per episode.
 - [ ] **V5 Home composition, web (Opus).** R3a §4.1 rules 1-8; the hero is the largest window on the
@@ -226,3 +226,10 @@ privacy words) is folded in when it arrives, never waited on.
   test straddled a wall-clock minute (miniflare windows are clock-aligned): fixed, 60788e7, 379/379;
   (2) an archive test timed out at 30 s under load average ~25 (V4's builds). Rule: run the 40-min
   mutation run only when no agent is building; then deploy. Running: V4, T3.
+- **2026-11-19, tick 7**: V4 merged and pushed (1ff6ae8, 1.0.140): the label on Apple and Android
+  (macOS 478 tests, Android 560, goldens 36/36 on both, negative controls seen to fail, 0 warnings,
+  lintRelease clean). Device launch check before TestFlight: iPhone 12 and Pixel 8a launch, no
+  crash logs, label drawn (frames read by the main thread: Home on both). Not covered: Duo
+  (unavailable), Apple TV. Open: tvOS hero lacks the run arc (TenFoot doesn't pass the series);
+  Android episode rows lack the arc (EpisodeRow has no series dates); the Android item door takes
+  episode ids only (Apple takes series keys too): fix in T7's doors. Running: T3.
