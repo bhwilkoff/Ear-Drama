@@ -12,6 +12,7 @@
           { "/": "/search", "comment": "search, its query in ?q=" },
           { "/": "/library", "comment": "the Library tab" },
           { "/": "/library/" },
+          { "/": "/parts", "comment": "Your parts, a seat's parts at home" },
           { "/": "/invite", "comment": "an ear drama invite, its token in the fragment" },
           { "/": "/invite/" }
         ]
