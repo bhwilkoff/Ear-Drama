@@ -437,6 +437,7 @@ All under `/v1/plays`, all bearer except the open reads below. `:pid` is a produ
 | `POST /productions/:pid/consent` | a member | `{ version }` | `204`; `409 consent_version_mismatch` with the current version |
 | `PUT /productions/:pid/takes/:takeId` | the claimant; on a published item, the line's performer (a replacement); in a class production, the teacher (any line, `seat` in `x-take` to credit a seat) | the audio with its `Content-Length`; `x-take: <the take's fields as JSON>` | `201` the take with `delivered`; `409 nobody_receiving`, `409 one_take_at_a_time`, `502 not_delivered`, `411 length_required`; a replacement also `403 not_your_take`, `409 consent_missing`, `409 removed_by_director` |
 | `GET /productions/:pid/takes/inbox` | the director | | the next take: its bytes, `x-take` its fields (`id`, `lineID`, `part`, `file`, `frames`, `sampleRate`, `capture`, `seat`); `204` after 25 s with none; `409 too_many_pickups` past 4; `503 pass_through_unavailable` without `TAKE_RELAY` |
+| `GET /productions/:pid/receiver` | a member | | `{ receiving, name }`: whether the director's app holds a pickup (or did in the last 10 s) and the director's chosen name; read from the relay's memory, nothing is written |
 | `PUT /productions/:pid/assignments` | the director of a class production | `{ assignments: [{ part, from?, to?, seat }] }`: the whole casting; `from`/`to` are lines of that part (a split by scene); no line twice | `{ assignments }`; `422 not_a_class_production`, `422 bad_assignments` |
 | `POST /productions/:pid/takes/:takeId/review` | the director of a class production | `{ state: "approved" or "again", note? }` (typed, up to 500 characters) | `{ take_id, state, note, reviewed_at }`; the latest review stands; the note is shown to that take's seat alone |
 | `PUT /productions/:pid/archive/files/:lineId` | the director, or the line's take's performer | the line's chosen take, with its `Content-Length` | `200 { line_id, state: "sent", name, archive }`; `409 not_ready` (the cron has not laid the item out), `409 already_sent`, `409 reported_take`, `422 not_the_take`, `503 archive_busy` (check_limit), `503 archive_unavailable` / `502 archive_refused` (archive.org's answer, redacted) |
@@ -473,7 +474,19 @@ against `PLAY_UPLOAD_LIMITER` by its seat, never by address.
 | `POST /seat/claim` | `{ code, seat, move? }` | `201 { seat_key, seat, class: { id, name, under13 } }`; `409 seat_in_use` when another device holds it, unless `move: true` ("Move here"), after which the other device's key stops working |
 | `GET /seat` | | `{ seat, class, productions: [{ id, title, scriptID, scriptRevision, assignments (this seat's), takes: [{ ...the take, chosen, review: { state, note, reviewed_at } or null }] }] }`; a released or moved key is `401 seat_key_required` |
 | `PUT /seat/productions/:pid/takes/:takeId` | the audio with its `Content-Length`; `x-take` | passes through to the teacher's device as above; `403 not_assigned` for a line outside the seat's assignments (or in a production with none), `403 school_consent_required` in an under-13 class until the school's consent is recorded (Decision 059) |
+| `GET /seat/productions/:pid/receiver` | | `{ receiving, name }` as above, for the teacher's app: a seat asks before it sends, and shows "sends when {name} is in Ear Drama" until it is `true`; another class's production is `404` |
 | `POST /seat/productions/:pid/chosen` | `{ take_id }` (one of this seat's) | the seat's view; the student chooses which take is offered |
+
+**Credit and consent (T6, PLAYS-DESIGN §12.11).** A take recorded in an adult room by a reader with no
+account is written as a row of the room's production (the director's account owns it) with `credit`,
+the name the reader gave on joining ("A reader" when none), and the same `credit` rides in the
+take's `x-take` to the receiving device and in the record's `takes`. The record carries `credits:
+[{ name, lines, consented: false }]` for the chosen takes that have one, and those takes never make
+the director a `performer`. `POST /productions/:pid/publish` answers `409 { error: "consent_missing",
+detail: [user ids], credits?: [names] }` while a performer has not agreed or a credited maker stands;
+it queues only when both lists are empty. `POST /v1/read` with `production_id` and no `class_id`
+needs the production's director's bearer token (`404 no_such_production` otherwise). Migration
+`0009_take_credit.sql` adds the column.
 
 A production the caller is not in, an unknown one, an invite that is unknown
 or blocked, and a hidden take all answer `404`, so none can be told apart. (A

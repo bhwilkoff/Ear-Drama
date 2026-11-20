@@ -2880,4 +2880,8 @@
     }
   }
   route();
+  // Relay across time (PLAYS-DESIGN §12.11): a device with takes waiting to pass through keeps trying while the app is open.
+  if (RelayWatch.flagged()) {
+    PlaysUI.openStore().then((store) => RelayWatch.shared({ api: API, store, me: () => (API.account.state() || {}).user_id || null }).start()).catch((err) => console.error('relay', err));
+  }
 })();

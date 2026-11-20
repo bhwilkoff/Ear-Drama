@@ -77,7 +77,7 @@ import kotlinx.serialization.json.buildJsonObject
 // page with its casting board. Rules are ReadCore's and the transport ReadSession's; these only draw the snapshot.
 
 /** Where the Library's classes and a play's Read together lead (provided once by AppRoot). */
-class ReadNav(val openClass: (String) -> Unit = {}, val openRoom: (String) -> Unit = {}, val showReading: () -> Unit = {})
+class ReadNav(val openClass: (String) -> Unit = {}, val openRoom: (String) -> Unit = {}, val showReading: () -> Unit = {}, val openParts: () -> Unit = {})
 
 val LocalReadNav = androidx.compose.runtime.staticCompositionLocalOf { ReadNav() }
 
@@ -135,6 +135,7 @@ private fun say(e: Exception): String = if (e is ReadFailure) ReadCore.refusal(e
 @Composable
 fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> Unit, seatDoor: String? = null) {
     val container = LocalAppContainer.current
+    val nav = LocalReadNav.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val session = remember { ReadHandover.take() ?: ReadSession(container.readWire, scope, diag = BuildConfig.DEBUG && LaunchDoors.diag) }
@@ -208,6 +209,7 @@ fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> U
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(autoCorrectEnabled = false),
                         )
                         Button(onClick = { asking = false }) { Text("Join") }
+                        androidx.compose.material3.TextButton(onClick = nav.openParts) { Text("Your parts") }
                     }
                 }
             }
@@ -438,12 +440,20 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
     var showCode by remember { mutableStateOf(false) }
     var choosing by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
+    // Relay across time (PLAYS-DESIGN §12.11): while this page is open the teacher's app holds each production's pickup, so
+    // takes recorded at home pass through; the progress list moves on every arrival.
+    val inbox = remember(id) {
+        com.example.appname.plays.ClassInbox(container.plays.store, com.example.appname.plays.PlaysApi(container.accounts.worker), scope,
+            { sid, rev -> container.plays.script(sid)?.takeIf { it.revision == rev } }, onArrival = { scope.launch { try { progress = wire.progress(id) } catch (e: CancellationException) { throw e } catch (_: Exception) {} } })
+    }
+    DisposableEffect(inbox) { onDispose { inbox.release() } }
 
     LaunchedEffect(id, attempt) {
         try {
             detail = wire.detail(id)
             progress = wire.progress(id)
             failure = null
+            progress?.productions.orEmpty().forEach { p -> runCatching { wire.production(p.id) }.getOrNull()?.let { inbox.hold(p.id, it.scriptID, it.scriptRevision) } }
         } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }
     }
     fun act(work: suspend () -> Unit) { scope.launch { try { work(); attempt += 1 } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) } } }
@@ -478,7 +488,7 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
                 SectionHeader(p.title)
                 p.seats.forEach { row ->
                     val lines = row.parts.sumOf { it.lines }
-                    val done = row.parts.sumOf { it.approved }
+                    val done = row.parts.sumOf { it.recorded }
                     ListItem(headlineContent = { Text(row.label) }, trailingContent = { Text("$done of $lines") })
                 }
                 TextButton(onClick = { onCasting(id, p.id) }) { Text("Casting") }

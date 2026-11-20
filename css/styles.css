@@ -1951,3 +1951,9 @@ body.read-screen .tabbar, body.read-screen .sidebar, body.read-screen .site-foot
 .cb-name[data-hue="scifi"] { color: var(--color-genre-scifi); } .cb-name[data-hue="western"] { color: var(--color-genre-western); }
 .cb-name[data-hue="comedy"] { color: var(--color-genre-comedy); } .cb-name[data-hue="news"] { color: var(--color-genre-news); }
 .cb-name[data-hue="documentary"] { color: var(--color-genre-documentary); } .cb-name[data-hue="serial"] { color: var(--color-genre-serial); }
+
+/* Relay across time: a performer's takes with their state (PLAYS-DESIGN §12.11, WEB-DESIGN §4.20) */
+.parts-prod { margin-bottom: var(--space-4); }
+.parts-part { margin-bottom: var(--space-3); }
+.parts-line { display: grid; grid-template-columns: 1fr; gap: var(--space-1); }
+@media (min-width: 640px) { .parts-line { grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--space-3); } }

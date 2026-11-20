@@ -838,3 +838,23 @@ until the teacher uploads or exports them.
 
 **Addendum 2026-11-19 (T4, owner-rule decisions by the main thread)**: (a) the leader's name travels in the read snapshot (`leader_name`: a seat's label, or the owner's `owner_name`), so readers see "Waiting for <name>"; (b) "Read open parts" is a leader message (`read-open`, snapshot `read_open`) the screen obeys, not a local switch; (c) a seat key lasts for the session or app run only on a shared device: the web keeps it per tab, Apple and Android keep it in memory, never in the keychain or on disk.
 **Why:** a class device is shared by students; a key at rest would let the next student read as the last. **How to apply:** `read-protocol.js` + `read-golden.json` carry (a) and (b); `ReadSeatKeys` (Swift and Kotlin) is the only holder of seat keys on a device.
+
+## 083: Relay across time, and credit the maker (owner 2026-11-19, T6)
+
+**Decision.** A seat or member records their assigned lines at home; each take stays on that device until the teacher's
+(director's) app is open, then passes through the Worker and is deleted on arrival (Decision 082; nothing waits on
+Cloudflare). The sender asks `GET .../receiver` first, backs off 5, 10, 20, 40, then 60 s, and shows one state per take. In
+an adult room an anonymous reader's take is credited to the name they gave on joining, never to the leader, and a
+production with a line by a maker who has not consented cannot publish: Publish lists who must.
+
+**Why.** "Please research ways of doing 'table reads' or other methods for reading through plays together (either
+synchronously in the same room or across space and time)." The leader's name on a stranger's take made the leader the
+performer, and the leader's own CC0 consent then stood in for someone else's. A relay that keeps takes on the Worker
+would break the archive.org-only storage ruling; one that drops them when the teacher is away would lose a student's
+work.
+
+**How to apply.** The rules are `docs/PLAYS-DESIGN.md` §12.11; the Worker's are `docs/WORKER.md` ("Credit and
+consent"). A seat key kept so waiting takes can be sent later lives in the Keychain or Keystore (web: the device's own
+store), put there only when a student records at home, never on joining a room; Decision c (memory only) still holds
+for the room. New client states or words for a take are changed in §12.11 first.
+

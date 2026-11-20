@@ -691,6 +691,8 @@ const PlaysUI = (() => {
       mineBox.append(h.el('div', { class: 'actions' }, ready ? up : null, S.myParts(rec, me).length ? done : null), status);
       if (!open) status.textContent = S.line({ code: 'uploads_off' });
       else if (flagged) status.textContent = S.line({ code: 'bleed_flagged' });
+      const relayRows = relayList(rec, local, script, id, me);
+      if (relayRows) mineBox.append(relayRows);
     }
 
     body.replaceChildren(
@@ -700,6 +702,40 @@ const PlaysUI = (() => {
       ...[changeBox(rec, script, pid, me, id)].filter(Boolean),
       peopleBox(rec, me, p, pid, rerender),
       h.el('div', { class: 'actions' }, deleteButton(p)));
+  }
+
+  /**
+   * Relay across time (PLAYS-DESIGN §12.11): each take of this person's parts with its state on this
+   * device ("On this device · sends when Dee is in Ear Drama", "Sending", "Sent"), kept current while
+   * the sender works. The sender (RelayWatch) passes the takes through whenever the director's app is open.
+   */
+  function relayList(rec, local, script, id, me) {
+    const mine = S.ownParts(rec, me).filter((part) => C.isSpeaking(part));
+    if (!mine.length) return null;
+    RelayWatch.flag();
+    const relay = RelayWatch.shared({ api: API, store, me: () => me });
+    const director = (rec.members || []).find((m) => m.user_id === rec.director);
+    const ul = h.el('ul', { class: 'cast-list parts-list', 'aria-label': 'Your takes' });
+    const on = new Set(rec.takes.map((t) => t.id));
+    const paint = () => {
+      const cur = store.production(id);
+      const rows = [];
+      for (const part of mine) {
+        for (const l of C.linesFor(script, part)) {
+          const t = cur && C.chosenTake(cur, l.id);
+          if (!t) continue;
+          const st = t.bleed ? { state: 'refused', code: 'bleed_flagged' } : relay.takeState(id, t.id, [...on]);
+          const words = st.state === 'refused' ? S.line({ code: st.code }) : RelayCore.wording(st.state, (director && director.display_name) || st.name, 'the director');
+          rows.push(h.el('li', { class: 'cast-row parts-line' }, h.el('span', { class: 'body' }, PartsUI.excerpt(l)),
+            h.el('span', { class: 'caption', role: 'status' }, words)));
+        }
+      }
+      ul.replaceChildren(...rows);
+    };
+    paint();
+    const off = relay.subscribe((lid) => { if (!ul.isConnected) { off(); return; } if (lid === id) paint(); });
+    relay.kick(id);
+    return ul;
   }
 
   /** The archive.org job in essential words (rule 9): quiet while waiting, the item's link, or the Worker's reason with Publish again. */

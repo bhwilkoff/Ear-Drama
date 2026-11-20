@@ -22,6 +22,7 @@ struct RouteDestinations: ViewModifier {
             case let .readScreen(code): ReadScreenHost(code: code)
             case let .classPage(id): ClassPageScreen(id: id)
             case let .classCasting(classID, pid): CastingBoardScreen(classID: classID, productionID: pid)
+            case .parts: PartsScreen()
             }
         }
         .navigationDestination(for: DownloadsRoute.self) { _ in DownloadsScreen() }

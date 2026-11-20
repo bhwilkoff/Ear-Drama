@@ -1674,3 +1674,61 @@ WEB-DESIGN §4.17 to §4.19 hold the web's idiom; what the other ports need to k
 10. **The screen's voice.** On the Apple and Android screens (and the web's), a line nobody holds
     is read aloud by the live stand-in voice only while the room's `read_open` is on (the leader's
     message); it stops the moment the cursor moves, so it never sounds during a take; never stored.
+
+### §12.11 Relay across time and the consent rule (T6, 2026-11-19; binding on every client)
+
+> **Owner, 2026-11-19**: *"Please research ways of doing 'table reads' or other methods for
+> reading through plays together (either synchronously in the same room or across space and
+> time)."* Rulings: storage is archive.org, never Cloudflare; takes pass through the Worker to the
+> receiving (teacher's or leader's) device and are deleted on arrival; nothing at rest. The
+> Worker's side is `docs/WORKER.md` ("Is the receiver here?", "Credit and consent"); each rule has
+> its test in `worker/test/relay.test.js` and a break in `worker/test/mutations.mjs` (`t6:`).
+
+**Relay across time** is mode 4 of §12.3 made concrete. A class seat (no account) or an adult
+production's member who holds a part records their lines at home, whenever they like, in the
+studio inside the reader (§2.9), each against the device voice (another performer's take passed
+through the Worker to the receiver and is never fetched again, so it is not here to hear). Parts
+that are assigned record at once.
+
+1. **On the device first.** Each take is written on the performer's device, as every take is, and
+   stays there until it has passed through. Nothing waits on the Worker: a take the receiver is
+   not there for is refused (`409 nobody_receiving`) and stays where it is made.
+2. **One state per take, on the sender**, in essential words: **On this device · sends when
+   {name} is in Ear Drama** (waiting), **Sending**, **Sent**. `{name}` is the receiver's chosen
+   name from the receiver route; without one, "your teacher" (a seat) or "the director" (a member).
+   Sent is known from the Worker's record (the take is in `takes`) or the `201` itself, and kept
+   on the device so it reads the same offline. A take the Worker refuses for good (`not_assigned`,
+   a bleed-flagged take, a lapsed seat key) leaves the queue, stays on the device, and shows the
+   Worker's own words.
+3. **Sending.** While the app is open the sender asks `GET .../receiver` (`{ receiving, name }`);
+   only when it is `true` and the device is online does it send, one take at a time, in script
+   order. Otherwise it asks again after 5, 10, 20, 40 s, then every 60 s, and at once when the
+   network returns, the app comes to the front, or a take is saved. `409 nobody_receiving`,
+   `409 one_take_at_a_time`, `429`, a timeout, offline and `5xx` keep the take and back off; any
+   other refusal is final for that take. The ask reads the relay's memory and writes nothing.
+4. **The receiver** (the teacher's class page, an adult director's cast sheet) holds the pickup
+   while it is open, as §12.10 item 3 does for a room; each arrival is kept in that tab or device
+   only, and the **progress list** (counts per seat and part: lines assigned, recorded, approved,
+   again) refreshes on every arrival. Counts and links, never a ranking, and the Worker cannot
+   say what is still waiting on a device: it has no record of a take it never received.
+5. **At home with no one else there** the same screen works: a seat opens **Your parts** (its
+   class code and name, remembered on the device), sees each assigned part and its lines, records,
+   and sees each take's state and the teacher's review (Approve, or Again with the typed note).
+
+**The consent rule** (decided from §12.5 and Decision 059, 2026-11-19). The maker is credited, never
+the leader.
+
+6. In an adult room, a reader who has no account is credited by the name they gave on joining
+   (`credit` on the take, the name filter applied at join; a reader who gave none is "A reader").
+   The take is a row of the director's production, so the row names the director as owner and the
+   credit names the maker; the director is the performer of none of it. A class seat's take stays
+   the teacher's, credited to the seat (Decision 082; the teacher consents).
+7. Publish needs every performer's own CC0 consent at the current version. A maker who has only a
+   name has none to give, so **a production with any line by such a maker cannot publish**: the
+   Worker answers `409 consent_missing` with `credits` (the names), and Publish shows who still
+   must consent (their names, in the same list as the performers who have not agreed). The names
+   leave the list when the maker holds the part under their own account (an invite) and agrees, or
+   the director records or chooses another take for the line. The consent words and version are
+   `GET /consent`'s, never written into a client.
+8. Only the director opens a room on an adult production (a stranger's room cannot write takes
+   into it); a class's room still takes its class's production.

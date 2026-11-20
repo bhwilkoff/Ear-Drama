@@ -78,6 +78,8 @@ enum Route: Hashable {
     /// The teacher's class page and its casting board (PLAYS-DESIGN §12.4).
     case classPage(String)
     case classCasting(String, String)
+    /// A seat's parts at home and each take's state (PLAYS-DESIGN §12.11). Never a deep link.
+    case parts
 
     /// Episode ids carry the series key and a `|`; series keys never do.
     init(id: String) {

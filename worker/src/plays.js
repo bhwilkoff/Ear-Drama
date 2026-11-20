@@ -29,7 +29,7 @@ import { randomToken, sha256Hex } from "./jwt.js";
 import { castHash } from "./plays-manifest.js";
 import { nameRefusal, cleanName } from "./plays-names.js";
 import { drain, takeStream } from "./plays-audio.js";
-import { pickup, relay } from "./take-relay.js";
+import { pickup, receiving, relay } from "./take-relay.js";
 import {
   CLAIM_TTL_MS,
   castParts,
@@ -152,6 +152,7 @@ export function takeOut(pid, t) {
     bleed: false,
     user_id: t.user_id,
     seat: t.seat_id || null,
+    ...(t.credit ? { credit: t.credit } : {}),
   };
 }
 
@@ -176,7 +177,7 @@ async function recordFor(env, p, userId, now) {
     .bind(p.id, CONSENT_VERSION)
     .all();
   const consented = new Set(consentApproved(CONSENT_VERSION) ? agreed.map((r) => r.user_id) : []);
-  const performers = new Set(takes.filter((t) => t.chosen).map((t) => t.user_id));
+  const performers = new Set(takes.filter((t) => t.chosen && !t.credit).map((t) => t.user_id));
   const names = Object.fromEntries(members.map((m) => [m.user_id, m.display_name]));
   const parts = {};
   for (const { id } of castParts(p.cast)) {
@@ -213,6 +214,7 @@ async function recordFor(env, p, userId, now) {
       consented: consented.has(m.user_id),
     })),
     next: next(p.cast, rows, now),
+    credits: creditedMakers(takes.filter((t) => t.chosen && t.credit)),
     hidden_takes: takes.length - visible.length,
     archive: job ? { status: job.status, created_at: job.created_at, url: job.item_url, reason: job.reason } : null,
     uploads: !!env.TAKE_RELAY,
@@ -230,6 +232,13 @@ async function recordFor(env, p, userId, now) {
     out.invites = results.map((i) => ({ ...i, revoked: !!i.revoked }));
   }
   return out;
+}
+
+/** The makers with no account whose takes stand in the production, by the name they gave: each must consent in person (§12.11). */
+export function creditedMakers(chosen) {
+  const by = new Map();
+  for (const t of chosen) by.set(t.credit, (by.get(t.credit) || 0) + 1);
+  return [...by].map(([name, lines]) => ({ name, lines, consented: false }));
 }
 
 /* ---- Productions ---- */
@@ -458,6 +467,7 @@ export async function receiveTake(env, request, p, takeId, meta, part, who, now,
   const file = meta.file || `${takeId}.${audio.ext}`;
   const fields = { id: takeId, lineID: meta.lineID, part, file, frames: audio.frames, sampleRate: audio.sampleRate, capture: meta.capture, seat: who.seatId };
   if (who.member) fields.member = who.member;
+  if (who.credit) fields.credit = who.credit;
   if (who.direct) {
     try {
       await drain(take.stream);
@@ -471,7 +481,7 @@ export async function receiveTake(env, request, p, takeId, meta, part, who, now,
 
   const ins = await env.DB.prepare(
     "INSERT INTO play_takes (production_id, id, user_id, seat_id, line_id, part, file, content_type, bytes, frames, sample_rate, " +
-      "capture, heard, loudness, peak, created, uploaded_at, chosen) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, 0) " +
+      "capture, heard, loudness, peak, created, uploaded_at, chosen, credit) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, 0, ?18) " +
       "ON CONFLICT DO NOTHING",
   )
     .bind(
@@ -492,6 +502,7 @@ export async function receiveTake(env, request, p, takeId, meta, part, who, now,
       meta.peak ?? 0,
       meta.created ?? foundation(now),
       now,
+      who.credit || null,
     )
     .run();
   if (!ins.meta.changes) return problem(409, "take_exists");
@@ -526,7 +537,7 @@ export async function passThrough(env, request, relayId, takeId, meta, part, who
   const take = await checkedTake(request, meta);
   if (take.error) return take.error;
   const { audio } = take;
-  const fields = { id: takeId, lineID: meta.lineID, part, file: meta.file || `${takeId}.${audio.ext}`, frames: audio.frames, sampleRate: audio.sampleRate, capture: meta.capture, seat: who.seatId, member: who.member };
+  const fields = { id: takeId, lineID: meta.lineID, part, file: meta.file || `${takeId}.${audio.ext}`, frames: audio.frames, sampleRate: audio.sampleRate, capture: meta.capture, seat: who.seatId, member: who.member, ...(who.credit ? { credit: who.credit } : {}) };
   const r = await relay(env, relayId, who.sender, fields, take.stream, take.length);
   if (!r.ok) return r;
   return json({ id: takeId, lineID: meta.lineID, part, frames: audio.frames, sampleRate: audio.sampleRate, delivered: true }, 201);
@@ -690,7 +701,7 @@ async function publish(auth, request, env, p, now) {
     ? classIncomplete(p.cast, await chosenLines(env, p.id))
     : incomplete(p.cast, await partRows(env, p.id), await chosenLines(env, p.id), now);
   if (left) return problem(409, "incomplete", left);
-  const { results: chosen } = await env.DB.prepare("SELECT id, user_id FROM play_takes WHERE production_id = ?1 AND chosen = 1 ORDER BY line_id")
+  const { results: chosen } = await env.DB.prepare("SELECT id, user_id, credit FROM play_takes WHERE production_id = ?1 AND chosen = 1 ORDER BY line_id")
     .bind(p.id)
     .all();
   const { results: reported } = await env.DB.prepare(
@@ -701,13 +712,15 @@ async function publish(auth, request, env, p, now) {
   const flagged = new Set(reported.map((r) => r.take_id));
   const held = chosen.filter((t) => flagged.has(t.id)).map((t) => t.id);
   if (held.length) return problem(409, "reported_take", held);
-  const performers = [...new Set(chosen.map((t) => t.user_id))];
+  const performers = [...new Set(chosen.filter((t) => !t.credit).map((t) => t.user_id))];
   const { results: agreed } = await env.DB.prepare("SELECT user_id, version FROM play_consents WHERE production_id = ?1 AND version = ?2")
     .bind(p.id, CONSENT_VERSION)
     .all();
   const ok = new Set(agreed.filter((r) => consentApproved(r.version)).map((r) => r.user_id));
   const missing = performers.filter((u) => !ok.has(u));
-  if (missing.length) return problem(409, "consent_missing", missing);
+  // A maker with no account has not consented and cannot here: their lines wait until they do (§12.11).
+  const credits = creditedMakers(chosen.filter((t) => t.credit)).map((c) => c.name);
+  if (missing.length || credits.length) return json({ error: "consent_missing", detail: missing, ...(credits.length ? { credits } : {}) }, 409);
   const takeIds = chosen.map((t) => t.id);
   // Again after a failure: the lines already on the item stay sent (plays-archive.js seedFiles).
   await env.DB.prepare(
@@ -880,6 +893,16 @@ async function removeClassMember(auth, env, classId, userId) {
 
 /* ---- Routing ---- */
 
+/**
+ * Whether the director's (the teacher's) app is open to receive a take now, and the name to show a
+ * sender ("sends when Ms. Ortiz is in Ear Drama"). Read from the relay's memory; nothing is written
+ * and nothing waits here (Decision 082, PLAYS-DESIGN §12.11).
+ */
+export async function receiverOf(env, p) {
+  const m = await member(env, p.id, p.user_id);
+  return { receiving: await receiving(env, p.id), name: (m && m.display_name) || null };
+}
+
 /** Every /v1/plays route; the caller is already signed in (index.js). */
 export async function handlePlays(url, request, env, auth) {
   let seg;
@@ -928,6 +951,7 @@ export async function handlePlays(url, request, env, auth) {
   if (c === "invites" && d && !e && m === "DELETE") return revokeInvite(auth, env, p, d);
   if (c === "claim" && !d && m === "POST") return claimAsMember(auth, request, env, p, now);
   if (c === "parts" && d && e && m === "POST" && seg.length === 5) return partAction(auth, env, p, d, e, now);
+  if (c === "receiver" && !d && m === "GET") return json(await receiverOf(env, p));
   if (c === "takes" && d === "inbox" && !e && m === "GET") return p.user_id === auth.userId ? pickup(env, p.id) : problem(403, "director_only");
   if (c === "takes" && d && !e && m === "PUT") return uploadTake(auth, request, env, p, d, now);
   if (c === "takes" && d && e === "review" && seg.length === 5 && m === "POST") return review(auth, request, env, p, d, now);

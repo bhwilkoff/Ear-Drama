@@ -1181,6 +1181,28 @@ web app follows today.
      writes disabled), signed out ("Classes need an account." with Sign in).
 
 
+- **§4.20 Your parts and Relay across time** (`?read-room=parts`, lighting Record; PLAYS-DESIGN §12.11;
+  `native-platform-first`, `mobile-first-density-design`). Code: `js/parts-ui.js` (the page),
+  `js/relay-core.js` (the sender's rules, no DOM), `js/relay-watch.js` (one sender per production,
+  started with the app when this device has takes to pass through); every call is `API.plays`.
+  1. **Your parts** (a seat at home). No seat yet: the class code, then the class's names as buttons
+     (the join page's own two steps; no account, nothing typed but the code). With a seat: its name and
+     class (h2), each class production with a part's name and line count and **Record** (the studio
+     opens on a production kept on this device, linked to the seat; its key stays with the takes, so
+     the takes can reach the teacher whenever the app is open). Under it every line the seat holds, as
+     its first words, with the take's state.
+  2. **The states** (one caption under a line that has a take; a line with none shows nothing):
+     "On this device · sends when {name} is in Ear Drama", "Sending", "Sent", then the teacher's review
+     on its own line, "Approved" or "Again · {note}" (the refusal colour only for Again). A refusal that
+     leaves the queue shows the Worker's own words. The join page carries a quiet **Your parts** link.
+  3. **A member's takes** (the director's cast sheet for a shared production) carry the same rows under
+     "Your takes", the sender working while the page is open; **Upload** stays as the manual door.
+  4. **The teacher's progress list** (§4.19 item 5) refreshes on each arrival ("3 of 43 lines recorded").
+  5. **Publish held back.** A maker with no account (an adult room's reader, credited by the name they
+     gave) is listed with the performers as not yet agreed, and Publish stays disabled until they have.
+  6. **States**: loading, error with Retry, "No parts yet." (a fact); offline shows the waiting state.
+     Frames: `docs/research/design/img/t6/` (`node tools/relay_frames.mjs`), light and dark, 375 and 1440.
+
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
   scroll except Home's (Decision 075) and on each site page: Credits, Privacy, Take-down requests,
   Delete an account (§4.11).

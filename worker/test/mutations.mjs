@@ -121,7 +121,7 @@ const M = [
   ["publish with a reported take", "src/plays.js", '  if (held.length) return problem(409, "reported_take", held);\n', ""],
   ["publish without the archive account", "src/plays.js", '  if (!iaConfigured(env)) return problem(503, "publishing_unavailable");\n', ""],
   ["members hide who agreed", "src/plays.js", "consented: consented.has(m.user_id),", "consented: false,"],
-  ["publish without consent", "src/plays.js", '  if (missing.length) return problem(409, "consent_missing", missing);\n', ""],
+  ["publish without consent", "src/plays.js", 'if (missing.length || credits.length) return json({ error: "consent_missing", detail: missing, ...(credits.length ? { credits } : {}) }, 409);\n', ""],
   ["anyone publishes", "src/plays.js", "async function publish(auth, request, env, p, now) {\n  if (p.user_id !== auth.userId) return problem(403, \"director_only\");", "async function publish(auth, request, env, p, now) {"],
   ["job claims to have run", "src/plays.js", "VALUES (?1, ?2, 'queued', ?3, ?4, ?4)", "VALUES (?1, ?2, 'published', ?3, ?4, ?4)"],
   ["under-13 join without consent", "src/plays.js", '  if (c.under13 && !c.consent) return problem(403, "school_consent_required");\n', ""],
@@ -290,6 +290,13 @@ const M = [
   ["t5: an ended D1 room still answers", "src/read-rooms.js", 'async poll(env, code, key, now) {\n    const loaded = await d1.load(env, code);\n    if (!loaded) return refuse("no_such_room");\n    if (loaded.world.room.ended) return refuse("room_ended");\n', 'async poll(env, code, key, now) {\n    const loaded = await d1.load(env, code);\n    if (!loaded) return refuse("no_such_room");\n'],
   ["t5: names unfiltered", "src/read-rooms.js", "if (name === false || (name && nameRefusal(name))) return", "if (name === false) return"],
   ["t5: the sweep keeps expired pairs", "src/read-rooms.js", '  await env.DB.prepare("DELETE FROM read_pairs WHERE expires_at < ?1").bind(now).run();\n', ""],
+  // T6: Relay across time and the consent rule (§12.11)
+  ["t6: an anonymous reader's take credits the leader", "src/read-rooms.js", 'const credit = world.room.kind === "class" ? null : me.name || "A reader";', "const credit = null;"],
+  ["t6: a credited maker counts as consented", "src/plays.js", "if (missing.length || credits.length) return json(", "if (missing.length) return json("],
+  ["t6: a credited maker makes the leader the performer", "src/plays.js", "takes.filter((t) => t.chosen && !t.credit).map((t) => t.user_id)", "takes.filter((t) => t.chosen).map((t) => t.user_id)"],
+  ["t6: the receiver answer is always yes", "src/plays.js", "return { receiving: await receiving(env, p.id), name:", "return { receiving: true, name:"],
+  ["t6: anyone attaches a room to a production", "src/read-rooms.js", "p.class_id || p.user_id !== auth.userId || p.script_id !== body.script_id", "p.class_id || p.script_id !== body.script_id"],
+  ["t6: a seat asks about another class's production", "src/plays-seats.js", '  if (!p || p.class_id !== seat.class_id) return { error: problem(404, "not_found") };', "  if (!p) return { error: problem(404, \"not_found\") };"],
   ["t3: a class's deletion takes its published production", "src/plays.js", "UPDATE play_productions SET class_id = NULL WHERE id IN (${submitted})", "UPDATE play_productions SET class_id = NULL WHERE 0 AND id IN (${submitted})"],
 ];
 

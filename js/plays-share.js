@@ -184,7 +184,11 @@ const PlaysShare = (() => {
   }
 
   /** Members who hold a chosen take: each consents for their own recording (Decision 059). */
-  const performers = (rec) => (rec.members || []).filter(m => m.performer);
+  const performers = (rec) => [
+    ...(rec.members || []).filter(m => m.performer),
+    // A maker with no account is credited by the name they gave; they have not agreed and cannot here (PLAYS-DESIGN §12.11).
+    ...(rec.credits || []).map(c => ({ user_id: null, display_name: c.name, performer: true, consented: false, credited: true })),
+  ];
   /** True when this person, not the director, performs in a complete play and has not agreed yet. */
   const needsMyConsent = (rec, script, me) => !!me && !rec.archive && rec.director !== me && complete(rec, script)
     && performers(rec).some(m => m.user_id === me && !m.consented);

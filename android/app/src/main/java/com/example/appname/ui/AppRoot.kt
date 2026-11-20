@@ -212,6 +212,7 @@ fun AppRoot(
             openClass = { id -> stack.navigateTo(Route.ClassPage(id)) },
             openRoom = { code -> stack.navigateTo(Route.ReadRoom(code)) },
             showReading = { stack.navigateTo(Route.ReadPair) },
+            openParts = { stack.navigateTo(Route.Parts) },
         ),
     ) {
         HapticEvents()
@@ -349,6 +350,7 @@ fun AppRoot(
                 ClassPageScreen(route.id, onBack = back, onCasting = { c, p -> stack.add(Route.ClassCasting(c, p)) }, onOpenRoom = { stack.add(Route.ReadRoom(it)) })
             }
             entry<Route.ClassCasting> { route -> CastingBoardScreen(route.classId, route.productionId, onBack = back) }
+            entry<Route.Parts> { com.example.appname.ui.screens.PartsScreen(onBack = back, onRecord = openStudio) }
             entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
                             entry<Route.Script> { route ->
                                 ScriptScreen(route.id, onBack = back, onRead = openReader, onOpenProduction = { id ->
