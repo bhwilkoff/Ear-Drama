@@ -317,11 +317,15 @@ KINDS = ("show", "star", "person")
 # collage, related image; then a Commons file whose Structured Data depicts the item (P180);
 # then a file the item's own Commons category (P373) holds, named on the file's own page.
 SHOW_SOURCES = ("wikidata:P18", "wikidata:P154", "wikidata:P3383", "wikidata:P2716", "wikidata:P6802",
-                "commons:P180", "commons:category")
+                "commons:P180", "commons:category", "commons:enwiki", "commons:name")
 SHOW_RANK = {s: i for i, s in enumerate(SHOW_SOURCES)}
 # How the series was matched to its Wikidata item. A title alone is never an identity
 # (evidence-gated-catalog-curation section 7); a title with the years or the network is.
 IDENTITY_SERVED = ("title+years", "title+network")
+# A Commons search hit (H4, source `commons:name`) is tied to the show by its own file, not by a
+# Wikidata item: the name in the file's own title or categories, and a date inside the run (rule 6).
+NAME_SOURCE = "commons:name"
+NAME_IDENTITY = "name+date"
 # The largest show tile is 160 points (uniform-imagery-design: a show tile is 96 to 160 pt, and a
 # slot takes a picture only with at least the slot's pixels): a smaller show image would be
 # refused by every tile, so it does not displace a star who can fill one.
@@ -481,8 +485,10 @@ def show_served(identity, source, cls, author, width, height, file, categories=(
     categories do not say it is from television or film (rule 2), it is not an own work dated after
     its star's death, and its own date lies inside the run (rule 3). Whether the file names the show
     at all is rule 4, `names_the_show`, which each builder applies beside this."""
-    if identity not in IDENTITY_SERVED or source not in SHOW_RANK or cls not in PREFER:
+    if source not in SHOW_RANK or cls not in PREFER or not is_picture(file):
         return False
+    if identity != NAME_IDENTITY if source == NAME_SOURCE else identity not in IDENTITY_SERVED:
+        return False   # a name hit needs the file's own tie (name_hit_served); every other source needs the item's
     if cls in NEEDS_CREDIT and NO_AUTHOR.match(author or ""):
         return False
     if not width or not height or min(width, height) < SHOW_MIN_SIDE:
@@ -657,3 +663,270 @@ def assign_faces(shows, portrait_people, sitelinks=None, names=None, titles=None
                         moved = True
         if not moved:
             return out
+
+
+# ---------------------------------------------------------------- Round 3 V2: more real images
+# R3b sections 5.1-5.5. Every rule below is a predicate with a fixture test and a broken control in
+# tests/test_art_v2.py; the builders import them, none decides for itself.
+
+# A file that is not a picture (the audio file a search matched beside a photograph's name).
+NOT_A_PICTURE = re.compile(r"\.(ogg|oga|ogv|opus|ogx|webm|mp3|mp4|mpe?g|flac|wav|mid|pdf|djvu|stl|xcf)$", re.I)
+
+
+def is_picture(file):
+    return not NOT_A_PICTURE.search(file or "")
+
+
+def _words(text):
+    return re.findall(r"[a-z0-9]+", (text or "").lower().replace("theatre", "theater"))
+
+
+def _title_words(name):
+    """A program's name as the words a file's title must carry: no leading article, no parenthesis."""
+    w = _words(re.sub(r"\(.*?\)", " ", name or ""))
+    return w[1:] if len(w) > 1 and w[0] in ("the", "a", "an") else w
+
+
+def _holds(haystack_words, needle):
+    n = len(needle)
+    return n > 0 and any(haystack_words[i:i + n] == needle for i in range(len(haystack_words) - n + 1))
+
+
+def name_in_file(file, categories, series_name):
+    """True when the file's own title or categories are about the program (rule 6), as whole words:
+    its title (extension dropped) opens with the program's name, or one of its categories IS the program
+    (its parenthesis dropped: 'Suspense (radio series)'), or, for a name of three words or more, the name
+    stands anywhere in the title or a category ('Cast of Stories of Mercy General'). Never a caption the
+    search engine matched, never 'Saints' for 'The Saint', and never a longer program's name that
+    contains ours: the series 'Radio Theater' is not 'Lux Radio Theatre', and 'Music' is the title
+    of no photograph, only a word in 'Great Moments in Music'."""
+    need = _title_words(series_name)
+    if sum(len(w) for w in need) < TITLE_MIN:
+        return False
+    stem = _title_words(re.sub(r"\.[A-Za-z0-9]{2,5}$", "", file or ""))
+    if stem[:len(need)] == need:
+        return True
+    cats = [c.split(":", 1)[-1] for c in categories or ()]
+    if any(_title_words(c) == need for c in cats):
+        return True
+    return len(need) >= 3 and any(_holds(_words(h), need) for h in [re.sub(r"\.[A-Za-z0-9]{2,5}$", "", file or "")] + cats)
+
+
+def name_hit_served(file, categories, date_field, series_name, first_date, last_date):
+    """H4 (R3b section 5.1), rules 6, 3 and 2: a Commons search hit may lead a show when (a) the file is
+    about the program (`name_in_file`), (b) the file has a date of its own (its page's date field, else a
+    year in its name) and it lies inside the run, YEAR_SLACK either side (a hit with no date says nothing
+    about which broadcast it shows: The Saint's hit was a 2004 photograph of an Italian journalist), and
+    (c) radio is in the file's own title or one of its categories. (c) is the twin rule: Gunsmoke,
+    Father Knows Best, The Twilight Zone, Burns and Allen and You Bet Your Life each have a television
+    run beside the radio one, whose stills carry the same name, the same stars and the network's plain
+    'publicity photos' category, and a date inside the run; only a file that says radio is the radio
+    program. Television and film in the words are refused by `show_served`."""
+    if not is_picture(file) or not name_in_file(file, categories, series_name):
+        return False
+    if not (first_date and last_date) or not (file_year(date_field) or file_year(file)):
+        return False
+    if not file_in_run(date_field, file, first_date, last_date):
+        return False
+    return any(RADIO.search(h) for h in [file or ""] + [c for c in categories or ()])
+
+
+def lead_image_served(page_image_free, commons_status):
+    """H3 (R3b section 4.1): an English Wikipedia article's lead image leads a show only when
+    Wikipedia itself calls it free (`pageprops.page_image_free`) AND it is on Commons (its Commons file
+    page reads, with a license the policy serves): 40 of 70 lead images measured were enwiki-local
+    fair-use files, which are never served. `show_served` still demands the item's identity (rule 1)."""
+    return bool(page_image_free) and commons_status == "ok"
+
+
+HERO_MIN_WIDTH = 600   # a hero fills a page header or Home's lead; narrower is soft at that size
+GALLERY_MAX = 6
+
+
+def landscape(width, height):
+    """The box takes the image's shape (artwork-presentation-design): wide is past WIDE_ASPECT."""
+    return bool(width and height) and width / height > WIDE_ASPECT
+
+
+def _show_key(r):
+    """Best first: the source, the license class, an original before a crop of it, then the name."""
+    return (SHOW_RANK[r[1]], PREFER[r[2]], bool(re.search(r"\b(cropped|crop|edited|retouched)\b", r[0], re.I)), r[0])
+
+
+def pick_hero(rows):
+    """series.hero (R3b section 5.5): the best landscape show image, at least HERO_MIN_WIDTH wide, never
+    a portrait stretched. rows: (file, source, cls, template, author, width, height, face), all passing
+    `show_served`; None when no landscape one passes (the client draws the label, never a crop)."""
+    wide = [r for r in rows if landscape(r[5], r[6]) and r[5] >= HERO_MIN_WIDTH]
+    return min(wide, key=_show_key) if wide else None
+
+
+def pick_gallery(rows, taken=()):
+    """series.gallery: up to GALLERY_MAX further show images in order, each file once, never one
+    already leading (`taken`: the picture's and hero's files)."""
+    seen, out = {_same_picture(f) for f in taken}, []
+    for r in sorted(rows, key=_show_key):
+        if _same_picture(r[0]) not in seen:
+            seen.add(_same_picture(r[0]))
+            out.append(r)
+    return out[:GALLERY_MAX]
+
+
+def _same_picture(file):
+    """A file's name with the words of a derivative dropped ('(cropped)', 'edited'): a crop of a photograph
+    already in the gallery is the same picture twice."""
+    stem = re.sub(r"\.[A-Za-z0-9]{2,5}$", "", file or "").lower()
+    return re.sub(r"[^a-z0-9]", "", re.sub(r"\(\s*(?:cropped|crop|edited|edit|retouched)\s*\)|\b(?:cropped|edited)\b", "", stem))
+
+
+# H9: a served image is hot-linked from Commons, so it can be deleted or moved under us. A HEAD on a
+# TTL records 'ok' (the file answers), 'gone' (404 or 410), or nothing at all for a transient error;
+# only 'gone' removes a candidate, and the next one leads (never a broken box, never a blip as dead).
+LIVENESS_TTL_DAYS = 14
+GONE = (404, 410)
+
+
+def liveness_verdict(status):
+    """'ok' | 'gone' | None (unknown: a 429, a 5xx, a timeout)."""
+    if status in GONE:
+        return "gone"
+    return "ok" if isinstance(status, int) and 200 <= status < 400 else None
+
+
+def alive(live, file):
+    """False only for a file a liveness check found gone; one never checked is presumed alive."""
+    return (live or {}).get(file, {}).get("verdict") != "gone"
+
+
+def liveness_stale(rec, today_ordinal):
+    """True when a file's last check is older than the TTL (or it has none)."""
+    return not rec or today_ordinal - rec.get("day", 0) > LIVENESS_TTL_DAYS
+
+
+# ---- plays (H7)
+
+EDITION_LAST_YEAR = 1930   # published 1930 or earlier is public domain in the US by age
+# Rule 8: a collection is not a first edition ("The Best Known Works of Ibsen", 1940).
+COLLECTION_WORDS = frozenset(
+    "works collected complete plays dramas dramatic best selected select volume volumes vol anthology library "
+    "masterpieces series repertory repertoire three four five six seven eight nine ten twelve other".split())
+# A book about a play is not an edition of it ("Ninon, Moliere et Tartuffe").
+ABOUT_WORDS = frozenset("study studies criticism critical essay essays life biography notes commentary analysis "
+                        "history guide introduction lectures".split())
+
+
+def _fold(text):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFKD", text or "") if not unicodedata.combining(c))
+
+
+def surname_of(display):
+    """The family name of an author as the record spells it ('Shaw, Bernard' or 'George Bernard Shaw')."""
+    d = re.sub(r"\(.*?\)", " ", display or "").strip()
+    d = d.split(",")[0] if "," in d else (d.split() or [""])[-1]
+    return (_words(_fold(d)) or [""])[-1]
+
+
+def holds_surname(creator, surnames):
+    """True when an item's creator field carries one of our authors' family names as a whole word."""
+    cw = _words(_fold(" ".join(creator) if isinstance(creator, (list, tuple)) else creator))
+    return any(len(s) >= 3 and s in cw for s in surnames or ())
+
+
+def edition_served(play_title, surnames, item):
+    """H7 (R3b sections 5.1, 5.2 rule 8): a scanned edition of this play whose own record is the
+    evidence: a text published in 1930 or earlier, its creator field holding the author's family name
+    (a title alone is a common noun more often than not), its title opening with the play's own title,
+    and no collection or study word in it that the play's title lacks. item: archive.org's own
+    {title, creator, year, mediatype}."""
+    try:
+        year = int(str(item.get("year"))[:4])
+    except (TypeError, ValueError):
+        return False
+    if item.get("mediatype") not in (None, "texts") or not (1400 <= year <= EDITION_LAST_YEAR):
+        return False
+    if not holds_surname(item.get("creator"), surnames):
+        return False
+    need = _title_words(_fold(play_title))
+    got = _words(_fold(re.sub(r"^(the|a|an)\s+", "", item.get("title") or "", flags=re.I)))
+    if sum(len(w) for w in need) < TITLE_MIN or got[:len(need)] != need:
+        return False
+    return not ((set(got) & (COLLECTION_WORDS | ABOUT_WORDS)) - set(need))
+
+
+TITLE_PAGE_SCAN = 40       # a title page is among the first leaves of a book
+TITLE_PAGE_MAX_CHARS = 1500
+
+
+def title_page_ocr(pages, play_title, surnames):
+    """H7: the index (in the OCR's own page list) of the first of an edition's first leaves whose own text is a
+    title page of this play: short, holding the play's title words in order and one of the author's family
+    names as whole words. A running head or a table of contents is long and a half-title holds no author.
+    pages: the OCR text of each page, in order; None when no leaf qualifies."""
+    need = _title_words(_fold(play_title))
+    if sum(len(w) for w in need) < TITLE_MIN:
+        return None
+    for i, text in enumerate(pages[:TITLE_PAGE_SCAN]):
+        w = _words(_fold(text))
+        if 3 <= len(w) and len(text) <= TITLE_PAGE_MAX_CHARS and _holds(w, need) and \
+                any(len(x) >= 3 and x in w for x in surnames or ()):
+            return i
+    return None
+
+
+def title_page_agrees(scan_index, ocr_index):
+    """The leaf archive.org's own scan data types as the title page (`scan_index`, its place among the leaves
+    that are in the page list) and the leaf whose own OCR is a title page (`ocr_index`) are the same page. The
+    OCR list may lack the first leaf (a Google scan's 'digitized by' cover), so it may sit one place earlier. MEASURED
+    2026-11-19: the scan data's type alone named a copyright page, a contents page or a text page in 8 of 12
+    leaves read by eye; the OCR alone cannot say which index the page image has."""
+    return scan_index is not None and ocr_index is not None and scan_index in (ocr_index, ocr_index + 1)
+
+
+def work_served(play_title, surnames, work):
+    """H7: a Wikidata work item stands for the play when its label is the play's title and its P50
+    author's name, or its description, carries one of our authors' family names (rule 8): 'In Honour
+    Bound' is a 1925 radio play, not Grundy's 1885 stage play, and the author says which.
+    work: {label, authors: [names], description}."""
+    if _title_words(_fold(work.get("label"))) != _title_words(_fold(play_title)):
+        return False
+    pool = [surname_of(a) for a in work.get("authors") or ()] + _words(_fold(work.get("description")))
+    return any(len(s) >= 3 and s in pool for s in surnames or ())
+
+
+def play_title(t):
+    """A Gutenberg title as the play is named: one line, cut at a subtitle ('; Or, ...', ': A Comedy') or a
+    'From the Quarto of 1604' note."""
+    t = re.sub(r"\s+", " ", t or "")
+    t = re.sub(r"\s*[:;(\[].*$", "", t).strip()
+    return re.sub(r"\s+(?:from|by|with|edited|translated)\b.*$", "", t, flags=re.I)
+
+
+def work_image_is_of_the_work(file, title, surnames):
+    """H7: a work item's own image stands for the play unless it is a portrait of its author: a file whose
+    name holds the author's family name and not the play's title ('G Bernard Shaw.jpg' is Misalliance's P18)
+    is the playwright, who has his own slot (`play.authorArt`). A name with neither (a scene's title) stands."""
+    words = _words(_fold(re.sub(r"\.[A-Za-z0-9]{2,5}$", "", file or "")))
+    named = any(len(s) >= 3 and s in words for s in surnames or ())
+    return not named or _holds(words, _title_words(_fold(title)))
+
+
+def play_image_served(cls, author, width, height, own_work=False, date_field=None, died=None):
+    """H7: a file that stands for a play or its author is served under the license classes portraits
+    are (credited when owed), big enough for a tile, and is not an own work dated after the death of
+    the person it shows (the portrait rule, `implausible_own_work`)."""
+    if cls not in PREFER or (cls in NEEDS_CREDIT and NO_AUTHOR.match(author or "")):
+        return False
+    if not width or not height or min(width, height) < SHOW_MIN_SIDE:
+        return False
+    return not implausible_own_work(own_work, date_field, died)
+
+
+PLAY_KINDS = ("work", "titlePage", "author")   # what leads a play: the work's image, a title page, the author
+
+
+def pick_play(rows):
+    """play.picture: work image, then title page, then the author's portrait (R3b section 5.5), else
+    None (the script-page label). rows: (kind, ...) in any order."""
+    order = {k: i for i, k in enumerate(PLAY_KINDS)}
+    return min(rows, key=lambda r: order[r[0]]) if rows else None

@@ -351,7 +351,7 @@ with tempfile.TemporaryDirectory() as tmp:
     dst2 = os.path.join(tmp, "broken-d.sqlite")
     B.build(src, dst2)
     bad = sqlite3.connect(dst2)
-    bad.execute("INSERT INTO art VALUES (1, 'u', 10, 10, 'pd_us', NULL, NULL, 'e', NULL, '2.500,0.1')")
+    bad.execute("INSERT INTO art (id, url, width, height, license, author, credit, evidence_url, face, grade) VALUES (1, 'u', 10, 10, 'pd_us', NULL, NULL, 'e', NULL, '2.500,0.1')")
     bad.execute("UPDATE voices SET episodes = 9 WHERE rank = 2")
     bad.execute("UPDATE series SET genre_source = NULL WHERE key = 'hoorspel'")
     bad.execute("UPDATE voices SET name = 'Someone Else' WHERE rank = 1")

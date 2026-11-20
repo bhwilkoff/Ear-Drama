@@ -69,8 +69,9 @@ SHELF_SERIES = 12
 # [first year, count, count, ...], one count per year to the last dated one; null when none is dated.
 # network: the one primary network (contract section 3.3 `series.network`, networks.primary_network) over the web's
 # own episodes; null when none names one. Clients never parse `networks`.
+# hero: a landscape show image (an art array) for a page header or Home's lead, or null (contract section 3.3c).
 SERIES_FIELDS = ["key", "name", "genre", "first", "last", "episodes", "networks", "star", "art", "sortName", "scripts",
-                 "downloads", "picture", "pictureKind", "pictureSource", "years", "network"]
+                 "downloads", "picture", "pictureKind", "pictureSource", "years", "network", "hero"]
 # A served image (art_policy.py): url takes ?width=; credit is set only where the license requires one.
 # grade: [k, o], the linear levels a monochrome picture takes in a repeated slot (contract section 3.3a), or null.
 ART_FIELDS = ["url", "width", "height", "credit", "evidence", "face", "grade"]
@@ -185,6 +186,11 @@ def build(src, out, include_unclaimed=False, transcripts=None):
     series_pic = ({k: (art.get(a), kind, src) for k, a, kind, src in s.execute(
         "SELECT key, picture, picture_kind, picture_source FROM series WHERE picture IS NOT NULL") if a in art}
         if has("series", "picture") and art else {})
+    # contract section 3.3c: the landscape hero and the ordered gallery of a series, as art arrays.
+    series_hero = ({k: art[a] for k, a in s.execute("SELECT key, hero FROM series WHERE hero IS NOT NULL") if a in art}
+                   if has("series", "hero") and art else {})
+    series_gallery = ({k: [art[a] for a in json.loads(g) if a in art] for k, g in s.execute(
+        "SELECT key, gallery FROM series WHERE gallery IS NOT NULL")} if has("series", "gallery") and art else {})
     ep_script = (dict(s.execute("SELECT id, script FROM episodes WHERE script IS NOT NULL"))
                  if has("episodes", "script") else {})
     ep_sponsor = (dict(s.execute("SELECT id, sponsor FROM episodes WHERE sponsor IS NOT NULL"))
@@ -238,6 +244,7 @@ def build(src, out, include_unclaimed=False, transcripts=None):
         hist = P.year_counts([e[2] for e in by_series[k]])
         row.append([int(v) for v in hist.split(",")] if hist else None)
         row.append(primary[k][0])
+        row.append(series_hero.get(k))
     arc_rows = {}
     if {"arcs", "arc_parts"} <= tables:
         for aid, sk, eid in s.execute("SELECT a.id, a.series_key, p.episode_id FROM arcs a JOIN arc_parts p "
@@ -271,6 +278,7 @@ def build(src, out, include_unclaimed=False, transcripts=None):
             "key": key, "name": meta[1], "genre": meta[2], "first": meta[3], "last": meta[4],
             "networks": meta[6], "star": meta[7], "art": meta[8], "picture": meta[12], "pictureKind": meta[13],
             "pictureSource": meta[14], "years": meta[15], "network": meta[16], "networkSource": primary[key][1],
+            "hero": meta[17], "gallery": series_gallery.get(key) or None,
             "seasons": seasons, "fields": EPISODE_FIELDS,
             "episodes": [[e[0], e[2], e[3], e[4], e[5], e[8], e[7], recs[e[0]][0][0]] + lt(e[0]) for e in rows]}
         if key in series_about:

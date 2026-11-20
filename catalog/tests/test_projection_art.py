@@ -52,7 +52,21 @@ CONTRACT = {
     "every image is a Commons file with its file page": "SELECT COUNT(*) FROM art WHERE url NOT LIKE '{}%' OR "
         "evidence_url NOT LIKE '{}%'".format(AP.FILEPATH, AP.FILE_PAGE),
     "no image is published that no person or series wears": "SELECT COUNT(*) FROM art a WHERE NOT EXISTS "
-        "(SELECT 1 FROM people p WHERE p.portrait = a.id) AND NOT EXISTS (SELECT 1 FROM series s WHERE s.picture = a.id)",
+        "(SELECT 1 FROM people p WHERE p.portrait = a.id) AND NOT EXISTS (SELECT 1 FROM series s WHERE s.picture = a.id "
+        "OR s.hero = a.id OR EXISTS (SELECT 1 FROM json_each(s.gallery) j WHERE j.value = a.id))",
+    # contract section 3.3c (Round 3 V2)
+    "a series' hero is a published landscape image at least {} px wide".format(AP.HERO_MIN_WIDTH):
+        "SELECT COUNT(*) FROM series s WHERE hero IS NOT NULL AND NOT EXISTS (SELECT 1 FROM art a WHERE a.id = s.hero "
+        "AND a.width >= {} AND a.height > 0 AND 1.0 * a.width / a.height > {})".format(AP.HERO_MIN_WIDTH, AP.WIDE_ASPECT),
+    "a series' gallery is at most {} published images, none its picture or hero".format(AP.GALLERY_MAX):
+        "SELECT COUNT(*) FROM series s WHERE gallery IS NOT NULL AND (json_array_length(gallery) > {} OR EXISTS "
+        "(SELECT 1 FROM json_each(s.gallery) j WHERE j.value = s.picture OR j.value = s.hero OR NOT EXISTS "
+        "(SELECT 1 FROM art a WHERE a.id = j.value)))".format(AP.GALLERY_MAX),
+    "a series with a hero or a gallery has a show picture": "SELECT COUNT(*) FROM series WHERE (hero IS NOT NULL OR "
+        "gallery IS NOT NULL) AND picture_kind IS NOT 'show'",
+    "every show image has a source from the show's own records and a tie": "SELECT COUNT(*) FROM art a WHERE "
+        "(a.source IS NULL OR a.tie IS NULL OR a.source NOT IN ({}, 'wikidata:P18')) AND EXISTS (SELECT 1 FROM series s "
+        "WHERE s.picture = a.id OR s.hero = a.id)".format(",".join(f"'{x}'" for x in AP.SHOW_SOURCES)),
     "a series' picture is a published image of a known kind, with its source": "SELECT COUNT(*) FROM series s WHERE "
         "(picture IS NULL) != (picture_kind IS NULL) OR (picture IS NULL) != (picture_source IS NULL) OR "
         "picture_kind NOT IN ({}) OR (picture IS NOT NULL AND NOT EXISTS (SELECT 1 FROM art a WHERE a.id = s.picture))"
@@ -84,7 +98,14 @@ def _face_ok(text):
 def violations(db):
     c = sqlite3.connect(db)
     pictured = "picture" in {r[1] for r in c.execute("PRAGMA table_info(series)")}
-    rules = {n: q for n, q in CONTRACT.items() if pictured or "picture" not in q}
+    heroed = "hero" in {r[1] for r in c.execute("PRAGMA table_info(series)")} and \
+        "source" in {r[1] for r in c.execute("PRAGMA table_info(art)")}
+    rules = {n: q for n, q in CONTRACT.items() if (pictured or "picture" not in q) and (heroed or not any(
+        w in n for w in ("hero", "gallery", "show image has")))}
+    if pictured and not heroed:   # a projection from before section 3.3c
+        rules["no image is published that no person or series wears"] = (
+            "SELECT COUNT(*) FROM art a WHERE NOT EXISTS (SELECT 1 FROM people p WHERE p.portrait = a.id) AND NOT EXISTS "
+            "(SELECT 1 FROM series s WHERE s.picture = a.id)")
     if not pictured:   # a projection from before series pictures (contract section 3.3a)
         rules["no image is published that no person wears"] = (
             "SELECT COUNT(*) FROM art a WHERE NOT EXISTS (SELECT 1 FROM people p WHERE p.portrait = a.id)")
@@ -167,6 +188,11 @@ def retrace_shows(projection, source):
         return []
     published = {(k, ev) for k, ev in p.execute(
         "SELECT s.key, a.evidence_url FROM series s JOIN art a ON a.id = s.picture WHERE s.picture_kind = 'show'")}
+    if "hero" in {r[1] for r in p.execute("PRAGMA table_info(series)")}:   # section 3.3c: every published show image
+        published |= {(k, ev) for k, ev in p.execute(
+            "SELECT s.key, a.evidence_url FROM series s JOIN art a ON a.id = s.hero")}
+        published |= {(k, ev) for k, ev in p.execute(
+            "SELECT s.key, a.evidence_url FROM series s, json_each(s.gallery) j JOIN art a ON a.id = j.value")}
     p.close()
     s = sqlite3.connect(f"file:{source}?mode=ro", uri=True)
     ok = set()
@@ -184,7 +210,8 @@ def retrace_shows(projection, source):
             cats = json.loads(cats or "[]")
             if AP.show_served(identity, src, cls, author, w, h, file, cats, when,
                               *reversed(run.get(k, (None, None)))) and \
-                    AP.names_the_show(file, cats, names.get(k), people.get(k, ()), p373.get(k), nets.get(k)):
+                    AP.names_the_show(file, cats, names.get(k), people.get(k, ()), p373.get(k), nets.get(k)) and \
+                    (src != AP.NAME_SOURCE or AP.name_hit_served(file, cats, when, names.get(k), *run.get(k, (None, None)))):
                 ok.add((k, AP.evidence_url(file)))
     s.close()
     return sorted(published - ok)
@@ -358,7 +385,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
     # Broken control: a projection that serves an undated match's image must fail both checks.
     bad = sqlite3.connect(dst)
-    bad.execute("INSERT INTO art VALUES (9, ?, NULL, NULL, 'pd_us', NULL, NULL, ?, NULL, NULL)",
+    bad.execute("INSERT INTO art (id, url, width, height, license, author, credit, evidence_url, face, grade) VALUES (9, ?, NULL, NULL, 'pd_us', NULL, NULL, ?, NULL, NULL)",
                 (AP.image_url("Mary.jpg"), AP.evidence_url("Mary.jpg")))
     bad.execute("UPDATE people SET portrait = 9 WHERE id = 'p2'")
     bad.execute("UPDATE art SET credit = NULL WHERE license = 'cc_by'")
@@ -736,6 +763,84 @@ with tempfile.TemporaryDirectory() as tmp:
     c.close()
     check("control: the contract catches a show picture from no show record",
           sorted(violations(dst)), ["a show picture comes from one of the show's own records"])
+
+
+# --- Round 3 V2 (contract section 3.3c): hero, gallery, name hits, liveness -----------------
+with tempfile.TemporaryDirectory() as tmp:
+    src, dst, web = (os.path.join(tmp, n) for n in ("src.sqlite", "out.sqlite", "web"))
+    fixture(src)
+    d = sqlite3.connect(src)
+    d.executescript("""
+    CREATE TABLE series_art (series_key, qid, file, source, identity, license_class, template, author, width, height,
+        face, categories, date_field, served, evidence_url, own_work);
+    CREATE TABLE series_marks (series_key, person_id, character);
+    CREATE TABLE wikipedia_sitelinks (qid, n);
+    """)
+
+    def art_row(file, src_, identity, w, h, cats, when):
+        return ("benny", "Q1", file, src_, identity, "pd_us", "PD-US", None, w, h, None, json.dumps(cats), when, 1, "", 0)
+
+    d.executemany("INSERT INTO series_art VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+        art_row("Benny portrait 1946.jpg", "wikidata:P18", "title+years", 700, 900, ["Jack Benny Program"], "1946"),
+        art_row("Benny wide 1946.jpg", "commons:category", "title+years", 1200, 800, ["Jack Benny Program"], "1946"),
+        art_row("Benny wide 1947 radio.jpg", "commons:name", AP.NAME_IDENTITY, 1000, 700, ["Jack Benny Program", "1947 in radio"], "1947"),
+        art_row("Benny narrow 1948.jpg", "commons:category", "title+years", 500, 300, ["Jack Benny Program"], "1948"),
+        art_row("Benny gone 1949.jpg", "commons:category", "title+years", 1400, 900, ["Jack Benny Program"], "1949"),
+        # a name hit whose tie is not the file's own: the builder refuses it again
+        art_row("Benny wide 1950.jpg", "commons:name", "title", 1000, 700, ["Jack Benny Program"], "1950"),
+        # a name hit that says nothing of radio (the television twin's still): refused again by name_hit_served, the
+        # builder's own re-check, though its tie and every other predicate pass
+        art_row("Benny wide 1951.jpg", "commons:name", AP.NAME_IDENTITY, 1000, 700, ["Jack Benny Program"], "1951"),
+        # a name hit with no date inside the run: refused again by name_hit_served
+        art_row("Benny wide 2004.jpg", "commons:name", AP.NAME_IDENTITY, 1000, 700, ["Jack Benny Program"], "2004")])
+    d.execute("INSERT INTO series_marks VALUES ('benny', 'p3', 'Star')")
+    d.commit()
+    d.close()
+    B.build(src, dst, liveness={"Benny gone 1949.jpg": {"verdict": "gone", "day": 1}})
+    c = sqlite3.connect(dst)
+    pic, hero, gal = c.execute("SELECT picture, hero, gallery FROM series").fetchone()
+    ev = dict(c.execute("SELECT id, evidence_url FROM art"))
+    check("hero: the best landscape image, never the portrait that leads", ev[hero], AP.evidence_url("Benny wide 1946.jpg"))
+    check("picture: the best source still leads (the item's own P18, a portrait)", ev[pic],
+          AP.evidence_url("Benny portrait 1946.jpg"))
+    check("gallery: the other served images in order, never the picture or hero, none dead, none refused",
+          [ev[i] for i in json.loads(gal)],
+          [AP.evidence_url(f) for f in ("Benny narrow 1948.jpg", "Benny wide 1947 radio.jpg")])
+    check("art rows carry their source and tie", sorted(c.execute(
+          "SELECT a.source, a.tie FROM art a WHERE a.id IN (SELECT hero FROM series)").fetchall()),
+          [("commons:category", "title+years")])
+    check("control: a file a liveness check found gone is not served",
+          sum(1 for e in ev.values() if "Benny_gone" in e), 0)
+    c.close()
+    check("v2: the contract holds", violations(dst), {})
+    check("v2: retrace holds (hero and gallery too)", retrace(dst, src), [])
+    W.build(dst, web)
+    with open(os.path.join(web, "series", "benny.json")) as f:
+        page = json.load(f)
+    check("web: the series page carries the hero and the gallery as art arrays",
+          (page["hero"][0], [g[0] for g in page["gallery"]]),
+          (AP.image_url("Benny wide 1946.jpg"), [AP.image_url("Benny narrow 1948.jpg"), AP.image_url("Benny wide 1947 radio.jpg")]))
+    with open(os.path.join(web, "index", "series.json")) as f:
+        idx = json.load(f)
+    check("web: the index row carries the hero", dict(zip(idx["fields"], idx["rows"][0]))["hero"][0],
+          AP.image_url("Benny wide 1946.jpg"))
+    # Broken controls: a hero that is a portrait, a gallery with the picture in it, a new row with no source.
+    c = sqlite3.connect(dst)
+    portrait_id = c.execute("SELECT picture FROM series").fetchone()[0]
+    c.execute("UPDATE series SET hero = ?", (portrait_id,))
+    c.commit()
+    check("control: the contract catches a hero that is not landscape",
+          "a series' hero is a published landscape image at least 600 px wide" in violations(dst), True)
+    c.execute("UPDATE series SET hero = NULL, gallery = json_array(picture)")
+    c.commit()
+    check("control: the contract catches a gallery holding the picture",
+          "a series' gallery is at most 6 published images, none its picture or hero" in violations(dst), True)
+    c.execute("UPDATE series SET gallery = NULL")
+    c.execute("UPDATE art SET source = NULL")
+    c.commit()
+    c.close()
+    check("control: the contract catches a show image with no source",
+          "every show image has a source from the show's own records and a tie" in violations(dst), True)
 
 here = os.path.dirname(__file__)
 real =os.environ.get("PROJECTION") or os.path.join(here, "..", "out", "publish", "ear-drama.sqlite")

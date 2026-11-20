@@ -377,8 +377,9 @@ def build(plays, ctx, read_text, protect=()):
 
 
 def index_doc(entries, report):
+    import play_art
     return {"format": FORMAT, "count": len(entries), "wordsPerMinute": WORDS_PER_MINUTE,
-            "report": report, "plays": [index_row(e) for e in entries]}
+            "report": report, "plays": play_art.attach([index_row(e) for e in entries])}
 
 
 def write(entries, report, out=OUT):

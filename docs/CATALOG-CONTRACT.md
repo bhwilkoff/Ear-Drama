@@ -197,7 +197,7 @@ none on the web), never as a skip. Segment times are never estimated.
   the logs say aired), `kind_summary`, `star` (§3.3a, or NULL), `sort_name` (below),
   `downloads` (below), `picture`, `picture_kind`, `picture_source` (§3.3a; all
   three NULL together), `year_counts` (below), `about_text`, `about_source`, `about_url` (below),
-  `network`, `network_source` (below).
+  `network`, `network_source` (below), `hero`, `gallery` (§3.3c).
 - **`series.network`** and **`network_source`** (added 2026-11-19, Decision 081; additive,
   `schemaVersion` stays 1): the one primary network a series aired on, the name the label's rim
   sets in our type (never a logo). Computed once by `catalog/tools/networks.py primary_network`
@@ -487,6 +487,109 @@ broadcast never appears. It rides `episodes_date`: 15 microseconds a query on th
 0.68 MB deflated on a 25.5 MB download, for a result the index returns on demand; so it is not published. Only a
 full `YYYY-MM-DD` date has a day (`air_date` of 10 characters). Guarded in `tests/test_projection.py` (the plan names
 `episodes_date`; the cap, the self-exclusion and the order each have a control).
+
+### 3.3c Hero, gallery, and where each picture came from (Round 3 V2)
+
+Additive; `schemaVersion` stays 1; every field is NULL when nothing passes, and a client treats NULL as
+"draw the label" (Decision 081), never as an error. Research: `docs/research/design/R3b-image-sources.md`
+(sections 4, 5). Owner, 2026-11-19: *"We have very few images that represent only a few Ear Dramas ...
+On Archive Watch, we pull 'hero images', posters, and many other types of visual representations of the
+movies. We should be able to do that for this app too (from wikipedia or any other public repository)."*
+
+- **`series.hero`** (an `art.id`, NULL when none): the best **landscape** show image (aspect over 1.15, at
+  least 600 px wide) among the images that pass the show predicate below, for a page header or Home's lead;
+  never a portrait stretched, never a crop of one (`art_policy.pick_hero`). It may be the same file as
+  `series.picture`. A star's portrait is never a hero.
+- **`series.gallery`** (JSON array of `art.id`, ordered, at most 6, NULL when empty): the further show images
+  that pass, best first, each file once, never the picture or the hero (`art_policy.pick_gallery`).
+  Press photographs, cast photographs, publicity stills, each with its own evidence.
+- **`art.source`** and **`art.tie`** (TEXT, NULL for a portrait row built before V2): where the file was
+  found (`wikidata:P18`, `commons:enwiki`, `commons:name`, ..., `archive.org`) and how it is tied to the thing
+  it stands for (`title+years`, `title+network`, `name+date`, `name+birth_year`, `edition+surname`, ...). With
+  `evidence_url` (the Commons file page, or the archive.org item) this is R3b section 5.3's three facts.
+  The web's `art` arrays are unchanged (`ART_FIELDS` still ends with `grade`); the web adds `hero` (an art
+  array or null) to the series index rows and `hero` and `gallery` (an array of art arrays, or null) to a
+  series page, after `network`; `pictureSource` names the picture's source as before.
+- **`play.titlePage`**, **`play.authorArt`**, **`play.picture`**: on each row of the play library's
+  `index.json` (section 4.1), as `{url, width, height, credit, evidence, face, source, tie}` objects or absent:
+  the scanned title page of an edition, the author's portrait, and the one that leads (work image, then title
+  page, then author: `art_policy.pick_play`). Absent means the script-page label.
+
+**The show predicate gains two sources** (both pass `art_policy.show_served` and `names_the_show` like every
+other, and never replace a better one: they rank after `commons:category`):
+
+1. `commons:enwiki` (H3): the lead image of the series' English article (the Wikidata item's sitelink), only
+   when Wikipedia's own `page_image_free` names it AND its Commons file page reads with a served license class
+   (`art_policy.lead_image_served`). A file local to enwiki is non-free and never served (R3b section 4.1:
+   40 of 70 lead images). The item's identity is the same as for every Wikidata source (`title+years`,
+   `title+network`).
+2. `commons:name` (H4): a Commons search hit or a file of the radio publicity crawl that is about the
+   program (rule 6, `art_policy.name_in_file`): its title opens with the program's name, or one of its categories
+   is the program (its parenthesis dropped, "Suspense (radio series)"), or, for a name of three words or more,
+   the name stands anywhere in the title or a category; never a longer program's name that contains ours
+   ("Radio Theater" is not "Lux Radio Theatre"). It has a date of its own inside the run, YEAR_SLACK either
+   side (rule 3), and `radio` in its own title or one of its categories: the twin rule, because Gunsmoke, Father
+   Knows Best, The Twilight Zone, Burns and Allen and You Bet Your Life each have a television run whose stills
+   carry the same name and stars, the network's plain "publicity photos" category and a date inside the run
+   (`art_policy.name_hit_served`; MEASURED 2026-11-19: the first version, name anywhere and radio only for short
+   names, admitted 96 name hits; of the first 30 listed, about a third were television stills or another
+   program by their titles, categories and dates, and 36 remain). Its tie is
+   `name+date`. A series whose matched Wikidata item is a television or film work is not given a name hit.
+   A file that is not a picture (`.ogg`, `.pdf`) is refused for every source (`art_policy.is_picture`).
+
+**Not built, and why**: period sponsor advertisements (`series.titleCard`): no slot is designed for them and
+the sponsor table names its sponsors in free text; they wait for a rule that ties an advertisement to the
+program, not only to the sponsor (R3b section 5.3). Network and sponsor logos are never served (V8): names in
+our type. Magazine pages (V5) and undated person matches (V1) wait on the owner. Library of Congress and
+Smithsonian photographs through people (H5) are a separate batch.
+
+**Plays (H7).** A play's pictures come only from its own records:
+
+- the work: a Wikidata work item whose label is the play's title and whose P50 author, or description, carries
+  one of our authors' family names (`art_policy.work_served`); its P18 or P996 file;
+- the title page: an archive.org text published in **1930 or earlier** whose creator field holds the author's
+  family name, whose title opens with the play's title and holds no collection or study word the play's title
+  lacks (`art_policy.edition_served`; rule 8, "a collection is not a first edition"). The page is a leaf two of
+  the item's own records agree on: its scan data (`_scandata.xml`) types it Title, counted among the leaves
+  that are in the page list, and its OCR (`_djvu.xml`) reads a short title page of this play, the play's title
+  words in order and the author's family name among the first leaves (`art_policy.title_page_ocr`,
+  `title_page_agrees`). MEASURED 2026-11-19: the scan data's Title alone named a copyright page, a contents
+  page or a text page in 8 of 12 leaves read by eye, so it is never used alone; an edition whose two records
+  disagree, or whose scan data or OCR is not public (a lending-library scan), has no title page. The image is
+  `https://archive.org/download/<id>/page/n<index>_w800.jpg`, hot-linked, in the scan's own shape, with the
+  item's page as its evidence;
+- the work's image: a work item's P18 or P996 file, unless its name holds the author's family name and not the
+  play's title, which is the playwright's portrait, not the work (`art_policy.work_image_is_of_the_work`);
+- the author: a Wikidata human matched on a **date** (the Gutenberg record's birth or death year agrees,
+  `enrich_people_art.decide`, the undated rule is not served), the P18 file.
+Every file is read for its license class and served under the portrait classes, credited when owed
+(`art_policy.play_image_served`). The pipeline's output is `.cache/art_v2/plays.json.gz`; `build_play_library.py`
+reads it into the index rows.
+
+**Liveness (H9).** A served file is hot-linked (no mirror: owner ruling 2026-11-19). `harvest_art_v2.py
+--phase liveness` sends a HEAD for each served file and records `ok`, `gone` (404 or 410) or nothing (a 429, a 5xx,
+a timeout is never a death) with the day, in `.cache/art_v2/liveness.json.gz`, rechecked after 14 days
+(`art_policy.liveness_stale`). `build_projection.py` reads it: a candidate found `gone` is dropped and the next
+one leads (the picture, hero, gallery and the play pictures), so a deleted Commons file falls back, never to a
+broken box. A file never checked is presumed alive.
+
+**Measured** (2026-11-19, catalog-2026-11-10's data plus the V2 harvests, 4,842 series, 803 plays). Series: a
+show image leads 68 (was 34; sources: P18 27, `commons:name` 28, `commons:category` 9, `commons:enwiki` 4); of the
+300 with most episodes 43 (was 23); 23 have a hero and 23 a gallery; 311 series wear any picture (was 293); the
+random 100 gain one show image and the news and documentary 40 none (the long tail has no free picture: R3b
+section 4.1).
+Plays: 394 of 803 carry a picture (176 title pages, 275 author portraits, 48 led by a work image); of the 508
+single-play texts 277. By eye: 12 of 12 title pages, 6 of 6 portraits and 6 of 6 work images read were right; 29 of
+30 new series images (the one wrong: a television still of The Great Gildersleeve in the program's own Commons
+category, a gallery image). 668 served files (series images, play work images and portraits, title pages) checked live, none gone: the fallback
+is proven by the guards, not yet seen on a real deletion.
+
+**Guards** (`catalog/tests/test_art_v2.py`, each broken once): the name rule (a caption match, an undated hit, a
+hit outside the run, a one-word name without radio, a television file, an audio file), the lead-image rule (a
+non-free lead, a file off Commons), hero (portrait, narrow, source order), gallery (no repeats, at most 6,
+never the picture), the edition rule (a collection, a book about the play, 1940, no surname, a different
+title), the work rule, liveness (gone drops a candidate, a transient never does), the projection (hero is wide
+and served, gallery ids exist, every new row's source is a known source and has an evidence URL).
 
 ### 3.4 Search
 

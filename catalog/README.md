@@ -102,6 +102,14 @@ non-zero when it read nothing, and records what it could not read.
     python3 tools/harvest_people_wikidata.py          # people -> Wikidata + portraits; ~2.8 h cold, resumable
     python3 tools/harvest_series_art.py               # show images + Wikipedias per person; ~35 min cold
     python3 tools/harvest_series_art.py --phase faces --detector /tmp/face_boxes   # Mac only
+    python3 tools/harvest_ext_wikidata.py --names     # H1 wider identity, after a build; then enrich_external.py
+    python3 tools/harvest_art_v2.py --phase lead      # Round 3 V2 (contract 3.3c): enwiki lead images (H3)
+    python3 tools/harvest_art_v2.py --phase search --top 500   # Commons by program name (H4)
+    python3 tools/harvest_art_v2.py --phase plays     # play works, authors, pre-1931 editions (H7)
+    python3 tools/harvest_art_v2.py --phase pages     # license pages and sizes of every candidate
+    python3 tools/enrich_series_art.py                # then rebuild; judge the candidates; counts per source
+    python3 tools/harvest_art_v2.py --phase liveness  # H9: HEAD every served file, 14-day TTL
+    python3 tools/harvest_art_v2.py --phase faces --detector /tmp/face_boxes   # Mac only, served files
     python3 tools/harvest_loc_photos.py --phase all   # Library of Congress; 20 req/min, exit 3 = blocked an hour, re-run
     python3 tools/harvest_smithsonian.py              # Smithsonian Open Access bulk files (no key)
     python3 tools/harvest_magazine_rights.py          # radio magazines: renewal status by title and year
