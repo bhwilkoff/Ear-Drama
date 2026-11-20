@@ -116,7 +116,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
   `wikibase_item`, V10 run years from the article); matching rules R3b §5.2 each with a guard seen to
   fail (TV/film twins, topic-not-show, file date outside the run, org by QID). Dry-run on real data
   before publish; catalog change runs the client suites.
-- [ ] **V2 Pipeline: more real images (Sonnet after V1).** H2-H4 (Wikidata, enwiki lead image only
+- [x] **V2 Pipeline: more real images (Sonnet after V1).** H2-H4 (Wikidata, enwiki lead image only
   when free and on Commons, Commons by name with categories), H7 plays (edition title pages pre-1931,
   author portraits, work P18), period sponsor ads; H9 liveness with fallback. Projection fields
   `series.hero`, `series.gallery`, `play.titlePage`, `play.authorArt` (R3b §5.5) in
@@ -165,7 +165,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
 - [x] **T5 Record in the room (Opus web, Sonnet ports).** Only the device holding the current line
   records; takes pass through to the leader; the leader's mix and Listen through; the teacher's
   full-recording upload; failure states R3c §6.
-- [ ] **T6 Relay across time (Sonnet).** Assigned parts at home; takes wait on the student's device
+- [x] **T6 Relay across time (Sonnet).** Assigned parts at home; takes wait on the student's device
   and pass through when the teacher's app is present; teacher progress list.
 - [ ] **T7 The bench (Sonnet, then Opus for failures).** Launch doors on every platform
   (`APP_START_READ_ROOM`, `APP_START_SEAT`, `APP_START_SCREEN` and twins); one orchestrator opens a
@@ -301,3 +301,18 @@ privacy words) is folded in when it arrives, never waited on.
   "Again with a note"; web pairing page not centered; Apple Takes foot unrendered; no Mac menu
   commands, tvOS Leave, Android arrow keys. Still unpushed (4+ merges): iOS launch check blocked.
   Worker deploy waits for the quiet-machine mutation run (V2 still running): migrations 0006-0008.
+- **2026-11-20, tick 18**: V2 merged (0e5872f; catalog 49 suites, dry run green): series show
+  pictures 34 -> 68, top-300 show pictures 7.7% -> 14.3%, 23 heroes/galleries, plays 0 -> 394 of 803
+  with a picture; 29/30 new series images right (one Gildersleeve TV still in a gallery). T6 merged
+  (b4a1845, 1.0.148; Worker 432, web 25, macOS 529, Android 636): relay across time, credit the
+  maker, consent before publish (Decision 083). Decided from rules: seat keys persist once a
+  student records at home (personal device; shared-cart rule keeps memory-only); a maker without an
+  account stays unpublishable until they consent (057). Disk: cleared 21 stale DerivedData + scratch
+  (33 GB free). Full Worker mutation run going (quiet machine). STILL UNPUSHED (~11 commits): no iOS
+  device can launch (Screen Time limit / iPad locked). Cache Release cut waits for the push (V2's
+  caches in its worktree; recipe catalog/README.md "cut a new dated Release").
+  Next queued: catalog batch (display_text upload tags; gallery files must say radio or name a
+  marked person (rule 4, fixes the Gildersleeve still); H5 LoC/NPG photographs through people);
+  fix sweep (Android person arc, Android play-head bars, Takes sheet duplicate Again, web pairing
+  page centering, web_fit_actions pinned episode, atv harness power-off + stale regex, eardrama://parts
+  twin); T7 bench after the Worker deploy; V8 audit when iOS devices are available.
