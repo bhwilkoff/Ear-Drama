@@ -1,0 +1,106 @@
+{
+ "tag": "run2",
+ "base": "https://eardrama-api.benwilkoff.workers.dev",
+ "script": "gut-7364",
+ "devices": {
+  "pixel": {
+   "what": "Pixel 8a",
+   "role": "reader",
+   "skip": null
+  },
+  "web1": {
+   "what": "Chrome headless, muted, reader",
+   "role": "reader",
+   "skip": null
+  }
+ },
+ "tests": {
+  "T5": {
+   "members": [
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    }
+   ],
+   "devices": {
+    "pixel": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "I/System.out( 9523): [readdiag] lit L0001 gen 0 at 1.795169791184E12 offset null",
+      "I/System.out( 9523): [readdiag] transport socket",
+      "I/System.out( 9523): [readdiag] clock offset -2167.5 samples 1"
+     ]
+    },
+    "web1": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": null,
+     "log_tail": [
+      "[readdiag] lit L0001 gen 0 at 1795169794704 offset",
+      "[readdiag] clock offset 59 samples 1",
+      "[readdiag] transport socket"
+     ]
+    }
+   },
+   "room_members": 3,
+   "started": 2
+  },
+  "T8": {
+   "pixel": {
+    "lit_events_before": 1,
+    "lit_events_after": 2,
+    "reached_last_line_after_rejoin": true,
+    "last_line": "L0007",
+    "transports": [
+     "socket",
+     "poll"
+    ]
+   },
+   "web1": {
+    "offline_text": "Skip to content\n\nYou are offline.\n\nRead together\n\nThe Albany Depot\n\nCAMPBELL (cont\u2019d)\nThe Albany Depot\n\nWilliam Dean Howells\n\nParts\n\nCAMPBELL\nROBERTS\nMRS. ROBERTS\nMCILHENY\nMRS. CAMPBELL\nBOTH LADIES\n\nMRS. ROBERTS\n\n\u201cI was just looking for my husband. He was to meet me here at ten minutes past three; b",
+    "reached_last_line_after_rejoin": true,
+    "last_line": "L0011",
+    "transports": [
+     "socket"
+    ]
+   }
+  }
+ },
+ "site": "http://127.0.0.1:60836",
+ "room": {
+  "code": "8B9QBN",
+  "transport": "socket",
+  "leader_socket": true,
+  "leader_offset": {
+   "rtt": 15,
+   "offset": -4.5
+  }
+ },
+ "teardown": {
+  "pixel": {
+   "gone": true,
+   "detail": "gone (pidof empty)"
+  },
+  "web1": {
+   "gone": true,
+   "detail": "chrome gone"
+  }
+ }
+}

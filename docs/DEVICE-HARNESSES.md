@@ -821,6 +821,37 @@ driver for typing and clicking when a flow needs input.
 
 ---
 
+## Read-room bench
+
+`tools/read_bench.py` opens one adult read room on the deployed Worker (no account, nothing created beyond the room, which
+the leader ends) and joins every reachable real device through the DEBUG doors, then measures the cursor (R3c section 8,
+T4-T9). The leader is `tools/read_bench_leader.mjs`, a protocol client that times each press on the Worker's clock; every
+client prints one `[readdiag] lit <line> gen <g> at <local ms> offset <ms>` line per cursor it draws (web `?readdiag=1`,
+Apple `APP_READ_DIAG=1`, Android `appname_read_diag`). Cursor delay is the device's lit instant plus its offset minus the
+press instant. Logs, not OCR; frames are for the eyes.
+
+```bash
+python3 tools/read_bench.py --list
+python3 tools/read_bench.py                                   # every device it can reach, 100 presses
+python3 tools/read_bench.py --only pixel,gtv,web1 --presses 20 --tests T5,T4
+```
+
+Reports go to `docs/research/data/t7/<tag>-report.json` (and per-device delays), frames to `docs/research/design/img/t7/`.
+
+- Joining: screens and readers open with `APP_START_READ_ROOM`; a reader also needs `APP_START_SEAT=<anything>` /
+  `appname_start_seat` (DEBUG: any value joins an adult room without the form). Web readers click Join in the DOM.
+- Polling is measured on the web: a second Chrome with `WebSocket` removed falls back to the 1 s poll of the same room. The
+  native clients' fallback cannot be forced without a build that points at another Worker.
+- Each device is leased by its bench name (`android`, `gtv`, `iphone`, `duo`, `ipad`, `atv`); a busy or unreachable device
+  is reported SKIP with the reason. Every app is terminated and the device is asked whether it is gone.
+- Traps met: a cold Chrome profile can drop its first navigation (the bench waits, then navigates once and notes it); the
+  scratchpad may hold a `copy.py` that shadows the stdlib for scripts run from there; a Screen Time limit covers the iPhone
+  while the app underneath keeps logging, so logs pass and frames are blind; the Apple TV needs `atvremote ... turn_on`
+  (pyatv) before a launch, "System is asleep" otherwise; a locked iPad refuses install and launch.
+- T8 on the Pixel switches airplane mode on and off from a device-side script, because wireless adb dies with the radio.
+
+---
+
 ## Windows
 
 There is no free Windows VM, and the development machine is an arm64 Mac.

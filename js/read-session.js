@@ -49,6 +49,7 @@ const ReadSession = (() => {
       if (!core.newer(st.snap, snap)) return false;
       const was = st.snap;
       st.snap = snap;
+      if (diag && (!was || was.cursor !== snap.cursor)) said('lit', snap.cursor, 'gen', snap.cursor_gen, 'at', now(), 'offset', st.offset);
       lastOk = now();
       if (st.slow) { st.slow = false; emit('slow', false); }
       if (st.error) { st.error = null; emit('error', null); }
