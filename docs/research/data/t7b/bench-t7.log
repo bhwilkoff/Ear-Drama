@@ -1,0 +1,12 @@
+[bench] pixel    ok
+[bench] duo      ok
+[bench] web1     ok
+[bench] web2     ok
+[bench] room 5WFRDW (leader socket=True)
+[T7] claims {'pixel': 'CAMPBELL', 'duo': 'ROBERTS', 'web1': 'MRS. ROBERTS', 'web2': 'MCILHENY'}
+[T7] exactly one: 16, missed: 0, wrong/extra: 0, repeated: 4; takes 22 arrived of 11 expected
+[bench] teardown pixel    OK gone (pidof empty)
+[bench] teardown duo      OK not running
+[bench] teardown web1     OK chrome gone
+[bench] teardown web2     OK chrome gone
+[bench] report docs/research/data/t7b/t7-report.json

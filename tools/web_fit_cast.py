@@ -150,6 +150,13 @@ def main():
             ev("(() => { const all = JSON.parse(localStorage.getItem('ed.cast')); const k = Object.keys(all).find(x => x.startsWith('p:')); const parts = all[k].parts;"
                " const id = Object.keys(parts).filter(x => x.startsWith('role:'))[1]; parts[id] = { engine: 'system', voice: 'gone', name: 'Allison (Enhanced)', rate: 1, pitch: 1 };"
                " localStorage.setItem('ed.cast', JSON.stringify(all)); })()")
+            # Decision 079 deletes a production with no take on load, so give this one a first take (a short
+            # silence written through the page's own store) before the reload.
+            took = ev("(async () => { const st = await PlaysUI.openStore(); const p = st.productions[0]; const line = Object.keys(p.chosen || {})[0] || 'l1';"
+                      " const bytes = PlaysCore.encodeWav(new Float32Array(4800), 48000, 24); await st.importTake(p.id, 'fit-take.wav', bytes);"
+                      " await st.save(PlaysCore.addTake(st.production(p.id), { id: 'fit-take', lineID: line, part: 'x', file: 'fit-take.wav', created: PlaysCore.now(), frames: 4800,"
+                      " sampleRate: 48000, capture: 'direct', heard: {}, peak: 0.1, bleed: false })); return st.production(p.id).takes.length; })()", True)
+            if took != 1: bad(f'the fit could not give the production a first take: {took!r}')
             here = ev('location.href')
             cdp.call('Page.navigate', {'url': here + ('' if 'mute=1' in here else '&mute=1')}, timeout=30)
             if not wait("document.querySelector('.vc-chip[data-state=missing]')", 'the missing-voice chip'): return

@@ -63,6 +63,7 @@ DEVICES = {
 LIT = re.compile(r"\[readdiag\]\s+lit\s+(\S+)\s+gen\s+(\S+)\s+at\s+(\S+)\s+offset\s+(\S+)")
 OFF = re.compile(r"\[readdiag\]\s+clock offset\s+(\S+)")
 TRANS = re.compile(r"\[readdiag\]\s+transport\s+(\S+)")
+REC = re.compile(r"\[readdiag\]\s+rec\s+(\S+)\s+at\s+(\S+)\s+offset\s+(\S+)")
 
 
 def num(s):
@@ -77,7 +78,7 @@ class Events:
     """Parsed [readdiag] lines for one device, stamped with the host's receive time."""
 
     def __init__(self):
-        self.lit, self.transports, self.raw = [], [], []
+        self.lit, self.transports, self.raw, self.rec = [], [], [], []
         self.lock = threading.Lock()
         self.last_offset = None
         self.seen = set()
@@ -96,6 +97,10 @@ class Events:
                 if m:
                     off = num(m.group(4))
                     self.lit.append(dict(line=m.group(1), gen=num(m.group(2)), at=num(m.group(3)), offset=off, host=host))
+                    continue
+                m = REC.search(ln)
+                if m:
+                    self.rec.append(dict(line=m.group(1), at=num(m.group(2)), host=host))
                     continue
                 m = OFF.search(ln)
                 if m and num(m.group(1)) is not None:
@@ -167,7 +172,7 @@ class Device:
     def preflight(self):
         return None
 
-    def start(self, code, screen=False):
+    def start(self, code, screen=False, claim=None):
         raise NotImplementedError
 
     def frame(self, path):
@@ -197,7 +202,7 @@ class AndroidDevice(Device):
             return f"{PKG} not installed"
         return None
 
-    def start(self, code, screen=False):
+    def start(self, code, screen=False, claim=None):
         self.adb("logcat", "-c")
         self.log = subprocess.Popen([ADB, "-s", self.spec["serial"], "logcat", "-v", "brief", "System.out:I", "*:S"],
                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
@@ -211,10 +216,58 @@ class AndroidDevice(Device):
             args += ["--ez", "appname_start_screen", "true"]
         else:
             args += ["--es", "appname_start_seat", f"bench-{self.name}"]  # a DEBUG door: any value joins an adult room without the form
+            if claim:  # T7b doors: claim the part, arm Record on the stub microphone (nothing is heard)
+                args += ["--es", "appname_start_read_part", claim, "--ez", "appname_start_read_record", "true", "--ez", "appname_studio_stub", "true"]
         r = self.adb(*args, timeout=90)
         if "Error" in r.stdout + r.stderr or "Exception" in r.stdout + r.stderr:
             return f"launch failed: {(r.stdout + r.stderr)[-200:]}"
         return None
+
+    def ui_nodes(self):
+        """uiautomator's view of the screen: (text, [x1,y1,x2,y2]) for every node with text."""
+        self.adb("shell", "uiautomator", "dump", "/sdcard/ui.xml", timeout=60)
+        xml = self.adb("shell", "cat", "/sdcard/ui.xml", timeout=60).stdout
+        out = []
+        for m in re.finditer(r'text="([^"]*)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml):
+            out.append((m.group(1), [int(m.group(i)) for i in range(2, 6)]))
+        return out
+
+    def back_button(self):
+        for t, b in self.ui_nodes():
+            if t == "Back to the line":
+                return b
+        return None
+
+    def t6_touch(self, leader, frame_stem):
+        """T6 on a real touch screen: a finger swipe moves the reader off the line, 'Back to the line' appears, the leader moves the
+        cursor on, a finger tap on the button returns to the line and the button goes. `input swipe` and `input tap` are real touch
+        events through the device's input pipeline."""
+        r = {}
+        w, h = 1080, 2400
+        m = re.search(r"Physical size: (\d+)x(\d+)", self.adb("shell", "wm", "size").stdout)
+        if m:
+            w, h = int(m.group(1)), int(m.group(2))
+        r["button_before_swipe"] = self.back_button() is not None
+        tried = []
+        for name, (x1, y1, x2, y2) in (("swipe up", (w // 2, int(h * .75), w // 2, int(h * .30))), ("swipe left", (int(w * .85), h // 2, int(w * .15), h // 2))):
+            self.adb("shell", "input", "swipe", str(x1), str(y1), str(x2), str(y2), "300")
+            time.sleep(1.5)
+            b = self.back_button()
+            tried.append(dict(gesture=name, button_shown=b is not None))
+            if b:
+                break
+        r["gestures"] = tried
+        self.frame(f"{frame_stem}-away.png")
+        b = self.back_button()
+        r["button_shown_after_swipe"] = b is not None
+        if b:
+            leader.cmd({"cmd": "press", "n": 2, "interval_ms": 1200, "via": "socket"}, timeout=30)
+            b = self.back_button() or b
+            self.adb("shell", "input", "tap", str((b[0] + b[2]) // 2), str((b[1] + b[3]) // 2))
+            time.sleep(1.5)
+            r["button_gone_after_tap"] = self.back_button() is None
+            self.frame(f"{frame_stem}-back.png")
+        return r
 
     def foreground(self):
         r = self.adb("shell", "dumpsys", "window", "windows")
@@ -269,12 +322,14 @@ class AppleDevice(Device):
                 return "Apple TV would not wake over Companion"
         return None
 
-    def start(self, code, screen=False):
+    def start(self, code, screen=False, claim=None):
         env = {"APP_SKIP_ONBOARD": "1", "APP_MUTE": "1", "APP_DOOR_SECONDS": DOOR_SECONDS, "APP_READ_DIAG": "1", "APP_START_READ_ROOM": code}
         if screen:
             env["APP_START_SCREEN"] = "1"
         else:
             env["APP_START_SEAT"] = f"bench-{self.name}"
+            if claim:
+                env.update({"APP_START_READ_PART": claim, "APP_START_READ_RECORD": "1", "APP_STUDIO_STUB": "1"})
         cmd = ["xcrun", "devicectl", "device", "process", "launch", "--device", self.spec["udid"], "--terminate-existing", "--console",
                "-e", json.dumps(env), app_config.APPLE_BUNDLE_ID]
         e = dict(os.environ, DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer")
@@ -323,7 +378,7 @@ class WebDevice(Device):
             return "no Chrome"
         return None
 
-    def start(self, code, screen=False):
+    def start(self, code, screen=False, claim=None):
         polling = bool(self.spec.get("polling"))
         self.polling = polling
         port = WebDevice.PORT[0]
@@ -351,6 +406,9 @@ class WebDevice(Device):
         self.b.ws.call("Emulation.setDeviceMetricsOverride", {"width": 600, "height": 844, "deviceScaleFactor": 1, "mobile": False} if not screen else
                        {"width": 1280, "height": 720, "deviceScaleFactor": 1, "mobile": False})
         url = f"{WebDevice.SITE}/?read-room={code}&readdiag=1&mute=1" + ("&screen=1" if screen else "")
+        if claim:
+            from urllib.parse import quote
+            url += f"&read-part={quote(claim)}&read-record=1"
         time.sleep(2)  # a cold profile's first navigation is lost if it races Chrome's own about:blank
         self.b.goto(url, settle=3)
         ok = False
@@ -378,11 +436,23 @@ class WebDevice(Device):
                     time.sleep(0.2)
                     continue
                 if len(logs) > seen:
-                    self.ev.feed("\n".join(logs[seen:]))
+                    new = logs[seen:]
+                    self.ev.feed("\n".join(new))
                     seen = len(logs)
+                    # The stub microphone is near silence; a line is only a take once the stub "speaks" and then stops, so a
+                    # recording line gets 1.5 s of tone (never played: the stub is not connected to a speaker).
+                    if any("[readdiag] rec " in x for x in new):
+                        threading.Thread(target=self._speak, daemon=True).start()
                 time.sleep(0.05)
         threading.Thread(target=pump, daemon=True).start()
         return None
+
+    def _speak(self):
+        with contextlib.suppress(Exception):
+            time.sleep(0.8)
+            self.b.js("window.__micGain && (window.__micGain.gain.value = 0.25)")
+            time.sleep(1.5)
+            self.b.js("window.__micGain && (window.__micGain.gain.value = 0.0005)")
 
     def frame(self, path):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -469,9 +539,10 @@ def main():
     ap.add_argument("--presses", type=int, default=100)
     ap.add_argument("--interval-ms", type=int, default=1500)
     ap.add_argument("--poll-presses", type=int, default=100)
+    ap.add_argument("--t7-interval-ms", type=int, default=6000)
     ap.add_argument("--no-poll", action="store_true")
     ap.add_argument("--owner-ok", action="store_true", help="allow the Mac app (not implemented here: the owner's Mac is never driven)")
-    ap.add_argument("--tests", default="T5,T4,T4poll,T6,T8,T9,T7", help="which tests to run")
+    ap.add_argument("--tests", default="T5,T4,T4poll,T6,T8,T9", help="which tests to run; T7 (readers claim parts and arm Record on stub microphones, the room in record mode) is its own run: --tests T7")
     ap.add_argument("--out", default=str(REPO / "docs/research/data/t7"))
     ap.add_argument("--frames", default=str(REPO / "docs/research/design/img/t7"))
     ap.add_argument("--tag", default=time.strftime("%Y%m%d-%H%M%S"))
@@ -519,11 +590,25 @@ def main():
         report["room"] = dict(code=code, transport=leader.ready.get("transport"), leader_socket=leader.ready.get("socket"), leader_offset=leader.ready.get("offset"))
         print(f"[bench] room {code} (leader socket={leader.ready.get('socket')})", flush=True)
         started = []
+        claims = {}
+        script_lines, script_roles = [], []
+        if "T7" in tests:
+            # T7-lite: each reader claims one of the biggest parts through the doors and arms Record on its stub microphone.
+            bundle = json.loads((REPO / "catalog/plays/castable-scripts.json").read_text())
+            sc = next(x for x in bundle["scripts"] if x["id"] == a.script)
+            script_lines = [(l["id"], l.get("role") if l["kind"] == "speech" else None) for l in sc["lines"]]
+            script_roles = [r["name"] for r in sorted(sc["roles"], key=lambda r: -r["lines"])]
+            readers = [d for d in devs if d.spec["role"] == "reader" and not d.spec.get("polling")]
+            claims = {d.name: script_roles[i] for i, d in enumerate(readers) if i < len(script_roles)}
+            report["T7_claims"] = claims
+            print(f"[T7] claims {claims}", flush=True)
+            leader.cmd({"cmd": "mode", "mode": "record"})
+            leader.cmd({"cmd": "collect", "on": True})
         try:
             # ---- T5: join on every device
             for d in devs:
                 is_screen = d.spec["role"] == "screen"
-                why = d.start(code, screen=is_screen) if not isinstance(d, WebDevice) else d.start(code, screen=is_screen)
+                why = d.start(code, screen=is_screen, claim=claims.get(d.name))
                 if why:
                     d.skip = why
                     report["devices"][d.name]["skip"] = why
@@ -565,6 +650,54 @@ def main():
                 for d in started:
                     d.frame(frames / f"{a.tag}-{d.name}-T4-after.png")
 
+            # ---- T7-lite: exactly one device's microphone opens per line; the takes arrive at the leader
+            if "T7" in tests:
+                time.sleep(20)  # room tone on each device before the first line
+                holders = {role: dev for dev, role in claims.items()}
+                first = next((i for i, (_, r) in enumerate(script_lines) if r in holders), 0)
+                npress = a.presses if a.presses < 100 else 16
+                r = leader.cmd({"cmd": "press", "n": npress, "interval_ms": a.t7_interval_ms, "via": "socket", "from": max(0, first - 1)},
+                               timeout=npress * (a.t7_interval_ms / 1000 + 6) + 60)
+                presses = (r or {}).get("presses") or []
+                time.sleep(25)
+                role_of = dict(script_lines)
+                lines_t7, exact, missed, extra, repeats = [], 0, 0, 0, 0
+                made = {}
+                for p_ in presses:
+                    line = p_["line"]
+                    want = holders.get(role_of.get(line))
+                    got = {}
+                    for d in started:
+                        n = sum(1 for e in d.ev.rec if e["line"] == line)
+                        if n:
+                            got[d.name] = n
+                    ok_ = (list(got) == [want]) if want else (not got)
+                    if got and any(v > 1 for v in got.values()):
+                        repeats += 1
+                    if want and not got:
+                        missed += 1
+                    elif want and ok_:
+                        exact += 1
+                    elif not ok_:
+                        extra += 1
+                    for dn in got:
+                        made.setdefault(dn, set()).add(line)
+                    lines_t7.append(dict(line=line, role=role_of.get(line), expected=want, recorded_by=got, ok=ok_, ack=bool(p_.get("ack_local_ms"))))
+                tkr = leader.cmd({"cmd": "takes"}) or {}
+                tk = tkr.get("takes") or []
+                arrived = sorted({(t.get("take") or {}).get("lineID") for t in tk if t.get("take")})
+                producers = {d.name for d in started if isinstance(d, (WebDevice, AndroidDevice))}
+                expect_take = sorted({ln for dn, lns in made.items() if dn in producers for ln in lns})
+                t7 = dict(claims=claims, presses=len(presses), lines=lines_t7, exactly_one=exact, missed=missed, wrong_or_extra=extra, repeated_opens=repeats,
+                          takes_arrived=len(tk), takes_lines=arrived, pickup_errors=tkr.get("errors"), takes_expected_lines=expect_take,
+                          takes_missing=[x for x in expect_take if x not in arrived],
+                          rec_events={d.name: [e["line"] for e in d.ev.rec] for d in started},
+                          note="Apple's stub microphone returns an empty take (nothing is written), so an Apple device opens its microphone but sends no take")
+                report["tests"]["T7"] = t7
+                print(f"[T7] exactly one: {exact}, missed: {missed}, wrong/extra: {extra}, repeated: {repeats}; takes {len(tk)} arrived of {len(expect_take)} expected", flush=True)
+                for d in started:
+                    d.frame(frames / f"{a.tag}-{d.name}-T7-after.png")
+
             # ---- T9: shared screens and presence (frames only; read by eye)
             if "T9" in tests:
                 snap = (leader.cmd({"cmd": "snapshot"}) or {}).get("snapshot") or {}
@@ -578,16 +711,22 @@ def main():
                     if isinstance(d, WebDevice) and d.spec["role"] == "reader" and not d.spec.get("polling"):
                         js = lambda e: d.b.js(e)  # noqa: E731
                         t6[d.name] = {"following_at_start": js("(()=>{const b=document.querySelector('.rd-back-line'); return !!b && b.hidden})()")}
-                        js("(()=>{const e=document.scrollingElement; window.scrollTo(0, e.scrollHeight); for (const t of ['wheel','touchstart','pointerdown']) document.dispatchEvent(new Event(t, {bubbles:true})); return 1})()")
+                        d.b.ws.call("Input.synthesizeScrollGesture", {"x": 300, "y": 600, "yDistance": -500, "gestureSourceType": "touch", "speed": 800}, timeout=30)
                         time.sleep(1.5)
                         t6[d.name]["back_button_shown_after_scroll"] = js("(()=>{const b=document.querySelector('.rd-back-line'); return !!b && !b.hidden})()")
                         d.frame(frames / f"{a.tag}-{d.name}-T6-away.png")
                         leader.cmd({"cmd": "press", "n": 2, "interval_ms": 1200, "via": "socket"}, timeout=30)
-                        js("(()=>{const b=document.querySelector('.rd-back-line'); if(b && !b.hidden) b.click(); return 1})()")
+                        rect = js("(()=>{const b=document.querySelector('.rd-back-line'); if(!b || b.hidden) return null; const r=b.getBoundingClientRect(); return [r.left+r.width/2, r.top+r.height/2]})()")
+                        if rect:  # a real touch tap on the button, not b.click()
+                            for typ in ("touchStart", "touchEnd"):
+                                d.b.ws.call("Input.dispatchTouchEvent", {"type": typ, "touchPoints": [{"x": rect[0], "y": rect[1]}] if typ == "touchStart" else []})
                         time.sleep(1.5)
                         t6[d.name]["following_after_back"] = js("(()=>{const b=document.querySelector('.rd-back-line'); return !!b && b.hidden})()")
                         t6[d.name]["lit_line_in_view"] = js("(()=>{const l=document.querySelector('.rd-lit, [aria-current=true], .rd-now'); if(!l) return null; const r=l.getBoundingClientRect(); return r.bottom>0 && r.top<innerHeight})()")
                         d.frame(frames / f"{a.tag}-{d.name}-T6-back.png")
+                for d in started:
+                    if isinstance(d, AndroidDevice) and not d.spec.get("tv") and d.spec["role"] == "reader":
+                        t6[d.name] = d.t6_touch(leader, frames / f"{a.tag}-{d.name}-T6")
                 report["tests"]["T6"] = t6
                 print(f"[T6] {t6}", flush=True)
 

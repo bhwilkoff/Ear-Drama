@@ -136,6 +136,7 @@ class ReadRecord(
         val before = snap() ?: return
         justDid = line
         _state.update { it.copy(recording = line) }
+        if (com.example.appname.navigation.LaunchDoors.diag) println("[readdiag] rec $line at ${System.currentTimeMillis().toDouble()} offset ${session.state.value.clockOffsetMs}")
         val part = partOf(line)
         val take = if (part == null) null else try {
             engine().record(line, PartID(part))

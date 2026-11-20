@@ -1,0 +1,26 @@
+[bench] pixel    ok
+[bench] gtv      ok
+[atv] TV asleep — waking (attempt 1)
+[bench] atv      ok
+[bench] duo      ok
+[bench] web1     ok
+[bench] web2     ok
+[bench] webscr   ok
+[bench] room VT6R6F (leader socket=True)
+[T4 socket] pixel    {'transport': 'socket', 'n': 30, 'got': 30, 'missing': 0, 'p50': 115.0, 'p95': 198.5, 'max': 201.5, 'min': 71.5, 'mean': 124.7}
+[T4 socket] gtv      {'transport': 'socket', 'n': 30, 'got': 30, 'missing': 0, 'p50': 83.0, 'p95': 139.0, 'max': 221.0, 'min': 55.0, 'mean': 85.0}
+[T4 socket] atv      {'transport': 'socket', 'n': 30, 'got': 30, 'missing': 0, 'p50': 67.117431640625, 'p95': 97.281494140625, 'max': 124.37255859375, 'min': 40.693359375, 'mean': 65.8}
+[T4 socket] duo      {'transport': 'socket', 'n': 30, 'got': 30, 'missing': 0, 'p50': 64.43994140625, 'p95': 81.66162109375, 'max': 119.915283203125, 'min': 40.67919921875, 'mean': 63.1}
+[T4 socket] web1     {'transport': 'socket', 'n': 30, 'got': 30, 'missing': 0, 'p50': 67.0, 'p95': 98.5, 'max': 123.0, 'min': 41.5, 'mean': 66.4}
+[T4 socket] web2     {'transport': 'socket', 'n': 30, 'got': 30, 'missing': 0, 'p50': 71.5, 'p95': 102.5, 'max': 121.0, 'min': 41.0, 'mean': 71.5}
+[T4 socket] webscr   {'transport': 'socket', 'n': 30, 'got': 30, 'missing': 0, 'p50': 65.5, 'p95': 81.0, 'max': 120.5, 'min': 40.5, 'mean': 64.2}
+[T6] {'web1': {'following_at_start': True, 'back_button_shown_after_scroll': False, 'following_after_back': True, 'lit_line_in_view': True}, 'web2': {'following_at_start': False, 'back_button_shown_after_scroll': False, 'following_after_back': False, 'lit_line_in_view': None}, 'pixel': {'button_before_swipe': False, 'gestures': [{'gesture': 'swipe up', 'button_shown': True}], 'button_shown_after_swipe': True, 'button_gone_after_tap': True}}
+[T8] {'pixel': {'lit_events_before': 37, 'lit_events_after': 38, 'reached_last_line_after_rejoin': True, 'last_line': 'L0043', 'transports': ['socket']}, 'web1': {'offline_text': 'Skip to content\n\nYou are offline.\n\nRead together\n\nThe Albany Depot\n\nCAMPBELL (cont’d)\nThe Albany Depot\n\nWilliam Dean Howells\n\nParts\n\nCAMPBELL\nROBERTS\nMRS. ROBERTS\nMCILHENY\nMRS. CAMPBELL\nBOTH LADIES\n\nMRS. ROBERTS\n\n“I was just looking for my husband. He was to meet me here at ten minutes past three; b', 'reached_last_line_after_rejoin': True, 'last_line': 'L0047', 'transports': ['socket']}}
+[bench] teardown pixel    OK gone (pidof empty)
+[bench] teardown gtv      OK gone (pidof empty)
+[bench] teardown atv      OK not running
+[bench] teardown duo      OK not running
+[bench] teardown web1     OK chrome gone
+[bench] teardown web2     OK chrome gone
+[bench] teardown webscr   OK chrome gone
+[bench] report docs/research/data/t7b/main-report.json

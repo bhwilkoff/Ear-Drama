@@ -88,6 +88,16 @@ def main():
                            for k, v in FULL.items()) if state['full'] else ''
             orig(self, 'Page.addScriptToEvaluateOnNewDocument', {'source': seed})
         if method == 'Page.captureScreenshot':
+            # The ready text "Library" is in the tab bar of every page, so web_run's wait returns before the
+            # section has drawn (2026-11-20: a different 12 to 20 of 64 frames "drew nothing" each run). Wait
+            # for the section's own body: a caption or rows.
+            t0 = time.time()
+            while time.time() - t0 < 20:
+                r = orig(self, 'Runtime.evaluate', {'expression': "!!document.querySelector('#library-body .state, #library-body .g-row, #library-body .g-tile')", 'returnByValue': True})
+                if r['result'].get('value'):
+                    break
+                time.sleep(0.1)
+            orig(self, 'Runtime.evaluate', {'expression': "document.fonts.ready.then(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))", 'awaitPromise': True})
             following = state['full'] and state['tab'] == 'following'
             r = orig(self, 'Runtime.evaluate', {'expression': JS % (
                 'true' if state['full'] else 'false', 'true' if following else 'false'), 'returnByValue': True})

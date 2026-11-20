@@ -79,6 +79,7 @@ import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -187,6 +188,21 @@ internal fun RoomBar(
         else permission.launch(Manifest.permission.RECORD_AUDIO)
     }
 
+    if (BuildConfig.DEBUG) {
+        // DEBUG doors (T7b): claim a part once, then arm Record, without a person's taps; consumed so a recomposition never repeats them.
+        LaunchedEffect(Unit) {
+            val part = com.example.appname.navigation.ReadRoomDoor.part
+            if (part != null) {
+                com.example.appname.navigation.ReadRoomDoor.part = null
+                send(msg("type" to "claim", "part" to if (part.startsWith("role:")) part else com.example.appname.plays.PartID.role(part).raw))
+                delay(1000)
+            }
+            if (com.example.appname.navigation.ReadRoomDoor.record) {
+                com.example.appname.navigation.ReadRoomDoor.record = false
+                startRecording()
+            }
+        }
+    }
     Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(

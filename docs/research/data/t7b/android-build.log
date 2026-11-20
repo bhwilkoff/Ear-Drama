@@ -1,0 +1,159 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :app:testDebugUnitTest :app:assembleDebug :app:lintRelease
+> Task :kokoro:preBuild UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :kokoro:preDebugBuild UP-TO-DATE
+> Task :app:copyCastableScripts
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:generateDebugFeatureTransitiveDeps FROM-CACHE
+> Task :app:copyCatalogSeed
+> Task :kokoro:preReleaseBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :kokoro:featureReleaseWriter
+> Task :kokoro:featureDebugWriter
+> Task :kokoro:generateDebugFeatureTransitiveDeps FROM-CACHE
+> Task :app:generateReleaseFeatureTransitiveDeps FROM-CACHE
+> Task :app:checkReleaseDynamicFeatureVariants FROM-CACHE
+> Task :app:checkDebugLibraries FROM-CACHE
+> Task :app:checkDebugDynamicFeatureVariants FROM-CACHE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :kokoro:generateReleaseResources FROM-CACHE
+> Task :kokoro:generateReleaseFeatureTransitiveDeps FROM-CACHE
+> Task :app:extractProguardFiles
+> Task :app:generateDebugResources FROM-CACHE
+> Task :app:generateDebugBuildConfig
+> Task :app:packageDebugResources FROM-CACHE
+> Task :app:mapDebugSourceSetPaths
+> Task :app:javaPreCompileDebug FROM-CACHE
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug FROM-CACHE
+> Task :app:writeDebugModuleMetadata
+> Task :app:generateDebugFeatureMetadata FROM-CACHE
+> Task :kokoro:extractDeepLinksDebug FROM-CACHE
+> Task :app:processDebugNavigationResources FROM-CACHE
+> Task :app:checkDebugAarMetadata
+> Task :app:compileDebugNavigationResources FROM-CACHE
+> Task :app:mergeDebugResources FROM-CACHE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:generateDebugGlobalSynthetics FROM-CACHE
+> Task :kokoro:processDebugMainManifest
+> Task :kokoro:copyDebugMergedManifest
+> Task :app:parseDebugLocalResources FROM-CACHE
+> Task :app:generateDebugRFile FROM-CACHE
+> Task :kokoro:processApplicationManifestDebugForBundle
+> Task :kokoro:processManifestDebugForFeature
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets FROM-CACHE
+> Task :app:desugarDebugFileDependencies FROM-CACHE
+> Task :app:checkDebugDuplicateClasses
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:mergeDebugJniLibFolders
+> Task :app:processDebugManifestForPackage
+
+> Task :app:mergeDebugUnitTestManifest
+/Users/bhwilkoff/Documents/GitHub/Ear-Drama/.claude/worktrees/agent-a2e7f478dfe650b6a/android/app/src/debug/AndroidManifest.xml Warning:
+	meta-data#androidx.work.WorkManagerInitializer was tagged at AndroidManifest.xml:0 to remove other declarations but no other declaration present
+
+> Task :app:processDebugUnitTestManifest
+> Task :app:mergeLibDexDebug FROM-CACHE
+> Task :app:mergeDebugNativeLibs
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libsqliteJni.so. Run with --info option to learn more.
+
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:checkReleaseLibraries FROM-CACHE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeExtDexDebug FROM-CACHE
+> Task :app:generateReleaseBuildConfig
+> Task :app:generateReleaseResources FROM-CACHE
+> Task :app:processReleaseNavigationResources FROM-CACHE
+> Task :app:javaPreCompileRelease FROM-CACHE
+> Task :app:extractDeepLinksRelease FROM-CACHE
+> Task :app:writeReleaseModuleMetadata
+> Task :app:packageReleaseResources FROM-CACHE
+> Task :app:generateReleaseFeatureMetadata FROM-CACHE
+> Task :app:parseReleaseLocalResources FROM-CACHE
+> Task :kokoro:extractDeepLinksRelease FROM-CACHE
+> Task :app:generateReleaseRFile FROM-CACHE
+> Task :kokoro:processReleaseMainManifest
+> Task :kokoro:copyReleaseMergedManifest
+> Task :kokoro:processApplicationManifestReleaseForBundle
+> Task :kokoro:processManifestReleaseForFeature
+> Task :app:processReleaseMainManifest
+> Task :app:checkReleaseAarMetadata
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:compileReleaseNavigationResources FROM-CACHE
+> Task :app:mergeReleaseResources FROM-CACHE
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:processReleaseManifest
+> Task :app:processReleaseManifestForPackage
+> Task :app:processDebugResources
+> Task :app:packageDebugUnitTestForUnitTest
+> Task :app:generateDebugUnitTestConfig
+> Task :kokoro:packageReleaseResources FROM-CACHE
+> Task :kokoro:processReleaseNavigationResources FROM-CACHE
+> Task :kokoro:parseReleaseLocalResources FROM-CACHE
+> Task :kokoro:generateReleaseRFile FROM-CACHE
+> Task :kokoro:javaPreCompileRelease FROM-CACHE
+> Task :kokoro:extractProguardFiles
+> Task :app:processReleaseResources
+> Task :app:kspDebugKotlin
+> Task :app:kspReleaseKotlin
+> Task :app:compileDebugKotlin
+> Task :app:compileReleaseKotlin
+> Task :app:processDebugJavaRes
+> Task :app:mergeDebugJavaResource
+> Task :app:compileReleaseJavaWithJavac
+> Task :app:hiltCollectClassesRelease
+> Task :app:compileDebugJavaWithJavac
+> Task :app:hiltCollectClassesDebug
+> Task :app:hiltAggregateDepsRelease FROM-CACHE
+> Task :app:hiltAggregateDepsDebug FROM-CACHE
+> Task :app:generateReleaseLintReportModel
+> Task :app:generateReleaseLintModel
+> Task :app:hiltJavaCompileDebug
+> Task :app:hiltJavaCompileRelease
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleReleaseClassesToCompileJar
+> Task :app:kspDebugUnitTestKotlin
+> Task :app:transformDebugClassesWithAsm
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :kokoro:compileReleaseKotlin
+> Task :kokoro:compileReleaseJavaWithJavac NO-SOURCE
+> Task :kokoro:generateReleaseLintModel
+> Task :app:lintAnalyzeRelease
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:dexBuilderDebug
+> Task :kokoro:lintAnalyzeRelease
+> Task :app:processDebugUnitTestJavaRes
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:hiltCollectClassesDebugUnitTest
+> Task :app:hiltAggregateDepsDebugUnitTest FROM-CACHE
+> Task :app:hiltJavaCompileDebugUnitTest NO-SOURCE
+> Task :app:transformDebugUnitTestClassesWithAsm
+> Task :app:mergeProjectDexDebug
+> Task :app:packageDebug
+> Task :app:assembleDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:testDebugUnitTest
+> Task :app:lintReportRelease
+> Task :app:lintRelease
+
+[Incubating] Problems report is available at: file:///Users/bhwilkoff/Documents/GitHub/Ear-Drama/.claude/worktrees/agent-a2e7f478dfe650b6a/android/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 6m 39s
+120 actionable tasks: 75 executed, 45 from cache
+Configuration cache entry stored.
+EXIT 0

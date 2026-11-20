@@ -12,6 +12,9 @@
  *   {"cmd":"mode","mode":"record"}                                                    -> {"snapshot":{...}}
  *   {"cmd":"pair","code":"ABC123"}                                                    -> {"paired":true}
  *   {"cmd":"inbox","wait_ms":30000}                                                   -> {"take":{...},"bytes":n} or {"take":null}
+ *   {"cmd":"collect","on":true|false}                                                 -> hold the pickup in the background (a take is only accepted
+ *                                                                                         while a receiver is there); every take lands in the list below
+ *   {"cmd":"takes"}                                                                   -> {"takes":[{take,bytes,at}]} collected so far
  *   {"cmd":"end"}                                                                     -> closes the room and exits
  */
 import fs from "node:fs";
@@ -121,6 +124,20 @@ async function press(n, intervalMs, via, from) {
   return presses;
 }
 
+let collecting = false;
+const collected = [];
+const collectErrors = [];
+async function collectLoop() {
+  while (collecting) {
+    try {
+      const r = await http("GET", `/v1/read/${code}/takes/inbox`, { key });
+      if (r.status === 204 || !r.response) { if (r.status !== 204) collectErrors.push({ status: r.status, body: r.json, at: Date.now() }); await sleep(r.status === 204 ? 500 : 2000); continue; }
+      let take = null; try { take = JSON.parse(r.response.headers.get("x-take") || "null"); } catch { /* none */ }
+      collected.push({ take, bytes: (await r.response.arrayBuffer()).byteLength, at: Date.now() });
+    } catch { await sleep(1000); }
+  }
+}
+
 const rl = readline.createInterface({ input: process.stdin });
 for await (const raw of rl) {
   let c; try { c = JSON.parse(raw); } catch { out({ error: "bad_json" }); continue; }
@@ -133,14 +150,16 @@ for await (const raw of rl) {
       const t0 = Date.now(); const got = [];
       while (Date.now() - t0 < (c.wait_ms || 30000)) {
         const r = await http("GET", `/v1/read/${code}/takes/inbox`, { key });
-        if (r.status === 204 || !r.response) { if (r.status !== 204) break; continue; }
+        if (r.status === 204 || !r.response) { if (r.status !== 204) break; await sleep(500); continue; }
         let take = null; try { take = JSON.parse(r.response.headers.get("x-take") || "null"); } catch { /* none */ }
         const bytes = (await r.response.arrayBuffer()).byteLength;
         got.push({ take, bytes, at: Date.now() });
         if (got.length >= (c.count || 1)) break;
       }
       out({ takes: got });
-    } else if (c.cmd === "end") { await http("POST", `/v1/read/${code}/send`, { key, body: { type: "end" } }); out({ ended: true }); break; }
+    } else if (c.cmd === "collect") { const was = collecting; collecting = !!c.on; if (collecting && !was) void collectLoop(); out({ collecting }); }
+    else if (c.cmd === "takes") out({ takes: collected.slice(), errors: collectErrors.slice(-5) });
+    else if (c.cmd === "end") { await http("POST", `/v1/read/${code}/send`, { key, body: { type: "end" } }); out({ ended: true }); break; }
     else out({ error: "unknown_cmd" });
   } catch (e) { out({ error: String(e && e.message || e) }); }
 }

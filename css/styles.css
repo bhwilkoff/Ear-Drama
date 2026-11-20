@@ -1359,6 +1359,7 @@ html.tv .np-together { display: none; }
 .home-dial-name { font-weight: var(--type-body-strong-weight); color: var(--color-text); }
 .home-dial-name, .home-dial-on { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1.25; }
 .home-dial-on { color: var(--color-text-muted); }
+@media (min-width: 768px) { .home-dial-on { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; } }
 /* The doors (§4.2r rule 3): two quiet buttons in one row, never wrapping apart. */
 .home-doors { display: flex; flex-wrap: nowrap; gap: var(--space-2); margin: 0 0 var(--space-6) calc(-1 * var(--space-2)); }
 .home-door { flex: 0 1 auto; min-width: 0; padding-left: var(--space-2); padding-right: var(--space-2); white-space: nowrap; }

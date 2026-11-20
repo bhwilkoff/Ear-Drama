@@ -23,7 +23,7 @@ const ReadRecord = (() => {
   /** Refusals that mean "try again later": the take stays in the outbox. */
   const LATER = new Set(['nobody_receiving', 'one_take_at_a_time', 'offline', 'error', 'rate_limited', 'timeout', 'not_configured', 'not_delivered']);
 
-  function make({ api, store, session, script, cast, core = ReadCore, plays = PlaysCore, engine, timers = globalThis, onChange = () => {} }) {
+  function make({ api, store, session, script, cast, core = ReadCore, plays = PlaysCore, engine, timers = globalThis, onChange = () => {}, diag = () => {} }) {
     const st = {
       code: null, localId: null, outbox: [], sending: false, recording: null, justDid: null, armed: false,
       oneMic: false, receiving: false, arrived: 0, lastError: null, failed: null,
@@ -81,6 +81,7 @@ const ReadRecord = (() => {
       const base = s.cursor_gen;
       st.justDid = line;
       st.recording = line;
+      diag(line);
       changed();
       const e = await engineFor();
       let take = null;

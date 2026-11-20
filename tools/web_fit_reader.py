@@ -9,7 +9,7 @@ page turn that does not move the page.
 
     python3 tools/web_fit_reader.py              # exit 1 on any problem
     python3 tools/web_fit_reader.py --shots DIR  # also write a PNG per frame
-    python3 tools/web_fit_reader.py --data URL   # another data plane (default: the local data/ link)
+    python3 tools/web_fit_reader.py --data URL   # another data plane (default: the local data/ link, else the live one)
     python3 tools/web_fit_reader.py --widths 375,1440
 
 The script is picked from the data, never named: the first play in the built library (else the bundle)
@@ -68,7 +68,8 @@ STATE = r"""(() => {
 
 def main():
     shots = sys.argv[sys.argv.index('--shots') + 1] if '--shots' in sys.argv else None
-    data = sys.argv[sys.argv.index('--data') + 1] if '--data' in sys.argv else None
+    data = sys.argv[sys.argv.index('--data') + 1] if '--data' in sys.argv else (
+        None if os.path.isdir(os.path.join(ROOT, 'catalog', 'out')) else 'https://eardrama.org/data/')
     if shots:
         os.makedirs(shots, exist_ok=True)
     widths = [int(x) for x in sys.argv[sys.argv.index('--widths') + 1].split(',')] if '--widths' in sys.argv else WIDTHS

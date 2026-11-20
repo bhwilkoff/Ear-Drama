@@ -96,6 +96,8 @@ class MainActivity : ComponentActivity() {
         if (doors.forceOffline) forceOffline = true
         if (doors.studioStub) com.example.appname.navigation.StudioDoor.stub = true
         doors.studioPhase?.let { com.example.appname.navigation.StudioDoor.phase = it }
+        com.example.appname.navigation.ReadRoomDoor.part = doors.startReadPart
+        com.example.appname.navigation.ReadRoomDoor.record = doors.startReadRecord
         inbox += doors.requests()
         doors.doorSeconds?.let { seconds ->
             lifecycleScope.launch {

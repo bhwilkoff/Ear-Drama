@@ -43,7 +43,9 @@ import Foundation
 /// - APP_START_READ_ROOM=<CODE>: open that read room (Decision 082; the `eardrama://read/CODE` twin). APP_START_SEAT=
 ///   <class code>:<seat id or label> takes that seat of a class room first (a debug stand-in for picking a name);
 ///   APP_START_SCREEN=1 opens the room as the shared screen (the Apple TV's only mode). APP_READ_DIAG=1 prints the
-///   transport, the cursor delay and the clock offset
+///   transport, the cursor delay and the clock offset, and `rec <line>` for each line this device opens its microphone on.
+///   APP_START_READ_PART=<role name or role:NAME> claims that part once the reader is in the room, and APP_START_READ_RECORD=1
+///   then arms Record (use APP_STUDIO_STUB=1: no microphone, nothing heard)
 ///
 /// - APP_SCROLL_Y=<points> (iOS): scrolls the page on screen that far down APP_SCROLL_DELAY seconds after launch
 ///   (default 6), for frames of the open iPhone Duo below the first screen (ScrollDoor_iOS)
@@ -72,6 +74,8 @@ struct LaunchDoors: Sendable, Equatable {
     var readRoom: String?
     var readSeat: String?
     var readScreen = false
+    var readPart: String?
+    var readRecord = false
 
     var isEmpty: Bool { self == LaunchDoors() }
 
@@ -112,7 +116,9 @@ struct LaunchDoors: Sendable, Equatable {
             along: environment["APP_START_ALONG"].flatMap { $0.isEmpty ? nil : $0 },
             readRoom: environment["APP_START_READ_ROOM"].flatMap { $0.isEmpty ? nil : $0 },
             readSeat: environment["APP_START_SEAT"].flatMap { $0.isEmpty ? nil : $0 },
-            readScreen: environment["APP_START_SCREEN"] == "1"
+            readScreen: environment["APP_START_SCREEN"] == "1",
+            readPart: environment["APP_START_READ_PART"].flatMap { $0.isEmpty ? nil : $0 },
+            readRecord: environment["APP_START_READ_RECORD"] == "1"
         )
     }
 

@@ -409,7 +409,7 @@ async function recorder(w, c, log) {
   const RR = vm.runInContext('ReadRecord', c.ctx);
   const cast = RSCRIPT.lines.map((l) => [l.id, l.kind === 'speech' ? `role:${l.role}` : l.kind === 'direction' ? 'directions' : 'sound']);
   const rr = RR.make({
-    api: c.api, store, session: c.session, script: RSCRIPT, cast, timers: w.timers_,
+    api: c.api, store, session: c.session, script: RSCRIPT, cast, timers: w.timers_, diag: (line) => { (log.diag = log.diag || []).push(line); },
     engine: (o) => RS.create({ ...o, audio: stubMicrophone(log), voice: { available: () => true, speak: async () => { log.spoke += 1; return true; }, cancel() {} }, sleep: async () => {} }),
   });
   return { rr, store };
@@ -550,6 +550,8 @@ async function main() {
     await w.flush();
     eq(annLog.takes, 2, 'Ann\'s device recorded line 2, then her next line 4 when the cursor reached it');
     eq(leadLog.opened, 0, 'the leader\'s device opened no microphone');
+    eq(annLog.diag, ['l2', 'l4'], 'the diag hook names each line the microphone is opened for (T7b)');
+    eq(leadLog.diag || [], [], 'and the leader\'s device names none');
     eq(annLog.played + annLog.spoke, 0, 'no device played a sound during the take');
     const lp = L.rr.production();
     ok(lp && lp.chosen.l2, 'the take reached the leader\'s device');

@@ -1,0 +1,94 @@
+  ok    api.test.js                      43 passed, 0 failed
+  ok    remote-playback.test.js          all remote-playback checks passed
+  ok    player.test.js                   27 passed, 0 failed
+  ok    plays.test.js                    ok: 337 passed, 0 failed
+  ok    reader.test.js                   22/22 passed
+  ok    marks.test.js                    PASS: 15 passed, 0 failed
+  ok    studio.test.js                   PASS: 16 passed, 0 failed
+  ok    voice-cast.test.js               ok: 44 passed, 0 failed
+  ok    kokoro.test.js                   50 passed, 0 failed
+  ok    plays-share.test.js              110 passed, 0 failed
+  ok    account.test.js                  17 passed, 0 failed
+  ok    export.test.js                   export: all passed
+  ok    together.test.js                 21 passed, 0 failed
+  ok    read.test.js                     25 passed, 0 failed
+  ok    relay.test.js                    44 passed, 0 failed
+  ok    label.test.js                    PASS: 8 passed, 0 failed
+  ok    test_tv_focus.mjs                33 passed, 0 failed
+  ok    test_tv_ua.mjs                   5 passed, 0 failed
+  ok    test_packaged_origin.mjs         5 passed, 0 failed, 4 skipped
+  ok    test_pulse_charts.mjs            53 passed, 0 failed
+  ok    test_pulse_render.mjs            39 passed, 0 failed
+  ok    test_design_tokens.mjs           all 17 token files match; contrast holds in light and dark
+  ok    test_no_edge_stripes.mjs         ok: 4 checks
+  ok    test_sw.mjs                      ok: 127 passed, 0 failed
+  ok    test_deep_links.mjs              deep links: all checks pass
+  ok    js/account.js                    parses
+  ok    js/account.test.js               parses
+  ok    js/api.js                        parses
+  ok    js/api.test.js                   parses
+  ok    js/app.js                        parses
+  ok    js/cast-ui.js                    parses
+  ok    js/class-ui.js                   parses
+  ok    js/compat.js                     parses
+  ok    js/config.js                     parses
+  ok    js/export.js                     parses
+  ok    js/export.test.js                parses
+  ok    js/kokoro-model.js               parses
+  ok    js/kokoro-voice.js               parses
+  ok    js/kokoro-worker.js              parses
+  ok    js/kokoro.test.js                parses
+  ok    js/label-core.js                 parses
+  ok    js/label.js                      parses
+  ok    js/label.test.js                 parses
+  ok    js/marks-core.js                 parses
+  ok    js/marks.js                      parses
+  ok    js/marks.test.js                 parses
+  ok    js/parts-ui.js                   parses
+  ok    js/player.js                     parses
+  ok    js/player.test.js                parses
+  ok    js/plays-audio.js                parses
+  ok    js/plays-core.js                 parses
+  ok    js/plays-session.js              parses
+  ok    js/plays-share.js                parses
+  ok    js/plays-share.test.js           parses
+  ok    js/plays-store.js                parses
+  ok    js/plays-ui.js                   parses
+  ok    js/plays-voice.js                parses
+  ok    js/plays-worklet.js              parses
+  ok    js/plays.test.js                 parses
+  ok    js/read-core.js                  parses
+  ok    js/read-record.js                parses
+  ok    js/read-session.js               parses
+  ok    js/read-ui.js                    parses
+  ok    js/read.test.js                  parses
+  ok    js/reader-core.js                parses
+  ok    js/reader.js                     parses
+  ok    js/reader.test.js                parses
+  ok    js/relay-core.js                 parses
+  ok    js/relay-watch.js                parses
+  ok    js/relay.test.js                 parses
+  ok    js/remote-playback.js            parses
+  ok    js/remote-playback.test.js       parses
+  ok    js/site.js                       parses
+  ok    js/store.js                      parses
+  ok    js/studio-core.js                parses
+  ok    js/studio.js                     parses
+  ok    js/studio.test.js                parses
+  ok    js/sync.js                       parses
+  ok    js/takedown.js                   parses
+  ok    js/together-core.js              parses
+  ok    js/together-ui.js                parses
+  ok    js/together.js                   parses
+  ok    js/together.test.js              parses
+  ok    js/voice-cast.js                 parses
+  ok    js/voice-cast.test.js            parses
+  ok    sw.js                            parses
+  ok    tv.js                            parses
+  ok    pulse/charts.js                  parses
+  ok    pulse/pulse.js                   parses
+  ok    css/styles.css                   braces 1326/1326
+  ok    tv.css                           braces 38/38
+  ok    pulse/pulse.css                  braces 301/301
+ok: 44 files, 0 null-child calls
+PASS: 25 suites, every script parses, every stylesheet balances

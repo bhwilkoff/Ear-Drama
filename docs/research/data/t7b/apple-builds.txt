@@ -1,0 +1,6 @@
+/private/tmp/claude-501/build-tvOS.log:** BUILD SUCCEEDED **
+/private/tmp/claude-501/build-tvOS.log:EXIT 0
+/private/tmp/claude-501/build-iOS.log:** BUILD SUCCEEDED **
+/private/tmp/claude-501/build-iOS.log:EXIT 0
+/private/tmp/claude-501/mac-test.log:✔ Test run with 539 tests in 98 suites passed after 20.437 seconds.
+/private/tmp/claude-501/mac-test.log:EXIT 0

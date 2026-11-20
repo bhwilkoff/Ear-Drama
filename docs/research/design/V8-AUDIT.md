@@ -34,8 +34,8 @@ against the binding design docs and the design skills (`artwork-presentation-des
 | 7 | iOS/iPadOS, tvOS | Series and episode heads (own-span strip) | A show of three or four years drew three slabs a third of the board wide (X Minus One), where the web's strip reads as a strip. | **Fixed**: the own-span axis is at least twelve years (`Grammar.ownSpanAxis`, test seen to fail; iOS-DESIGN R11g) | `before-duo-series-x1-strip.png`, `before-atv-episode-strip.png` |
 | 8 | All | Episode event line | "Season 1954-55" in the head. `catalog-experience-design` rule 6 says the season leaves the head; WEB-DESIGN §6.4d (binding, D3-3) lists it. | **Open**: the binding doc wins until the rule is changed; left as built | `before-duo-series-x1-strip.png` (episode), `before-atv-episode-strip.png` |
 | 9 | All (data plane) | Stations, Home dial, tvOS season rows, Home day chart | Upload residue in episode titles: "(First Song - I Hate To Say Goodbye To The Prairie) #84 on list", "Earned Reward (Repeat of # 122)", "CBS World News Today, September 24, 1944" under the show of that name, "Lux Radio Theater 'Mr. Deeds Goes to Town' - Feb 1 1936". AGENTS.md: raw upload text never shows; a title may be composed from the record's data. | **Open**: a `catalog/tools/display_text.py` batch (drop "#NN on list" and "Repeat of # N" tags; a title that repeats the show's name and date becomes the composed date title), with the dry run and a publish, for the main thread | `open-web-stations-raw-titles.png` |
-| 10 | Web 1440 | Home dial | Station show names truncate ("Columbia Work…", "The Fred Allen …") with room to wrap at 1440. | Open (minor) | `before-web-home-1440.png` |
-| 11 | iOS (Duo) | Record | "Plays", its menus and count stand about 30 pt further in than "Record" and Today's scene above them. | Open (minor) | `before-duo-home.png` set; Duo Record frame not saved |
+| 10 | Web 1440 | Home dial | Station show names truncate ("Columbia Work…", "The Fred Allen …") with room to wrap at 1440. | **Fixed** (final sweep): at 768 px and wider the dial's second line wraps to two lines instead of an ellipsis | `final-sweep/before-web-home-dial-1440.png`, `final-sweep/after-web-home-dial-1440.png` |
+| 11 | iOS (Duo) | Record | "Plays", its menus and count stand about 30 pt further in than "Record" and Today's scene above them. | Open: the Duo's display was off and the iPad locked in the final sweep, so no frame could be read; no blind edit made | none |
 
 ## Known faults rechecked
 
@@ -74,3 +74,13 @@ against the binding design docs and the design skills (`artwork-presentation-des
 - `tools/web_fit_reader.py` and the cast gate read `catalog/out` and fail in a worktree without it; pass
   `--data https://eardrama.org/data/` (the reader then passes).
 - Google TV needs about 45 s after a cold start before Home draws (12 s showed the spinner only).
+
+## Final sweep (1.0.152)
+
+- Google TV series head: a plate capped to 30% of the screen's height now stands left of the words (`ItemLead.cappedPlate`);
+  frames `final-sweep/before-gtv-series-lux.png`, `final-sweep/after-gtv-series-lux.png`. tvOS draws a wide photo as its own
+  window beside the words (no capped plate), so nothing to change there.
+- Harness: `web_fit_library.py` measured before the section drew (its ready text, "Library", is in the tab bar of every page);
+  it now waits for the section's own body, 3 identical passing runs (`docs/research/data/t7b/lib-r*.txt`). `web_fit_cast.py`
+  gives its production a first take before reloading (Decision 079). `web_fit_reader.py` defaults to the live data when
+  `catalog/out` is absent.

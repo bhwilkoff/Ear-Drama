@@ -1,0 +1,371 @@
+{
+ "tag": "main",
+ "base": "https://eardrama-api.benwilkoff.workers.dev",
+ "script": "gut-7364",
+ "devices": {
+  "pixel": {
+   "what": "Pixel 8a",
+   "role": "reader",
+   "skip": null
+  },
+  "gtv": {
+   "what": "Google TV Streamer (10.0.0.55)",
+   "role": "screen",
+   "skip": null
+  },
+  "atv": {
+   "what": "Apple TV 4K Ben Bedroom",
+   "role": "screen",
+   "skip": null
+  },
+  "duo": {
+   "what": "open iPhone Duo",
+   "role": "reader",
+   "skip": null
+  },
+  "web1": {
+   "what": "Chrome headless, muted, reader",
+   "role": "reader",
+   "skip": null
+  },
+  "web2": {
+   "what": "Chrome headless, muted, second reader",
+   "role": "reader",
+   "skip": null
+  },
+  "webscr": {
+   "what": "Chrome headless, muted, shared screen",
+   "role": "screen",
+   "skip": null
+  }
+ },
+ "tests": {
+  "T5": {
+   "members": [
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "screen",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "screen",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "screen",
+     "present": null,
+     "name": null
+    }
+   ],
+   "devices": {
+    "pixel": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "I/System.out(17622): [readdiag] clock offset -2291.0 samples 2",
+      "I/System.out(17622): [readdiag] clock offset -2298.0 samples 3",
+      "I/System.out(17622): [readdiag] clock offset -2298.0 samples 4"
+     ]
+    },
+    "gtv": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "I/System.out(15117): [readdiag] clock offset 291.5 samples 1",
+      "I/System.out(15117): [readdiag] clock offset 293.5 samples 2",
+      "I/System.out(15117): [readdiag] clock offset 290.0 samples 3"
+     ]
+    },
+    "atv": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "[readdiag] clock offset 4.70849609375 samples 2",
+      "[readdiag] clock offset -0.677490234375 samples 3",
+      "[readdiag] clock offset -0.677490234375 samples 4"
+     ]
+    },
+    "duo": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "[readdiag] clock offset 4.093505859375 samples 1",
+      "[readdiag] clock offset 2.091796875 samples 2",
+      "[readdiag] clock offset 2.091796875 samples 3"
+     ]
+    },
+    "web1": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": null,
+     "log_tail": [
+      "[readdiag] transport socket",
+      "[readdiag] clock offset 35 samples 2",
+      "[readdiag] clock offset 21 samples 3"
+     ]
+    },
+    "web2": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": null,
+     "log_tail": [
+      "[readdiag] clock offset 72.5 samples 1",
+      "[readdiag] transport socket",
+      "[readdiag] clock offset 53.5 samples 2"
+     ]
+    },
+    "webscr": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": null,
+     "log_tail": [
+      "[readdiag] lit L0001 gen 0 at 1795176071546 offset",
+      "[readdiag] clock offset 66.5 samples 1",
+      "[readdiag] transport socket"
+     ]
+    }
+   },
+   "room_members": 8,
+   "started": 7
+  },
+  "T4": {
+   "presses": 30,
+   "leader_ack_ms": {
+    "n": 30,
+    "got": 30,
+    "missing": 0,
+    "p50": 68,
+    "p95": 90,
+    "max": 122,
+    "min": 37,
+    "mean": 67.1
+   },
+   "devices": {
+    "pixel": {
+     "transport": "socket",
+     "n": 30,
+     "got": 30,
+     "missing": 0,
+     "p50": 115.0,
+     "p95": 198.5,
+     "max": 201.5,
+     "min": 71.5,
+     "mean": 124.7
+    },
+    "gtv": {
+     "transport": "socket",
+     "n": 30,
+     "got": 30,
+     "missing": 0,
+     "p50": 83.0,
+     "p95": 139.0,
+     "max": 221.0,
+     "min": 55.0,
+     "mean": 85.0
+    },
+    "atv": {
+     "transport": "socket",
+     "n": 30,
+     "got": 30,
+     "missing": 0,
+     "p50": 67.117431640625,
+     "p95": 97.281494140625,
+     "max": 124.37255859375,
+     "min": 40.693359375,
+     "mean": 65.8
+    },
+    "duo": {
+     "transport": "socket",
+     "n": 30,
+     "got": 30,
+     "missing": 0,
+     "p50": 64.43994140625,
+     "p95": 81.66162109375,
+     "max": 119.915283203125,
+     "min": 40.67919921875,
+     "mean": 63.1
+    },
+    "web1": {
+     "transport": "socket",
+     "n": 30,
+     "got": 30,
+     "missing": 0,
+     "p50": 67.0,
+     "p95": 98.5,
+     "max": 123.0,
+     "min": 41.5,
+     "mean": 66.4
+    },
+    "web2": {
+     "transport": "socket",
+     "n": 30,
+     "got": 30,
+     "missing": 0,
+     "p50": 71.5,
+     "p95": 102.5,
+     "max": 121.0,
+     "min": 41.0,
+     "mean": 71.5
+    },
+    "webscr": {
+     "transport": "socket",
+     "n": 30,
+     "got": 30,
+     "missing": 0,
+     "p50": 65.5,
+     "p95": 81.0,
+     "max": 120.5,
+     "min": 40.5,
+     "mean": 64.2
+    }
+   }
+  },
+  "T9": {
+   "cursor": "L0031",
+   "members": 8,
+   "roles": [
+    "reader",
+    "reader",
+    "screen",
+    "reader",
+    "screen",
+    "reader",
+    "reader",
+    "screen"
+   ],
+   "frames": [
+    "main-gtv-T4-after.png",
+    "main-atv-T4-after.png",
+    "main-webscr-T4-after.png"
+   ]
+  },
+  "T6": {
+   "web1": {
+    "following_at_start": true,
+    "back_button_shown_after_scroll": false,
+    "following_after_back": true,
+    "lit_line_in_view": true
+   },
+   "web2": {
+    "following_at_start": false,
+    "back_button_shown_after_scroll": false,
+    "following_after_back": false,
+    "lit_line_in_view": null
+   },
+   "pixel": {
+    "button_before_swipe": false,
+    "gestures": [
+     {
+      "gesture": "swipe up",
+      "button_shown": true
+     }
+    ],
+    "button_shown_after_swipe": true,
+    "button_gone_after_tap": true
+   }
+  },
+  "T8": {
+   "pixel": {
+    "lit_events_before": 37,
+    "lit_events_after": 38,
+    "reached_last_line_after_rejoin": true,
+    "last_line": "L0043",
+    "transports": [
+     "socket"
+    ]
+   },
+   "web1": {
+    "offline_text": "Skip to content\n\nYou are offline.\n\nRead together\n\nThe Albany Depot\n\nCAMPBELL (cont\u2019d)\nThe Albany Depot\n\nWilliam Dean Howells\n\nParts\n\nCAMPBELL\nROBERTS\nMRS. ROBERTS\nMCILHENY\nMRS. CAMPBELL\nBOTH LADIES\n\nMRS. ROBERTS\n\n\u201cI was just looking for my husband. He was to meet me here at ten minutes past three; b",
+    "reached_last_line_after_rejoin": true,
+    "last_line": "L0047",
+    "transports": [
+     "socket"
+    ]
+   }
+  }
+ },
+ "site": "http://127.0.0.1:56929",
+ "room": {
+  "code": "VT6R6F",
+  "transport": "socket",
+  "leader_socket": true,
+  "leader_offset": {
+   "rtt": 16,
+   "offset": 2
+  }
+ },
+ "teardown": {
+  "pixel": {
+   "gone": true,
+   "detail": "gone (pidof empty)"
+  },
+  "gtv": {
+   "gone": true,
+   "detail": "gone (pidof empty)"
+  },
+  "atv": {
+   "gone": true,
+   "detail": "not running"
+  },
+  "duo": {
+   "gone": true,
+   "detail": "not running"
+  },
+  "web1": {
+   "gone": true,
+   "detail": "chrome gone"
+  },
+  "web2": {
+   "gone": true,
+   "detail": "chrome gone"
+  },
+  "webscr": {
+   "gone": true,
+   "detail": "chrome gone"
+  }
+ }
+}
