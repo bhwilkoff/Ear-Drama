@@ -7,8 +7,9 @@
  * THE INVITE READ. The token rides the `x-invite` header, never the path, so no
  * access log holds it (the link carries it in the fragment for the same reason).
  * Unknown token: 404. Revoked or expired: 410. A viewer sees the play, its
- * parts and their states, who is in by chosen name, and the chosen takes,
- * playable. No account ids leave this file.
+ * parts and their states, who is in by chosen name, and the chosen takes'
+ * fields. No account ids leave this file. No take audio is served: the Worker
+ * keeps none (Decision 082); the finished recording is heard on archive.org.
  *
  * WHAT AN ANONYMOUS VIEWER NEVER HEARS. A signed-in person's hidden set is
  * personal (their reports, their blocks). A viewer with no account has none,
@@ -30,9 +31,7 @@ import MANIFEST from "./castable-manifest.json";
 export const INVITE_HEADER = "x-invite";
 export const FINISHED_DEFAULT = 20;
 export const FINISHED_MAX = 50;
-export const OPEN_AUDIO_PATH = "/v1/plays/open/invite/takes";
 const INVITE_CACHE = "private, max-age=30";
-const AUDIO_CACHE = "private, max-age=300";
 const FINISHED_CACHE = "public, max-age=300, s-maxage=300";
 const CURSOR = /^(\d{1,16}):([A-Za-z0-9_-]{8,64})$/;
 
@@ -40,9 +39,6 @@ const CURSOR = /^(\d{1,16}):([A-Za-z0-9_-]{8,64})$/;
 export const isOpenRoute = (pathname, method) =>
   method === "GET" &&
   (pathname === "/v1/plays/finished" || pathname.startsWith("/v1/plays/finished/") || pathname.startsWith("/v1/plays/open/"));
-
-/** The audio route streams a lot of small files, so it counts apart from the reads. */
-export const isOpenAudio = (pathname) => pathname.startsWith(`${OPEN_AUDIO_PATH}/`);
 
 /* ---- The open invite ---- */
 
@@ -127,7 +123,6 @@ async function viewOpenInvite(request, env, now) {
         part: t.part,
         frames: t.frames,
         sampleRate: t.sample_rate,
-        audio: `${OPEN_AUDIO_PATH}/${encodeURIComponent(t.id)}/audio`,
       })),
       chosen,
       next: next(p.cast, rows, now),
@@ -138,18 +133,6 @@ async function viewOpenInvite(request, env, now) {
     200,
     { "cache-control": INVITE_CACHE },
   );
-}
-
-async function openTakeAudio(request, env, takeId, now) {
-  const found = await openInvite(env, request.headers.get(INVITE_HEADER), now);
-  if (!found) return problem(404, "invite_not_found");
-  if (found.gone) return gone();
-  const t = (await visibleChosen(env, found.p, found.inviter)).find((x) => x.id === takeId);
-  if (!t) return problem(404, "no_such_take");
-  if (!env.TAKES) return problem(503, "storage_not_configured");
-  const obj = await env.TAKES.get(t.object_key);
-  if (!obj) return problem(404, "no_such_take");
-  return new Response(obj.body, { headers: { "content-type": t.content_type, "cache-control": AUDIO_CACHE } });
 }
 
 /* ---- Finished ear dramas ---- */
@@ -241,10 +224,9 @@ export async function handleOpen(url, request, env) {
   } catch {
     return problem(400, "bad_request", "path");
   }
-  const [a, b, c, d, e] = seg;
+  const [a, b, c] = seg;
   if (a === "finished" && !b) return listFinished(url, env);
   if (a === "finished" && b && !c) return getFinished(env, b);
   if (a === "open" && b === "invite" && !c) return viewOpenInvite(request, env, Date.now());
-  if (a === "open" && b === "invite" && c === "takes" && d && e === "audio" && seg.length === 5) return openTakeAudio(request, env, d, Date.now());
   return problem(404, "not_found");
 }

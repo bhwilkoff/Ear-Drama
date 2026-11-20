@@ -1,5 +1,7 @@
 // The archive.org uploader (P14) and replacing or removing a published take
 // (P12), against a fake archive.org: nothing here reaches the real one. The
+// Worker keeps no take audio (Decision 082): the cron lays the item out and
+// removes lines, and each line's file comes from a device (`sendLine`). The
 // script is the castable one with the fewest lines, picked from the data.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createExecutionContext, createScheduledController, waitOnExecutionContext } from "cloudflare:test";
@@ -21,6 +23,9 @@ import {
   metaValue,
   runArchive,
 } from "../src/plays-archive.js";
+
+// A publish here sends one file a line from the "device", 147 requests: more than the default 5 s under a full parallel run.
+vi.setConfig({ testTimeout: 30_000 });
 
 const ACCESS = "TESTIAACCESS7f3a";
 const SECRET = "TESTIASECRET9c2e";
@@ -78,7 +83,9 @@ function fakeArchive() {
         }
         items.set(id, { meta, files: new Map() });
       }
-      items.get(id).files.set(name, { bytes: init.body.byteLength, derive: headers["x-archive-queue-derive"] !== "0" });
+      // The Worker streams each file; reading it here is archive.org receiving it.
+      const bytes = init.body instanceof ReadableStream ? (await new Response(init.body).arrayBuffer()).byteLength : init.body.byteLength;
+      items.get(id).files.set(name, { bytes, derive: headers["x-archive-queue-derive"] !== "0" });
       return new Response(null, { status: 200 });
     }
     if (method === "DELETE") {
@@ -113,17 +120,19 @@ const setPart = (pid, part, status, userId) =>
     .bind(pid, part, status, userId, Date.now())
     .run();
 
-/** A chosen take row for `line` with its audio in the bucket. */
+/** The devices' own copies of each take (the Worker keeps none, Decision 082): take id to bytes. */
+const onDevice = new Map();
+
+/** A chosen take row for `line`; its audio stays on the device (`onDevice`). */
 async function seedTake(pid, userId, line, part, { bytes = wav(4800), type = "audio/wav" } = {}) {
   const id = newTakeId();
-  const key = `plays/${pid}/${id}`;
-  await env.TAKES.put(key, bytes, { httpMetadata: { contentType: type } });
+  onDevice.set(id, bytes);
   await env.DB.batch([
     env.DB.prepare("UPDATE play_takes SET chosen = 0 WHERE production_id = ?1 AND line_id = ?2").bind(pid, line),
     env.DB.prepare(
-      "INSERT INTO play_takes (production_id, id, user_id, line_id, part, file, object_key, content_type, bytes, frames, sample_rate, capture, created, uploaded_at, chosen) " +
-        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 4800, 48000, 'direct', 0, ?10, 1)",
-    ).bind(pid, id, userId, line, part, `${id}.wav`, key, type, bytes.length, Date.now()),
+      "INSERT INTO play_takes (production_id, id, user_id, line_id, part, file, content_type, bytes, frames, sample_rate, capture, created, uploaded_at, chosen) " +
+        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 4800, 48000, 'direct', 0, ?9, 1)",
+    ).bind(pid, id, userId, line, part, `${id}.wav`, type, bytes.length, Date.now()),
   ]);
   return id;
 }
@@ -157,22 +166,43 @@ const files = async (pid) =>
   (await env.DB.prepare("SELECT * FROM play_archive_files WHERE production_id = ?1 ORDER BY seq").bind(pid).all()).results;
 const record = async (s, pid) => (await call("GET", `/v1/plays/productions/${pid}`, { token: s.access_token, envOverride: KEYS })).json();
 
-/** Runs the uploader until the job settles or `max` runs pass; returns the runs taken. */
+/** One line's file from a device: `bytes` defaults to the device's copy of the line's take. */
+async function sendLine(s, pid, line, { bytes, envOverride = { ...KEYS, USER_LIMITER: undefined } } = {}) {
+  const f = (await files(pid)).find((x) => x.line_id === line);
+  const body = bytes || onDevice.get(f.take_id);
+  return call("PUT", `/v1/plays/productions/${pid}/archive/files/${encodeURIComponent(line)}`, {
+    token: s.access_token,
+    body,
+    envOverride,
+    headers: { "content-length": String(body.length) },
+  });
+}
+
+/** The director's device sends every line still waiting, in script order; returns the responses. */
+async function sendAll(s, pid, opts) {
+  const out = [];
+  for (const f of await files(pid)) if (f.state === "pending") out.push(await sendLine(s, pid, f.line_id, opts));
+  return out;
+}
+
+/** Runs the cron until the job settles or `max` runs pass; returns the runs taken. */
 async function drain(pid, { now = Date.now(), max = 50 } = {}) {
   for (let i = 1; i <= max; i++) {
     const before = fake.requests.length;
     await runArchive(ia, now, 1000);
     const j = await job(pid);
-    const busy = (await files(pid)).some((f) => f.state === "pending" || f.state === "remove");
+    const busy = (await files(pid)).some((f) => f.state === "remove");
     if (fake.requests.length === before || (!busy && j.status !== "uploading" && j.credits)) return i;
   }
   return max;
 }
 
+/** Publish, the cron lays the item out, the director's device sends every file. */
 async function published(label) {
   const t = await complete(label);
   expect((await publish(t.director, t.p.id)).status).toBe(201);
-  await drain(t.p.id);
+  await runArchive(ia, Date.now(), 1000);
+  for (const r of await sendAll(t.director, t.p.id)) expect(r.status, await r.clone().text()).toBe(200);
   expect((await job(t.p.id)).status).toBe("published");
   fake.requests.length = 0;
   return t;
@@ -181,27 +211,45 @@ async function published(label) {
 const herLines = () => linesOf(cast, herPart);
 
 describe("the gate", () => {
-  it("runs nothing without both keys, and nothing without the bucket", async () => {
+  it("runs nothing without both keys, and a file is refused without them", async () => {
     const { director, p } = await complete("gate");
     expect((await publish(director, p.id)).status).toBe(201);
     await runArchive({ ...env, IA_S3_ACCESS_KEY: ACCESS }, Date.now(), 1000);
     await runArchive({ ...env, IA_S3_SECRET_KEY: SECRET }, Date.now(), 1000);
-    await runArchive({ ...ia, TAKES: undefined }, Date.now(), 1000);
     expect(fake.requests).toEqual([]);
     expect((await job(p.id)).status).toBe("queued");
+    await runArchive(ia, Date.now(), 1000);
+    expect((await sendLine(director, p.id, speakingLines[0], { envOverride: { IA_S3_ACCESS_KEY: ACCESS } })).status).toBe(503);
   });
 
-  it("the five-minute trigger runs the uploader, and so does the hourly one", async () => {
-    const { director, p } = await complete("cron");
+  it("a file waits for the cron to lay the item out", async () => {
+    const { director, p } = await complete("early");
     expect((await publish(director, p.id)).status).toBe(201);
+    const r = await call("PUT", `/v1/plays/productions/${p.id}/archive/files/${encodeURIComponent(speakingLines[0])}`, {
+      token: director.access_token,
+      body: wav(4800),
+      envOverride: KEYS,
+      headers: { "content-length": String(wav(4800).length) },
+    });
+    expect(r.status).toBe(409);
+    expect((await r.json()).error).toBe("not_ready");
+  });
+
+  it("the five-minute trigger lays the item out, and so does the hourly one, with no request to archive.org", async () => {
+    const a = await complete("cron");
+    expect((await publish(a.director, a.p.id)).status).toBe(201);
     const ctx = createExecutionContext();
     await worker.scheduled(createScheduledController({ cron: ARCHIVE_CRON }), ia, ctx);
     await waitOnExecutionContext(ctx);
-    expect(fake.puts().length).toBe(REQUESTS_PER_RUN - 1);
+    expect((await job(a.p.id)).status).toBe("uploading");
+    expect((await files(a.p.id)).length).toBe(speakingLines.length);
+    const b = await complete("cron2");
+    expect((await publish(b.director, b.p.id)).status).toBe(201);
     const ctx2 = createExecutionContext();
     await worker.scheduled(createScheduledController({ cron: "23 * * * *" }), ia, ctx2);
     await waitOnExecutionContext(ctx2);
-    expect(fake.puts().length).toBe(Math.min(speakingLines.length, 2 * (REQUESTS_PER_RUN - 1)));
+    expect((await job(b.p.id)).status).toBe("uploading");
+    expect(fake.requests).toEqual([]);
   });
 });
 
@@ -209,7 +257,9 @@ describe("a first publish", () => {
   it("makes one item, its metadata from data, one file per line in script order, derived once", async () => {
     const { director, her, p } = await complete("ok");
     expect((await publish(director, p.id)).status).toBe(201);
-    await drain(p.id);
+    await runArchive(ia, Date.now(), 1000);
+    const sent = await sendAll(director, p.id);
+    expect(sent.every((r) => r.status === 200)).toBe(true);
     const id = identifierFor(p.id);
     expect(id).toBe(`eardrama-${p.id.toLowerCase()}`);
     expect(id).toMatch(/^[a-z0-9][a-z0-9._-]{4,99}$/);
@@ -231,6 +281,8 @@ describe("a first publish", () => {
     // so a client names the line a file speaks from the file name and the script alone.
     expect(names.map((n) => small.lines[Number(n.slice(0, 4)) - 1].id)).toEqual(speakingLines);
     expect(fake.puts().map((r) => r.path.split("/").pop())).toEqual([...names].sort());
+    // Each file arrives whole, streamed with its length.
+    for (const [name, f] of item.files) expect(f.bytes, name).toBe(wav(4800).length);
     expect([...item.files.values()].filter((f) => f.derive).length).toBe(1);
     expect(item.files.get(names.at(-1)).derive).toBe(true);
     const rec = await record(her, p.id);
@@ -238,51 +290,76 @@ describe("a first publish", () => {
     expect(metaValue("Zoë")).toBe("uri(Zo%C3%AB)");
   });
 
-  it("keeps to the request budget and archive.org's check_limit", async () => {
+  it("asks archive.org's check_limit before the first file only", async () => {
     const { director, p } = await complete("budget");
     expect((await publish(director, p.id)).status).toBe(201);
-    await runArchive(ia, Date.now());
-    expect(fake.requests.length).toBe(REQUESTS_PER_RUN);
+    await runArchive(ia, Date.now(), 1000);
+    await sendAll(director, p.id);
     expect(fake.requests[0].search).toContain("check_limit=1");
+    expect(fake.requests.filter((r) => r.search.includes("check_limit")).length).toBe(1);
   });
 
-  it("waits while check_limit says the item's queue is over its limit", async () => {
+  it("refuses the file while check_limit says the item's queue is over its limit", async () => {
     const { director, p } = await complete("limit");
     expect((await publish(director, p.id)).status).toBe(201);
-    fake.state.overLimit = true;
     await runArchive(ia, Date.now(), 1000);
+    fake.state.overLimit = true;
+    const r = await sendLine(director, p.id, speakingLines[0]);
+    expect(r.status).toBe(503);
+    expect((await r.json()).error).toBe("archive_busy");
     expect(fake.puts()).toEqual([]);
-    expect((await job(p.id)).next_attempt_at).toBeGreaterThan(Date.now());
+  });
+
+  it("only the chosen take goes: another recording of the line, or another format, is refused", async () => {
+    const { director, p } = await complete("nottake");
+    expect((await publish(director, p.id)).status).toBe(201);
+    await runArchive(ia, Date.now(), 1000);
+    const r = await sendLine(director, p.id, speakingLines[0], { bytes: wav(48000) });
+    expect(r.status).toBe(422);
+    expect((await r.json()).error).toBe("not_the_take");
+    expect((await sendLine(director, p.id, speakingLines[0], { bytes: flac(4800) })).status).toBe(422);
+    expect(fake.puts()).toEqual([]);
+  });
+
+  it("a line is the director's or its performer's to send, no one else's", async () => {
+    const { director, her, p } = await complete("sender");
+    const other = await person("sender-3");
+    await env.DB.prepare("INSERT INTO play_members (production_id, user_id, display_name, joined_at) VALUES (?1, ?2, 'Sam', ?3)").bind(p.id, other.user_id, Date.now()).run();
+    expect((await publish(director, p.id)).status).toBe(201);
+    await runArchive(ia, Date.now(), 1000);
+    expect((await sendLine(other, p.id, herLines()[0])).status).toBe(403);
+    expect((await sendLine(her, p.id, linesOf(cast, speaking[0])[0])).status).toBe(403);
+    expect((await sendLine(her, p.id, herLines()[0])).status).toBe(200);
   });
 });
 
 describe("idempotency and retries", () => {
-  it("never sends a line twice: a 503 SlowDown backs off and resumes at the line that failed", async () => {
+  it("never sends a line twice: a sent line answers 409, and a 503 SlowDown leaves the line waiting for the device's retry", async () => {
     const { director, p } = await complete("retry");
     expect((await publish(director, p.id)).status).toBe(201);
+    await runArchive(ia, Date.now(), 1000);
     let put = 0;
     fake.state.fail = (r) =>
-      r.method === "PUT" && ++put === 3 ? new Response("<Error><Code>SlowDown</Code><Message>Please reduce your request rate.</Message></Error>", { status: 503 }) : null;
-    const t0 = Date.now();
-    await runArchive(ia, t0, 1000);
-    const j = await job(p.id);
-    expect(j).toMatchObject({ status: "uploading", attempts: 1 });
-    expect(j.reason).toContain("SlowDown");
-    expect(j.next_attempt_at).toBe(t0 + backoff(1));
-    expect((await files(p.id)).filter((f) => f.state === "sent").length).toBe(2);
-    const seen = fake.requests.length;
-    await runArchive(ia, t0 + backoff(1) - 1, 1000);
-    expect(fake.requests.length).toBe(seen);
-    await drain(p.id, { now: t0 + backoff(1) });
+      r.method === "PUT" && ++put === 2 ? new Response("<Error><Code>SlowDown</Code><Message>Please reduce your request rate.</Message></Error>", { status: 503 }) : null;
+    const [first, second] = speakingLines;
+    expect((await sendLine(director, p.id, first)).status).toBe(200);
+    const slow = await sendLine(director, p.id, second);
+    expect(slow.status).toBe(503);
+    expect((await slow.json()).detail).toContain("SlowDown");
+    expect((await files(p.id)).find((f) => f.line_id === second).state).toBe("pending");
+    const again = await sendLine(director, p.id, first);
+    expect(again.status).toBe(409);
+    expect((await again.json()).error).toBe("already_sent");
+    await sendAll(director, p.id);
     expect((await job(p.id)).status).toBe("published");
-    const ok = fake.puts().filter((_, i) => i !== 2);
+    const ok = fake.puts().filter((_, i) => i !== 1);
     const counts = {};
     for (const r of ok) counts[r.path] = (counts[r.path] || 0) + 1;
     expect(Object.values(counts).every((c) => c === 1)).toBe(true);
     expect(Object.keys(counts).length).toBe(speakingLines.length);
-    // Done is done: another run sends nothing.
+    // Done is done: the cron sends nothing.
     fake.requests.length = 0;
-    await runArchive(ia, t0 + MAX_ATTEMPTS * backoff(MAX_ATTEMPTS), 1000);
+    await runArchive(ia, Date.now() + MAX_ATTEMPTS * backoff(MAX_ATTEMPTS), 1000);
     expect(fake.requests).toEqual([]);
   });
 
@@ -292,55 +369,46 @@ describe("idempotency and retries", () => {
     const now = Date.now();
     await env.DB.prepare("UPDATE play_archive_jobs SET lease_until = ?2 WHERE production_id = ?1").bind(p.id, now + 60_000).run();
     await runArchive(ia, now, 1000);
-    expect(fake.requests).toEqual([]);
+    expect((await job(p.id)).status).toBe("queued");
+    expect(await files(p.id)).toEqual([]);
   });
 
-  it("two runs at once send each line once: the lease is taken before any request", async () => {
+  it("two runs at once lay the item out once: the lease is taken before any work", async () => {
     const { director, p } = await complete("race");
     expect((await publish(director, p.id)).status).toBe(201);
     const now = Date.now();
     await Promise.all([runArchive(ia, now, 1000), runArchive(ia, now, 1000), runArchive(ia, now, 1000)]);
-    const names = fake.puts().map((r) => r.path);
-    expect(names.length).toBe(speakingLines.length);
-    expect(new Set(names).size).toBe(names.length);
+    expect((await files(p.id)).length).toBe(speakingLines.length);
+    expect((await job(p.id)).status).toBe("uploading");
   });
 
-  it("gives up after MAX_ATTEMPTS of 503, says why, and a second Publish resumes without resending", async () => {
-    const { director, p } = await complete("giveup");
+  it("Publish again after a failure keeps the lines already on the item sent", async () => {
+    const { director, p } = await complete("republish");
     expect((await publish(director, p.id)).status).toBe(201);
-    let put = 0;
-    fake.state.fail = (r) => (r.method === "PUT" && ++put > 1 ? new Response("<Error><Code>SlowDown</Code></Error>", { status: 503 }) : null);
-    let now = Date.now();
-    for (let i = 1; i <= MAX_ATTEMPTS; i++) {
-      await runArchive(ia, now, 1000);
-      now += backoff(i);
-    }
-    const j = await job(p.id);
-    expect(j.status).toBe("failed");
-    expect(j.reason).toMatch(new RegExp(`^gave up after ${MAX_ATTEMPTS} attempts: archive.org 503 SlowDown`));
-    expect((await record(director, p.id)).archive).toMatchObject({ status: "failed", url: null });
-    fake.state.fail = null;
-    fake.requests.length = 0;
-    const again = await publish(director, p.id);
-    expect(again.status).toBe(200);
-    expect((await again.json()).status).toBe("queued");
-    await drain(p.id, { now });
-    expect((await job(p.id)).status).toBe("published");
-    expect(fake.puts().length).toBe(speakingLines.length - 1);
+    await runArchive(ia, Date.now(), 1000);
+    const [first, second] = speakingLines;
+    expect((await sendLine(director, p.id, first)).status).toBe(200);
+    expect((await sendLine(director, p.id, second)).status).toBe(200);
+    await env.DB.prepare("UPDATE play_archive_jobs SET status = 'failed', reason = 'test' WHERE production_id = ?1").bind(p.id).run();
+    expect((await publish(director, p.id)).status).toBe(200);
+    await runArchive(ia, Date.now(), 1000);
+    const states = Object.fromEntries((await files(p.id)).map((f) => [f.line_id, f.state]));
+    expect([states[first], states[second]]).toEqual(["sent", "sent"]);
+    expect((await sendLine(director, p.id, first)).status).toBe(409);
   });
 
-  it("a size refusal fails the job at once, and nothing retries it", async () => {
+  it("a refusal is answered to the device and fails nothing: the line waits and goes when archive.org takes it", async () => {
     const { director, p } = await complete("size");
     expect((await publish(director, p.id)).status).toBe(201);
+    await runArchive(ia, Date.now(), 1000);
     fake.state.fail = (r) =>
       r.method === "PUT" ? new Response("<Error><Code>EntityTooLarge</Code><Message>Your proposed upload exceeds the maximum allowed size</Message></Error>", { status: 400 }) : null;
-    await runArchive(ia, Date.now(), 1000);
-    const j = await job(p.id);
-    expect(j.status).toBe("failed");
-    expect(j.reason).toContain("EntityTooLarge");
-    fake.requests.length = 0;
-    await runArchive(ia, Date.now() + 86_400_000, 1000);
-    expect(fake.requests).toEqual([]);
+    const r = await sendLine(director, p.id, speakingLines[0]);
+    expect(r.status).toBe(502);
+    expect(await r.json()).toMatchObject({ error: "archive_refused" });
+    expect((await job(p.id)).status).toBe("uploading");
+    fake.state.fail = null;
+    expect((await sendLine(director, p.id, speakingLines[0])).status).toBe(200);
   });
 
   it("a take over the size limit fails before anything is sent", async () => {
@@ -359,17 +427,16 @@ describe("the keys", () => {
   it("go only to archive.org's hosts, and never into a log, a stored reason, or a response", async () => {
     const { director, her, p } = await complete("keys");
     const pub = await publish(director, p.id);
+    await runArchive(ia, Date.now(), 1000);
     let first = true;
     // An answer that echoes the secret, as a careless error page might.
     fake.state.fail = (r) =>
       r.method === "PUT" && first ? ((first = false), new Response(`<Error><Code>SlowDown</Code><Message>key ${SECRET} ${ACCESS}</Message></Error>`, { status: 503 })) : null;
-    const t0 = Date.now();
-    await runArchive(ia, t0, 1000);
-    const failedJob = await job(p.id);
-    await drain(p.id, { now: t0 + backoff(1) });
+    const refused = await (await sendLine(director, p.id, speakingLines[0])).text();
+    await sendAll(director, p.id);
     const texts = [
       ...logs,
-      JSON.stringify(failedJob),
+      refused,
       JSON.stringify(await job(p.id)),
       JSON.stringify(await files(p.id)),
       await pub.text(),
@@ -378,7 +445,7 @@ describe("the keys", () => {
       await (await call("GET", "/v1/plays/consent", { token: her.access_token, envOverride: KEYS })).text(),
     ];
     expect(logs.length).toBeGreaterThan(0);
-    expect(failedJob.reason).toContain("[redacted]");
+    expect(refused).toContain("[redacted]");
     for (const t of texts) {
       expect(t).not.toContain(SECRET);
       expect(t).not.toContain(ACCESS);
@@ -389,25 +456,31 @@ describe("the keys", () => {
 });
 
 describe("replacing or removing a published take (P12)", () => {
-  const replace = (s, pid, line, { bytes = wav(9600), meta = {} } = {}) =>
-    call("PUT", `/v1/plays/productions/${pid}/takes/${newTakeId()}`, {
+  /** A performer's replacement: recorded on the Worker (fields only), its audio kept on the device for sendLine. */
+  const replace = async (s, pid, line, { bytes = wav(9600), meta = {} } = {}) => {
+    const id = newTakeId();
+    const r = await call("PUT", `/v1/plays/productions/${pid}/takes/${id}`, {
       token: s.access_token,
       body: bytes,
-      headers: { "x-take": JSON.stringify({ lineID: line, frames: 9600, sampleRate: 48000, ...meta }) },
+      headers: { "content-length": String(bytes.length), "x-take": JSON.stringify({ lineID: line, frames: 9600, sampleRate: 48000, ...meta }) },
       envOverride: KEYS,
     });
+    if (r.status === 201) onDevice.set(id, bytes);
+    return r;
+  };
   const remove = (s, pid, line, body = {}) =>
     call("POST", `/v1/plays/productions/${pid}/archive/lines/${encodeURIComponent(line)}/remove`, { token: s.access_token, body, envOverride: KEYS });
   const fileOf = async (pid, line) => (await files(pid)).find((f) => f.line_id === line);
 
-  it("a performer replaces their own take: the same name is overwritten", async () => {
+  it("a performer replaces their own take: the same name is overwritten, from their own device", async () => {
     const { her, p } = await published("rep");
     const line = herLines()[0];
     const before = await fileOf(p.id, line);
     const r = await replace(her, p.id, line);
     expect(r.status).toBe(201);
+    expect((await r.json()).delivered).toBe(false);
     expect((await fileOf(p.id, line)).state).toBe("pending");
-    await drain(p.id);
+    expect((await sendLine(her, p.id, line)).status).toBe(200);
     const after = await fileOf(p.id, line);
     expect(after).toMatchObject({ state: "sent", name: before.name });
     expect(after.take_id).not.toBe(before.take_id);
@@ -421,7 +494,7 @@ describe("replacing or removing a published take (P12)", () => {
     const line = herLines()[0];
     const before = await fileOf(p.id, line);
     expect((await replace(her, p.id, line, { bytes: flac(9600) })).status).toBe(201);
-    await drain(p.id);
+    expect((await sendLine(her, p.id, line)).status).toBe(200);
     const item = fake.items.get(identifierFor(p.id));
     expect(item.files.has(before.name)).toBe(false);
     expect(item.files.has(before.name.replace(/\.wav$/, ".flac"))).toBe(true);
@@ -446,6 +519,9 @@ describe("replacing or removing a published take (P12)", () => {
     const r = await replace(her, p.id, line);
     const take = (await r.json()).id;
     expect((await call("POST", "/v1/plays/reports", { token: director.access_token, body: { production_id: p.id, take_id: take, reason: "offensive" } })).status).toBe(201);
+    const held = await sendLine(her, p.id, line);
+    expect(held.status).toBe(409);
+    expect((await held.json()).error).toBe("reported_take");
     await runArchive(ia, Date.now(), 1000);
     expect(fake.puts()).toEqual([]);
     expect((await job(p.id)).reason).toBe("reported_take");
@@ -468,6 +544,56 @@ describe("replacing or removing a published take (P12)", () => {
     expect((await (await remove(her, p.id, herLines()[0])).json()).state).toBe("removed");
     await runArchive(ia, Date.now(), 1000);
     expect(fake.requests).toEqual([]);
+  });
+
+  it("a removal archive.org answers with 503 backs off, and after MAX_ATTEMPTS that line is marked failed", async () => {
+    const { her, p } = await published("rm-retry");
+    const line = herLines()[0];
+    expect((await remove(her, p.id, line)).status).toBe(202);
+    fake.state.fail = (r) => (r.method === "DELETE" ? new Response("<Error><Code>SlowDown</Code></Error>", { status: 503 }) : null);
+    let now = Date.now();
+    await runArchive(ia, now, 1000);
+    const j = await job(p.id);
+    expect(j.attempts).toBe(1);
+    expect(j.next_attempt_at).toBe(now + backoff(1));
+    const seen = fake.requests.length;
+    await runArchive(ia, now + backoff(1) - 1, 1000);
+    expect(fake.requests.length).toBe(seen);
+    for (let i = 1; i < MAX_ATTEMPTS; i++) {
+      now += backoff(i);
+      await runArchive(ia, now, 1000);
+    }
+    expect((await fileOf(p.id, line)).state).toBe("failed");
+    expect((await fileOf(p.id, line)).reason).toMatch(new RegExp(`^gave up after ${MAX_ATTEMPTS} attempts: archive.org 503 SlowDown`));
+    expect((await job(p.id)).status).toBe("published");
+  });
+
+  it("three cron runs at once delete a removed line once: the lease is taken before any request", async () => {
+    const { director, p } = await published("rm-race");
+    expect((await remove(director, p.id, linesOf(cast, speaking[0])[0])).status).toBe(202);
+    const now = Date.now();
+    await Promise.all([runArchive(ia, now, 1000), runArchive(ia, now, 1000), runArchive(ia, now, 1000)]);
+    expect(fake.requests.filter((r) => r.method === "DELETE").length).toBe(1);
+  });
+
+  it("the cron keeps to its request budget", async () => {
+    const { director, p } = await published("rm-budget");
+    const mine = linesOf(cast, speaking[0]).slice(0, 3);
+    for (const line of mine) expect((await remove(director, p.id, line)).status).toBe(202);
+    await runArchive(ia, Date.now(), 2);
+    expect(fake.requests.filter((r) => r.method === "DELETE").length).toBe(2);
+  });
+
+  it("a removal archive.org refuses (4xx) fails that line at once, and is not retried", async () => {
+    const { her, p } = await published("rm-refused");
+    const line = herLines()[0];
+    expect((await remove(her, p.id, line)).status).toBe(202);
+    fake.state.fail = (r) => (r.method === "DELETE" ? new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 }) : null);
+    await runArchive(ia, Date.now(), 1000);
+    expect((await fileOf(p.id, line)).state).toBe("failed");
+    fake.requests.length = 0;
+    await runArchive(ia, Date.now() + 86_400_000, 1000);
+    expect(fake.requests.filter((r) => r.method === "DELETE")).toEqual([]);
   });
 
   it("the director removes any take, with a report's reason, and the performer cannot put it back", async () => {
@@ -494,19 +620,13 @@ describe("replacing or removing a published take (P12)", () => {
     expect(director).toBeTruthy();
   });
 
-  it("a 404 on delete means already gone; a refused change fails that line alone", async () => {
+  it("a 404 on delete means already gone", async () => {
     const { her, p } = await published("rm-404");
-    const [a, b] = herLines().length > 1 ? herLines() : [herLines()[0], null];
+    const a = herLines()[0];
     fake.items.get(identifierFor(p.id)).files.delete((await fileOf(p.id, a)).name);
     expect((await remove(her, p.id, a)).status).toBe(202);
     await drain(p.id);
     expect((await fileOf(p.id, a)).state).toBe("removed");
-    if (!b) return;
-    fake.state.fail = (r) => (r.method === "PUT" ? new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 }) : null);
-    expect((await replace(her, p.id, b)).status).toBe(201);
-    await drain(p.id);
-    expect((await fileOf(p.id, b)).state).toBe("failed");
-    expect((await job(p.id)).status).toBe("published");
   });
 
   it("when the director deletes their account, the production stays directed by no one and its performers keep their own controls", async () => {
@@ -523,12 +643,10 @@ describe("a published production outlives its members' accounts (owner, 2026-10-
   const takeUsers = async (pid) =>
     (await env.DB.prepare("SELECT DISTINCT user_id FROM play_takes WHERE production_id = ?1").bind(pid).all()).results.map((r) => r.user_id).sort();
   const listed = (pid) => call("GET", `/v1/plays/finished/${pid}`);
-  const audio = async (pid) => (await env.TAKES.list({ prefix: `plays/${pid}/` })).objects.length;
 
-  it("a performer's deletion keeps the listing, the takes, the audio and the item; their part goes uncredited", async () => {
+  it("a performer's deletion keeps the listing, the takes and the item; their part goes uncredited", async () => {
     const { director, her, p } = await published("surv-her");
     const lines = (await files(p.id)).length;
-    const objects = await audio(p.id);
     const item = fake.items.get(identifierFor(p.id));
     const partsOf = async () => (await env.DB.prepare("SELECT part, user_id FROM play_parts WHERE production_id = ?1 ORDER BY part").bind(p.id).all()).results;
     const partsBefore = await partsOf();
@@ -538,7 +656,6 @@ describe("a published production outlives its members' accounts (owner, 2026-10-
     expect(body.credits).toContainEqual({ part: herPart, name: "" });
     expect(body.credits.some((c) => c.name === "Zoë")).toBe(false);
     expect((await files(p.id)).length).toBe(lines);
-    expect(await audio(p.id)).toBe(objects);
     expect(await takeUsers(p.id)).toEqual([DELETED_PERSON, director.user_id].sort());
     expect((await partsOf()).map((r) => r.part)).toEqual(partsBefore.map((r) => r.part));
     expect((await partsOf()).find((r) => r.part === herPart).user_id).toBe(DELETED_PERSON);
@@ -565,11 +682,9 @@ describe("a published production outlives its members' accounts (owner, 2026-10-
   it("when everyone has deleted their account the production, its takes and its item remain", async () => {
     const { director, her, p } = await published("surv-all");
     const lines = (await files(p.id)).length;
-    const objects = await audio(p.id);
     expect((await call("DELETE", "/v1/account", { token: her.access_token })).status).toBe(200);
     expect((await call("DELETE", "/v1/account", { token: director.access_token })).status).toBe(200);
     expect(await takeUsers(p.id)).toEqual([DELETED_PERSON]);
-    expect(await audio(p.id)).toBe(objects);
     expect((await listed(p.id)).status).toBe(200);
     expect((await files(p.id)).length).toBe(lines);
     expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM play_members WHERE production_id = ?1").bind(p.id).first()).n).toBe(0);
@@ -581,6 +696,5 @@ describe("a published production outlives its members' accounts (owner, 2026-10-
     expect((await call("DELETE", "/v1/account", { token: director.access_token })).status).toBe(200);
     expect(await env.DB.prepare("SELECT 1 FROM play_productions WHERE id = ?1").bind(p.id).first()).toBeNull();
     expect(await takeUsers(p.id)).toEqual([]);
-    expect(await audio(p.id)).toBe(0);
   });
 });

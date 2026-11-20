@@ -18,13 +18,15 @@ import { handleRead, handleUpload } from "./sync.js";
 import { handleAccount, handleDelete } from "./account.js";
 import { handleRooms, sweepRooms } from "./rooms.js";
 import { handlePlays, sweepPlays } from "./plays.js";
-import { handleOpen, isOpenAudio, isOpenRoute } from "./plays-open.js";
+import { handleOpen, isOpenRoute } from "./plays-open.js";
+import { handleSeat, isSeatRoute } from "./plays-seats.js";
 import { handleTakedown, sweepTakedowns } from "./takedown.js";
 import { handleReadRooms, sweepReadRooms } from "./read-rooms.js";
 import { ARCHIVE_CRON, runArchive } from "./plays-archive.js";
 import { clientAddress, corsHeaders, json, limited, originAllowed, problem, withCors } from "./http.js";
 
 export { ReadRoom } from "./read-rooms.js";
+export { TakeRelay } from "./take-relay.js";
 
 const isReadRoute = (pathname) => pathname === "/v1/read" || pathname.startsWith("/v1/read/");
 
@@ -53,9 +55,12 @@ async function route(request, env, url) {
 
   // Plays that need no account (owner 2026-10-29): an open invite's read and the finished listing, GETs only.
   if (isOpenRoute(pathname, method)) {
-    if (await limited(isOpenAudio(pathname) ? env.OPEN_AUDIO_LIMITER : env.OPEN_READ_LIMITER, ip)) return problem(429, "rate_limited");
+    if (await limited(env.OPEN_READ_LIMITER, ip)) return problem(429, "rate_limited");
     return handleOpen(url, request, env);
   }
+
+  // A class's seats need no account (Decision 082): the seat key, limited per seat in plays-seats.js.
+  if (isSeatRoute(pathname)) return handleSeat(url, request, env, ip);
 
   // Shared plays (M8): an account is required for every other route (Decision 057).
   if (pathname === "/v1/plays" || pathname.startsWith("/v1/plays/")) {

@@ -38,12 +38,15 @@ Cloudflare, Apple, or Google is the owner's.
 | `worker/src/read-rooms.js` | read rooms' transports: the `ReadRoom` Durable Object (sockets and polls) and the D1 polling fallback |
 | `worker/tools/read-golden.mjs`, `worker/test/read-golden.json` | the read protocol's golden cases, shared by every client port |
 | `worker/migrations/0006_read_rooms.sql` | the D1 schema for polled read rooms |
-| `worker/src/plays.js` | shared plays' HTTP, D1, and bucket adapter; deletion's plays step; the plays sweep |
-| `worker/src/plays-open.js` | the reads that need no account: an open invite and its take audio, the finished-drama listing and one finished drama |
+| `worker/src/plays.js` | shared plays' HTTP and D1 adapter, the take intake (`receiveTake`), publishing; deletion's plays step; the plays sweep |
+| `worker/src/plays-seats.js` | classes that own productions (Decision 082): seats, the no-account seat routes, assignments, review, progress |
+| `worker/src/take-relay.js` | the `TakeRelay` Durable Object: a take piped from the recording device to the director's device, in memory only |
+| `worker/migrations/0007_seats_and_pass_through.sql` | seats, class productions, assignments, reviews; `play_takes` without its object key |
+| `worker/src/plays-open.js` | the reads that need no account: an open invite, the finished-drama listing and one finished drama |
 | `worker/src/plays-relay.js` | the cast sheet and the relay (C7), pure: part order, claims and their lapse, done, silent, reopen, completeness |
 | `worker/src/plays-names.js` | the display-name deny list (the server's layer of the two-layer gate) |
-| `worker/src/plays-audio.js` | a take's length and format, read from its own WAV or FLAC header |
-| `worker/src/plays-archive.js` | the archive.org uploader (Decision 073): items, files, replacements, removals, backoff |
+| `worker/src/plays-audio.js` | a take's length and format, read from its own WAV or FLAC header, and `takeStream` (checked from its head, streamed, never held whole) |
+| `worker/src/plays-archive.js` | the archive.org uploader (Decision 073): the cron lays items out, removes lines, rewrites credits; `sendFile` streams each line's file from a device |
 | `worker/src/plays-manifest.js`, `worker/src/castable-manifest.json` | the castable manifest: script id, revision, title, source, rights evidence, and the SHA-256 of each cast sheet |
 | `worker/tools/castable-manifest.mjs` | rebuilds the manifest from `catalog/plays/castable-scripts.json` |
 | `worker/migrations/0001_accounts.sql` | the D1 schema for accounts and sync |
@@ -145,14 +148,12 @@ parts, directorship and job move to one `deleted-account` row (`DELETED_PERSON`
 in `plays.js`) that has no identity or session, so no one can sign in as it and
 no remaining member gains director rights; their member row goes, so their part
 reads uncredited in the listing, and a published item's credits are cleared so
-the uploader rewrites them without the name. The listing, takes, audio and
+the uploader rewrites them without the name. The listing, takes and
 archive.org item stay. Any other production with anyone else in it goes to the
 member who joined first (their takes stay); one nobody else is in goes with them.
-Then deletion deletes the audio of
-every take that is losing its row from the TAKES bucket. An object the bucket
-fails to delete is queued in `play_orphan_objects` (a key names a production
-and a take, never a person) and the hourly sweep retries it; the rows go
-either way. A report about the deleted person keeps its trail with
+No take audio is on Cloudflare to delete (Decision 082). A teacher's classes go
+with their account, and with them the classes' seats, productions, casting and
+reviews. A report about the deleted person keeps its trail with
 `target_user_id` cleared.
 
 Sign in with Apple also asks that the app revoke the person's Apple tokens.
@@ -312,32 +313,39 @@ file every client port reads). Two transports carry the same messages
   claim still wins. The hourly sweep deletes idle rows.
 
 No audio ever passes through or rests in either (owner 2026-11-19: storage is
-archive.org). No account to read; a class room is opened by the account that
-owns the class, and its readers join by seat (T2 adds the seat key).
+archive.org). No account to read. A class room is opened by the account that
+owns the class; its seats are the class's roster and, with `production_id`
+(that class's production of the same script), its casting is that
+production's assignments, both read from D1 when the room opens: `seats` and
+`assignments` in the request are ignored. A seat joins, or takes a seat with
+the `seat` message, only with that seat's key (`seat_key`, from
+`/v1/plays/seat/claim`); otherwise `403 seat_key_required`. Seats added after
+the room opened join the next room.
 
 | Method and path | Who | Body | Answer |
 |---|---|---|---|
 | `POST /v1/read` | anyone; a class room needs its teacher's bearer token | `{ script_id, script_revision, cast, mode?, kind?, class_id?, seats?, assignments?, production_id? }` | the snapshot with `member_key` and `transport` (`socket` or `poll`); the creator leads |
-| `POST /v1/read/{code}/join` | anyone with the code | `{ role?: "reader" or "screen", seat?, move? }` | the snapshot with `member_key`; `409 room_full`, `joining_locked`, `seat_in_use`; `400 seat_required` |
+| `POST /v1/read/{code}/join` | anyone with the code; a class seat with its key | `{ role?: "reader" or "screen", seat?, seat_key?, move? }` | the snapshot with `member_key`; `409 room_full`, `joining_locked`, `seat_in_use`; `400 seat_required`; `403 seat_key_required` |
 | `GET /v1/read/{code}` | a member (`x-read-key`) | | the snapshot (poll every second) |
 | `POST /v1/read/{code}/send` | a member | a message | the snapshot (and `reply` for a ping), or the refusal |
 | `GET /v1/read/{code}/socket` | a member, by upgrade | first message `{ type: "hello", key }` | snapshots on every change; a `poll_only` room answers `409` |
 
 Messages: `cursor { line, base }`, `line-done { line, base }`, `again { line,
 base }`, `mode { mode }`, `claim { part }`, `release { part }`, `lead { to }`,
-`lock { locked }`, `seat { seat, move? }`, `ping { t0 }` (answered `pong {
+`lock { locked }`, `seat { seat, seat_key, move? }`, `ping { t0 }` (answered `pong {
 t0, server_time }`), `end`. Refusals: `leader_only`, `stale` (with the current
 cursor generation), `part_taken` (with the holder), `not_your_line`,
 `class_assignments_only`, `readers_only`, `screens_do_not_lead`,
-`not_a_member`, `rate_limited`. The key never travels in a URL.
+`not_a_member`, `seat_key_required`, `rate_limited`. The key never travels in a URL.
 
 ## Shared plays
 
 Phase 2 of the plays (LOOP-PLAN M8, Decisions 057 and 059,
 `docs/PLAYS-DESIGN.md` §11): a production made on one device is recorded
-across several, by people who came in with an invite link. Every route takes a
-bearer token (Decision 057) and counts against `USER_LIMITER`. No route calls
-archive.org or any other host.
+across several, by people who came in with an invite link, or by a class's
+seats (Decision 082). Every route but the open reads and the seat routes takes
+a bearer token (Decision 057) and counts against `USER_LIMITER`. Only
+`archive/files` calls archive.org, streaming one line's file.
 
 **Castable only.** A production is made from a script id, its revision, and
 its cast sheet (`[{ id, part }]`, every line in script order, `part` being
@@ -350,13 +358,40 @@ script's cast sheet; the title comes from the manifest, never from the client.
 disagree. A revision the Worker does not have is `409 revision_mismatch` with
 the current one.
 
-**Takes are objects.** Audio goes to the `TAKES` R2 bucket (free egress, 10 GB
-a month free); its D1 row holds the fields and the object key. D1's 500 MB a
-database holds under an hour of 24-bit mono at 48 kHz (144 KB a second), so audio never
-goes in it. R2 asks for a payment method on file even on its free tier
-(research 08c Q8), so the binding is commented out in `wrangler.toml` until the
-owner decides, and an upload answers `503 storage_not_configured` without it.
-The tests bind a local stand-in.
+**Takes pass through; nothing is kept** (Decision 082; owner 2026-11-19: *"We
+are using archive.org for storage, not cloudflare."*). No R2, no audio in D1,
+KV, or a Durable Object's storage, and no route serves take audio. A take's
+D1 row holds its fields only, written once the take reached the director's
+device. How a take moves:
+
+1. The director's device (the teacher's, for a class) holds a **pickup** open:
+   `GET /productions/:pid/takes/inbox`, a long poll answered with the next
+   take (its bytes, its fields in the `x-take` header) or `204` after 25
+   seconds. Up to 4 pickups at once.
+2. A member's or seat's `PUT .../takes/:takeId` is refused with `409
+   nobody_receiving` unless a pickup is waiting or the director's device was
+   there in the last 10 seconds (the gap between two polls); the take stays
+   on the recording device, which sends it again when both are present.
+3. The Worker reads the take's head (64 KiB) against its `Content-Length`
+   (required: `411 length_required`), judges the header (format, length,
+   size), then pipes the rest to the pickup one chunk at a time, pulled by the
+   director's reads. A body shorter or longer than declared errors the
+   director's stream and answers the sender `502 not_delivered`; nothing is
+   written.
+4. Delivered: `201` with the take and `delivered: true`, and the row is
+   written. The Worker kept nothing.
+
+**Memory.** One `TakeRelay` Durable Object per production, all in memory and
+never its storage. Each transfer holds the 64 KiB head and the chunk in the
+pipe; at most 4 transfers at once per production and one in flight per sender
+(`409 one_take_at_a_time`), so an object holds well under 1 MB of audio, never
+a whole take, against the isolate's 128 MB. A waiting sender's body is not
+read. An evicted object forgets its pickups, which only means the next take
+is refused until the director's device polls again.
+
+The **director's own take** is checked the same way and recorded, never
+relayed (`delivered: false`); so is a performer's replacement of a published
+line (P12), which then goes to archive.org from the performer's device.
 
 ### Endpoints
 
@@ -365,7 +400,7 @@ All under `/v1/plays`, all bearer except the open reads below. `:pid` is a produ
 
 | Method and path | Who | Body | Answer |
 |---|---|---|---|
-| `GET /consent` | anyone | | `{ version, text, uploads, publishes }`: the CC0 consent's version id, the owner's words, whether uploads are open, and whether Publish is (both archive.org keys set) |
+| `GET /consent` | anyone | | `{ version, text, uploads, publishes }`: the CC0 consent's version id, the owner's words, whether takes can pass through (the `TAKE_RELAY` binding), and whether Publish is (both archive.org keys set) |
 | `POST /productions` | anyone | `{ script_id, script_revision, cast, display_name? }` | `201` the record; the caller directs |
 | `GET /productions` | anyone | | `{ productions: [{ id, title, script_id, director, updated_at }] }`, the caller's |
 | `GET /productions/:pid` | a member | | the record (below) |
@@ -379,19 +414,45 @@ All under `/v1/plays`, all bearer except the open reads below. `:pid` is a produ
 | `POST /productions/:pid/parts/:part/reopen` | the part's performer or the director | | the record |
 | `POST /productions/:pid/parts/:part/release` | the claimant | | the part is open again; the record |
 | `POST /productions/:pid/consent` | a member | `{ version }` | `204`; `409 consent_version_mismatch` with the current version |
-| `PUT /productions/:pid/takes/:takeId` | the claimant; on a published item, the line's performer (a replacement) | the audio; `x-take: <the take's fields as JSON>` | `201` the take; a replacement also `403 not_your_take`, `409 consent_missing`, `409 removed_by_director` |
-| `GET /productions/:pid/takes/:takeId/audio` | a member who may see it | | the audio |
+| `PUT /productions/:pid/takes/:takeId` | the claimant; on a published item, the line's performer (a replacement); in a class production, the teacher (any line, `seat` in `x-take` to credit a seat) | the audio with its `Content-Length`; `x-take: <the take's fields as JSON>` | `201` the take with `delivered`; `409 nobody_receiving`, `409 one_take_at_a_time`, `502 not_delivered`, `411 length_required`; a replacement also `403 not_your_take`, `409 consent_missing`, `409 removed_by_director` |
+| `GET /productions/:pid/takes/inbox` | the director | | the next take: its bytes, `x-take` its fields (`id`, `lineID`, `part`, `file`, `frames`, `sampleRate`, `capture`, `seat`); `204` after 25 s with none; `409 too_many_pickups` past 4; `503 pass_through_unavailable` without `TAKE_RELAY` |
+| `PUT /productions/:pid/assignments` | the director of a class production | `{ assignments: [{ part, from?, to?, seat }] }`: the whole casting; `from`/`to` are lines of that part (a split by scene); no line twice | `{ assignments }`; `422 not_a_class_production`, `422 bad_assignments` |
+| `POST /productions/:pid/takes/:takeId/review` | the director of a class production | `{ state: "approved" or "again", note? }` (typed, up to 500 characters) | `{ take_id, state, note, reviewed_at }`; the latest review stands; the note is shown to that take's seat alone |
+| `PUT /productions/:pid/archive/files/:lineId` | the director, or the line's take's performer | the line's chosen take, with its `Content-Length` | `200 { line_id, state: "sent", name, archive }`; `409 not_ready` (the cron has not laid the item out), `409 already_sent`, `409 reported_take`, `422 not_the_take`, `503 archive_busy` (check_limit), `503 archive_unavailable` / `502 archive_refused` (archive.org's answer, redacted) |
 | `POST /productions/:pid/chosen` | the claimant | `{ take_id }` | the record |
-| `POST /productions/:pid/publish` | the director | | `201 { status: "queued", take_ids, created_at }`; again, `200` and the same job; after `failed`, `200` and queued again; `503 publishing_unavailable` without both keys |
+| `POST /productions/:pid/publish` | the director | a class production: `{ credit_name? }` | `201 { status: "queued", take_ids, created_at }`; again, `200` and the same job; after `failed`, `200` and queued again; `503 publishing_unavailable` without both keys; a class production also `403 under_13_never_published`, `422 credit_name_required` |
 | `POST /productions/:pid/archive/lines/:lineId/remove` | the line's performer, or the director | `{ reason? }`: `withdrawn` (default) or a report reason | `202 { line_id, state }`; `404 not_published` before the item is |
 | `POST /reports` | a member | `{ production_id, take_id }` or `{ production_id, user_id }`, `reason`, `note?` | `201 { id }` |
 | `POST /blocks`, `GET /blocks`, `DELETE /blocks/:userId` | anyone | `{ user_id }` | `204`; `{ blocked: [...] }`; `204` |
 | `POST /classes` | anyone (the teacher) | `{ name, under13? }` | `201 { id, name, code, under13, school_consent }` |
 | `GET /classes` | anyone | | `{ teaching, member_of }`; each taught class carries `code` and `school_consent` |
 | `POST /classes/join` | anyone with the code | `{ code, display_name? }` | `{ id, name, under13 }` |
-| `GET /classes/:id` | the teacher or a member | | the teacher sees the code and the roster; a student, the name |
+| `GET /classes/:id` | the teacher or a member | | the teacher sees the code, the account members, and `seats: [{ id, label, claimed, claimed_at }]`; a student, the name |
+| `POST /classes/:id/seats` | the teacher | `{ labels: [...] }` or `{ text: "a pasted list" }` (one a line, or tab or semicolon apart) | `201 { seats, refused: [{ label, error }] }`; a name already there is skipped; `409 too_many_seats` past 64 |
+| `DELETE /classes/:id/seats/:seat` | the teacher | | `204`; the seat's casting goes, its takes stay the teacher's |
+| `POST /classes/:id/seats/:seat/release` | the teacher | | `204`; the device holding it is let go and the next may take it |
+| `POST /classes/:id/productions` | the teacher | as `POST /productions` | `201` the record with `class_id`; every seat of the class is in it without an invite |
+| `GET /classes/:id/progress` | the teacher | | `{ class_id, productions: [{ id, title, seats: [{ seat, label, parts: [{ part, lines, recorded, approved, again }] }] }] }`: counts only, never a ranking |
 | `POST /classes/:id/school-consent` | the teacher | `{ reference? }` | `201`; `503 pending_owner_policy` until `SCHOOL_CONSENT_POLICY` is set |
 | `DELETE /classes/:id/members/:userId` | the teacher, or that student | | `204` |
+
+### Seats (no account; Decision 082)
+
+`/v1/plays/seat/...`, handled by `src/plays-seats.js` before the sign-in gate.
+A seat is a name the teacher typed; the student picks it with the class code
+and gets a **seat key** once (24 random bytes, stored as SHA-256), sent after
+that as `x-seat-key`. Listing and claiming count per address against
+`SEAT_JOIN_LIMITER` (a class's size a minute, against code guessing); every
+call with a key counts against `SEAT_LIMITER` by its seat, and a seat's takes
+against `PLAY_UPLOAD_LIMITER` by its seat, never by address.
+
+| Method and path | Body | Answer |
+|---|---|---|
+| `POST /seat/list` | `{ code }` | `{ class: { id, name }, seats: [{ id, label, taken }] }` |
+| `POST /seat/claim` | `{ code, seat, move? }` | `201 { seat_key, seat, class: { id, name, under13 } }`; `409 seat_in_use` when another device holds it, unless `move: true` ("Move here"), after which the other device's key stops working |
+| `GET /seat` | | `{ seat, class, productions: [{ id, title, scriptID, scriptRevision, assignments (this seat's), takes: [{ ...the take, chosen, review: { state, note, reviewed_at } or null }] }] }`; a released or moved key is `401 seat_key_required` |
+| `PUT /seat/productions/:pid/takes/:takeId` | the audio with its `Content-Length`; `x-take` | passes through to the teacher's device as above; `403 not_assigned` for a line outside the seat's assignments (or in a production with none), `403 school_consent_required` in an under-13 class until the school's consent is recorded (Decision 059) |
+| `POST /seat/productions/:pid/chosen` | `{ take_id }` (one of this seat's) | the seat's view; the student chooses which take is offered |
 
 A production the caller is not in, an unknown one, an invite that is unknown
 or blocked, and a hidden take all answer `404`, so none can be told apart. (A
@@ -403,15 +464,15 @@ revoked or expired invite is a plain `410` on the open read below; the signed-in
 *"On an invite link, they should be able to see everything. They just can't
 contribute until they sign in."* and *"Finished ear dramas should definitely be
 listed and credited. Why else would we record them?"* Four GET routes, handled
-by `src/plays-open.js` before the sign-in gate; each counts against a per-address
+by `src/plays-open.js` before the sign-in gate (three: the take audio route
+went with the R2 store, Decision 082); each counts against a per-address
 limiter, not `USER_LIMITER`, and answers `429` past it. Every other method on
 these paths is `401` like the rest of `/v1/plays`: claiming, recording,
 uploading, reporting and blocking need an account.
 
 | Method and path | Answer |
 |---|---|
-| `GET /open/invite` with header `x-invite: <token>` | the play: `{ id, scriptID, scriptRevision, title, source, parts: [{ id, lineCount, status, performer? }], members: [{ name, director }], takes: [{ id, lineID, part, frames, sampleRate, audio }], chosen, next, archive, expires_at, server_time }`; `Cache-Control: private, max-age=30` |
-| `GET /open/invite/takes/:takeId/audio` with the same header | a chosen, visible take's audio; `private, max-age=300` |
+| `GET /open/invite` with header `x-invite: <token>` | the play: `{ id, scriptID, scriptRevision, title, source, parts: [{ id, lineCount, status, performer? }], members: [{ name, director }], takes: [{ id, lineID, part, frames, sampleRate }], chosen, next, archive, expires_at, server_time }`; `Cache-Control: private, max-age=30` |
 | `GET /finished?limit=&cursor=` | `{ productions: [{ id, script_id, script_revision, title, source, credits: [{ part, name }], archive_url, published_at }], next_cursor }`; `limit` 1 to 50 (default 20); `Cache-Control: public, max-age=300, s-maxage=300` |
 | `GET /finished/:pid` | one of the above, `404` if it is not (or no longer) finished |
 
@@ -427,7 +488,7 @@ uploading, reporting and blocking need an account.
   set, so the rule is the strict one): a take anyone reported (even once the
   report is closed), every take by a person an open report names, and every take
   by anyone the inviter blocked or who blocked the inviter. Those takes are not
-  listed and their audio is `404`.
+  listed.
 - **Finished means** the archive job is `published` and at least one line is
   still on the item. The order is a stated rule: newest `published_at` first, ties
   by id descending, never engagement. The cursor is `published_at:id`.
@@ -460,8 +521,8 @@ false: listening through is the device's). A take carries `id`, `lineID`,
 `part`, `file`, `created`, `frames`, `sampleRate`, `capture`, `heard`,
 `loudness`, `peak`, and `bleed`. The Worker adds fields a phase 1 decoder
 ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
-`uploads` (whether the take store is configured: the owner's switch, so a client says "Uploads are off." before anyone records), `server_time`, `invites` (the director's view), and per take `user_id` and
-`audio` (its path), per part `user_id` and `claim_expires_at`.
+`uploads` (whether takes can pass through, so a client can say so before anyone records), `class_id`, `assignments` (a class production's), `reviews` (the director's view of a class production: take id to `{ state, note, reviewed_at }`), `server_time`, `invites` (the director's view), and per take `user_id` and
+`seat`, per part `user_id` and `claim_expires_at`. No take has an audio path: the audio is on the devices.
 
 ### Rules the clients rely on
 
@@ -479,8 +540,9 @@ ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
   stored as SHA-256. Revocable; expire after 1 to 30 days (7 by default).
   Clients should carry the token in a link's fragment so it never reaches a
   server log. A production holds at most 64 members.
-- **Takes.** Only the part's claimant uploads, only on a line of that part,
-  and only after consenting at the current version. A take is mono WAV or FLAC
+- **Takes.** Only the part's claimant uploads, only on a line of that part
+  (in a class production, a seat on its assigned lines, and the teacher on
+  any). A take passes through to the director's device (above). A take is mono WAV or FLAC
   and is read from its own header: at most 300 seconds (the longest castable
   speech, 644 words, is about 258 seconds at 150 words a minute) and 45 MB. A
   declared `frames` more than 50 ms from the audio, a `sampleRate` that
@@ -489,10 +551,9 @@ ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
   the device voice (PLAYS-DESIGN §5). A take id is used once: takes are
   immutable. A new take becomes its line's chosen take and the older ones
   stay; at most 10 takes a line. `PLAY_UPLOAD_LIMITER` counts uploads per
-  person.
+  person, and per seat.
 - **Blocks.** A person who blocks someone stops seeing that person's takes
-  (the record drops them and counts them in `hidden_takes`; their audio is
-  `404`). An invite made by either of two people with a block between them
+  (the record drops them and counts them in `hidden_takes`). An invite made by either of two people with a block between them
   does not work for the other. Blocking answers `204` whether or not the
   account exists.
 - **Reports.** A member reports a take or another member, with a reason
@@ -512,27 +573,37 @@ ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
   job, and only while both archive.org keys are set. The record's `archive`
   is `{ status, created_at, url, reason }`: `queued`, `uploading`,
   `published` (`url` is the item), or `failed` (`reason` says why).
-- **The uploader** (`plays-archive.js`, Decision 073). The cron takes jobs
-  whose backoff has passed and that no other run holds (a ten-minute lease),
-  at most 20 archive.org requests a run. A production is one item,
+- **The uploader** (`plays-archive.js`, Decision 073, Decision 082). The
+  Worker holds no audio, so the work is split. The cron takes jobs whose
+  backoff has passed and that no other run holds (a ten-minute lease), at most
+  20 archive.org requests a run: it lays a queued job out (one file row a
+  chosen take, `uploading`), carries out removals, and rewrites credits. The
+  director's device then sends each pending line's file to `archive/files`
+  (one at a time; `USER_LIMITER` paces a device at 120 calls a minute, so a
+  150-line play takes a little over a minute), which checks it is the chosen
+  take and streams it to archive.org; the last file sets the job `published`.
+  A production is one item,
   `eardrama-<pid, lowercased>`, in `opensource_audio`, with `mediatype`
   audio, the script's `title`, `source`, and rights evidence (`rights`),
   `creator` and `credits` from the performers' chosen names, `licenseurl` CC0
   1.0, and `date`. Each line's chosen take is one file, `NNNN-PART.ext` in
   script order; only the last file of a first upload asks archive.org to
-  derive. A file archive.org confirmed is `sent` and never sent again; a
-  retry lands on the same name. check_limit comes before uploading; 429,
-  5xx, and network errors back off (5 minutes, doubling, at most 12 hours)
-  and fail after 10; any other 4xx fails at once with archive.org's code.
+  derive. A file archive.org confirmed is `sent` and never sent again
+  (`409 already_sent`); a retry lands on the same name. check_limit comes
+  before a first upload's first file. A file archive.org refuses is answered
+  to the device (`502`, or `503` to try later) and fails nothing. For the
+  cron's removals and credits, 429, 5xx, and network errors back off (5
+  minutes, doubling, at most 12 hours) and give up after 10; any other 4xx
+  fails that line at once with archive.org's code.
   The keys go only in the `authorization: LOW` header and the metadata
   form, are never logged, and are redacted from any stored reason.
 - **Replace and remove (P12).** On a published item, the performer of a
-  line's take may upload a new take for that line (at the current consent)
-  and the uploader overwrites the file (a different format deletes the old
-  name first); the performer or the director may remove a line, and the
+  line's take may upload a new take for that line (at the current consent),
+  then send its file from their device, which overwrites the line's file (a
+  different format deletes the old name first); the performer or the director may remove a line, and the
   uploader deletes the file (`x-archive-cascade-delete`, a `404` counts as
   gone) and keeps `removed_by` and `reason`. A line the director removed is
-  not put back. A reported replacement is held until its report is closed.
+  not put back. A reported replacement is held until its report is closed (`409 reported_take`).
   When a performer has no line left, the item's credits are rewritten
   through the metadata write API. A refused change marks that line `failed`
   and leaves the item published.
@@ -542,6 +613,21 @@ ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
   be made only once the owner sets `SCHOOL_CONSENT_POLICY` to the privacy
   policy's version. `PLAY_JOIN_LIMITER` counts invite views, invite claims,
   and class joins per person.
+- **Class productions** (Decision 082). A class owns its productions: every
+  seat of the class sees them without an invite, and nobody outside the class
+  but its teacher. A production with assignments lets every assigned part
+  record at once (claims do not apply); one without keeps the one-part relay
+  (C7) for accounts and has nothing for a seat to record. A seat's take
+  belongs to the teacher's account (`user_id`) and names its seat (`seat_id`).
+  An under-13 class passes no seat's voice through until the school's consent
+  is recorded, which waits on the owner's policy (P5): until then it uses one
+  microphone, the teacher's device. **Publishing a class production**: only a
+  class marked 13 and over (`403 under_13_never_published` otherwise; the
+  teacher exports a file), every speaking line chosen, the teacher's own CC0
+  consent at the current version, and a name to credit (`credit_name`, which
+  passes the name filter and becomes the teacher's name in that production).
+  Every line on the item is credited to that name; no seat's label reaches
+  archive.org.
 
 ## Schema
 
@@ -559,11 +645,11 @@ Times are milliseconds.
 | `queue` | `(user_id, ord)` | `episode_id` |
 | `rooms` | `code` | `episode_id`, `archive_id`, `file`, `position`, `playing`, `rate`, `updated_at`, `generation`, `host_member`, `created_at`, `touched_at` |
 | `room_members` | `id` | `code`, `key_hash` (SHA-256 of the member key), `joined_at`, `seen_at` |
-| `play_productions` | `id` | `user_id` (the director), `script_id`, `script_revision`, `title`, `cast_sheet` (JSON `[[line id, part]]`), `created_at`, `updated_at` |
+| `play_productions` | `id` | `user_id` (the director), `script_id`, `script_revision`, `title`, `cast_sheet` (JSON `[[line id, part]]`), `created_at`, `updated_at`, `class_id` (a class production; deleted with the class) |
 | `play_members` | `(production_id, user_id)` | `display_name`, `joined_at` |
 | `play_invites` | `id` | `production_id`, `user_id` (its maker), `token_hash` (SHA-256), `created_at`, `expires_at`, `revoked` |
 | `play_parts` | `(production_id, part)` | `status` (`recording`, `done`, `silent`; no row is open), `user_id`, `claimed_at` |
-| `play_takes` | `(production_id, id)` | `user_id`, `line_id`, `part`, `file`, `object_key`, `content_type`, `bytes`, `frames`, `sample_rate`, `capture`, `heard`, `loudness`, `peak`, `created`, `uploaded_at`, `chosen` (one per line) |
+| `play_takes` | `(production_id, id)` | `user_id` (a seat's take: the teacher), `seat_id`, `line_id`, `part`, `file`, `content_type`, `bytes`, `frames`, `sample_rate`, `capture` (`direct`, `aec`, `room`), `heard`, `loudness`, `peak`, `created`, `uploaded_at`, `chosen` (one per line); no audio, no object key |
 | `play_consents` | `(user_id, production_id, version)` | `consented_at` |
 | `play_reports` | `id` | `user_id` (the reporter), `production_id`, `target_user_id` (cleared when that account goes), `take_id`, `reason`, `note`, `created_at`, `status` |
 | `play_blocks` | `(user_id, blocked_id)` | `created_at` |
@@ -572,12 +658,14 @@ Times are milliseconds.
 | `play_classes` | `id` | `user_id` (the teacher), `name`, `code`, `under13`, `created_at` |
 | `play_class_members` | `(class_id, user_id)` | `display_name`, `joined_at` |
 | `play_school_consents` | `class_id` | `user_id` (the teacher who recorded it), `policy_version`, `reference`, `recorded_at` |
-| `play_orphan_objects` | `object_key` | `queued_at` |
+| `play_class_seats` | `(class_id, id)` | `label` (unique in the class, any case), `key_hash` (SHA-256 of the seat key; null while free), `claimed_at`, `created_at`; no person column |
+| `play_assignments` | `(production_id, seq)` | `part`, `from_line`, `to_line`, `seat_id`; no person column |
+| `play_reviews` | `(production_id, take_id)` | `state` (`approved`, `again`), `note`, `reviewed_at`; no person column |
 
 No email, name, or address is stored, and no provider token. A person is a
-provider and that provider's opaque `sub`. The two room tables and
-`play_orphan_objects` hold no person at all: no `user_id` and no column that
-references `users`. `ANONYMOUS_TABLES` in `rooms.js` and
+provider and that provider's opaque `sub`. The two room tables, `read_rooms`,
+`play_archive_files`, and the seat, assignment and review tables hold no person at all: no `user_id` and no column that
+references `users`. `ANONYMOUS_TABLES` in `rooms.js`, `READ_ANONYMOUS_TABLES` in `read-rooms.js`, and
 `PLAYS_ANONYMOUS_TABLES` in `plays.js` name them, and the deletion test fails
 on a table that is in neither list nor `USER_TABLES`, or that gains a person
 column. The display names on plays are the one name a person chooses to show,
@@ -601,8 +689,10 @@ fills them):
 
 Bindings: `DB` (D1); `READ_ROOMS` (the `ReadRoom` Durable Object, migration tag
 `v1-read-rooms`, `new_sqlite_classes`; without it read rooms run on D1 polling);
-and `TAKES` (R2, take audio), which stays commented out in `wrangler.toml`;
-Decision 082 closes that path (storage is archive.org), so it is never turned on.
+and `TAKE_RELAY` (the `TakeRelay` Durable Object, migration tag `v2-take-relay`,
+`new_sqlite_classes`, in memory only; without it no take passes through:
+`uploads` is false and the inbox answers `503`). There is no R2 bucket: Decision
+082 removed the take store (storage is archive.org).
 
 A value starting `REPLACE_WITH` is never accepted as an audience, and a
 provider with no real audience answers `503 not_configured` rather than
@@ -628,19 +718,20 @@ for the window only):
 | `ROOM_CREATE_LIMITER` | client address | 10 a minute, opening a room |
 | `ROOM_JOIN_LIMITER` | client address | 20 a minute, joining; the floor under code guessing |
 | `ROOM_MEMBER_LIMITER` | member id | 60 a minute, each member's own calls, so one device cannot use up a household's share |
-| `PLAY_UPLOAD_LIMITER` | user id | 30 a minute, take uploads |
+| `PLAY_UPLOAD_LIMITER` | user id, or `seat:<class>:<seat>` | 30 a minute, take uploads |
 | `PLAY_JOIN_LIMITER` | user id | 20 a minute, invite views and claims and class joins |
 | `OPEN_READ_LIMITER` | client address | 60 a minute, an open invite's read and the finished listing, no account |
-| `OPEN_AUDIO_LIMITER` | client address | 300 a minute, an open invite's take audio (a play is hundreds of files) |
 | `READ_IP_LIMITER` | client address | 3,000 a minute, every read room route, in place of `EVERY_IP_LIMITER` (a class of 40 polling once a second behind one school address) |
 | `READ_JOIN_LIMITER` | client address | 60 a minute, joining a read room; a class's size, and the floor under code guessing |
 | `READ_MEMBER_LIMITER` | member id | 120 a minute, each member's polls and messages, socket or HTTP |
 | `READ_CREATE_LIMITER` | client address | 10 a minute, opening a read room |
+| `SEAT_JOIN_LIMITER` | client address | 60 a minute, listing and claiming seats by class code; the floor under code guessing |
+| `SEAT_LIMITER` | class and seat | 120 a minute, every call with a seat key |
 
 Every five minutes (`*/5 * * * *`) the cron runs only the archive.org
 uploader. The hourly one (`23 * * * *`) also deletes expired sessions, idle rooms, quiet
-room members, rooms left with no member, lapsed play claims, and expired
-invites, and retries take objects a deletion could not remove. A revoked session is
+room members, rooms left with no member, idle polled read rooms, lapsed play claims, and expired
+invites. A revoked session is
 kept until it would have expired, because it is what recognizes a replayed
 refresh token.
 
@@ -653,8 +744,8 @@ until a TV client signs in and the owner decides how they should.
 ```sh
 cd worker
 npm ci
-npm test                 # 341 tests in workerd with a local D1, a local Durable Object, a local R2 stand-in, and a fake archive.org
-npm run test:mutations   # 217 deliberate breaks; every one must turn the suite red
+npm test                 # 378 tests in workerd with a local D1, local Durable Objects, and a fake archive.org
+npm run test:mutations   # 247 deliberate breaks; every one must turn the suite red
 node test/mutations.mjs --check              # every break still matches its source, nothing run
 node test/mutations.mjs --only "name,name"   # just those, after fixing a survivor
 node tools/castable-manifest.mjs             # after every rebuild of the castable scripts
@@ -682,17 +773,28 @@ size, a lying header, stereo, an unknown format, a reused id, and the eleventh
 take of a line; the chosen take; reports and blocks hiding takes; the name
 filter and its controls; publishing queued, the request making no network call; under-13
 classes refused until a school consent exists, and that refused until the
-policy is set; the rate limits; deletion's director handoff, bucket cleanup,
-and orphan retry. The uploader (`test/archive.test.js`) runs against a fake
-archive.org that keeps every request: both keys or nothing; one item with its
-metadata from data; one file per line in script order, derived once; the
-request budget and check_limit; a 503 SlowDown backing off and resuming at the
-failed line with no line sent twice; giving up after ten tries and a second
-Publish resuming; a size refusal failing at once; the keys absent from every
-log, stored reason, and response; and P12's replace, replace in another
-format, who may replace or remove, held reports, the credits rewrite, a 404 on
-delete, a refused change, and the job passing with the production when the
-director's account goes. The scripts come from the castable file by their data,
+policy is set; the rate limits; deletion's director handoff. Takes passing
+through: a member's take reaching the waiting director byte for byte, refused
+at once with nobody receiving, a cut body never delivered, a reused id refused
+before any audio is read, the director's own take recorded and not relayed.
+Seats and classes (`test/seats.test.js`): a pasted roster, the seat limit, a
+seat key once and hashed, Move here, Release, class productions seen only by
+their class, assignments and scene ranges, seats' takes passing through with
+claims bypassed, one take in flight per seat, the under-13 refusal, review
+notes shown to their seat alone, progress counts, the teacher's 13-and-over
+publish under their own name with no seat's label on the item, limits by seat,
+seat keys in class read rooms on both transports, and that no route, table, or
+binding stores take audio. The uploader (`test/archive.test.js`) runs against
+a fake archive.org that keeps every request: both keys or nothing; the cron
+laying the item out with no request; one item with its metadata from data; one
+file per line from the device, streamed whole, in script order, derived once;
+check_limit before the first file; only the chosen take, from its director or
+performer; a 503 SlowDown answered to the device with no line sent twice; a
+refusal failing nothing; the cron's request budget, backoff, and giving up on
+removals; the keys absent from every log, stored reason, and response; and
+P12's replace, replace in another format, who may replace or remove, held
+reports, the credits rewrite, a 404 on delete, and the job passing with the
+production when the director's account goes. The scripts come from the castable file by their data,
 never by name.
 `.github/workflows/worker-test.yml` runs `npm test` on any change under
 `worker/`. It has no Cloudflare credential and no deploy step.
@@ -706,7 +808,8 @@ Each of these is the owner's, in this order. The repository cannot show which ar
 2. **Create the database**: `npx wrangler d1 create eardrama`, then put the
    printed `database_id` in `worker/wrangler.toml` (an id is not a secret).
 3. **Apply the schema**: `npx wrangler d1 migrations apply eardrama --remote`
-   (the migrations: accounts, rooms, plays, and the archive.org uploader).
+   (the migrations: accounts, rooms, plays, the archive.org uploader,
+   take-downs, read rooms, and seats with pass-through takes).
 4. **Sign in with Apple**: in the Apple Developer account, enable Sign in with
    Apple on `app.eardrama`; create a Services ID for the web and Android, with
    `eardrama.org` as its domain and return URL. Put the Services ID in
@@ -733,12 +836,13 @@ Each of these is the owner's, in this order. The repository cannot show which ar
    sends, and nothing else; deleted at once on request. Listen Together rooms
    store what an episode is doing and an anonymous member key's hash, no
    account or address, deleted when the room ends or after six idle hours.
-   Shared plays store the recordings a person uploads, the display name they
-   choose, their consent, reports and blocks they make, and class membership;
-   all deleted with the account.
+   Shared plays store each take's fields (never its audio, which passes
+   through to the director's device), the display name a person chooses,
+   their consent, reports and blocks they make, class membership, and a
+   class's seat names, casting and the teacher's review notes; all deleted
+   with the account (a class's with its teacher's).
 10. **Shared plays (M8)**, each listed with its default in
-    `docs/PLAYS-DESIGN.md` §11.6: decide on R2 (it asks for a payment method on
-    file), then create the bucket and uncomment `TAKES` in `wrangler.toml`;
+    `docs/PLAYS-DESIGN.md` §11.6 (R2 is no longer a question: Decision 082);
     approve the CC0 consent words and give them a new `CONSENT_VERSION`; replace
     the seed deny list in `plays-names.js` with a vetted one; decide how
     reports reach you and how fast they are answered (guideline 1.2); set

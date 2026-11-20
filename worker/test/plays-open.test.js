@@ -30,16 +30,14 @@ const setPart = (pid, part, status, userId) =>
     .bind(pid, part, status, userId, Date.now())
     .run();
 
-/** A take row for `line`, its audio in the bucket; chosen unless said otherwise. */
+/** A take row for `line` (its fields only: the Worker keeps no audio, Decision 082); chosen unless said otherwise. */
 async function seedTake(pid, userId, line, part, { chosen = 1, bytes = wav(4800) } = {}) {
   const id = newTakeId();
-  const key = `plays/${pid}/${id}`;
-  await env.TAKES.put(key, bytes, { httpMetadata: { contentType: "audio/wav" } });
   await env.DB.prepare(
-    "INSERT INTO play_takes (production_id, id, user_id, line_id, part, file, object_key, content_type, bytes, frames, sample_rate, capture, created, uploaded_at, chosen) " +
-      "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'audio/wav', ?8, 4800, 48000, 'direct', 0, ?9, ?10)",
+    "INSERT INTO play_takes (production_id, id, user_id, line_id, part, file, content_type, bytes, frames, sample_rate, capture, created, uploaded_at, chosen) " +
+      "VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'audio/wav', ?7, 4800, 48000, 'direct', 0, ?8, ?9)",
   )
-    .bind(pid, id, userId, line, part, `${id}.wav`, key, bytes.length, Date.now(), chosen)
+    .bind(pid, id, userId, line, part, `${id}.wav`, bytes.length, Date.now(), chosen)
     .run();
   return id;
 }
@@ -96,15 +94,11 @@ describe("an open invite is read without an account", () => {
     for (const id of [t.director.user_id, t.zoe.user_id]) expect(text).not.toContain(id);
   });
 
-  it("plays a take's audio without an account, and says how long a cache may keep it", async () => {
+  it("serves no take audio: the Worker keeps none (Decision 082)", async () => {
     const t = await setup("audio");
-    const r = await call("GET", `/v1/plays/open/invite/takes/${t.patTake}/audio`, asViewer(t.inv.token));
-    expect(r.status).toBe(200);
-    expect(r.headers.get("content-type")).toBe("audio/wav");
-    expect(r.headers.get("cache-control")).toBe("private, max-age=300");
-    expect((await r.arrayBuffer()).byteLength).toBe(wav(4800).length);
+    expect((await call("GET", `/v1/plays/open/invite/takes/${t.patTake}/audio`, asViewer(t.inv.token))).status).toBe(404);
     const view = (await (await open(t.inv.token)).json()).takes.find((x) => x.id === t.patTake);
-    expect(view.audio).toBe(`/v1/plays/open/invite/takes/${t.patTake}/audio`);
+    expect(view).toEqual({ id: t.patTake, lineID: t.patLine, part: firstPart, frames: 4800, sampleRate: 48000 });
   });
 
   it("sends cache headers on the read", async () => {
@@ -117,7 +111,6 @@ describe("an open invite is read without an account", () => {
     const older = await seedTake(t.p.id, t.director.user_id, t.patLine, firstPart, { chosen: 0 });
     const v = await (await open(t.inv.token)).json();
     expect(v.takes.map((x) => x.id)).not.toContain(older);
-    expect((await call("GET", `/v1/plays/open/invite/takes/${older}/audio`, asViewer(t.inv.token))).status).toBe(404);
   });
 
   it("does not make the viewer a member or claim anything", async () => {
@@ -161,14 +154,9 @@ describe("an open invite cannot contribute", () => {
 });
 
 describe("what an anonymous viewer never hears", () => {
-  const hearable = async (t, id) => {
-    const listed = (await (await open(t.inv.token)).json()).takes.some((x) => x.id === id);
-    const played = (await call("GET", `/v1/plays/open/invite/takes/${id}/audio`, asViewer(t.inv.token))).status === 200;
-    expect(listed).toBe(played);
-    return listed;
-  };
+  const hearable = async (t, id) => (await (await open(t.inv.token)).json()).takes.some((x) => x.id === id);
 
-  it("a reported take is hidden from the list and refused as audio, whoever reported it", async () => {
+  it("a reported take is hidden from the list, whoever reported it", async () => {
     const t = await setup("reported");
     expect(await hearable(t, t.zoeTake)).toBe(true);
     await report(t.director, t.p.id, { take: t.zoeTake, target: t.zoe.user_id });
@@ -206,21 +194,19 @@ describe("an invite that no longer works", () => {
     for (const token of ["x".repeat(43), "short", undefined]) expect((await open(token ?? "")).status).toBe(404);
   });
 
-  it("a revoked invite answers 410, for the read and for the audio", async () => {
+  it("a revoked invite answers 410", async () => {
     const t = await setup("revoked");
     const r = await call("DELETE", `/v1/plays/productions/${t.p.id}/invites/${t.inv.id}`, { token: t.director.access_token });
     expect(r.status).toBe(204);
     const gone = await open(t.inv.token);
     expect(gone.status).toBe(410);
     expect(await gone.json()).toEqual({ error: "invite_gone" });
-    expect((await call("GET", `/v1/plays/open/invite/takes/${t.patTake}/audio`, asViewer(t.inv.token))).status).toBe(410);
   });
 
   it("an expired invite answers 410, and a month later is forgotten (404)", async () => {
     const t = await setup("expired");
     await env.DB.prepare("UPDATE play_invites SET expires_at = ?2 WHERE id = ?1").bind(t.inv.id, Date.now() - DAY).run();
     expect((await open(t.inv.token)).status).toBe(410);
-    expect((await call("GET", `/v1/plays/open/invite/takes/${t.patTake}/audio`, asViewer(t.inv.token))).status).toBe(410);
     await sweepPlays(env);
     expect((await open(t.inv.token)).status).toBe(410);
     await env.DB.prepare("UPDATE play_invites SET expires_at = ?2 WHERE id = ?1").bind(t.inv.id, Date.now() - EXPIRED_INVITE_KEPT_MS - DAY).run();
@@ -239,13 +225,10 @@ describe("an invite that no longer works", () => {
 });
 
 describe("anonymous reads are rate limited", () => {
-  it("the read and the audio each answer 429 past their limit", async () => {
+  it("the read answers 429 past its limit", async () => {
     const t = await setup("limit");
     expect((await open(t.inv.token, { envOverride: { OPEN_READ_LIMITER: noLimit } })).status).toBe(429);
-    expect((await open(t.inv.token, { envOverride: { OPEN_AUDIO_LIMITER: noLimit } })).status).toBe(200);
-    const audio = (envOverride) => call("GET", `/v1/plays/open/invite/takes/${t.patTake}/audio`, { ...asViewer(t.inv.token), envOverride });
-    expect((await audio({ OPEN_AUDIO_LIMITER: noLimit })).status).toBe(429);
-    expect((await audio({ OPEN_READ_LIMITER: noLimit })).status).toBe(200);
+    expect((await open(t.inv.token)).status).toBe(200);
   });
 
   it("the finished listing is limited too", async () => {

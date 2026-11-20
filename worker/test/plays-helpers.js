@@ -93,14 +93,46 @@ export function flac(frames, { rate = 48000, channels = 1 } = {}) {
 let takeCounter = 0;
 export const newTakeId = () => `TAKE-${Date.now().toString(36)}-${(takeCounter++).toString(36).padStart(4, "0")}`;
 
-/** Uploads one take; `meta` overrides the x-take fields. */
-export function upload(s, pid, lineID, { id = newTakeId(), bytes = wav(48000), meta = {}, headers = {} } = {}) {
+/** Uploads one take; `meta` overrides the x-take fields. A real client sends the body's Content-Length. */
+export function upload(s, pid, lineID, { id = newTakeId(), bytes = wav(48000), meta = {}, headers = {}, envOverride } = {}) {
   const fields = { lineID, frames: 48000, sampleRate: 48000, capture: "direct", heard: {}, peak: 0.5, loudness: -18, bleed: false, ...meta };
   return call("PUT", `/v1/plays/productions/${pid}/takes/${id}`, {
     token: s.access_token,
     body: bytes,
-    headers: { "content-type": "audio/wav", "x-take": JSON.stringify(fields), ...headers },
+    envOverride,
+    headers: { "content-type": "audio/wav", "content-length": String(bytes.length), "x-take": JSON.stringify(fields), ...headers },
   }).then((r) => Object.assign(r, { takeId: id }));
+}
+
+/**
+ * The director's device waiting for takes (Decision 082): opens a pickup and
+ * resolves to what arrived: { status, take (the x-take fields), bytes }. A 204
+ * means the wait ended with nothing.
+ */
+export function receive(director, pid) {
+  return call("GET", `/v1/plays/productions/${pid}/takes/inbox`, { token: director.access_token }).then(async (r) => {
+    // A cut take errors the receiver's stream: what arrived is no take at all.
+    const bytes = r.status === 200 ? await r.arrayBuffer().then((b) => new Uint8Array(b), () => null) : null;
+    return { status: r.status, take: r.headers.get("x-take") ? JSON.parse(r.headers.get("x-take")) : null, bytes };
+  });
+}
+
+/** Waits until `waiting` pickups are held by the production's relay, so a send cannot race ahead of the receiver. */
+export async function waitForReceiver(pid, waiting = 1) {
+  const stub = env.TAKE_RELAY.get(env.TAKE_RELAY.idFromName(pid));
+  for (let i = 0; i < 1000; i++) {
+    if ((await (await stub.fetch("https://take-relay/status")).json()).waiting >= waiting) return;
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  throw new Error("the director's device never started waiting");
+}
+
+/** Sends one take while the director's device waits; resolves to [send response, what the director received]. */
+export async function relayed(director, sender, pid, lineID, opts = {}) {
+  const got = receive(director, pid);
+  await waitForReceiver(pid);
+  const sent = await upload(sender, pid, lineID, opts);
+  return [sent, await got];
 }
 
 /** Writes chosen takes straight into D1 for `lineIDs` (a long part, without uploading each line); a line already chosen keeps its take. */
@@ -108,10 +140,10 @@ export async function seedChosen(pid, userId, lineIDs, part) {
   const now = Date.now();
   const stmts = lineIDs.map((line, i) =>
     env.DB.prepare(
-      "INSERT INTO play_takes (production_id, id, user_id, line_id, part, file, object_key, content_type, bytes, frames, sample_rate, capture, created, uploaded_at, chosen) " +
-        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'audio/wav', 100, 48000, 48000, 'direct', 0, ?8, " +
+      "INSERT INTO play_takes (production_id, id, user_id, line_id, part, file, content_type, bytes, frames, sample_rate, capture, created, uploaded_at, chosen) " +
+        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'audio/wav', 100, 48000, 48000, 'direct', 0, ?7, " +
         "NOT EXISTS (SELECT 1 FROM play_takes WHERE production_id = ?1 AND line_id = ?4 AND chosen = 1))",
-    ).bind(pid, `SEED-${pid.slice(0, 8)}-${part.length}-${i}-${line}`, userId, line, part, `seed-${i}.wav`, `plays/${pid}/seed-${part}-${i}-${line}`, now),
+    ).bind(pid, `SEED-${pid.slice(0, 8)}-${part.length}-${i}-${line}`, userId, line, part, `seed-${i}.wav`, now),
   );
   for (let i = 0; i < stmts.length; i += 200) await env.DB.batch(stmts.slice(i, i + 200));
 }

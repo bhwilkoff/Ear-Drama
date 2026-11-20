@@ -9,6 +9,7 @@ import { CLAIM_TTL_MS, DIRECTIONS, SOUND, isSpeaking } from "../src/plays-relay.
 import { CONSENT_TEXT, CONSENT_VERSION, MAX_TAKES_PER_LINE, consentApproved, normalizeClassCode } from "../src/plays.js";
 import { nameRefusal } from "../src/plays-names.js";
 import { MAX_TAKE_BYTES, MAX_TAKE_SECONDS, readTakeAudio } from "../src/plays-audio.js";
+import { SEND_WAIT_MS } from "../src/take-relay.js";
 import {
   cast,
   catalog,
@@ -27,6 +28,8 @@ import {
   record,
   script,
   secondPart,
+  receive,
+  relayed,
   seedChosen,
   upload,
   wav,
@@ -135,7 +138,7 @@ describe("the production record (production.json field names)", () => {
     expect(a.status).toBe(201);
     await finishFirstPart(director, p.id);
     const actor = await castMember(director, p.id, secondPart);
-    const b = await upload(actor, p.id, linesFor(secondPart)[0]);
+    const [b] = await relayed(director, actor, p.id, linesFor(secondPart)[0]);
     expect(b.status).toBe(201);
     for (const viewer of [director, actor]) {
       const rec = await record(viewer, p.id);
@@ -346,7 +349,7 @@ describe("takes", () => {
     const actor = await castMember(director, p.id, secondPart);
     const r = await upload(director, p.id, linesFor(secondPart)[0]);
     expect(r.status).toBe(403);
-    expect((await upload(actor, p.id, linesFor(secondPart)[0])).status).toBe(201);
+    expect((await relayed(director, actor, p.id, linesFor(secondPart)[0]))[0].status).toBe(201);
   });
 
   it("go only on a line of the claimed part", async () => {
@@ -413,7 +416,7 @@ describe("takes", () => {
     expect(readTakeAudio(flac(123456, { rate: 44100 }))).toMatchObject({ frames: 123456, sampleRate: 44100, type: "audio/flac" });
   });
 
-  it("are immutable: a second upload with the same id is refused and the first audio stays", async () => {
+  it("are immutable: a second upload with the same id is refused and the first take's fields stay", async () => {
     const { director, p } = await recording("t-immutable");
     const line = linesFor(firstPart)[0];
     const id = newTakeId();
@@ -421,10 +424,9 @@ describe("takes", () => {
     expect((await upload(director, p.id, line, { id, bytes: first, meta: { frames: 4800 } })).status).toBe(201);
     const again = await upload(director, p.id, line, { id, bytes: wav(9600), meta: { frames: 9600 } });
     expect(again.status).toBe(409);
-    const audio = await call("GET", `/v1/plays/productions/${p.id}/takes/${id}/audio`, { token: director.access_token });
-    expect(audio.status).toBe(200);
-    expect(new Uint8Array(await audio.arrayBuffer()).length).toBe(first.length);
-    expect((await env.TAKES.list({ prefix: `plays/${p.id}/` })).objects.length).toBe(1);
+    expect((await again.json()).error).toBe("take_exists");
+    const row = await env.DB.prepare("SELECT bytes, frames FROM play_takes WHERE production_id = ?1 AND id = ?2").bind(p.id, id).first();
+    expect(row).toEqual({ bytes: first.length, frames: 4800 });
   });
 
   it("the newest becomes the line's chosen take, the older stays, and the claimant can choose it back", async () => {
@@ -450,35 +452,100 @@ describe("takes", () => {
     expect((await r.json()).error).toBe("too_many_takes");
   });
 
-  it("answer 503 when the bucket is not configured, and nothing is written", async () => {
-    const { director, p } = await recording("t-nobucket");
-    const r = await call("PUT", `/v1/plays/productions/${p.id}/takes/${newTakeId()}`, {
-      token: director.access_token,
-      body: wav(480),
-      headers: { "x-take": JSON.stringify({ lineID: linesFor(firstPart)[0] }) },
-      envOverride: { TAKES: undefined },
-    });
-    expect(r.status).toBe(503);
-    expect((await record(director, p.id)).takes).toEqual([]);
-  });
-
-  it("say whether uploads are open, in the record and the consent, so a client can say so before recording", async () => {
+  it("say whether takes can pass through, in the record and the consent, so a client can say so before recording", async () => {
     const { director, p } = await recording("t-switch");
-    const off = { token: director.access_token, envOverride: { TAKES: undefined } };
+    const off = { token: director.access_token, envOverride: { TAKE_RELAY: undefined } };
     expect((await record(director, p.id)).uploads).toBe(true);
     expect((await (await call("GET", `/v1/plays/productions/${p.id}`, off)).json()).uploads).toBe(false);
     expect((await (await call("GET", "/v1/plays/consent", off)).json()).uploads).toBe(false);
   });
 
-  it("audio is served to members only", async () => {
+  it("have no audio route: the Worker keeps no take audio to serve (Decision 082)", async () => {
     const { director, p } = await recording("t-audio");
     const up = await upload(director, p.id, linesFor(firstPart)[0]);
-    const stranger = await person("t-audio-stranger");
-    const path = `/v1/plays/productions/${p.id}/takes/${up.takeId}/audio`;
-    expect((await call("GET", path, { token: stranger.access_token })).status).toBe(404);
-    const r = await call("GET", path, { token: director.access_token });
-    expect(r.status).toBe(200);
-    expect(r.headers.get("content-type")).toBe("audio/wav");
+    expect(up.status).toBe(201);
+    expect((await call("GET", `/v1/plays/productions/${p.id}/takes/${up.takeId}/audio`, { token: director.access_token })).status).toBe(404);
+    expect((await record(director, p.id)).takes[0].audio).toBeUndefined();
+  });
+});
+
+describe("takes pass through to the director's device (Decision 082)", () => {
+  it("a member's take reaches the waiting director byte for byte, with its fields, and only its fields are written", async () => {
+    const { director, p } = await recording("pt-ok");
+    await finishFirstPart(director, p.id);
+    const actor = await castMember(director, p.id, secondPart);
+    const line = linesFor(secondPart)[0];
+    const bytes = wav(9600);
+    const [sent, got] = await relayed(director, actor, p.id, line, { bytes, meta: { frames: 9600 } });
+    expect(sent.status, await sent.clone().text()).toBe(201);
+    expect((await sent.json()).delivered).toBe(true);
+    expect(got.status).toBe(200);
+    expect(got.bytes).toEqual(bytes);
+    expect(got.take).toMatchObject({ id: sent.takeId, lineID: line, part: secondPart, frames: 9600, sampleRate: 48000 });
+    const cols = (await env.DB.prepare("PRAGMA table_info(play_takes)").all()).results.map((c) => c.name);
+    expect(cols).not.toContain("object_key");
+    expect((await env.DB.prepare("SELECT bytes FROM play_takes WHERE id = ?1").bind(sent.takeId).first()).bytes).toBe(bytes.length);
+  });
+
+  it("a reused take id is refused before any audio is read, receiver or not", async () => {
+    const { director, p } = await recording("pt-reuse");
+    await finishFirstPart(director, p.id);
+    const actor = await castMember(director, p.id, secondPart);
+    const [first] = await relayed(director, actor, p.id, linesFor(secondPart)[0]);
+    expect(first.status).toBe(201);
+    const again = await upload(actor, p.id, linesFor(secondPart)[0], { id: first.takeId });
+    expect(again.status).toBe(409);
+    expect((await again.json()).error).toBe("take_exists");
+  });
+
+  it("is refused with 409 when nobody is receiving, and nothing is written", async () => {
+    const { director, p } = await recording("pt-none");
+    await finishFirstPart(director, p.id);
+    const actor = await castMember(director, p.id, secondPart);
+    const t0 = Date.now();
+    const r = await upload(actor, p.id, linesFor(secondPart)[0]);
+    expect(r.status).toBe(409);
+    expect((await r.json()).error).toBe("nobody_receiving");
+    // At once: a sender waits for the director only while the director's device was just there.
+    expect(Date.now() - t0).toBeLessThan(SEND_WAIT_MS / 2);
+    expect((await record(director, p.id)).takes.filter((t) => t.part === secondPart)).toEqual([]);
+  });
+
+  it("only the director's device receives", async () => {
+    const { director, p } = await recording("pt-dir");
+    await finishFirstPart(director, p.id);
+    const actor = await castMember(director, p.id, secondPart);
+    expect((await call("GET", `/v1/plays/productions/${p.id}/takes/inbox`, { token: actor.access_token })).status).toBe(403);
+  });
+
+  it("the director's own take is checked and recorded, never relayed", async () => {
+    const { director, p } = await recording("pt-own");
+    const r = await upload(director, p.id, linesFor(firstPart)[0]);
+    expect(r.status).toBe(201);
+    expect((await r.json()).delivered).toBe(false);
+  });
+
+  it("a body that runs short of its Content-Length is not delivered and not written", async () => {
+    const { director, p } = await recording("pt-short");
+    await finishFirstPart(director, p.id);
+    const actor = await castMember(director, p.id, secondPart);
+    const bytes = wav(9600);
+    const short = bytes.slice(0, bytes.length - 100);
+    const [sent, got] = await relayed(director, actor, p.id, linesFor(secondPart)[0], {
+      bytes: short,
+      meta: { frames: undefined },
+      headers: { "content-length": String(bytes.length) },
+    });
+    expect(sent.status).toBe(502);
+    expect((await sent.json()).error).toBe("not_delivered");
+    expect(got.bytes).toBeNull();
+    expect((await record(director, p.id)).takes.filter((t) => t.part === secondPart)).toEqual([]);
+  });
+
+  it("are refused without a Content-Length, which a take must declare to be checked from its head", async () => {
+    const { director, p } = await recording("pt-length");
+    const r = await upload(director, p.id, linesFor(firstPart)[0], { headers: { "content-length": "" } });
+    expect([400, 411]).toContain(r.status);
   });
 });
 
@@ -487,15 +554,13 @@ describe("blocks and reports (App Store guideline 1.2)", () => {
     const { director, p } = await recording("b-hide");
     await finishFirstPart(director, p.id);
     const actor = await castMember(director, p.id, secondPart);
-    const up = await upload(actor, p.id, linesFor(secondPart)[0]);
-    const path = `/v1/plays/productions/${p.id}/takes/${up.takeId}/audio`;
+    const [up] = await relayed(director, actor, p.id, linesFor(secondPart)[0]);
     expect((await record(director, p.id)).takes.map((t) => t.id)).toContain(up.takeId);
     expect((await call("POST", "/v1/plays/blocks", { token: director.access_token, body: { user_id: actor.user_id } })).status).toBe(204);
     const rec = await record(director, p.id);
     expect(rec.takes.map((t) => t.id)).not.toContain(up.takeId);
     expect(rec.chosen[linesFor(secondPart)[0]]).toBeUndefined();
     expect(rec.hidden_takes).toBe(1);
-    expect((await call("GET", path, { token: director.access_token })).status).toBe(404);
     expect((await record(actor, p.id)).takes.map((t) => t.id)).toContain(up.takeId);
     expect((await call("GET", "/v1/plays/blocks", { token: director.access_token })).json()).resolves.toEqual({ blocked: [actor.user_id] });
     await call("DELETE", `/v1/plays/blocks/${actor.user_id}`, { token: director.access_token });
@@ -529,7 +594,7 @@ describe("blocks and reports (App Store guideline 1.2)", () => {
     const { director, p } = await recording("r-take");
     await finishFirstPart(director, p.id);
     const actor = await castMember(director, p.id, secondPart);
-    const up = await upload(actor, p.id, linesFor(secondPart)[0]);
+    const [up] = await relayed(director, actor, p.id, linesFor(secondPart)[0]);
     const r = await call("POST", "/v1/plays/reports", {
       token: director.access_token,
       body: { production_id: p.id, take_id: up.takeId, reason: "offensive", note: "shouting a slur" },

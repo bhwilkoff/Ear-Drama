@@ -199,30 +199,65 @@ describe("read rooms over the Durable Object", () => {
     expect(s.you.parts).toEqual([{ part: speaking[0], from: null, to: null }]);
   });
 
-  it("a class room is opened only by the class's teacher, and its readers join by seat", async () => {
+  it("a class room is opened only by the class's teacher, and its readers join by seat with the seat's key", async () => {
     installProviderKeys();
     const t = await signIn("teacher-read-1");
     const other = await signIn("someone-else-read-1");
     const c = await (await call("POST", "/v1/plays/classes", { token: t.access_token, body: { name: "Room 12" } })).json();
-    const seats = [{ id: "s1", label: "Lucy" }, { id: "s2", label: "Tom" }];
-    const assignments = [{ part: speaking[0], seat: "s1" }];
-    const klass = { kind: "class", class_id: c.id, seats, assignments };
+    const roster = (await (await call("POST", `/v1/plays/classes/${c.id}/seats`, { token: t.access_token, body: { labels: ["Lucy", "Tom"] } })).json()).seats;
+    const [s1, s2] = roster.map((x) => x.id);
+    const made = await call("POST", `/v1/plays/classes/${c.id}/productions`, { token: t.access_token, body: body() });
+    expect(made.status).toBe(201);
+    const pid = (await made.json()).id;
+    expect((await call("PUT", `/v1/plays/productions/${pid}/assignments`, { token: t.access_token, body: { assignments: [{ part: speaking[0], seat: s1 }] } })).status).toBe(200);
+    const seatKey = async (seat, move) => {
+      const r = await call("POST", "/v1/plays/seat/claim", { body: { code: c.code, seat, move } });
+      expect(r.status, await r.clone().text()).toBe(201);
+      return (await r.json()).seat_key;
+    };
+    const lucyKey = await seatKey(s1);
+    const tomKey = await seatKey(s2);
+    // Seats and casting in the request are ignored: the room takes the class's roster and the production's assignments.
+    const klass = { kind: "class", class_id: c.id, production_id: pid, seats: [{ id: "fake", label: "Mallory" }], assignments: [] };
     expect((await read("POST", "", { body: body(klass) })).status).toBe(401);
     expect((await read("POST", "", { body: body(klass), token: other.access_token })).status).toBe(403);
     const h = await open(klass, { token: t.access_token });
     expect(h.kind).toBe("class");
+    expect(h.seats.map((x) => x.label)).toEqual(["Lucy", "Tom"]);
     expect((await read("POST", `/${h.code}/join`, { body: {} })).status).toBe(400);
-    const lucy = await enter(h.code, { seat: "s1" });
+    const keyless = await read("POST", `/${h.code}/join`, { body: { seat: s1 } });
+    expect(keyless.status).toBe(403);
+    expect((await keyless.json()).error).toBe("seat_key_required");
+    expect((await read("POST", `/${h.code}/join`, { body: { seat: s1, seat_key: tomKey } })).status).toBe(403);
+    const lucy = await enter(h.code, { seat: s1, seat_key: lucyKey });
     expect(lucy.you.parts).toEqual([{ part: speaking[0], from: null, to: null }]);
     expect(lucy.next_mine.line).toBe(linesFor(speaking[0])[0]);
-    const second = await read("POST", `/${h.code}/join`, { body: { seat: "s1" } });
+    const second = await read("POST", `/${h.code}/join`, { body: { seat: s1, seat_key: lucyKey } });
     expect((await second.json()).error).toBe("seat_in_use");
-    const moved = await enter(h.code, { seat: "s1", move: true });
-    expect(moved.you.seat).toBe("s1");
+    // Move here: a second device takes the seat with a new key, and the first device's key stops opening it.
+    const movedKey = await seatKey(s1, true);
+    expect((await read("POST", `/${h.code}/join`, { body: { seat: s1, seat_key: lucyKey, move: true } })).status).toBe(403);
+    const moved = await enter(h.code, { seat: s1, seat_key: movedKey, move: true });
+    expect(moved.you.seat).toBe(s1);
     expect((await poll(h.code, lucy.member_key)).you.seat).toBe(null);
     expect((await send(h.code, lucy.member_key, { type: "claim", part: speaking[1] })).status).toBe(403);
+    // Taking a seat inside the room needs that seat's key too.
+    const tom = await enter(h.code, { seat: s2, seat_key: tomKey });
+    const grab = await send(h.code, tom.member_key, { type: "seat", seat: s1, move: true });
+    expect(grab.status).toBe(403);
+    expect((await grab.json()).error).toBe("seat_key_required");
     const screen = await enter(h.code, { role: "screen" });
     expect(screen.you.role).toBe("screen");
+  });
+
+  it("a class room's production must be that class's, of the same script", async () => {
+    installProviderKeys();
+    const t = await signIn("teacher-read-2");
+    const c = await (await call("POST", "/v1/plays/classes", { token: t.access_token, body: { name: "Room 13" } })).json();
+    const loose = await (await call("POST", "/v1/plays/productions", { token: t.access_token, body: body() })).json();
+    const r = await read("POST", "", { body: body({ kind: "class", class_id: c.id, production_id: loose.id }), token: t.access_token });
+    expect(r.status).toBe(404);
+    expect((await r.json()).error).toBe("no_such_production");
   });
 
   it("the leader ends the room for everyone", async () => {

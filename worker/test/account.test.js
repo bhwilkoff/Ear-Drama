@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { call, env, installProviderKeys, signIn } from "./helpers.js";
 import { OTHER_PERSON_COLUMNS, USER_TABLES } from "../src/account.js";
 import { ANONYMOUS_TABLES as ROOM_TABLES } from "../src/rooms.js";
-import { DELETED_PERSON, PLAYS_ANONYMOUS_TABLES, sweepPlays } from "../src/plays.js";
-import { claimByInvite, consent, createProduction, firstPart, invite, linesFor, record, upload } from "./plays-helpers.js";
+import { DELETED_PERSON, PLAYS_ANONYMOUS_TABLES } from "../src/plays.js";
+import { claimByInvite, consent, createProduction, firstPart, invite, linesFor, record, relayed, upload } from "./plays-helpers.js";
 
 import { TAKEDOWN_ANONYMOUS_TABLES } from "../src/takedown.js";
 import { READ_ANONYMOUS_TABLES } from "../src/read-rooms.js";
@@ -58,11 +58,6 @@ async function rowsFor(userId) {
     out[t] = (await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE ${where}`).bind(userId).first()).n;
   }
   return out;
-}
-
-/** Take objects in the bucket for one production. */
-async function objectsIn(pid) {
-  return (await env.TAKES.list({ prefix: `plays/${pid}/` })).objects.map((o) => o.key);
 }
 
 let partnerCount = 0;
@@ -157,30 +152,13 @@ describe("account deletion (App Store 5.1.1(v))", () => {
     for (const [t, n] of Object.entries(rows)) expect(n, t).toBeGreaterThan(0);
   });
 
-  it("deletion removes the person's take audio from the bucket", async () => {
-    const s = await signIn("del-audio");
-    const { production } = await fillPlays(s);
-    expect((await objectsIn(production.id)).length).toBe(1);
+  it("a class's seats, casting and reviews go with its teacher's account", async () => {
+    const s = await signIn("del-seats");
+    const c = await (await call("POST", "/v1/plays/classes", { token: s.access_token, body: { name: "Room 9" } })).json();
+    expect((await call("POST", `/v1/plays/classes/${c.id}/seats`, { token: s.access_token, body: { labels: ["Lucy", "Tom"] } })).status).toBe(201);
+    expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM play_class_seats WHERE class_id = ?1").bind(c.id).first()).n).toBe(2);
     expect((await call("DELETE", "/v1/account", { token: s.access_token })).status).toBe(200);
-    expect(await objectsIn(production.id)).toEqual([]);
-  });
-
-  it("a failed bucket deletion is queued and the sweep finishes it; the rows still go", async () => {
-    const s = await signIn("del-audio-fail");
-    const { production } = await fillPlays(s);
-    const failing = {
-      delete: async () => {
-        throw new Error("bucket down");
-      },
-    };
-    expect((await call("DELETE", "/v1/account", { token: s.access_token, envOverride: { TAKES: failing } })).status).toBe(200);
-    for (const [t, n] of Object.entries(await rowsFor(s.user_id))) expect(n, t).toBe(0);
-    const queued = (await env.DB.prepare("SELECT object_key FROM play_orphan_objects").all()).results.map((r) => r.object_key);
-    const [key] = await objectsIn(production.id);
-    expect(queued).toContain(key);
-    await sweepPlays(env);
-    expect(await objectsIn(production.id)).toEqual([]);
-    expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM play_orphan_objects").first()).n).toBe(0);
+    expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM play_class_seats WHERE class_id = ?1").bind(c.id).first()).n).toBe(0);
   });
 
   it("a director's production with others in it passes to the first to join, with their takes", async () => {
@@ -190,13 +168,12 @@ describe("account deletion (App Store 5.1.1(v))", () => {
     const inv = await invite(director, p.id);
     expect((await claimByInvite(actor, inv.token, firstPart, { display_name: "Pat" })).status).toBe(200);
     expect((await consent(actor, p.id)).status).toBe(204);
-    const up = await upload(actor, p.id, linesFor(firstPart)[0]);
+    const [up] = await relayed(director, actor, p.id, linesFor(firstPart)[0]);
     expect(up.status).toBe(201);
     expect((await call("DELETE", "/v1/account", { token: director.access_token })).status).toBe(200);
     const rec = await record(actor, p.id);
     expect(rec.director).toBe(actor.user_id);
     expect(rec.takes.map((t) => t.id)).toEqual([up.takeId]);
-    expect((await objectsIn(p.id)).length).toBe(1);
   });
 
   it("a submitted production stays when its only member deletes their account; an unsubmitted one goes", async () => {
@@ -204,19 +181,17 @@ describe("account deletion (App Store 5.1.1(v))", () => {
     const { production, filed } = await fillPlays(s);
     const taken = await env.DB.prepare("SELECT COUNT(*) AS n FROM play_takes WHERE production_id = ?1").bind(filed.id).first();
     await env.DB.prepare(
-      "INSERT INTO play_takes (production_id, id, user_id, line_id, part, file, object_key, content_type, bytes, frames, sample_rate, capture, created, uploaded_at, chosen) " +
-        "VALUES (?1, 'T1', ?2, 'L1', 'P', 'T1.wav', ?3, 'audio/wav', 1, 1, 48000, 'direct', 0, 1, 1)",
+      "INSERT INTO play_takes (production_id, id, user_id, line_id, part, file, content_type, bytes, frames, sample_rate, capture, created, uploaded_at, chosen) " +
+        "VALUES (?1, 'T1', ?2, 'L1', 'P', 'T1.wav', 'audio/wav', 1, 1, 48000, 'direct', 0, 1, 1)",
     )
-      .bind(filed.id, s.user_id, `plays/${filed.id}/T1`)
+      .bind(filed.id, s.user_id)
       .run();
-    await env.TAKES.put(`plays/${filed.id}/T1`, new Uint8Array(4));
     expect(taken.n).toBe(0);
     expect((await call("DELETE", "/v1/account", { token: s.access_token })).status).toBe(200);
     expect(await env.DB.prepare("SELECT id FROM play_productions WHERE id = ?1").bind(production.id).first()).toBeNull();
     expect((await env.DB.prepare("SELECT user_id FROM play_productions WHERE id = ?1").bind(filed.id).first()).user_id).toBe(DELETED_PERSON);
     expect((await env.DB.prepare("SELECT user_id FROM play_archive_jobs WHERE production_id = ?1").bind(filed.id).first()).user_id).toBe(DELETED_PERSON);
     expect((await env.DB.prepare("SELECT user_id FROM play_takes WHERE production_id = ?1").bind(filed.id).first()).user_id).toBe(DELETED_PERSON);
-    expect(await objectsIn(filed.id)).toEqual([`plays/${filed.id}/T1`]);
     expect(await env.DB.prepare("SELECT 1 FROM identities WHERE user_id = ?1 OR user_id = ?2").bind(s.user_id, DELETED_PERSON).first()).toBeNull();
   });
 
