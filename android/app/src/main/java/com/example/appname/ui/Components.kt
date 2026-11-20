@@ -55,6 +55,7 @@ import com.example.appname.data.EpisodeDetail
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.PersonRow
 import com.example.appname.data.SeriesRow
+import com.example.appname.data.labelItem
 import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
 import java.util.Locale
@@ -342,7 +343,7 @@ fun EpisodeListItem(
         GrammarRow(
             title = title,
             visual = { m ->
-                if (showSeries || undatedBare(row.airDate, row.num)) PictureWindow(row.seriesWindowArt, row.seriesName, row.seriesGenre, m)
+                if (showSeries || undatedBare(row.airDate, row.num)) PictureWindow(row.seriesWindowArt, row.seriesName, row.seriesGenre, m, label = row.labelItem())
                 else DateBlock(row.airDate, row.num, row.seriesGenre, m)
             },
             onOpen = onOpen,
@@ -386,7 +387,7 @@ fun SeriesKeyWindow(key: String, name: String, modifier: Modifier = Modifier) {
     val row by produceState<SeriesRow?>(null, key, dbVersion) {
         value = if (key.isEmpty()) null else container.catalog.awaitDb()?.series(key)
     }
-    PictureWindow(row?.windowArt, name, row?.genre, modifier)
+    PictureWindow(row?.windowArt, name, row?.genre, modifier, label = row?.labelItem())
 }
 
 fun episodeCount(n: Int): String = "%,d %s".format(n, if (n == 1) "episode" else "episodes")
@@ -396,7 +397,7 @@ fun episodeCount(n: Int): String = "%,d %s".format(n, if (n == 1) "episode" else
 fun SeriesListItem(row: SeriesRow, onOpen: () -> Unit) {
     GrammarRow(
         title = row.name,
-        visual = { m -> PictureWindow(row.windowArt, row.name, row.genre, m) },
+        visual = { m -> PictureWindow(row.windowArt, row.name, row.genre, m, label = row.labelItem()) },
         onOpen = onOpen,
         sub = listOf(seriesYears(row), episodeCount(row.episodes)),
         openLabel = "Open series",

@@ -95,9 +95,9 @@ final class AudioPlayer {
     /// A follower started something of its own (another episode, or the
     /// headphones came out): it leaves the room rather than fight the host.
     @ObservationIgnored var onLeaveRoom: () -> Void = {}
-    /// The series' typographic card as an image, for an episode with no face;
+    /// The episode's own label as an image (Decision 081), for an episode with no picture;
     /// drawn by the app (SwiftUI), since the player knows no views.
-    @ObservationIgnored var cardImage: (EpisodeRow) -> CGImage? = { _ in nil }
+    @ObservationIgnored var cardImage: (EpisodeRow) async -> CGImage? = { _ in nil }
     @ObservationIgnored private var artwork: MPMediaItemArtwork?
     /// A follower held (true) or released (false) their own sound; the room
     /// catches them up on release.
@@ -751,7 +751,7 @@ final class AudioPlayer {
     // MARK: - Now Playing and remote commands
 
     /// The lock screen's picture is the one Now Playing draws (Decision 069, D3-4):
-    /// the show's picture, else its star's, at Commons' 500 step, else the typographic card.
+    /// the show's picture, else its star's, at Commons' 500 step, else the episode's own label.
     private func loadArtwork(for item: Item?) {
         artwork = nil
         guard let item else { return }
@@ -769,7 +769,8 @@ final class AudioPlayer {
                 }
             }
             guard let self, self.item?.episode.id == id else { return }
-            guard let image = image ?? self.cardImage(item.episode) else { return }
+            let drawn: CGImage? = if let image { image } else { await self.cardImage(item.episode) }
+            guard let image = drawn else { return }
             self.artwork = Self.mediaArtwork(image)
             self.publishNowPlaying()
         }

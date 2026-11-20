@@ -491,7 +491,7 @@ class PlaybackEngine(
     }
 
     /**
-     * A downloaded file's lock-screen picture is the typographic card, drawn on
+     * A downloaded file's lock-screen picture is the episode's own label, drawn on
      * the device, so it shows with no network (a portrait is a URL to fetch).
      */
     private fun mediaItem(row: EpisodeRow, source: PlaybackSource, face: Face?, card: Boolean, copyUrl: String): MediaItem {
@@ -513,8 +513,8 @@ class PlaybackEngine(
                 .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE)
                 .let {
                     when {
-                        isLocal -> SessionArtwork.apply(it, row, null)
-                        face != null || card -> SessionArtwork.apply(it, row, face)
+                        isLocal -> SessionArtwork.apply(it, context, row, null)
+                        face != null || card -> SessionArtwork.apply(it, context, row, face)
                         else -> it
                     }
                 }

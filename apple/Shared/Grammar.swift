@@ -103,70 +103,14 @@ private struct GradedImage: View {
 
 // MARK: - The window
 
-/// The monogram as an outline: a Core Text glyph path in Big Shoulders, baseline at 93 % and
-/// start at 9 % of the window, `blockSize` hundredths of it tall.
-nonisolated private struct MonogramShape: Shape {
-    let text: String
-    /// A round window: the ink's own box (cap height, not the line box) centered in the circle, set at
-    /// 70 % so its corners stay inside it.
-    var centered = false
-
-    func path(in rect: CGRect) -> Path {
-        let side = min(rect.width, rect.height)
-        let size = side * CGFloat(Grammar.blockSize(text)) / 100 * (centered ? 0.7 : 1)
-        let font = CTFontCreateWithName(TypeRamp.displayFontName as CFString, size, nil)
-        let chars = Array(text.utf16)
-        var glyphs = [CGGlyph](repeating: 0, count: chars.count)
-        guard !chars.isEmpty, CTFontGetGlyphsForCharacters(font, chars, &glyphs, chars.count) else { return Path() }
-        var advances = [CGSize](repeating: .zero, count: chars.count)
-        CTFontGetAdvancesForGlyphs(font, .horizontal, glyphs, &advances, chars.count)
-        let path = CGMutablePath()
-        var x = rect.minX + side * 0.09
-        let baseline = rect.minY + side * 0.93
-        for (glyph, advance) in zip(glyphs, advances) {
-            if let outline = CTFontCreatePathForGlyph(font, glyph, nil) {
-                path.addPath(outline, transform: CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: x, ty: baseline))
-            }
-            x += advance.width + size * 0.02
-        }
-        if centered {
-            let box = path.boundingBoxOfPath
-            var move = CGAffineTransform(translationX: rect.midX - box.midX, y: rect.midY - box.midY)
-            return Path(path.copy(using: &move) ?? path)
-        }
-        return Path(path)
-    }
-}
-
-/// The designed fallback: the name's monogram, outlined in the board's color on the board. The
-/// name is never drawn twice, so the window is hidden from accessibility and the row says it.
+/// The designed fallback (Decision 081): the label, drawn from the item's own data on its genre's board
+/// (`LabelView`). The name is never drawn twice beyond its monogram, so the window is hidden from
+/// accessibility and the row says it.
 struct TitleBlock: View {
-    let name: String
-    let genre: String?
-    var centered = false
-    /// The window's side: past `tonalSide` a hairline reads as a wireframe, so the letters are filled.
-    var side: CGFloat = 0
+    let item: LabelItem
+    let side: CGFloat
 
-    #if os(macOS)
-    static let tonalSide: CGFloat = .infinity
-    #else
-    static let tonalSide: CGFloat = 200
-    #endif
-
-    var body: some View {
-        ZStack {
-            Color.board(genre)
-            if side >= Self.tonalSide {
-                MonogramShape(text: Grammar.monogram(name), centered: true).fill(Color.onBoard(genre).opacity(0.16))
-            } else if genre == nil {
-                // No genre is the pale ground: a thin outline on it all but vanishes, so the letter is cut solid.
-                MonogramShape(text: Grammar.monogram(name), centered: centered).fill(Color.onBoard(nil).opacity(0.78))
-            } else {
-                MonogramShape(text: Grammar.monogram(name), centered: centered)
-                    .stroke(Color.onBoard(genre), style: StrokeStyle(lineWidth: 1.4, lineJoin: .round))
-            }
-        }
-    }
+    var body: some View { LabelView(item: item, side: side) }
 }
 
 /// The one square slot (R11b): the series' picture cropped around its face, or drawn whole inside
@@ -177,15 +121,23 @@ struct PictureWindow: View {
     let genre: String?
     let side: CGFloat
     var round = false
+    /// What the label draws when the window holds no picture: an episode's with its own date, a show's with
+    /// its run and network; by default the show (or, in a round window, the person) from `name` and `genre`.
+    var label: LabelItem? = nil
     @Environment(\.displayScale) private var scale
     @State private var failed = false
+
+    private var labelItem: LabelItem {
+        if var label { label.name = label.name ?? name; label.genre = label.genre ?? genre; return label }
+        return LabelItem(kind: round ? .person : .series, name: name, genre: genre)
+    }
 
     var body: some View {
         let fill = failed ? Grammar.WindowFill.block : Grammar.windowFill(art, slot: Double(side))
         ZStack {
             switch fill {
             case .block:
-                TitleBlock(name: name, genre: genre, centered: round, side: side)
+                TitleBlock(item: labelItem, side: side)
             case let .crop(r):
                 Color.printGround
                 if let art { crop(art, r) }
@@ -198,9 +150,7 @@ struct PictureWindow: View {
         .clipShape(round ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 4)))
         .overlay {
             let edge = fill == .block ? Color.onBoard(genre).opacity(0.32) : Color.printEdge
-            if fill == .block, side >= TitleBlock.tonalSide {
-                // A filled letter on its own board needs no frame; a hairline here reads as a wireframe.
-            } else if round {
+            if round {
                 Circle().strokeBorder(edge, lineWidth: 1)
             } else {
                 RoundedRectangle(cornerRadius: 4).strokeBorder(edge, lineWidth: 1)
@@ -454,7 +404,7 @@ struct ShowTile: View {
             if let cast = cast ?? castScript.map(CastSummary.init(script:)) {
                 CastWindow(cast: cast, genre: series.genre, side: width - 12)
             } else {
-                PictureWindow(art: series.windowArt, name: series.name, genre: series.genre, side: width - 12)
+                PictureWindow(art: series.windowArt, name: series.name, genre: series.genre, side: width - 12, label: series.labelItem)
             }
             Text(verbatim: series.name.uppercased())
                 .font(GrammarType.tileName(step: Grammar.nameStep(series.name)))
@@ -633,7 +583,7 @@ struct SeriesKeyWindow: View {
     @State private var row: SeriesRow?
 
     var body: some View {
-        PictureWindow(art: row?.windowArt, name: name, genre: row?.genre, side: side)
+        PictureWindow(art: row?.windowArt, name: name, genre: row?.genre, side: side, label: row?.labelItem)
             .task(id: key) {
                 guard !key.isEmpty else { return }
                 row = await catalog.series([key]).first

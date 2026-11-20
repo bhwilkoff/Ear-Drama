@@ -67,6 +67,7 @@ import com.example.appname.playback.SleepMode
 import com.example.appname.playback.SleepState
 import com.example.appname.together.RoomStatus
 import com.example.appname.data.Transcript
+import com.example.appname.data.labelItem
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import com.example.appname.navigation.SiteLinks
@@ -118,7 +119,7 @@ fun MiniPlayer(onExpand: () -> Unit) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 GrammarRow(
                     title = title,
-                    visual = { m -> PictureWindow(episode.seriesWindowArt, episode.seriesName, episode.seriesGenre, m) },
+                    visual = { m -> PictureWindow(episode.seriesWindowArt, episode.seriesName, episode.seriesGenre, m, label = episode.labelItem()) },
                     onOpen = onExpand,
                     modifier = Modifier.weight(1f),
                     sub = if (now.problem != null) listOf(now.problem) else listOf(episode.seriesName, formatAirDate(episode.airDate)),
@@ -195,6 +196,7 @@ fun PlayerSheet(
             val art = episode.seriesWindowArt ?: shown?.art
             NowPlayingArt(
                 art, episode.seriesName, episode.seriesGenre,
+                label = episode.labelItem(),
                 maxSide = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
                     .let { h -> minOf(h * 0.44f, h - 480.dp).coerceAtLeast(160.dp) },
             )

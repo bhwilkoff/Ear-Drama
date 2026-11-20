@@ -251,36 +251,6 @@ struct CreditFace: View {
     }
 }
 
-/// The typographic card (R11): the name and one meta line on the genre. Any
-/// titled work with years and a genre draws one, a series or a stage play.
-struct TypeCard: View {
-    let name: String
-    let line: String?
-    let genre: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s1) {
-            Spacer(minLength: 0)
-            Text(name)
-                .font(TypeRamp.pageTitle)
-                .foregroundStyle(Color.brandText)
-                .lineLimit(4)
-                .minimumScaleFactor(0.6)
-            if let line {
-                Text(line).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted).lineLimit(2)
-            }
-        }
-        .padding(Spacing.s4)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-        .background(Color.brandSurfaceAlt)
-        .overlay(alignment: .leading) {
-            Rectangle().fill(Color.genre(genre) ?? Color.brandBorder).frame(width: 8)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: Radius.card))
-        .aspectRatio(1, contentMode: .fit)
-    }
-}
-
 /// Now Playing's picture (D3-4): the grammar's window at the largest square it is offered, `side`
 /// when given (iOS-DESIGN R11a: full width, bounded so Play stays on the first screen). The show's
 /// picture, else its star's, else the title block, cropped on the face and held to the size floor.
@@ -295,7 +265,7 @@ struct NowPlayingArt: View {
     var body: some View {
         GeometryReader { geo in
             let s = side ?? min(geo.size.width, geo.size.height)
-            PictureWindow(art: Self.art(episode, face), name: episode.seriesName, genre: episode.seriesGenre, side: s)
+            PictureWindow(art: Self.art(episode, face), name: episode.seriesName, genre: episode.seriesGenre, side: s, label: episode.labelItem())
                 .frame(width: geo.size.width, height: geo.size.height)
         }
         .frame(width: side, height: side)
