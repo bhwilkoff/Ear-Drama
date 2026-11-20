@@ -140,13 +140,13 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
 
 ### Track T: reading together
 
-- [ ] **T0 Docs and decision (Opus).** Decision 082 (read rooms and classes: rulings 3-5; a Durable
+- [x] **T0 Docs and decision (Opus).** Decision 082 (read rooms and classes: rulings 3-5; a Durable
   Object per read room for the live cursor, which reverses Decision 065's reason for read rooms only;
   the pass-through take path, nothing at rest; teacher uploads the full recording under their name;
   supersedes 066's R2 take store). PLAYS-DESIGN §12 "Reading together"; tvOS-DESIGN §4.13 and the
   Android TV panel rule gain the cursor-driven screen and pairing code; PARITY.md rows (four modes,
   seats, casting board, review, shared screen); SCRATCHPAD Out of scope rows (R3c §9 list).
-- [ ] **T1 Worker read room (Opus).** Pure `read-protocol.js` (cursor, lead, parts, late join,
+- [x] **T1 Worker read room (Opus).** Pure `read-protocol.js` (cursor, lead, parts, late join,
   leader gone, claims) with goldens; `ReadRoom` Durable Object over WebSockets plus the D1-polling
   fallback carrying the same messages; rate limits keyed by member or seat (a class behind one
   address); max 40 members. Tests T1-T3 (R3c §8.1), each rule's mutant seen to fail.
@@ -200,3 +200,8 @@ privacy words) is folded in when it arrives, never waited on.
   classifier refused borrowing Archive Watch's credentials file); ask the owner where it lives.
 - **2026-11-19, tick 1**: DECISIONS 046-065 rolled (43 KB). Running: V0+V1 (Opus, worktree),
   T0+T1 (Opus, worktree). Next: merge each when it reports, then V3 (after V0) and T2.
+- **2026-11-19, tick 2**: T0+T1 merged (4fa85f7; Worker 341/341 on main; not deployed: needs the
+  full mutation run, then `wrangler deploy` + D1 migration 0006). V0+V1 on its branch with a
+  dry-run fix; official catalog dry run running before merge (the agents' runs were killed for
+  memory: run heavy jobs one at a time). Running: T2 (Opus). Owner question added: should rule 4
+  accept a show's own Wikidata picture of its star when our records credit no one on it (~9 images)?
