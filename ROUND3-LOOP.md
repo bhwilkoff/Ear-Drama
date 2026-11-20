@@ -155,7 +155,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
   notes), progress counts; take pass-through (sender to leader, deleted on delivery, refused if no
   receiver is present); teacher publishes the full recording under their name to archive.org via the
   existing uploader (073), 13+ classes only. Remove the R2 path from class flows.
-- [ ] **T3 Web client (Opus design).** Join a read room by code (no account for seats), follow the
+- [x] **T3 Web client (Opus design).** Join a read room by code (no account for seats), follow the
   lit line, I'm playing + Hide my lines, lead controls (Next, keys), the shared screen
   (`?screen`), the teacher's class page (seats, casting board with line counts and Fill evenly,
   progress, review queue), Table read and Rehearse modes. Frames at 375 and 1440.
@@ -233,3 +233,9 @@ privacy words) is folded in when it arrives, never waited on.
   (unavailable), Apple TV. Open: tvOS hero lacks the run arc (TenFoot doesn't pass the series);
   Android episode rows lack the arc (EpisodeRow has no series dates); the Android item door takes
   episode ids only (Apple takes series keys too): fix in T7's doors. Running: T3.
+- **2026-11-19, tick 8**: T3 merged and pushed (a4d915e, 1.0.141): reading together on the web
+  (join by code, follow, lead, Rehearse, shared screen) and the teacher's class page (seats, casting
+  board, review from the inbox); frames read (casting board 1440, reader 375, screen). Decided from
+  rules: the leader's name travels in the snapshot; Read open parts is a leader message; seat keys
+  last a session on shared devices (T4 builds all three). Running: V2 (Sonnet, images), V5 (Opus,
+  Home web), T4 (Sonnet, Apple + Android). Worker full mutation run + deploy wait for a quiet machine.
