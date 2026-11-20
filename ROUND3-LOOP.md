@@ -107,11 +107,11 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
 
 ### Track V: visuals
 
-- [ ] **V0 Docs and decision (Opus).** Decision 081 (label art + Home rules, from rulings 1-2 and
+- [x] **V0 Docs and decision (Opus).** Decision 081 (label art + Home rules, from rulings 1-2 and
   R3a). Amend WEB-DESIGN §4.2/§6, iOS-DESIGN, macOS-DESIGN, tvOS-DESIGN, ANDROID-DESIGN Home and art
   sections, and the `artwork-presentation-design` skill's default-art section, before code. PARITY.md
   rows for label art, Home composition, hero/gallery/title page, each ⏳.
-- [ ] **V1 Pipeline: identity and network (Opus, data plane).** `series.network` (one normalized
+- [x] **V1 Pipeline: identity and network (Opus, data plane).** `series.network` (one normalized
   primary network, with source); H1 wider identity (name variants in one SPARQL batch, enwiki
   `wikibase_item`, V10 run years from the article); matching rules R3b §5.2 each with a guard seen to
   fail (TV/film twins, topic-not-show, file date outside the run, org by QID). Dry-run on real data
@@ -205,3 +205,8 @@ privacy words) is folded in when it arrives, never waited on.
   dry-run fix; official catalog dry run running before merge (the agents' runs were killed for
   memory: run heavy jobs one at a time). Running: T2 (Opus). Owner question added: should rule 4
   accept a show's own Wikidata picture of its star when our records credit no one on it (~9 images)?
+- **2026-11-19, tick 3**: V0+V1 merged (0ad8ba8) after the official dry run passed (contract tests
+  and catalog suites over real data, 638 s); web 22 suites green. Android unit tests running for the
+  catalog change. H1's names cache (`.cache/wikidata/names.json.gz`) is not in a cache Release yet:
+  V2 cuts the Release with its harvest. Running: T2, V3 (Opus). Worker full mutation run waits for
+  T2's merge, then deploy.
