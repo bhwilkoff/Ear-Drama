@@ -596,6 +596,28 @@ const API = (() => {
     };
   }
 
+  /**
+   * A show at most once per Home (WEB-DESIGN §4.2r rule 5, contract §5.1): Home draws its rows in order,
+   * and a row keeps an episode only when its series is not in `seen` (the shows drawn higher up) and not
+   * already kept in this row. Returns the kept episodes, in the shelf's own order, and adds their series to `seen`.
+   */
+  function homeShows(episodes, seen) {
+    const out = [];
+    for (const ep of episodes || []) {
+      const k = ep && ep.series;
+      if (!k || seen.has(k)) continue;
+      seen.add(k);
+      out.push(ep);
+    }
+    return out;
+  }
+  /** A title that still carries an upload's catalog number ("AbyM #026 ...") or an identifier: raw upload
+      text, which never shows (AGENTS.md; owner 2026-10-31). The caller composes from the record's data instead. */
+  function uploadTagged(title) {
+    const t = String(title || '');
+    return /(^|\s)#\s?\d+\b/.test(t) || looksLikeIdentifier(t);
+  }
+
   async function listenShelves(date = new Date(), get = getJSON) {
     const m = await get('manifest.json');
     if (!Array.isArray(m.listenShelves)) {
@@ -1684,7 +1706,7 @@ const API = (() => {
     rooms, read, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
     monogram, blockSize, nameStep, headNameStep, windowFill, eventParts, RUN_AXIS, runSpan, runBars, undatedBare, azLetter, azLetters, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
-    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingNamed, safeLink, aboutParagraphs, aboutLink, showFacts, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, homeShelves, LENGTH_BANDS, seriesPage, episodeDetail, arcOf,
+    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingNamed, safeLink, aboutParagraphs, aboutLink, showFacts, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, homeShelves, homeShows, uploadTagged, LENGTH_BANDS, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople, voices,
