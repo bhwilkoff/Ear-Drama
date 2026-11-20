@@ -1647,6 +1647,50 @@ web app follows today.
 
 - **§6.4f Now Playing's people, its verbs, and Voices** (D3-9; owner, 2026-10-30: *"It has to look good and use native design and apis on the given platform."*). Under the controls Now Playing draws **On the air** (the §6.4d faces, `airSection`, each opening the person) and **That night on the radio** (`API.sameDay`, contract §3.3b: the year's `search/dates` rows for the date, at most 12, by series then id since those rows carry no network; each a grammar row of show and network, Play, and a link to the episode; the date is the section's, so the rows do not repeat it). Each is hidden when it has nothing: no credits, an undated episode, no other broadcast. Add to queue and Share are one row that never wraps apart (`.np-verbs`), the Detail page's verbs. **Voices** is Browse's second scope (Shows, Voices, Ear dramas): the published `index/voices.json` as 84 px round faces over the name and the episodes, each opening the person's page, with the picture credits after; Home carries the first 12 as a rail with All. A catalog without the list draws neither. Fit checked at 320 to 430 px by `tools/web_fit_nowplaying.py` (a control with the row allowed to wrap fails it).
 
+- **§6.4g Item pages wear Home's hero** (Decision 081, Round 3 V7; owner, 2026-11-19: *"We need to
+  continue making the app more visually appealing, both from the home screen perspective ... and the
+  individual item perspective."*; research R3a §2.2 and §4.3; skills `artwork-presentation-design`,
+  `uniform-imagery-design`, `catalog-experience-design`, `mobile-first-density-design`). Binding over
+  §6.4d and §6.4f wherever they size the head board's window or place the episode's title, on the
+  series, episode, person, play and finished ear drama pages (Surprise's picks and the production and
+  invitation boards keep §6.4b's head board). Built web-first, 2026-11-19.
+  1. **The head is Home's hero.** The board of §6.4b with the window at tier L: across the board's top
+     on a phone (the label square at the column's width), a 320 px column beside the words from 600 px,
+     and the words in the same order (kicker, name in page-title type, event line), then the strip.
+     The same board, type levels and rhythm as Home's On the air, so a press from Home lands on the
+     same object, larger.
+  2. **A picture keeps its own shape** (`artwork-presentation-design` §3, page header). Width over
+     height from the projection: wide (over `API.wideAspect`, 1.15) is a plate over the words at every
+     width, full board width, at most 360 px tall on a phone and 440 from 600 px, sitting at the
+     board's start when the cap binds; upright or square stands in the window's place at most 400 px
+     tall (and at most 320 wide from 600 px). Never cropped, never barred, graded as everywhere (the
+     same picture as Home's hero). Its credit, when its license asks, is the line under the board. A
+     picture with no published size or a short side under 160 px is not shown; one that fails to load
+     gives way to the label.
+  3. **Which picture.** A series: `series.hero` when it is wide (contract §3.3a, R3b §5.5), else
+     `series.picture`, else the label (`API.seriesLead`). A person: the portrait, else the groove-ring
+     label. A play: `play.titlePage`, else `play.authorArt`, else its opening as a page (four speeches,
+     body type, the voice bands at its foot; `API.playLead`). A finished ear drama: always its
+     part-color disc (never an uploaded picture, §6.4r).
+  4. **An episode's head is the episode's** (R3a §4.3). The window is its own dated label (its show's
+     disc with the date block on the label), the kicker is the show (a link), the name is the episode's
+     title (the page's h1), the event line `API.episodeFacts`, and the strip is the show's with the
+     episode's year at full ink and the rest at 45%. The show's picture, when it has one, is never
+     beside the episode's label: it is the show's own grammar row (window, name, show facts) under the
+     actions, opening the series, with its credit.
+  5. **The recordings are quieter.** The copies are one closed disclosure ("Recordings" and the count,
+     the booklet's look), the default copy chosen inside it as before; the page ends on credits and the
+     rights line, not on bit rates. Adjacent disclosures share one rule.
+  6. **A series' further pictures** (`series.gallery`): drawn only when two or more pass (each with a
+     size and its own evidence, the lead excluded), as one row of whole pictures at one height (160 px,
+     200 from 600 px), graded as one set, scrolling sideways on a phone, each captioned with its credit
+     (else the name of the site its evidence is on) linked to that evidence. One picture, or none, draws
+     nothing. Order: head, credit, actions, About, pictures, seasons, the log.
+  7. **Unchanged:** the series log's date blocks (the episode labels at tier S, without the disc) and a
+     person's date-block rows, Follow and Share, On the air, Cast and credits.
+  Checked by `tools/web_fit_pages.py` (each control seen to fail): an item page's head window is never
+  blank (a picture or a drawn label); no item page's h1 carries an upload's catalog number or
+  identifier; the recordings disclosure is closed on load; the pictures row is absent with fewer than two.
 - **§6.5 Icons are inline SVG** (R-ICON-1); emoji are never chrome.
 
 ## §7 States, PWA, and offline

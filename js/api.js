@@ -137,6 +137,37 @@ const API = (() => {
     if (!Array.isArray(a) || !a[0]) return null;
     return rowsOf(ART_FIELDS, [a])[0];
   }
+  /** An art row as the projection may carry it (an array, or an object with a url), else null. */
+  function artRow(a) {
+    if (Array.isArray(a)) return artOf(a);
+    return a && typeof a === 'object' && typeof a.url === 'string' && a.url ? a : null;
+  }
+  /** A series' further pictures (contract §3.3a `gallery`), each with its own evidence, without the one
+      the page already leads with; a strip is drawn only from two (WEB-DESIGN §6.4g). */
+  function galleryOf(series, lead) {
+    const seen = new Set(lead && lead.url ? [lead.url] : []);
+    const out = [];
+    for (const g of (series && Array.isArray(series.gallery) ? series.gallery : [])) {
+      const a = artRow(g);
+      if (!a || !a.evidence || !(a.width > 0 && a.height > 0) || seen.has(a.url)) continue;
+      seen.add(a.url);
+      out.push(a);
+    }
+    return out.length >= 2 ? out : [];
+  }
+  /** The picture that leads a series page: its landscape hero (contract `series.hero`) when it is wide,
+      else its picture; null for the label. */
+  function seriesLead(series) {
+    const s = series || {};
+    const hero = artRow(s.hero);
+    if (hero && artShape(hero) === 'wide') return hero;
+    return artRow(s.picture);
+  }
+  /** The picture that leads a play's page: its title page, else its author's portrait, else null (its page as the label). */
+  function playLead(script) {
+    const s = script || {};
+    return artRow(s.titlePage) || artRow(s.authorArt) || null;
+  }
   /** Commons' standard thumbnail steps; any other width is refused upstream. */
   const ART_STEPS = [120, 330, 500, 960];
   /** The one image helper: the served file at the smallest standard width at least `px` wide. */
@@ -653,7 +684,7 @@ const API = (() => {
       d = await page(to);
     }
     const episodes = rowsOf(d.fields, d.episodes).map(e => ({ ...e, series: d.key, seriesName: d.name }));
-    return { ...d, art: artOf(d.art), picture: artOf(d.picture), episodes };
+    return { ...d, art: artOf(d.art), picture: artOf(d.picture), hero: artRow(d.hero), gallery: Array.isArray(d.gallery) ? d.gallery.map(artRow).filter(Boolean) : [], episodes };
   }
 
   /**
@@ -1159,7 +1190,7 @@ const API = (() => {
       try {
         const d = await get(`plays/library/${row.path}`, 30000);
         const s = Array.isArray(d.scripts) ? d.scripts.find(x => x.id === id) : null;
-        if (s) return s;
+        if (s) return { ...s, titlePage: s.titlePage || row.titlePage || null, authorArt: s.authorArt || row.authorArt || null };
       } catch (e) { failure = e; }
     }
     try {
@@ -1706,7 +1737,7 @@ const API = (() => {
     rooms, read, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
     monogram, blockSize, nameStep, headNameStep, windowFill, eventParts, RUN_AXIS, runSpan, runBars, undatedBare, azLetter, azLetters, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
-    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingNamed, safeLink, aboutParagraphs, aboutLink, showFacts, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, homeShelves, homeShows, uploadTagged, LENGTH_BANDS, seriesPage, episodeDetail, arcOf,
+    manifest, seriesIndex, leadPicture, artRow, galleryOf, seriesLead, playLead, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingNamed, safeLink, aboutParagraphs, aboutLink, showFacts, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, homeShelves, homeShows, uploadTagged, LENGTH_BANDS, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople, voices,

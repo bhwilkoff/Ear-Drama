@@ -288,9 +288,12 @@ const PlaysUI = (() => {
   }
 
   /** The head board of a play or a production: the title block on the drama board, the fingerprint as its mark. */
-  function playBoard(script, name, kicker, facts, art = null) {
-    return h.headBoard({ series: { kind: 'play', voices: C.voicesOf(script), cast: C.castOf(script), name, genre: BOARD, picture: null, ...(art || {}) }, kicker, name, facts,
-                         mark: fingerprint(script, 'g-head-strip pl-print-head') });
+  function playBoard(script, name, kicker, facts, art = null, { hero = false, picture = null } = {}) {
+    // On a play's own page (WEB-DESIGN §6.4g) the head is the item page's: its title page or author's
+    // portrait at its own shape, else its opening as a page; a finished drama keeps its part-color disc.
+    const win = hero && !picture && !(art && art.kind) && h.openingWindow ? h.openingWindow(script, true) : null;
+    return h.headBoard({ series: { kind: 'play', voices: C.voicesOf(script), cast: C.castOf(script), name, genre: BOARD, picture, ...(art || {}) }, kicker, name, facts,
+                         mark: fingerprint(script, 'g-head-strip pl-print-head'), ...(hero ? { hero: true, picture, ...(win ? { win } : {}) } : {}) });
   }
   const kindOf = (script) => (script.kind === 'radio' ? 'Radio play' : 'Stage play');
 
@@ -390,9 +393,11 @@ const PlaysUI = (() => {
     h.setTitle(script.title);
     $('plays-h').textContent = script.title;
     const parts = speakingParts(script);
-    body.replaceChildren(
-      playBoard(script, script.title, kindOf(script),
-        [C.authorFacts(script), script.year ? String(script.year) : null, `${num.format(parts.length)}\u00a0${parts.length === 1 ? 'part' : 'parts'}`, lines(script.lines.length).replace(' ', '\u00a0')]),
+    const lead = API.playLead(script);
+    const board = playBoard(script, script.title, kindOf(script),
+      [C.authorFacts(script), script.year ? String(script.year) : null, `${num.format(parts.length)}\u00a0${parts.length === 1 ? 'part' : 'parts'}`, lines(script.lines.length).replace(' ', '\u00a0')],
+      null, { hero: true, picture: lead });
+    body.replaceChildren(...[board, h.heroCredit ? h.heroCredit(board, lead) : null].filter(Boolean),
       h.el('div', { class: 'actions actions-one actions-start ear-drama-only' }, startButton(script, h, { primary: true }), readLink(script.id),
         typeof ReadUI !== 'undefined' ? ReadUI.startButton(script, h) : null),
       h.el('section', { class: 'block' },
@@ -1313,8 +1318,8 @@ const PlaysUI = (() => {
     h.setTitle(d.title);
     const names = creditNames(d);
     const facts = [publishedOn(d.published_at), names.length ? namesLine(names, 4) : null];
-    const board = script ? playBoard(script, d.title, `Ear drama · ${kindOf(script)}`, facts, dramaArt(d, script))
-      : h.headBoard({ series: { name: d.title, genre: BOARD, picture: null, ...dramaArt(d, script) }, kicker: 'Ear drama', name: d.title, facts });
+    const board = script ? playBoard(script, d.title, `Ear drama · ${kindOf(script)}`, facts, dramaArt(d, script), { hero: true })
+      : h.headBoard({ series: { name: d.title, genre: BOARD, picture: null, ...dramaArt(d, script) }, kicker: 'Ear drama', name: d.title, facts, hero: true });
     const listen = h.el('span', { class: 'drama-listen' });
     const acts = h.el('div', { class: 'actions' }, listen,
       h.el('button', { type: 'button', class: 'btn btn-ghost', 'aria-label': `Share ${d.title}`,
