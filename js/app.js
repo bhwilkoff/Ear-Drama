@@ -903,7 +903,7 @@
       const b = el('button', { type: 'button', class: 'home-dial-st', disabled: ep ? null : true, 'aria-pressed': tuned ? 'true' : null,
         dataset: { genre: st.genre },
         'aria-label': ep ? `${tuned ? 'Listening live to' : 'Listen live to'} ${st.name}: ${ep.series}` : `${st.name}: nothing on` },
-        pictureWindow({ kind: 'station', genre: st.genre, tickYear: yr >= 1900 ? yr : undefined, picture: null }, 56),
+        pictureWindow({ kind: 'station', name: st.name, genre: st.genre, tickYear: yr >= 1900 ? yr : undefined, picture: null }, 56),
         el('span', { class: 'home-dial-name caption' }, st.name),
         el('span', { class: 'home-dial-on caption' }, ep ? ep.series : ''));
       b.addEventListener('click', async () => {
