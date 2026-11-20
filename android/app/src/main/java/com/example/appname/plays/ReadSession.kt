@@ -354,6 +354,7 @@ class ReadSession(
 
     private fun apply(snap: ReadSnapshot) {
         if (!snap.isNewerThan(_state.value.snapshot)) return
+        if (diag && _state.value.snapshot?.cursor != snap.cursor) said("lit ${snap.cursor} gen ${snap.cursorGen} at ${now()} offset ${_state.value.clockOffsetMs}")
         lastOk = now()
         _state.update { it.copy(snapshot = snap, slow = false, offline = false, refusal = null) }
         if (snap.ended) end("room_ended")

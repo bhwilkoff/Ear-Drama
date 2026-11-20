@@ -335,6 +335,7 @@ final class ReadSession {
 
     private func apply(_ snap: ReadSnapshot) {
         guard ReadCore.newer(prev: snapshot, snap: snap) else { return }
+        if diag, snapshot?.cursor != snap.cursor { said("lit \(snap.cursor) gen \(snap.cursorGen) at \(now()) offset \(clockOffsetMS ?? .nan)") }
         snapshot = snap
         lastOK = now()
         if slow { slow = false }

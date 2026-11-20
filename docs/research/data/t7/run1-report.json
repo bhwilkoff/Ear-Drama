@@ -1,0 +1,450 @@
+{
+ "tag": "run1",
+ "base": "https://eardrama-api.benwilkoff.workers.dev",
+ "script": "gut-7364",
+ "devices": {
+  "pixel": {
+   "what": "Pixel 8a",
+   "role": "reader",
+   "skip": null
+  },
+  "gtv": {
+   "what": "Google TV Streamer (10.0.0.55)",
+   "role": "screen",
+   "skip": null
+  },
+  "atv2": {
+   "what": "Android TV (10.0.0.139)",
+   "role": "screen",
+   "skip": "adb cannot reach it"
+  },
+  "iphone": {
+   "what": "iPhone 12",
+   "role": "reader",
+   "skip": null
+  },
+  "duo": {
+   "what": "open iPhone Duo",
+   "role": "reader",
+   "skip": null
+  },
+  "ipad": {
+   "what": "iPad Pro 12.9",
+   "role": "reader",
+   "skip": "device is locked (passcode); needs the owner to unlock"
+  },
+  "atv": {
+   "what": "Apple TV 4K Ben Bedroom",
+   "role": "screen",
+   "skip": null
+  },
+  "web1": {
+   "what": "Chrome headless, muted, reader",
+   "role": "reader",
+   "skip": null
+  },
+  "web2": {
+   "what": "Chrome headless, muted, second reader",
+   "role": "reader",
+   "skip": null
+  },
+  "webpoll": {
+   "what": "Chrome headless, muted, WebSocket removed (polling)",
+   "role": "reader",
+   "skip": null
+  },
+  "webscr": {
+   "what": "Chrome headless, muted, shared screen",
+   "role": "screen",
+   "skip": null
+  }
+ },
+ "tests": {
+  "T5": {
+   "members": [
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "screen",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "screen",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "reader",
+     "present": null,
+     "name": null
+    },
+    {
+     "role": "screen",
+     "present": null,
+     "name": null
+    }
+   ],
+   "devices": {
+    "pixel": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "I/System.out( 7972): [readdiag] clock offset -2162.5 samples 3",
+      "I/System.out( 7972): [readdiag] clock offset -2162.5 samples 4",
+      "I/System.out( 7972): [readdiag] clock offset -2167.0 samples 5"
+     ]
+    },
+    "gtv": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "I/System.out(10251): [readdiag] clock offset 258.5 samples 2",
+      "I/System.out(10251): [readdiag] clock offset 258.5 samples 3",
+      "I/System.out(10251): [readdiag] clock offset 258.5 samples 4"
+     ]
+    },
+    "iphone": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "[readdiag] clock offset 2.244873046875 samples 3",
+      "[readdiag] clock offset 2.244873046875 samples 4",
+      "[readdiag] clock offset 2.244873046875 samples 5"
+     ]
+    },
+    "duo": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "[readdiag] clock offset 4.875 samples 2",
+      "[readdiag] clock offset 3.9990234375 samples 3",
+      "[readdiag] clock offset 3.9990234375 samples 4"
+     ]
+    },
+    "atv": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": "L0001",
+     "log_tail": [
+      "[readdiag] clock offset 5.34521484375 samples 2",
+      "[readdiag] clock offset 4.86181640625 samples 3",
+      "[readdiag] clock offset 3.324951171875 samples 4"
+     ]
+    },
+    "web1": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": null,
+     "log_tail": [
+      "[readdiag] transport socket",
+      "[readdiag] clock offset 4 samples 2",
+      "[readdiag] clock offset 0.5 samples 3"
+     ]
+    },
+    "web2": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": null,
+     "log_tail": [
+      "[readdiag] transport socket",
+      "[readdiag] clock offset 5 samples 2",
+      "[readdiag] clock offset 2.5 samples 3"
+     ]
+    },
+    "webpoll": {
+     "joined_by_log": true,
+     "transports": [
+      "poll"
+     ],
+     "first_lit": null,
+     "log_tail": [
+      "[readdiag] clock offset 37 samples 1",
+      "[readdiag] transport poll",
+      "[readdiag] clock offset 5.5 samples 8"
+     ]
+    },
+    "webscr": {
+     "joined_by_log": true,
+     "transports": [
+      "socket"
+     ],
+     "first_lit": null,
+     "log_tail": [
+      "[readdiag] lit L0001 gen 0 at 1795169471001 offset",
+      "[readdiag] clock offset 117.5 samples 1",
+      "[readdiag] transport socket"
+     ]
+    }
+   },
+   "room_members": 10,
+   "started": 9
+  },
+  "T4": {
+   "presses": 100,
+   "leader_ack_ms": {
+    "n": 100,
+    "got": 100,
+    "missing": 0,
+    "p50": 69,
+    "p95": 88,
+    "max": 267,
+    "min": 44,
+    "mean": 70.0
+   },
+   "devices": {
+    "pixel": {
+     "transport": "socket",
+     "n": 100,
+     "got": 100,
+     "missing": 0,
+     "p50": 122.5,
+     "p95": 201.0,
+     "max": 364.0,
+     "min": 64.0,
+     "mean": 136.2
+    },
+    "gtv": {
+     "transport": "socket",
+     "n": 100,
+     "got": 100,
+     "missing": 0,
+     "p50": 91.0,
+     "p95": 104.5,
+     "max": 285.0,
+     "min": 63.5,
+     "mean": 91.5
+    },
+    "iphone": {
+     "transport": "socket",
+     "n": 100,
+     "got": 100,
+     "missing": 0,
+     "p50": 91.974853515625,
+     "p95": 235.12890625,
+     "max": 305.782470703125,
+     "min": 48.541748046875,
+     "mean": 118.2
+    },
+    "duo": {
+     "transport": "socket",
+     "n": 100,
+     "got": 100,
+     "missing": 0,
+     "p50": 76.998046875,
+     "p95": 173.463623046875,
+     "max": 263.27880859375,
+     "min": 48.7021484375,
+     "mean": 98.0
+    },
+    "atv": {
+     "transport": "socket",
+     "n": 100,
+     "got": 100,
+     "missing": 0,
+     "p50": 70.7822265625,
+     "p95": 84.2744140625,
+     "max": 262.600341796875,
+     "min": 47.94921875,
+     "mean": 70.6
+    },
+    "web1": {
+     "transport": "socket",
+     "n": 100,
+     "got": 100,
+     "missing": 0,
+     "p50": 69.0,
+     "p95": 80.5,
+     "max": 263.0,
+     "min": 50.0,
+     "mean": 69.4
+    },
+    "web2": {
+     "transport": "socket",
+     "n": 100,
+     "got": 100,
+     "missing": 0,
+     "p50": 69.0,
+     "p95": 82.0,
+     "max": 264.0,
+     "min": 51.0,
+     "mean": 70.5
+    },
+    "webpoll": {
+     "transport": "poll",
+     "n": 100,
+     "got": 100,
+     "missing": 0,
+     "p50": 526.0,
+     "p95": 832.5,
+     "max": 1166.0,
+     "min": 65.0,
+     "mean": 473.2
+    },
+    "webscr": {
+     "transport": "socket",
+     "n": 100,
+     "got": 100,
+     "missing": 0,
+     "p50": 68.5,
+     "p95": 82.0,
+     "max": 266.0,
+     "min": 46.5,
+     "mean": 68.4
+    }
+   }
+  },
+  "T9": {
+   "cursor": "L0101",
+   "members": 10,
+   "roles": [
+    "reader",
+    "reader",
+    "reader",
+    "reader",
+    "screen",
+    "screen",
+    "reader",
+    "reader",
+    "reader",
+    "screen"
+   ],
+   "frames": [
+    "run1-gtv-T4-after.png",
+    "run1-atv-T4-after.png",
+    "run1-webscr-T4-after.png"
+   ]
+  },
+  "T6": {
+   "web1": {
+    "following_at_start": true,
+    "back_button_shown_after_scroll": false,
+    "following_after_back": true,
+    "lit_line_in_view": true
+   },
+   "web2": {
+    "following_at_start": true,
+    "back_button_shown_after_scroll": false,
+    "following_after_back": true,
+    "lit_line_in_view": true
+   }
+  },
+  "T8": {
+   "pixel": {
+    "lit_events_before": 105,
+    "lit_events_after": 105,
+    "reached_last_line_after_rejoin": false,
+    "last_line": "L0111",
+    "transports": [
+     "socket"
+    ]
+   },
+   "web1": {
+    "offline_text": "Skip to content\n\nYou are offline.\n\nRead together\n\nThe Albany Depot\n\nThe Albany Depot\n\nWilliam Dean Howells\n\nParts\n\nCAMPBELL\nROBERTS\nMRS. ROBERTS\nMCILHENY\nMRS. CAMPBELL\nBOTH LADIES\n\nMRS. ROBERTS\n\n\u201cI was just looking for my husband. He was to meet me here at ten minutes past three; but there don\u2019t see",
+    "reached_last_line_after_rejoin": true,
+    "last_line": "L0115",
+    "transports": [
+     "socket"
+    ]
+   }
+  }
+ },
+ "site": "http://127.0.0.1:60209",
+ "room": {
+  "code": "652NKT",
+  "transport": "socket",
+  "leader_socket": true,
+  "leader_offset": {
+   "rtt": 15,
+   "offset": -4.5
+  }
+ },
+ "teardown": {
+  "pixel": {
+   "gone": true,
+   "detail": "gone (pidof empty)"
+  },
+  "gtv": {
+   "gone": true,
+   "detail": "gone (pidof empty)"
+  },
+  "iphone": {
+   "gone": true,
+   "detail": "not running"
+  },
+  "duo": {
+   "gone": true,
+   "detail": "not running"
+  },
+  "atv": {
+   "gone": true,
+   "detail": "not running"
+  },
+  "web1": {
+   "gone": true,
+   "detail": "chrome gone"
+  },
+  "web2": {
+   "gone": true,
+   "detail": "chrome gone"
+  },
+  "webpoll": {
+   "gone": true,
+   "detail": "chrome gone"
+  },
+  "webscr": {
+   "gone": true,
+   "detail": "chrome gone"
+  },
+  "ipad": {
+   "gone": false,
+   "detail": "could not list processes on the device"
+  }
+ }
+}
