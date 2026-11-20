@@ -159,7 +159,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
   lit line, I'm playing + Hide my lines, lead controls (Next, keys), the shared screen
   (`?screen`), the teacher's class page (seats, casting board with line counts and Fill evenly,
   progress, review queue), Table read and Rehearse modes. Frames at 375 and 1440.
-- [ ] **T4 Apple and Android clients (Sonnet).** Same verbs, native idioms (R3c §5.4): iPhone, iPad
+- [x] **T4 Apple and Android clients (Sonnet).** Same verbs, native idioms (R3c §5.4): iPhone, iPad
   drag-to-cast, Duo outer display line, Mac windows and menu, Android; Apple TV and Google TV as the
   shared screen with a pairing code (record nothing, rule 12).
 - [ ] **T5 Record in the room (Opus web, Sonnet ports).** Only the device holding the current line
@@ -255,3 +255,7 @@ privacy words) is folded in when it arrives, never waited on.
   route (Decision 082 says pairing code: build it), Duo outer display, Mac menu commands, Android
   drag, stand-in voice on Apple/Android screens; adults get an optional name on join (decided).
   Disk was 98%: removed 53 merged agent worktrees (34 GB free). Running: V2, V7, device check.
+- **2026-11-19, tick 11**: device check passed (iPhone 12 + Pixel launch, read-room door with a bad
+  code refuses cleanly, no crash logs; Duo unavailable); T4 pushed (f107c97, 1.0.143). For T5: map a
+  missing room to its own "not found" state instead of "could not be reached". Running: V2, V7, V6
+  (Sonnet, Home ports).
