@@ -187,12 +187,14 @@ class SharedSheet(
 @Composable
 fun ShareEntry(signedIn: Boolean, onShare: (String) -> Unit, error: String?) {
     var asking by remember { mutableStateOf(false) }
+    val age = rememberAgeAsk()
+    AgeAskDialogs(age)
     Column(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
         if (!signedIn) {
             Text("Sharing needs an account.", style = MaterialTheme.typography.bodyMedium)
             AccountRow()
         } else {
-            OutlinedButton(onClick = { asking = true }) {
+            OutlinedButton(onClick = { age.ask { asking = true } }) {
                 Icon(Icons.Filled.Share, contentDescription = null)
                 Text("Share", Modifier.padding(start = Spacing.S2.dp))
             }
@@ -272,8 +274,10 @@ fun LazyListScope.sharedCastRows(
     }
     if (director) {
         item(key = "invite") {
+            val age = rememberAgeAsk()
+            AgeAskDialogs(age)
             Column(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
-                OutlinedButton(onClick = sheet::invite, enabled = !sheet.busy) { Text("Invite") }
+                OutlinedButton(onClick = { age.ask(sheet::invite) }, enabled = !sheet.busy) { Text("Invite") }
                 sheet.caption?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
             }
         }
@@ -287,10 +291,12 @@ fun LazyListScope.sharedCastRows(
             val consent by produceState<com.example.appname.plays.Consent?>(null) { value = sheet.consent() }
             var notNow by remember { mutableStateOf(false) }
             val words = consent
+            val age = rememberAgeAsk()
+            AgeAskDialogs(age)
             if (words != null && words.publishes && !notNow) {
                 Column(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
                     ConsentWords(words.text)
-                    Button(onClick = { sheet.agree(words) }, enabled = !sheet.busy, colors = playButtonColors()) {
+                    Button(onClick = { age.ask { sheet.agree(words) } }, enabled = !sheet.busy, colors = playButtonColors()) {
                         Text("I agree to publish my recording under CC0.")
                     }
                     TextButton(onClick = { notNow = true }) { Text("Not now") }
@@ -303,6 +309,8 @@ fun LazyListScope.sharedCastRows(
             val consent by produceState<com.example.appname.plays.Consent?>(null) { value = sheet.consent() }
             var asking by remember { mutableStateOf(false) }
             val words = consent
+            val age = rememberAgeAsk()
+            AgeAskDialogs(age)
             if (words != null && words.publishes) {
                 PlaysShare.performers(rec).forEach { m ->
                     ListItem(
@@ -315,7 +323,7 @@ fun LazyListScope.sharedCastRows(
                         },
                     )
                 }
-                Button(onClick = { asking = true }, enabled = !sheet.busy && PlaysShare.waitingOn(rec).isEmpty(), modifier = Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
+                Button(onClick = { age.ask { asking = true } }, enabled = !sheet.busy && PlaysShare.waitingOn(rec).isEmpty(), modifier = Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
                     Text("Publish")
                 }
                 if (asking) {
@@ -637,10 +645,21 @@ private fun ClassItem(row: ClassRow) {
         "Waits for the school's consent".takeIf { row.under13 && row.code != null && !row.schoolConsent },
     )
     val nav = LocalReadNav.current
+    ClassItemContent(row, lines, if (row.code != null) Modifier.clickable { nav.openClass(row.id) } else Modifier)
+}
+
+/** A class's row: its name, its code and what it waits on, and the 12-month idle notice (§12.12 item 4). */
+@Composable
+internal fun ClassItemContent(row: ClassRow, lines: List<String>, modifier: Modifier = Modifier) {
     ListItem(
         headlineContent = { Text(row.name, style = MaterialTheme.typography.titleMedium) },
-        supportingContent = if (lines.isNotEmpty()) ({ Text(lines.joinToString(" · "), style = MaterialTheme.typography.labelMedium) }) else null,
-        modifier = if (row.code != null) Modifier.clickable { nav.openClass(row.id) } else Modifier,
+        supportingContent = if (lines.isNotEmpty() || row.deletesOn != null) ({
+            Column {
+                if (lines.isNotEmpty()) Text(lines.joinToString(" · "), style = MaterialTheme.typography.labelMedium)
+                row.deletesOn?.let { Text("Deleted ${com.example.appname.plays.ClassDates.text(it)} unless opened", style = MaterialTheme.typography.labelMedium, color = AppSemantics.colors.warning) }
+            }
+        }) else null,
+        modifier = modifier,
     )
 }
 

@@ -26,9 +26,20 @@ import kotlinx.serialization.json.put
 
 @Serializable data class ReadSeatClaim(@SerialName("seat_key") val seatKey: String, val seat: String)
 
-@Serializable data class ReadClassDetail(val id: String, val name: String, val code: String? = null, val under13: Boolean = false, val seats: List<Seat> = emptyList()) {
+@Serializable data class ReadClassDetail(
+    val id: String,
+    val name: String,
+    val code: String? = null,
+    val under13: Boolean = false,
+    @SerialName("school_consent") val schoolConsent: Boolean = false,
+    @SerialName("ends_on") val endsOn: String? = null,
+    @SerialName("deletes_on") val deletesOn: String? = null,
+    val seats: List<Seat> = emptyList(),
+) {
     @Serializable data class Seat(val id: String, val label: String, val claimed: Boolean = false)
 }
+
+@Serializable data class ReadClassEnd(@SerialName("ends_on") val endsOn: String, @SerialName("deletes_on") val deletesOn: String? = null)
 
 @Serializable data class ReadProgress(val productions: List<Production> = emptyList()) {
     @Serializable data class Part(val part: String, val lines: Int = 0, val recorded: Int = 0, val approved: Int = 0, val again: Int = 0)
@@ -60,6 +71,11 @@ interface ReadClassWire {
     suspend fun consent(): Consent
     suspend fun agree(pid: String, version: String)
     suspend fun publish(pid: String, creditName: String)
+    suspend fun deleteClass(id: String)
+    suspend fun setEnd(id: String, endsOn: String): ReadClassEnd
+    /** The class as one JSON document, verbatim, for the teacher to keep. */
+    suspend fun exportClass(id: String): String
+    suspend fun schoolConsent(id: String, reference: String)
 
     /** One line's chosen take to archive.org through the Worker; `not_ready` and `already_sent` are the Worker's codes. */
     suspend fun sendFile(pid: String, lineId: String, bytes: ByteArray)
@@ -127,7 +143,15 @@ class WorkerReadClass(private val worker: WorkerApi) : ReadClassWire {
 
     override suspend fun agree(pid: String, version: String) { signed(HttpMethod.Post, "$p/productions/${enc(pid)}/consent", buildJsonObject { put("version", version) }) }
 
-    override suspend fun publish(pid: String, creditName: String) { signed(HttpMethod.Post, "$p/productions/${enc(pid)}/publish", buildJsonObject { put("credit_name", creditName) }) }
+    override suspend fun publish(pid: String, creditName: String) { signed(HttpMethod.Post, "$p/productions/${enc(pid)}/publish", buildJsonObject { put("credit_name", creditName); put("performers_agreed", true); put("media_release", true) }) }
+
+    override suspend fun deleteClass(id: String) { signed(HttpMethod.Delete, "$p/classes/${enc(id)}") }
+
+    override suspend fun setEnd(id: String, endsOn: String) = ShareJson.decodeFromString<ReadClassEnd>(signed(HttpMethod.Patch, "$p/classes/${enc(id)}", buildJsonObject { put("ends_on", endsOn) }))
+
+    override suspend fun exportClass(id: String) = signed(HttpMethod.Get, "$p/classes/${enc(id)}/export")
+
+    override suspend fun schoolConsent(id: String, reference: String) { signed(HttpMethod.Post, "$p/classes/${enc(id)}/school-consent", buildJsonObject { put("reference", reference) }) }
 
     override suspend fun sendFile(pid: String, lineId: String, bytes: ByteArray) {
         guarded { worker.callBytes(HttpMethod.Put, "$p/productions/${enc(pid)}/archive/files/${enc(lineId)}", bytes, mapOf("content-type" to "audio/wav")) }

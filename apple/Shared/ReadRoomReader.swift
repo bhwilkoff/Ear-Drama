@@ -486,28 +486,23 @@ struct RoomPublishForm: View {
     @AppStorage("ed.readName") private var credit = ""
     @State private var consent: PlaysConsent?
     @State private var agreed = false
+    @State private var performers = false
+    @State private var release = false
     @State private var busy = false
     @State private var result: String?
     @State private var refusal: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s2) {
-            TextField("Credit name", text: $credit).textFieldStyle(.roundedBorder)
-            if let consent {
-                Text(verbatim: consent.publishes == true ? consent.text : "Publishing opens when the Ear Drama archive account is connected.")
-                    .font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
-                Toggle("I agree", isOn: $agreed)
-            }
-            Button("Publish Under My Name") { publish() }
-                .buttonStyle(.borderedProminent)
-                .disabled(!agreed || consent?.publishes != true || credit.trimmingCharacters(in: .whitespaces).isEmpty || busy)
-            if let refusal { Label(refusal, systemImage: "exclamationmark.triangle").font(TypeRamp.caption).foregroundStyle(Color.semanticError) }
-            else if let result { Text(verbatim: result).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted) }
-        }
-        .task { consent = try? await room.publishing?.consent() }
+        PublishFormFields(
+            credit: $credit, performers: $performers, release: $release, agreed: $agreed,
+            terms: consent.map { $0.publishes == true ? $0.text : "Publishing opens when the Ear Drama archive account is connected." },
+            canPublish: agreed && consent?.publishes == true && !credit.trimmingCharacters(in: .whitespaces).isEmpty && !busy,
+            refusal: refusal, result: result, publish: publish)
+            .task { consent = try? await room.publishing?.consent() }
     }
 
     private func publish() {
+        guard performers, release else { refusal = ReadCore.refusal("confirmations_required"); return }
         busy = true
         refusal = nil
         result = "Queued for archive.org"

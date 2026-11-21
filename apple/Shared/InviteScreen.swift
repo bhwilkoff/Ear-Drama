@@ -49,6 +49,7 @@ struct InviteScreen: View {
     @State private var taking: PartID?
     @State private var name = ""
     @State private var hearing: String?
+    @State private var age = AgeQuestion()
 
     @State private var script: PlayScript?
     private let api = WorkerOpenPlays(api: .shared)
@@ -64,6 +65,7 @@ struct InviteScreen: View {
             }
         }
         .navigationTitle("Invitation")
+        .ageQuestion(age)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -175,10 +177,12 @@ struct InviteScreen: View {
         if InviteRules.canTake(part, in: inv) {
             Button("Take Part") {
                 if account.isSignedIn {
-                    name = ""
-                    Task {
-                        if shared.invitation == nil { await shared.viewInvitation(token, plays: plays) }
-                        taking = id
+                    age.ask {
+                        name = ""
+                        Task {
+                            if shared.invitation == nil { await shared.viewInvitation(token, plays: plays) }
+                            taking = id
+                        }
                     }
                 } else {
                     signingInFor = id

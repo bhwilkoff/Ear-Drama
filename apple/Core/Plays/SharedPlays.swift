@@ -260,6 +260,24 @@ final class SharedPlays {
         code.count == 8 ? "\(code.prefix(4)) \(code.suffix(4))" : code
     }
 
+    /// The director removes the production from the Worker, then its folder here; true when it is gone.
+    func deleteForEveryone(_ localID: String, store: ProductionStore) async -> Bool {
+        guard let pid = store.share(localID)?.pid else { return false }
+        busy.insert(localID)
+        defer { busy.remove(localID) }
+        do {
+            try await api.deleteProduction(pid)
+        } catch {
+            refusals[localID] = PlaysShare.line(error)
+            return false
+        }
+        records[pid] = nil
+        refusals[localID] = nil
+        try? store.delete(localID)
+        VoiceCast.forget(production: localID)
+        return true
+    }
+
     private func run(_ localID: String, _ work: () async throws -> Void) async {
         busy.insert(localID)
         defer { busy.remove(localID) }

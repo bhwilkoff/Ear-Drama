@@ -162,6 +162,8 @@ data class ClassRow(
     val code: String? = null,
     val under13: Boolean = false,
     @SerialName("school_consent") val schoolConsent: Boolean = false,
+    @SerialName("ends_on") val endsOn: String? = null,
+    @SerialName("deletes_on") val deletesOn: String? = null,
 )
 
 @Serializable
@@ -196,6 +198,7 @@ interface PlaysTransport {
     suspend fun nextTake(pid: String): PickedTake?
     suspend fun choose(pid: String, takeId: String): SharedRecord
     suspend fun publish(pid: String): PublishAnswer
+    suspend fun deleteProduction(pid: String) { throw PlaysException("not_found") }
     suspend fun removeLine(pid: String, lineId: String, reason: String)
     suspend fun report(pid: String, takeId: String?, userId: String?, reason: String, note: String?)
     suspend fun block(userId: String)
@@ -601,6 +604,7 @@ object PlaysShare {
         "reported_take" to "A chosen take has been reported.",
         "consent_missing" to "Not every performer has agreed to the consent.",
         "school_consent_required" to "This class needs its school's consent before anyone can join.",
+        "submitted" to "A published play stays.",
         "class_not_found" to "No class has that code.",
         "you_teach_this_class" to "You teach this class.",
         "revision_mismatch" to "This play has changed since it was cast.",

@@ -370,7 +370,9 @@ describe("the teacher publishes the full recording under their own name (13 and 
     for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
     return audio;
   }
-  const publish = (s, pid, body) => call("POST", `/v1/plays/productions/${pid}/publish`, { token: s.access_token, envOverride: KEYS, body });
+  const CONFIRMED = { performers_agreed: true, media_release: true };
+  const publish = (s, pid, body = {}, confirmed = CONFIRMED) =>
+    call("POST", `/v1/plays/productions/${pid}/publish`, { token: s.access_token, envOverride: KEYS, body: { ...confirmed, ...body } });
   const agree = (s, pid) => call("POST", `/v1/plays/productions/${pid}/consent`, { token: s.access_token, body: { version: CONSENT_VERSION } });
 
   it("an under-13 class never publishes: refused with its own code, whatever else is in order", async () => {

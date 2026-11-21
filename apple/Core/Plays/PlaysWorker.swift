@@ -193,8 +193,13 @@ nonisolated struct PlayClass: Codable, Equatable, Sendable, Identifiable {
     var code: String?
     var under13: Bool
     var schoolConsent: Bool?
+    var endsOn: String?
+    /// Set when the class has sat unopened for a year: the day it goes (a 12-month idle notice).
+    var deletesOn: String?
 
-    enum CodingKeys: String, CodingKey { case id, name, code, under13, schoolConsent = "school_consent" }
+    enum CodingKeys: String, CodingKey {
+        case id, name, code, under13, schoolConsent = "school_consent", endsOn = "ends_on", deletesOn = "deletes_on"
+    }
 }
 
 nonisolated struct PlayClasses: Codable, Equatable, Sendable {
@@ -312,6 +317,7 @@ protocol PlaysTransport {
     func classes() async throws -> PlayClasses
     func createClass(name: String, under13: Bool) async throws -> PlayClass
     func joinClass(code: String, displayName: String?) async throws -> PlayClass
+    func deleteProduction(_ pid: String) async throws
 }
 
 /// The Worker's plays routes through the one `APIClient`, refreshed before
@@ -381,7 +387,7 @@ struct WorkerPlays: PlaysTransport {
     private struct NewClass: Encodable { let name: String; let under13: Bool }
     private struct JoinClass: Encodable { let code: String; let display_name: String? }
     private struct Empty: Encodable {}
-    private struct Credit: Encodable { let credit_name: String }
+    private struct Credit: Encodable { let credit_name: String; let performers_agreed = true; let media_release = true }
     private struct Review: Encodable { let state: String; let note: String? }
     private struct List: Decodable { let productions: [RemoteProduction] }
 
@@ -499,5 +505,10 @@ struct WorkerPlays: PlaysTransport {
     func joinClass(code: String, displayName: String?) async throws -> PlayClass {
         try decode(PlayClass.self, try await call("POST", "\(Self.root)/classes/join",
                                                   json: JoinClass(code: code, display_name: displayName)))
+    }
+
+    /// The director removes a production and its takes from the server (PLAYS-DESIGN §12.12 item 7); a submitted one is refused.
+    func deleteProduction(_ pid: String) async throws {
+        _ = try await call("DELETE", Self.at(pid))
     }
 }

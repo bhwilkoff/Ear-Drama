@@ -17,6 +17,7 @@ export default defineConfig(async () => {
             APPLE_AUDIENCES: "app.eardrama.test,web.eardrama.test",
             GOOGLE_AUDIENCES: "google-client.test",
             TAKEDOWN_TOKEN: "test-only-takedown-token",
+            OPERATOR_TOKEN: "test-only-operator-token",
           },
         },
       }),

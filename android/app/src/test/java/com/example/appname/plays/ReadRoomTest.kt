@@ -386,6 +386,10 @@ class ReadRoomTest {
         override suspend fun consent() = error("unused")
         override suspend fun agree(pid: String, version: String) = error("unused")
         override suspend fun publish(pid: String, creditName: String) = error("unused")
+        override suspend fun deleteClass(id: String) = error("unused")
+        override suspend fun setEnd(id: String, endsOn: String) = error("unused")
+        override suspend fun exportClass(id: String) = error("unused")
+        override suspend fun schoolConsent(id: String, reference: String) = error("unused")
         override suspend fun sendFile(pid: String, lineId: String, bytes: ByteArray) {
             val next = if (plan.isEmpty()) "ok" else plan.removeAt(0)
             if (next != "ok") throw ReadFailure(next)

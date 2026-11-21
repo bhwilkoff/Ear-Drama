@@ -310,6 +310,13 @@ const ReadCore = (() => {
     not_recording: 'The reading is not recording.',
     not_your_line: 'That line is someone else\'s.',
     school_consent_required: 'Waits for the school\'s consent.',
+    confirmations_required: 'Check both boxes first.',
+    reference_required: 'Name the school or district.',
+    pending_owner_policy: 'Not open yet.',
+    bad_end_date: 'That is not a date.',
+    end_date_past: 'Pick a later date.',
+    end_date_too_far: 'Pick an earlier date.',
+    submitted: 'A published play stays.',
   };
   const refusal = (code) => REFUSALS[code] || 'Ear Drama could not be reached.';
 

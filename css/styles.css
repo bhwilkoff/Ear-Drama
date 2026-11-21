@@ -1929,6 +1929,9 @@ body.read-screen .tabbar, body.read-screen .sidebar, body.read-screen .site-foot
 #class-body .cast-main { flex: 1 1 0; min-width: 0; }
 .cl-play .cast-row { flex-wrap: nowrap; }
 .cl-add { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+.cl-auth { display: flex; flex-direction: column; gap: var(--space-3); max-width: 32rem; }
+.cl-auth .field { display: flex; flex-direction: column; gap: var(--space-1); }
+.cl-ends { margin-bottom: var(--space-2); }
 .cl-names { width: 100%; resize: vertical; font: inherit; }
 .cl-refused { margin: 0; padding: 0; list-style: none; }
 .cl-plays { list-style: none; margin: 0 0 var(--space-3); padding: 0; }

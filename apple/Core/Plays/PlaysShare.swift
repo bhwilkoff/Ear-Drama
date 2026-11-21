@@ -433,6 +433,7 @@ enum PlaysShare {
         "name_reserved": "That name is not allowed.",
         "bad_name": "That name is not allowed.",
         "rate_limited": "Too many tries. Try again in a minute.",
+        "submitted": "A published play stays.",
     ]
 
     static func line(_ error: (any Error)?) -> String {

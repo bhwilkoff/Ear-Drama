@@ -10,6 +10,17 @@
 > Every factual sentence was checked against the code on 2026-11-21
 > (`data-inventory.md`).
 
+
+> **Status, 2026-11-21: approved and published.** The owner approved the wording ("The policy wording looks
+> good to me.") and the rulings in Decision 084. Published as `privacy/index.html`, version
+> `privacy-2026-11-21`, with every bracket resolved: Learning is Change, 8287 S. Pennsylvania Ct., Littleton,
+> CO 80122, ben@learningischange.com; the delete link `eardrama.org/delete-account`; every BUILD now built
+> (Delete class, the class end date and idle rule, the class export) or dropped; the 30-day and 72-hour
+> numbers; students' names never on the Internet Archive (the code's rule, now confirmed); the 13-and-over
+> teacher confirmations and the age question added; the retention section from `retention-policy-draft.md`;
+> jsDelivr removed (the runtime is self-hosted); the nonprofit-or-company bracket dropped (not ruled). This
+> file stays as the record of the draft.
+
 ---
 
 # Privacy

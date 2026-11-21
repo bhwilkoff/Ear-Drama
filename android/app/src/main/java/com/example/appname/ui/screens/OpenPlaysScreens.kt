@@ -159,6 +159,7 @@ fun InvitationScreen(onBack: () -> Unit, onOpenProduction: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var asking by remember { mutableStateOf(false) }
+    val age = rememberAgeAsk()
     val scope = rememberCoroutineScope()
     val player = remember { InvitePlayer() }
     DisposableEffect(Unit) { onDispose { player.stop() } }
@@ -221,7 +222,7 @@ fun InvitationScreen(onBack: () -> Unit, onOpenProduction: (String) -> Unit) {
                         when {
                             !signedIn -> asking = true
                             busy || v == null -> Unit
-                            else -> {
+                            else -> age.ask {
                                 busy = true
                                 error = null
                                 scope.launch {
@@ -255,6 +256,7 @@ fun InvitationScreen(onBack: () -> Unit, onOpenProduction: (String) -> Unit) {
             }
         }
     }
+    AgeAskDialogs(age)
     if (asking) SignInSheet("Taking a part needs an account.") { asking = false }
 }
 

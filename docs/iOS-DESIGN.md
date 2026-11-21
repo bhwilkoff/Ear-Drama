@@ -1374,3 +1374,5 @@ explained (Listen, Library) lost their descriptions (§1.6).
 Bring the next change back to a rule here, or bring a new rule first.
 
 - **Head board name (iPhone 12, 2026-10-31):** a long title filled five lines on Surprise. The name steps down by its length as well as its longest word (`Grammar.headNameStep`: one step past 28 characters, two past 48), holds to three lines with a 0.6 scale floor, so a head board and its Play button fit one 375 pt screen. Web balances the break (`text-wrap: balance`) and clamps to three lines; Android clamps to three.
+
+- **Student privacy on the class page** (Decision 084, 2026-11-21; PLAYS-DESIGN §12.12, binding; `apple/Shared/ClassPrivacyViews.swift`). The class page closes with a **Class** section: **Ends {date}**, a compact date picker (today to 400 days) with **Change date**, **Export class** (the system file exporter), and **Delete class** (destructive confirmation). An under-13 class without school consent opens with **School approval**. The age question is a sheet with a year picker and no default before a first Share, Invite, Take Part or Publish; only the boolean is kept (`UserDefaults` `ed.over13`).

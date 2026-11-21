@@ -8,6 +8,15 @@
 > National Data Privacy Agreement (NDPA), the Student Privacy Pledge, COPPA,
 > FERPA, and state student privacy laws (R3d §1).
 
+
+> **Status, 2026-11-21: approved and published** as `schools/index.html` (linked from the privacy page and
+> every site footer), brackets resolved: the address above; privacy contact by address only (no name was
+> ruled); Delete class, the end date and the school's withdrawal now built; 30 days and 72 hours; the
+> confirmation words "My school or district approved Ear Drama for this class."; NDPA "we sign on request"
+> (no agreement is signed yet, and no SDPC registry link exists); the Student Privacy Pledge stated as
+> retired, its commitments ours; dropped as not ruled: nonprofit status, a named contact, the accessibility
+> statement link, and a promised answer time for schools. This file stays as the record of the draft.
+
 ---
 
 # Ear Drama for schools
