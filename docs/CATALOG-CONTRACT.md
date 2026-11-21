@@ -518,6 +518,16 @@ movies. We should be able to do that for this app too (from wikipedia or any oth
   `index.json` (section 4.1), as `{url, width, height, credit, evidence, face, source, tie}` objects or absent:
   the scanned title page of an edition, the author's portrait, and the one that leads (work image, then title
   page, then author: `art_policy.pick_play`). Absent means the script-page label.
+- **`play.production`** (catalog 040): a production photograph of the play (a Federal Theatre Project record
+  that names the play and its author), same object shape. Clients lead a play on `titlePage`, then
+  `production`, then `authorArt`.
+- **License classes added by catalog 040** (an image is used unless its own record marks a restriction):
+  `no_known_restrictions` (a Library of Congress "no known restrictions" line, or an unevaluated status with
+  no restriction), `pd_source_only` (a public-domain record whose source states no further rights), and
+  `unmarked` (no rights statement and no restriction). A record with a notice, "all rights reserved", a
+  non-free or fair-use license, or a restricted status is still refused. Magazine pages are harvested
+  (`magazine_pages/`) but not served while `art_policy.SERVE_MAGAZINE_PAGES` is off (matching precision
+  measured about 1 in 2, 2026-11-21).
 
 **The show predicate gains two sources** (both pass `art_policy.show_served` and `names_the_show` like every
 other, and never replace a better one: they rank after `commons:category`):
