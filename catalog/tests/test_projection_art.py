@@ -52,7 +52,7 @@ CONTRACT = {
     "every image is a Commons file with its file page, or an archive portrait with its record page":
         "SELECT COUNT(*) FROM art WHERE (url NOT LIKE '{}%' OR evidence_url NOT LIKE '{}%') AND NOT (source IN ({}) "
         "AND url LIKE 'https://%' AND evidence_url LIKE 'https://%')".format(
-            AP.FILEPATH, AP.FILE_PAGE, ",".join(f"'{v}'" for v in list(AP.ARCHIVE_VIA.values()) + [AP.MAGAZINE_SOURCE])),
+            AP.FILEPATH, AP.FILE_PAGE, ",".join(f"'{v}'" for v in AP.ARCHIVE_VIA.values())),
     "no image is published that no person or series wears": "SELECT COUNT(*) FROM art a WHERE NOT EXISTS "
         "(SELECT 1 FROM people p WHERE p.portrait = a.id) AND NOT EXISTS (SELECT 1 FROM series s WHERE s.picture = a.id "
         "OR s.hero = a.id OR EXISTS (SELECT 1 FROM json_each(s.gallery) j WHERE j.value = a.id))",
@@ -64,10 +64,9 @@ CONTRACT = {
         "SELECT COUNT(*) FROM series s WHERE gallery IS NOT NULL AND (json_array_length(gallery) > {} OR EXISTS "
         "(SELECT 1 FROM json_each(s.gallery) j WHERE j.value = s.picture OR j.value = s.hero OR NOT EXISTS "
         "(SELECT 1 FROM art a WHERE a.id = j.value)))".format(AP.GALLERY_MAX),
-    # Decision 040 V5: magazine pages join a gallery without a show picture; every other gallery image is a show image
-    "a series with a hero or a show gallery has a show picture": "SELECT COUNT(*) FROM series s WHERE (hero IS NOT NULL OR "
-        "EXISTS (SELECT 1 FROM json_each(s.gallery) j JOIN art a ON a.id = j.value WHERE a.source IS NOT '{}')) "
-        "AND picture_kind IS NOT 'show'".format(AP.MAGAZINE_SOURCE),
+    "a series with a hero or a gallery has a show picture": "SELECT COUNT(*) FROM series WHERE (hero IS NOT NULL OR "
+        "gallery IS NOT NULL) AND picture_kind IS NOT 'show'",
+    "no magazine page is published while the switch is off": "SELECT COUNT(*) FROM art WHERE source = 'archive.org:magazine'",
     "every show image has a source from the show's own records and a tie": "SELECT COUNT(*) FROM art a WHERE "
         "(a.source IS NULL OR a.tie IS NULL OR a.source NOT IN ({}, 'wikidata:P18', {})) AND EXISTS (SELECT 1 FROM series s "
         "WHERE s.picture = a.id OR s.hero = a.id)".format(",".join(f"'{x}'" for x in AP.SHOW_SOURCES),
@@ -206,11 +205,7 @@ def retrace_shows(projection, source):
         published |= {(k, ev) for k, ev in p.execute(
             "SELECT s.key, a.evidence_url FROM series s JOIN art a ON a.id = s.hero")}
         published |= {(k, ev) for k, ev in p.execute(
-            "SELECT s.key, a.evidence_url FROM series s, json_each(s.gallery) j JOIN art a ON a.id = j.value "
-            "WHERE a.source IS NOT ?", (AP.MAGAZINE_SOURCE,))}
-    magazine = {(k, ev) for k, ev in p.execute(
-        "SELECT s.key, a.evidence_url FROM series s, json_each(s.gallery) j JOIN art a ON a.id = j.value "
-        "WHERE a.source = ?", (AP.MAGAZINE_SOURCE,))} if "gallery" in {r[1] for r in p.execute("PRAGMA table_info(series)")} else set()
+            "SELECT s.key, a.evidence_url FROM series s, json_each(s.gallery) j JOIN art a ON a.id = j.value")}
     p.close()
     s = sqlite3.connect(f"file:{source}?mode=ro", uri=True)
     ok = set()
@@ -231,15 +226,8 @@ def retrace_shows(projection, source):
                     AP.names_the_show(file, cats, names.get(k), people.get(k, ()), p373.get(k), nets.get(k)) and \
                     (src != AP.NAME_SOURCE or AP.name_hit_served(file, cats, when, names.get(k), *run.get(k, (None, None)))):
                 ok.add((k, AP.evidence_url(file)))
-    # Decision 040 V5: a magazine page is traced to its magazine_pages row, whose issue-year status must still hold
-    okm = set()
-    if {"magazine_pages", "magazine_rights"} <= tables:
-        status = {(t, y): st for t, y, st in s.execute("SELECT title, year, status FROM magazine_rights")}
-        okm = {(k, ev) for k, ev, mag, y, tie in s.execute(
-            "SELECT series_key, evidence_url, magazine, year, tie FROM magazine_pages")
-            if status.get((mag, y)) in AP.MAGAZINE_STATUS and tie in ("name", "marked person")}
     s.close()
-    return sorted(published - ok) + sorted(magazine - okm)
+    return sorted(published - ok)
 
 
 # --- the predicate ---------------------------------------------------------------

@@ -1095,7 +1095,7 @@ def served_magazine_rows(s, series_keys, live=None):
     program, judged again here from their rows (the issue-year status, the tie, the run). A source without the table
     (a fixture, an older build) serves none."""
     tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
-    if not {"magazine_pages", "magazine_rights"} <= tables:
+    if not AP.SERVE_MAGAZINE_PAGES or not {"magazine_pages", "magazine_rights"} <= tables:
         return {}
     status = {(t, y): st for t, y, st in s.execute("SELECT title, year, status FROM magazine_rights")}
     run = AP.run_dates(s)

@@ -120,9 +120,10 @@ def load():
 def pictures(play_id, ctx, title=None, authors=None):
     split = re.match(r"^gut-[0-9]+-[0-9]+$", play_id)   # a play cut from a volume: the volume's author, never its work or edition
     rec = ctx["plays"].get(re.sub(r"-[0-9]+$", "", play_id) if split else play_id)
-    out = {"titlePage": None, "authorArt": None, "picture": None}
+    out = {"titlePage": None, "production": None, "authorArt": None, "picture": None}
     if not rec:
         prod = production(title, ctx, ctx["live"], authors) if title else None
+        out["production"] = prod
         out["picture"] = dict(prod, kind="production") if prod else None
         return out
     files, live = ctx["files"], ctx["live"]
@@ -146,6 +147,7 @@ def pictures(play_id, ctx, title=None, authors=None):
         if got:
             out["authorArt"] = _art(got[0], got[1], "wikidata:P18", a.get("basis") or "name+dated person")
     prod = production(title or rec.get("title"), ctx, live, authors or rec.get("authors"))
+    out["production"] = prod
     lead = AP.pick_play([(k, v) for k, v in (("work", work), ("production", prod), ("titlePage", out["titlePage"]),
                                              ("author", out["authorArt"])) if v])
     out["picture"] = dict(lead[1], kind=lead[0]) if lead else None

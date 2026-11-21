@@ -347,13 +347,13 @@ check("control: an edition judged before the title-leaf rule (no edition_v) is n
 check("control: an own work dated after the author died is refused", PA.pictures("gut-2", CTX)["authorArt"], None)
 check("control: a play cut from a volume takes the volume's author, never its work or edition",
       [k for k, v in PA.pictures("gut-1-3", CTX).items() if v], ["authorArt", "picture"])
-check("control: a play with no record has no picture", PA.pictures("gut-99", CTX), {"titlePage": None, "authorArt": None, "picture": None})
+check("control: a play with no record has no picture", PA.pictures("gut-99", CTX), {"titlePage": None, "production": None, "authorArt": None, "picture": None})
 PF["G Bernard Shaw.jpg"] = {"class": "pd_us", "width": 800, "height": 900}
 PCTX = {"plays": {"gut-3": {"title": "Misalliance: A Debate", "authors": ["Shaw, Bernard"], "work": {"files": ["G Bernard Shaw.jpg"]},
                             "edition": None, "author": {"files": ["Author.jpg"], "died": "1950", "basis": "name+birth_year"}}},
         "files": PF, "live": {}}
 check("control: the work's own image that is a portrait of its author is not served as the work; the author slot has hers",
-      [(k, bool(v)) for k, v in PA.pictures("gut-3", PCTX).items()], [("titlePage", False), ("authorArt", True), ("picture", True)])
+      [(k, bool(v)) for k, v in PA.pictures("gut-3", PCTX).items()], [("titlePage", False), ("production", False), ("authorArt", True), ("picture", True)])
 check("control: ...and what leads is the author, not the portrait twice", PA.pictures("gut-3", PCTX)["picture"]["kind"], "author")
 rows = PA.attach([{"id": "gut-1"}, {"id": "gut-99"}], CTX)
 check("attach: a row with nothing keeps its own keys only", sorted(rows[1]), ["id"])

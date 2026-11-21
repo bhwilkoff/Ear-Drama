@@ -262,10 +262,11 @@ struct PlayPageBody: View {
     /// The published title page and author's portrait (R3b §5.5 `play.titlePage`, `play.authorArt`); a play carries
     /// neither until the pipeline does, and its head is then its opening drawn as a page (WEB-DESIGN §6.4g).
     var titlePage: Artwork? = nil
+    var production: Artwork? = nil
     var authorArt: Artwork? = nil
 
     var body: some View {
-        let lead = ItemLead.playLead(titlePage: titlePage, authorArt: authorArt)
+        let lead = ItemLead.playLead(titlePage: titlePage, production: production, authorArt: authorArt)
         VStack(alignment: .leading, spacing: Spacing.s4) {
             ItemHeadBoard(kicker: ItemKicker.text(PlayHead.kicker(script)), name: script.title, genre: PlayScript.boardGenre, art: lead,
                           label: script.pageLabel, facts: PlayHead.facts(script), credits: script.authorLineWithYears,

@@ -40,8 +40,8 @@ object ItemLead {
         return if (out.size >= 2) out else emptyList()
     }
 
-    /** The picture that leads a play's page: its title page, else its author's portrait; null is its page as the label. */
-    fun playLead(titlePage: Artwork?, authorArt: Artwork?): Artwork? = titlePage ?: authorArt
+    /** The picture that leads a play's page: its title page, else a photograph of its production, else its author's portrait; null is its page as the label. */
+    fun playLead(titlePage: Artwork?, authorArt: Artwork?, production: Artwork? = null): Artwork? = titlePage ?: production ?: authorArt
 
     /** The picture a head window can show: its size is known and its short side holds the floor. */
     fun shown(art: Artwork?): Artwork? {

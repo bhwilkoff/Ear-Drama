@@ -1175,6 +1175,9 @@ def ftp_play_served(rights_class, usable, contributors, partof, title, summary, 
 # marks, and its year lies inside the run.
 MAGAZINE_STATUS = ("not_renewed", "pd_by_age")
 MAGAZINE_SOURCE = "archive.org:magazine"
+# Owner ruling 2026-11-21: measured, magazine pages were the right subject about one time in two, and 040 kept every
+# accuracy rule, so no magazine page reaches the projection. The harvest, the enrichment and their caches stay.
+SERVE_MAGAZINE_PAGES = False
 PUBLISHERS = ("macfadden", "triangle publications", "triangle pub", "annenberg", "fawcett", "radio stars",
               "radio mirror", "radio guide", "movie and radio guide", "tower magazines", "dell publishing")
 NOTICE = re.compile(r"(?:©|\(c\)|\bcopyright\b|\bcopr\.?)\s*(?:19|20)?\d{0,2}\d{0,2}[^.\n]{0,70}", re.I)

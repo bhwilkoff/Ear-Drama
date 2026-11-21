@@ -31,6 +31,8 @@ struct ItemLeadTests {
     @Test func aPlayLeadsWithItsTitlePageThenItsAuthor() {
         #expect(ItemLead.playLead(titlePage: pic("t"), authorArt: pic("a"))?.url.lastPathComponent == "t.jpg", "a title page leads a play")
         #expect(ItemLead.playLead(titlePage: nil, authorArt: pic("a", 1, 1))?.url.lastPathComponent == "a.jpg", "else the author")
+        #expect(ItemLead.playLead(titlePage: nil, production: pic("p"), authorArt: pic("a"))?.url.lastPathComponent == "p.jpg", "a production photograph leads over the author")
+        #expect(ItemLead.playLead(titlePage: pic("t"), production: pic("p"), authorArt: nil)?.url.lastPathComponent == "t.jpg", "control: a title page still leads a production photograph")
         #expect(ItemLead.playLead(titlePage: nil, authorArt: nil) == nil, "control: else its page")
     }
 

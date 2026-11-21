@@ -227,5 +227,32 @@ check("control: a renewed issue year, a page with another holder's notice, a pag
       "before the run give none", len(pages), 1)
 check("the page image is the issue's own page at 800 px", pages[0][11], "https://archive.org/download/rm1939/page/n3_w800.jpg")
 
+# --- the switch: no magazine page reaches the projection while it is off ----------------------
+mp = sqlite3.connect(":memory:")
+mp.executescript("""
+CREATE TABLE series (key TEXT, name TEXT, first_date TEXT, last_date TEXT);
+INSERT INTO series VALUES ('lux', 'Lux Radio Theatre', '1934-06-01', '1955-06-07');
+CREATE TABLE episodes (id TEXT, series_key TEXT, air_date TEXT);
+INSERT INTO episodes VALUES ('lux|1934-06-01', 'lux', '1934-06-01');
+INSERT INTO episodes VALUES ('lux|1955-06-07', 'lux', '1955-06-07');
+CREATE TABLE magazine_rights (title TEXT, year INTEGER, status TEXT, usable INTEGER);
+INSERT INTO magazine_rights VALUES ('Radio Mirror', 1939, 'not_renewed', 1);
+CREATE TABLE magazine_pages (series_key TEXT, item_id TEXT, leaf INTEGER, magazine TEXT, issue_title TEXT, year INTEGER,
+  tie TEXT, matched TEXT, words INTEGER, status TEXT, evidence_url TEXT, image_url TEXT);
+INSERT INTO magazine_pages VALUES ('lux', 'rm1939', 3, 'Radio Mirror', 'x', 1939, 'name', 'Lux Radio Theatre', 30,
+  'not_renewed', 'https://archive.org/details/rm1939/page/n3', 'https://archive.org/download/rm1939/page/n3_w800.jpg');
+""")
+check("the switch ships off", AP.SERVE_MAGAZINE_PAGES, False)
+check("switch off: no magazine page is served", BP.served_magazine_rows(mp, {"lux"}), {})
+AP.SERVE_MAGAZINE_PAGES = True
+check("control: switched on, the same row is served", list(BP.served_magazine_rows(mp, {"lux"})), ["lux"])
+AP.SERVE_MAGAZINE_PAGES = False
+
+# --- a play's production picture is emitted beside its title page and author's portrait ----------
+import play_art
+check("a play with no art record still carries a production picture when the Federal Theatre has one",
+      play_art.pictures("gut-1", {"plays": {}, "files": {}, "live": {}, "ftp": {}}, "Horse Eats Hat", ["Anyone"]),
+      {"titlePage": None, "production": None, "authorArt": None, "picture": None})
+
 print(f"{ran} checks, {failed} failed")
 sys.exit(1 if failed else 0)

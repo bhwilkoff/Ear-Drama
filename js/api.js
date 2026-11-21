@@ -163,10 +163,10 @@ const API = (() => {
     if (hero && artShape(hero) === 'wide') return hero;
     return artRow(s.picture);
   }
-  /** The picture that leads a play's page: its title page, else its author's portrait, else null (its page as the label). */
+  /** The picture that leads a play's page: its title page, else a photograph of its production, else its author's portrait, else null (its page as the label). */
   function playLead(script) {
     const s = script || {};
-    return artRow(s.titlePage) || artRow(s.authorArt) || null;
+    return artRow(s.titlePage) || artRow(s.production) || artRow(s.authorArt) || null;
   }
   /** Commons' standard thumbnail steps; any other width is refused upstream. */
   const ART_STEPS = [120, 330, 500, 960];
@@ -1191,7 +1191,7 @@ const API = (() => {
       try {
         const d = await get(`plays/library/${row.path}`, 30000);
         const s = Array.isArray(d.scripts) ? d.scripts.find(x => x.id === id) : null;
-        if (s) return { ...s, titlePage: s.titlePage || row.titlePage || null, authorArt: s.authorArt || row.authorArt || null };
+        if (s) return { ...s, titlePage: s.titlePage || row.titlePage || null, production: s.production || row.production || null, authorArt: s.authorArt || row.authorArt || null };
       } catch (e) { failure = e; }
     }
     try {

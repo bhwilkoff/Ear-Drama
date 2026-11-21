@@ -145,6 +145,8 @@ test('item pages: the series lead, the pictures row, the play lead (WEB-DESIGN Â
   assertEq(API.galleryOf({ gallery: [pic('b', 600, 800, null), pic('c')] }, null).length, 0, 'control: a picture with no evidence does not count');
   assertEq(API.playLead({ titlePage: pic('t'), authorArt: pic('a') }).url, 't', 'a title page leads a play');
   assertEq(API.playLead({ authorArt: { url: 'a', width: 1, height: 1 } }).url, 'a', 'else the author (an object row)');
+  assertEq(API.playLead({ production: pic('p'), authorArt: pic('a') }).url, 'p', 'a production photograph leads over the author');
+  assertEq(API.playLead({ titlePage: pic('t'), production: pic('p') }).url, 't', 'control: a title page still leads a production photograph');
   assertEq(API.playLead({}), null, 'control: else its page');
 });
 

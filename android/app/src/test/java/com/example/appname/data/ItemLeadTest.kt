@@ -30,6 +30,8 @@ class ItemLeadTest {
     @Test fun aPlayLeadsWithItsTitlePageThenItsAuthor() {
         assertEquals("t.jpg", ItemLead.playLead(pic("t"), pic("a"))?.url?.substringAfterLast('/'))
         assertEquals("a.jpg", ItemLead.playLead(null, pic("a", 1, 1))?.url?.substringAfterLast('/'))
+        assertEquals("p.jpg", ItemLead.playLead(null, pic("a"), pic("p"))?.url?.substringAfterLast('/'))
+        assertEquals("t.jpg", ItemLead.playLead(pic("t"), null, pic("p"))?.url?.substringAfterLast('/'))
         assertNull(ItemLead.playLead(null, null))
     }
 

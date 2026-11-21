@@ -27,8 +27,9 @@ nonisolated enum ItemLead {
         return out.count >= 2 ? out : []
     }
 
-    /// The picture that leads a play's page: its title page, else its author's portrait; nil is its page as the label.
-    static func playLead(titlePage: Artwork?, authorArt: Artwork?) -> Artwork? { titlePage ?? authorArt }
+    /// The picture that leads a play's page: its title page, else a photograph of its production, else its author's
+    /// portrait; nil is its page as the label.
+    static func playLead(titlePage: Artwork?, production: Artwork? = nil, authorArt: Artwork?) -> Artwork? { titlePage ?? production ?? authorArt }
 
     /// The picture a head window can show: its size is known and its short side holds the floor.
     static func shown(_ art: Artwork?) -> Artwork? {

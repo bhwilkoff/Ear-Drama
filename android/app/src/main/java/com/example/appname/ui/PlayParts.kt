@@ -284,8 +284,8 @@ fun PlayHeadBoard(script: PlayListing, kicker: String, modifier: Modifier = Modi
  * as a page at tier L, the voice bands at its foot. The production's board keeps [PlayHeadBoard].
  */
 @Composable
-fun PlayPageHead(script: PlayListing, kicker: String, modifier: Modifier = Modifier, titlePage: Artwork? = null, authorArt: Artwork? = null) {
-    val lead = ItemLead.playLead(titlePage, authorArt)
+fun PlayPageHead(script: PlayListing, kicker: String, modifier: Modifier = Modifier, titlePage: Artwork? = null, authorArt: Artwork? = null, production: Artwork? = null) {
+    val lead = ItemLead.playLead(titlePage, authorArt, production)
     val facts = listOf(
         script.year?.toString(),
         script.cast.size.let { "$it ${if (it == 1) "part" else "parts"}" },

@@ -1522,7 +1522,7 @@ credits (`undated_served`, `build_projection.undated_people`). Federal Theatre P
 play's title word for word and any author the poster names is ours (the FTP's "Brothers" by Herbert Ashton Jr. is
 not Terence's); they reach 2 of the 803 library plays, because the FTP staged few Gutenberg classics. Magazine
 pages (`harvest_magazine_pages.py`, 560 issues of Radio Mirror, Radio Guide, Radio Stars, Radio Digest and others
-whose year is `not_renewed` or `pd_by_age`) join a series' gallery only, never lead: the page is short (25 to 450
+whose year is `not_renewed` or `pd_by_age`) would join a series' gallery only, never lead, but the owner ruled them OFF for this batch (the main thread, 2026-11-21: right subject about one time in two): `art_policy.SERVE_MAGAZINE_PAGES = False` and the projection serves none, tested. The page rule, if switched on, is: the page is short (25 to 450
 words), carries no notice of another holder and no advertisement words, and names the program twice with the name in
 its first 80 characters. The first version (any mention) was right for about one page in three by eye, the last
 for about one in two; the take-down path is the remedy for the rest, and the gallery is where a wrong page costs least.
