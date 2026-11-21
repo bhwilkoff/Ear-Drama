@@ -299,6 +299,13 @@ object ReadCore {
         "not_recording" to "The reading is not recording.",
         "not_your_line" to "That line is someone else's.",
         "school_consent_required" to "Waits for the school's consent.",
+        "confirmations_required" to "Check both boxes first.",
+        "reference_required" to "Name the school or district.",
+        "pending_owner_policy" to "Not open yet.",
+        "bad_end_date" to "That is not a date.",
+        "end_date_past" to "Pick a later date.",
+        "end_date_too_far" to "Pick an earlier date.",
+        "submitted" to "A published play stays.",
     )
 
     fun refusal(code: String): String = REFUSALS[code] ?: "Ear Drama could not be reached."

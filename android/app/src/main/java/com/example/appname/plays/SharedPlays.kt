@@ -108,6 +108,14 @@ class SharedPlays(
         return result
     }
 
+    /** The director deletes the production on the Worker (section 12.12 item 7); the caller removes the local copy. */
+    suspend fun deleteForEveryone(localId: String) {
+        val pid = linkOf(localId)?.pid ?: throw PlaysException("not_found")
+        api.deleteProduction(pid)
+        _records.update { it - localId }
+        _links.update { it - localId }
+    }
+
     /** Fetches the other members' chosen takes, then the record again; the number of takes that arrived. */
     suspend fun bringHome(localId: String, script: PlayScript): Int {
         val rec = refresh(localId)

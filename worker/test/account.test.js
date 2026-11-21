@@ -95,7 +95,7 @@ async function fillPlays(s) {
   // Classes: one taught, with the school's consent; one joined.
   const policy = { SCHOOL_CONSENT_POLICY: "test-policy-1" };
   const taught = await (await call("POST", "/v1/plays/classes", { token: s.access_token, body: { name: "Room 4", under13: true } })).json();
-  const sc = await call("POST", `/v1/plays/classes/${taught.id}/school-consent`, { token: s.access_token, body: {}, envOverride: policy });
+  const sc = await call("POST", `/v1/plays/classes/${taught.id}/school-consent`, { token: s.access_token, body: { reference: "Unified School District DPA" }, envOverride: policy });
   expect(sc.status).toBe(201);
   const other = await (await call("POST", "/v1/plays/classes", { token: partner.access_token, body: { name: "Drama club" } })).json();
   expect((await call("POST", "/v1/plays/classes/join", { token: s.access_token, body: { code: other.code } })).status).toBe(200);

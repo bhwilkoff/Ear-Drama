@@ -38,6 +38,7 @@ const SHELL = [
   'js/plays-core.js',
   'js/plays-store.js',
   'js/plays-share.js',
+  'js/age-gate.js',
   'js/voice-cast.js',
   'js/plays-voice.js',
   'js/plays-audio.js',
@@ -70,6 +71,8 @@ const SHELL = [
   'tv.js',
   'credits/',
   'privacy/',
+  'schools/',
+  'security/',
   'takedown/',
   'delete-account/',
 ];

@@ -84,6 +84,12 @@ export async function handleDelete(auth, request, env) {
     appleRevoked = await revokeApple(env, body.apple_authorization_code, body.apple_client_id);
   }
 
+  await deleteAccount(env, userId);
+  return json({ deleted: true, apple_token_revoked: appleRevoked });
+}
+
+/** Every row of `userId`, as DELETE /v1/account does; the idle-account sweep calls it too (Decision 084). */
+export async function deleteAccount(env, userId) {
   const orphans = await playsBeforeDeletion(env, userId);
   await env.DB.batch([
     ...orphans,
@@ -93,7 +99,6 @@ export async function handleDelete(auth, request, env) {
     ...USER_TABLES.map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE user_id = ?1`).bind(userId)),
     env.DB.prepare("DELETE FROM users WHERE id = ?1").bind(userId),
   ]);
-  return json({ deleted: true, apple_token_revoked: appleRevoked });
 }
 
 /**

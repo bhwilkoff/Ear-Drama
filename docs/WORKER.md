@@ -40,6 +40,8 @@ Cloudflare, Apple, or Google is the owner's.
 | `worker/migrations/0006_read_rooms.sql` | the D1 schema for polled read rooms |
 | `worker/src/plays.js` | shared plays' HTTP and D1 adapter, the take intake (`receiveTake`), publishing; deletion's plays step; the plays sweep |
 | `worker/src/plays-seats.js` | classes that own productions (Decision 082): seats, the no-account seat routes, assignments, review, progress |
+| `worker/src/plays-retention.js` | retention (Decision 084): Delete class, Delete production, the class end date, the class export, the operator's school-request route, and the retention sweep |
+| `worker/migrations/0010_retention.sql` | a class's `ends_on`, `touched_at`, `notice_at`; an account's `seen_at`, `idle_notice_at`; a class publish's two confirmations |
 | `worker/src/take-relay.js` | the `TakeRelay` Durable Object: a take piped from the recording device to the director's device, in memory only |
 | `worker/migrations/0007_seats_and_pass_through.sql` | seats, class productions, assignments, reviews; `play_takes` without its object key |
 | `worker/src/plays-open.js` | the reads that need no account: an open invite, the finished-drama listing and one finished drama |
@@ -153,7 +155,9 @@ archive.org item stay. Any other production with anyone else in it goes to the
 member who joined first (their takes stay); one nobody else is in goes with them.
 No take audio is on Cloudflare to delete (Decision 082). A teacher's classes go
 with their account, and with them the classes' seats, productions, casting and
-reviews. A report about the deleted person keeps its trail with
+reviews (a submitted class production is detached first and stays). The
+idle-account sweep ("Retention and deletion") deletes an account by this same
+path (`deleteAccount`). A report about the deleted person keeps its trail with
 `target_user_id` cleared.
 
 Sign in with Apple also asks that the app revoke the person's Apple tokens.
@@ -443,20 +447,24 @@ All under `/v1/plays`, all bearer except the open reads below. `:pid` is a produ
 | `POST /productions/:pid/takes/:takeId/review` | the director of a class production | `{ state: "approved" or "again", note? }` (typed, up to 500 characters) | `{ take_id, state, note, reviewed_at }`; the latest review stands; the note is shown to that take's seat alone |
 | `PUT /productions/:pid/archive/files/:lineId` | the director, or the line's take's performer | the line's chosen take, with its `Content-Length` | `200 { line_id, state: "sent", name, archive }`; `409 not_ready` (the cron has not laid the item out), `409 already_sent`, `409 reported_take`, `422 not_the_take`, `503 archive_busy` (check_limit), `503 archive_unavailable` / `502 archive_refused` (archive.org's answer, redacted) |
 | `POST /productions/:pid/chosen` | the claimant | `{ take_id }` | the record |
-| `POST /productions/:pid/publish` | the director | a class production: `{ credit_name? }` | `201 { status: "queued", take_ids, created_at }`; again, `200` and the same job; after `failed`, `200` and queued again; `503 publishing_unavailable` without both keys; a class production also `403 under_13_never_published`, `422 credit_name_required` |
+| `POST /productions/:pid/publish` | the director | a class production: `{ credit_name?, performers_agreed: true, media_release: true }` | `201 { status: "queued", take_ids, created_at }`; again, `200` and the same job; after `failed`, `200` and queued again; `503 publishing_unavailable` without both keys; a class production also `403 under_13_never_published`, `422 confirmations_required` (either confirmation missing or not `true`; Decision 084), `422 credit_name_required` |
+| `DELETE /productions/:pid` | the director | | `204`: the production and every row of it (takes' fields, parts, members, invites, consents, casting, reviews); `409 submitted` once it has an archive job (a submitted production stays; its lines are removed one by one) |
 | `POST /productions/:pid/archive/lines/:lineId/remove` | the line's performer, or the director | `{ reason? }`: `withdrawn` (default) or a report reason | `202 { line_id, state }`; `404 not_published` before the item is |
 | `POST /reports` | a member | `{ production_id, take_id }` or `{ production_id, user_id }`, `reason`, `note?` | `201 { id }` |
 | `POST /blocks`, `GET /blocks`, `DELETE /blocks/:userId` | anyone | `{ user_id }` | `204`; `{ blocked: [...] }`; `204` |
-| `POST /classes` | anyone (the teacher) | `{ name, under13? }` | `201 { id, name, code, under13, school_consent }` |
-| `GET /classes` | anyone | | `{ teaching, member_of }`; each taught class carries `code` and `school_consent` |
+| `POST /classes` | anyone (the teacher) | `{ name, under13? }` | `201 { id, name, code, under13, school_consent, ends_on, deletes_on }`; `ends_on` is the July 31 that closes the school year (August to July) it was made in |
+| `GET /classes` | anyone | | `{ teaching, member_of }`; each taught class carries `code`, `school_consent`, `ends_on`, and `deletes_on` (the date a 12-month idle notice runs out, else null) |
 | `POST /classes/join` | anyone with the code | `{ code, display_name? }` | `{ id, name, under13 }` |
-| `GET /classes/:id` | the teacher or a member | | the teacher sees the code, the account members, and `seats: [{ id, label, claimed, claimed_at }]`; a student, the name |
+| `GET /classes/:id` | the teacher or a member | | the teacher sees the code, `ends_on`, `deletes_on`, the account members, and `seats: [{ id, label, claimed, claimed_at }]`; a student, the name. The teacher's read restarts the idle clock and ends a notice |
+| `PATCH /classes/:id` | the teacher | `{ ends_on: "YYYY-MM-DD" }` (the class's last day) | `{ id, ends_on, deletes_on: null }`; `422 bad_end_date`, `end_date_past` (before yesterday), `end_date_too_far` (more than 400 days ahead) |
+| `DELETE /classes/:id` | the teacher | | `204`: see "Retention and deletion" |
+| `GET /classes/:id/export` | the teacher | | `{ format: "eardrama-class-export", version: 1, exported_at, audio, class: { id, name, under13, created_at, ends_on, school_authorization }, seats: [{ id, label }], productions: [{ id, title, script_id, script_revision, created_at, archive, assignments: [{ part, from, to, seat, seat_label }], progress, takes: [{ id, line_id, part, seat, seat_label, chosen, created, received_at, seconds, review }] }] }`; no audio (none is stored) |
 | `POST /classes/:id/seats` | the teacher | `{ labels: [...] }` or `{ text: "a pasted list" }` (one a line, or tab or semicolon apart) | `201 { seats, refused: [{ label, error }] }`; a name already there is skipped; `409 too_many_seats` past 64 |
 | `DELETE /classes/:id/seats/:seat` | the teacher | | `204`; the seat's casting goes, its takes stay the teacher's |
 | `POST /classes/:id/seats/:seat/release` | the teacher | | `204`; the device holding it is let go and the next may take it |
 | `POST /classes/:id/productions` | the teacher | as `POST /productions` | `201` the record with `class_id`; every seat of the class is in it without an invite |
 | `GET /classes/:id/progress` | the teacher | | `{ class_id, productions: [{ id, title, seats: [{ seat, label, parts: [{ part, lines, recorded, approved, again }] }] }] }`: counts only, never a ranking |
-| `POST /classes/:id/school-consent` | the teacher | `{ reference? }` | `201`; `503 pending_owner_policy` until `SCHOOL_CONSENT_POLICY` is set |
+| `POST /classes/:id/school-consent` | the teacher | `{ reference }`: which school or district authorization (up to 120 characters) | `201`; `503 pending_owner_policy` until `SCHOOL_CONSENT_POLICY` is set; `422 reference_required` (the school or district decides, FTC COPPA FAQ N.3; Decision 084) |
 | `DELETE /classes/:id/members/:userId` | the teacher, or that student | | `204` |
 
 ### Seats (no account; Decision 082)
@@ -664,6 +672,66 @@ ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
   Every line on the item is credited to that name; no seat's label reaches
   archive.org.
 
+## Retention and deletion (Decision 084)
+
+Owner, 2026-11-21: *"I don't mind deleting the info about who recorded what, but
+we need to be able to keep the recorded Ear Dramas in our database."* Who
+recorded what goes on a schedule; the ear drama stays.
+
+**Deleting a class** (`deleteClass` in `plays-retention.js`) deletes its seats
+and their names, class membership, the school's authorization record, and every
+production of the class that was never submitted, with all their rows. A
+**submitted** production (it has an archive job) is detached first: its takes'
+`seat_id` is cleared, its reviews and casting are deleted, and `class_id` is
+cleared; the production, its takes' fields, its job and its archive.org files
+stay, and its credits carry only the teacher's chosen name. The same runs for
+all four ways a class goes:
+
+1. **Delete class**: `DELETE /classes/:id`, the teacher.
+2. **The end date**: the hourly sweep deletes a class from noon UTC the day
+   after `ends_on` (after that day has ended in every US time zone). The
+   default is the July 31 that closes the school year it was made in; the
+   teacher changes it with `PATCH /classes/:id`, up to 400 days ahead.
+3. **Idle 12 months**: activity is the latest of the teacher's read of the
+   class, its productions' `updated_at`, and its seats' `claimed_at`. At 11
+   months the sweep sets `notice_at` (the teacher's list shows `deletes_on`);
+   activity after it clears it; the class goes once the notice is 30 days old
+   and activity is 12 months old.
+4. **A school asks** (below).
+
+**Delete production**: `DELETE /productions/:pid`, the director, only before it
+is submitted.
+
+**Idle accounts**: every sign-in and refresh writes `users.seen_at` and clears
+`idle_notice_at`. At 3 years less 30 days the sweep sets the notice; at 3 years,
+with the notice 30 days old, it deletes the account exactly as
+`DELETE /v1/account` does. The `deleted-account` row is never swept. We hold no
+email, so the only notice we can give is the published policy; any sign-in
+cancels it.
+
+The sweep handles 25 classes and 25 accounts an hour at most.
+
+### A school asks
+
+A school or district writes to ben@learningischange.com to delete a class's
+data. The owner confirms the request comes from the school, then, with the
+`OPERATOR_TOKEN` secret (never in git):
+
+```sh
+API=https://eardrama-api.benwilkoff.workers.dev
+curl -s -H "authorization: Bearer $OPERATOR_TOKEN" "$API/v1/operator/classes?code=K7QF2M9X"
+curl -s -H "authorization: Bearer $OPERATOR_TOKEN" "$API/v1/operator/classes?reference=Lakeview%20District%20NDPA"
+curl -s -X DELETE -H "authorization: Bearer $OPERATOR_TOKEN" "$API/v1/operator/classes/<class id>"
+```
+
+The first two list the matching classes (id, name, code, under13, created_at,
+ends_on, reference; never a seat's name): by the class code the teacher gives,
+or by the school's authorization reference (exact, any case). The third deletes
+one class as Delete class does and answers `{ deleted, class_id, deleted_at }`.
+The owner answers the school in writing with the date, within 30 days of the
+request (the policy's promise). Without the secret every operator route answers
+`403`.
+
 ## Schema
 
 `worker/migrations/0001_accounts.sql`, `0002_rooms.sql`, and `0003_plays.sql`.
@@ -671,7 +739,7 @@ Times are milliseconds.
 
 | Table | Key | Columns |
 |---|---|---|
-| `users` | `id` | `created_at` |
+| `users` | `id` | `created_at`, `seen_at` (the last sign-in or refresh), `idle_notice_at` |
 | `identities` | `(provider, subject)` | `user_id`, `created_at` |
 | `sessions` | `id` | `user_id`, `family`, `token_hash` (SHA-256 of the refresh token), `device`, `created_at`, `expires_at`, `revoked` |
 | `history` | `(user_id, episode_id)` | `position`, `duration`, `finished`, `deleted`, `updated_at`, `device`, `changed_at` |
@@ -688,9 +756,9 @@ Times are milliseconds.
 | `play_consents` | `(user_id, production_id, version)` | `consented_at` |
 | `play_reports` | `id` | `user_id` (the reporter), `production_id`, `target_user_id` (cleared when that account goes), `take_id`, `reason`, `note`, `created_at`, `status` |
 | `play_blocks` | `(user_id, blocked_id)` | `created_at` |
-| `play_archive_jobs` | `production_id` | `user_id`, `status` (`queued`, `uploading`, `published`, `failed`), `take_ids`, `identifier`, `item_url`, `reason`, `attempts`, `next_attempt_at`, `lease_until`, `credits`, `published_at`, `created_at`, `updated_at` |
+| `play_archive_jobs` | `production_id` | `user_id`, `status` (`queued`, `uploading`, `published`, `failed`), `take_ids`, `identifier`, `item_url`, `reason`, `attempts`, `next_attempt_at`, `lease_until`, `credits`, `published_at`, `created_at`, `updated_at`, `performers_agreed_at` and `media_release_at` (a class publish's two confirmations) |
 | `play_archive_files` | `(production_id, line_id)` | `seq`, `part`, `take_id`, `name`, `state` (`pending`, `sent`, `remove`, `removed`, `failed`), `stale_name`, `removed_by`, `reason`, `updated_at`; no person column |
-| `play_classes` | `id` | `user_id` (the teacher), `name`, `code`, `under13`, `created_at` |
+| `play_classes` | `id` | `user_id` (the teacher), `name`, `code`, `under13`, `created_at`, `ends_on` (the last day, `YYYY-MM-DD`), `touched_at` (the teacher's last read), `notice_at` (an idle notice began) |
 | `play_class_members` | `(class_id, user_id)` | `display_name`, `joined_at` |
 | `play_school_consents` | `class_id` | `user_id` (the teacher who recorded it), `policy_version`, `reference`, `recorded_at` |
 | `play_class_seats` | `(class_id, id)` | `label` (unique in the class, any case), `key_hash` (SHA-256 of the seat key; null while free), `claimed_at`, `created_at`; no person column |
@@ -740,6 +808,7 @@ Secrets, with `wrangler secret put` (never in git, never in `wrangler.toml`):
 | `SESSION_SECRET` | signs access tokens; at least 32 characters (`openssl rand -base64 48`). Without it, sign-in answers `503` |
 | `APPLE_PRIVATE_KEY` | the Sign in with Apple key (`.p8` contents), only for token revocation |
 | `IA_S3_ACCESS_KEY`, `IA_S3_SECRET_KEY` | the Ear Drama archive.org account's S3 keys (archive.org/account/s3.php). Publish and the uploader stay closed until both are set |
+| `OPERATOR_TOKEN` | the owner's key to `/v1/operator/*`, a school's deletion request (`openssl rand -base64 48`). Without it every operator route answers `403` |
 
 Rate limits (`[[ratelimits]]`, Archive Watch's `limited()`; counts are kept
 for the window only):
@@ -766,7 +835,8 @@ for the window only):
 Every five minutes (`*/5 * * * *`) the cron runs only the archive.org
 uploader. The hourly one (`23 * * * *`) also deletes expired sessions, idle rooms, quiet
 room members, rooms left with no member, idle polled read rooms, lapsed play claims, and expired
-invites. A revoked session is
+invites, and runs the retention sweep (classes past their end date or a year idle after notice,
+accounts three years idle after notice). A revoked session is
 kept until it would have expired, because it is what recognizes a replayed
 refresh token.
 
@@ -779,8 +849,8 @@ until a TV client signs in and the owner decides how they should.
 ```sh
 cd worker
 npm ci
-npm test                 # 378 tests in workerd with a local D1, local Durable Objects, and a fake archive.org
-npm run test:mutations   # 247 deliberate breaks; every one must turn the suite red
+npm test                 # 455 tests in workerd with a local D1, local Durable Objects, and a fake archive.org
+npm run test:mutations   # 307 deliberate breaks; every one must turn the suite red
 node test/mutations.mjs --check              # every break still matches its source, nothing run
 node test/mutations.mjs --only "name,name"   # just those, after fixing a survivor
 node tools/castable-manifest.mjs             # after every rebuild of the castable scripts
@@ -829,7 +899,11 @@ refusal failing nothing; the cron's request budget, backoff, and giving up on
 removals; the keys absent from every log, stored reason, and response; and
 P12's replace, replace in another format, who may replace or remove, held
 reports, the credits rewrite, a 404 on delete, and the job passing with the
-production when the director's account goes. The scripts come from the castable file by their data,
+production when the director's account goes. Retention (`test/retention.test.js`, Decision 084): Delete class and
+Delete production by their owner only, a submitted production kept whole but for who recorded
+what, the end date's default, limits and day-after rule, the idle notice and its clearing, idle
+accounts and the `deleted-account` row, the cron, the class export's contents, the operator
+route's token and finds, the 13+ confirmations, and the required school reference. The scripts come from the castable file by their data,
 never by name.
 `.github/workflows/worker-test.yml` runs `npm test` on any change under
 `worker/`. It has no Cloudflare credential and no deploy step.
@@ -844,7 +918,10 @@ Each of these is the owner's, in this order. The repository cannot show which ar
    printed `database_id` in `worker/wrangler.toml` (an id is not a secret).
 3. **Apply the schema**: `npx wrangler d1 migrations apply eardrama --remote`
    (the migrations: accounts, rooms, plays, the archive.org uploader,
-   take-downs, read rooms, and seats with pass-through takes).
+   take-downs, read rooms, seats with pass-through takes, and retention:
+   `0010_retention.sql`, which gives every existing class the end date of the
+   school year it was made in and every existing account `seen_at` of the day
+   it is applied).
 4. **Sign in with Apple**: in the Apple Developer account, enable Sign in with
    Apple on `app.eardrama`; create a Services ID for the web and Android, with
    `eardrama.org` as its domain and return URL. Put the Services ID in
@@ -866,7 +943,8 @@ Each of these is the owner's, in this order. The repository cannot show which ar
    (for example `api.eardrama.org`) and smoke-test `GET /v1/health` against
    that host, not a test base URL (zero-cost-hosted-backend: know which host
    the Worker answers on).
-9. **Privacy policy**: the page must say what is stored: a provider and its
+9. **Privacy policy** (published 2026-11-21 on approval, `privacy/` and
+   `schools/`; its words follow this list): the page must say what is stored: a provider and its
    opaque id, listening positions, the queue, follows, the device name the app
    sends, and nothing else; deleted at once on request. Listen Together rooms
    store what an episode is doing and an anonymous member key's hash, no
@@ -881,7 +959,10 @@ Each of these is the owner's, in this order. The repository cannot show which ar
     approve the CC0 consent words and give them a new `CONSENT_VERSION`; replace
     the seed deny list in `plays-names.js` with a vetted one; decide how
     reports reach you and how fast they are answered (guideline 1.2); set
-    `SCHOOL_CONSENT_POLICY` once the privacy policy covers school consent; and
+    `SCHOOL_CONSENT_POLICY` to the published policy's version (`privacy-2026-11-21`,
+    printed at the top of `privacy/`) in `wrangler.toml` `[vars]`; put the
+    operator key in with `openssl rand -base64 48 | npx wrangler secret put OPERATOR_TOKEN`
+    and keep a copy only in your password manager; and
     put the Ear Drama archive.org keys in with
     `npx wrangler secret put IA_S3_ACCESS_KEY` and `... IA_S3_SECRET_KEY`,
     apply `0004_archive_uploader.sql`, and deploy; the first publish then

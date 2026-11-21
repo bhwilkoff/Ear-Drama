@@ -492,3 +492,5 @@ player's numbers named once (§5.4).
 **E1 rules (2026-10-30, D4 review).** The transport bar carries Add to queue and Share as borderless icon buttons before "On the air"; the Controls menu carries Share Episode beside Add to Queue. Stations after the evening ends: Tonight's button reads Replay. Account carries the Export section (docs/EXPORT.md), shared with iOS.
 
 Bring the next change back to a rule here, or bring a new rule first.
+
+- **Student privacy on the class page** (Decision 084, 2026-11-21; PLAYS-DESIGN §12.12, binding; `apple/Shared/ClassPrivacyViews.swift`). The class page closes with a **Class** section: **Ends {date}**, a compact date picker (today to 400 days) with **Change date**, **Export class** (the save panel), and **Delete class** (destructive confirmation). An under-13 class without school consent opens with **School approval**. The age question is a sheet with a year picker and no default before a first Share, Invite, Take Part or Publish; only the boolean is kept (`UserDefaults` `ed.over13`).

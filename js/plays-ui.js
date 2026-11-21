@@ -556,6 +556,7 @@ const PlaysUI = (() => {
     const go = h.el('button', { type: 'submit', class: 'btn' }, 'Share');
     box.append(h.el('form', { class: 'take-form', onsubmit: async (e) => {
       e.preventDefault();
+      if (!(await AgeGate.ask(h))) return;
       go.disabled = true;
       line.textContent = '';
       try {
@@ -701,7 +702,22 @@ const PlaysUI = (() => {
       sharedListen(rec, local, script, pid, me, rerender),
       ...[changeBox(rec, script, pid, me, id)].filter(Boolean),
       peopleBox(rec, me, p, pid, rerender),
-      h.el('div', { class: 'actions' }, deleteButton(p)));
+      h.el('div', { class: 'actions' }, deleteButton(p), rec.director === me && !rec.archive ? deleteForEveryone(rec, p) : null));
+  }
+
+  /** The director deletes the production from the Worker (Decision 084); a submitted one stays, so it is not offered. */
+  function deleteForEveryone(rec, p) {
+    const btn = h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {
+      if (!confirm(`Delete ${rec.title} for everyone in it? Its takes leave the server.`)) return;
+      btn.disabled = true;
+      try {
+        await API.plays.deleteProduction(rec.id);
+        if (mix && mix.id === p.id) { URL.revokeObjectURL(mix.url); mix = null; }
+        await store.delete(p.id);
+        h.navigate('?view=library&tab=dramas', true);
+      } catch (err) { console.error(err); btn.disabled = false; h.announce(S.line(err)); }
+    } }, 'Delete for everyone');
+    return btn;
   }
 
   /**
@@ -855,6 +871,7 @@ const PlaysUI = (() => {
         if (rec.director !== me) {
           if (dismissedConsent.has(pid)) return;
           const agree = h.el('button', { type: 'button', class: 'btn btn-primary', onclick: async () => {
+            if (!(await AgeGate.ask(h))) return;
             agree.disabled = true;
             line.textContent = '';
             try { await S.agreeToPublish({ api: API.plays, store, local, pid, consent: c }); rerender(); }
@@ -865,7 +882,7 @@ const PlaysUI = (() => {
           return;
         }
         const waiting = S.waitingOn(rec);
-        const pub = h.el('button', { type: 'button', class: 'btn', disabled: waiting.length > 0, onclick: () => consentSheet(c, async () => {
+        const pub = h.el('button', { type: 'button', class: 'btn', disabled: waiting.length > 0, onclick: async () => (await AgeGate.ask(h)) && consentSheet(c, async () => {
           pub.disabled = true;
           line.textContent = '';
           try { await S.publishPlay({ api: API.plays, store, local, pid, consent: c }); rerender(); }
@@ -943,6 +960,7 @@ const PlaysUI = (() => {
       const slot = h.el('div', { class: 'invite-slot' });
       const line = h.el('p', { class: 'caption refusal', role: 'alert' });
       const inv = h.el('button', { type: 'button', class: 'btn', onclick: async () => {
+        if (!(await AgeGate.ask(h))) return;
         inv.disabled = true;
         line.textContent = '';
         try {
@@ -975,7 +993,8 @@ const PlaysUI = (() => {
     const rows = [
       ...list.teaching.map(c => h.el('li', { class: 'cast-row' },
         h.el('div', { class: 'cast-main' }, h.el('a', { class: 'body-strong', href: `?class=${encodeURIComponent(c.id)}` }, c.name),
-          c.under13 && !c.school_consent ? h.el('span', { class: 'caption' }, 'Waits for the school’s consent') : null),
+          c.under13 && !c.school_consent ? h.el('span', { class: 'caption' }, 'Waits for the school’s consent') : null,
+          c.deletes_on ? h.el('span', { class: 'caption refusal' }, `Deleted ${ClassUI.dateText(c.deletes_on)} unless opened`) : null),
         h.el('span', { class: 'class-code tabular body-strong', 'aria-label': `Code ${c.code.split('').join(' ')}` },
           `${c.code.slice(0, 4)} ${c.code.slice(4)}`))),
       ...list.member_of.map(c => h.el('li', { class: 'cast-row' },
@@ -1461,6 +1480,7 @@ const PlaysUI = (() => {
               if (!signedIn) { line.textContent = 'Taking a part needs an account.'; signIn(); return; }
               if (!script) { line.textContent = S.line({ code: 'revision_mismatch' }); return; }
               const go = e.currentTarget;
+              if (!(await AgeGate.ask(h))) return;
               go.disabled = true;
               try {
                 await openStore();

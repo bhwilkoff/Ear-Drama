@@ -12,7 +12,7 @@ rm -rf "$out"; mkdir -p "$out"
 rsync -a --exclude='/.git' --exclude='/.github' --exclude='/.claude' --exclude='/.agents' \
   --exclude='/.devcontainer' --exclude='/apple' --exclude='/android' --exclude='/windows' \
   --exclude='/catalog' --exclude='/tools' --exclude='/ci_scripts' --exclude='/docs' \
-  --exclude='/worker' --exclude='/build' --exclude='/EarDrama.xcodeproj' --exclude='node_modules' --exclude='/built' --exclude='/live' --exclude="/$(basename "$out")" ./ "$out/"
+  --exclude='/worker' --exclude='/build' --exclude='/EarDrama.xcodeproj' --exclude='node_modules' --exclude='/built' --exclude='/live' --exclude='/vendor' --exclude="/$(basename "$out")" ./ "$out/"
 cp -R "$web" "$out/data"
 mkdir -p "$out/data/plays"
 cp catalog/plays/castable-scripts.json "$out/data/plays/"
@@ -30,6 +30,9 @@ cp -R catalog/out/plays-library/. "$out/data/plays/library/"
 # vocabulary, from the newest kokoro-vN-web-manifest.json on the `kokoro-model` Release
 # (tools/publish_kokoro_model.py). Every file is checked against the manifest and the Release, or the build stops.
 python3 tools/fetch_kokoro_model.py "$out/data/kokoro"
+# The ONNX Runtime those voices run on, from our own origin (Decision 084, R3d T1: no third-party script
+# at runtime): the pinned npm tarball, checked against its SHA-512 integrity, or the build stops.
+python3 tools/fetch_onnx_runtime.py "$out/vendor/onnxruntime-web"
 # A real page at every served /series/{key} and /episode/{id}, so a preview bot reads a 200 with a
 # card; a path it does not write stays with 404.html.
 # The finished ear dramas come from the Worker's open listing; if it cannot be read, the drama
@@ -44,7 +47,9 @@ test -e "$out/.nojekyll" || { echo "::error::$out/.nojekyll is missing; not depl
 for f in index.html 404.html CNAME manifest.json css/styles.css js/app.js \
          .well-known/apple-app-site-association .well-known/assetlinks.json \
          data/manifest.json data/index/series.json data/plays/castable-scripts.json data/plays/library/index.json \
-         data/plays/library/phonemes-report.json data/kokoro/manifest.json; do
+         data/plays/library/phonemes-report.json data/kokoro/manifest.json \
+         vendor/onnxruntime-web/ort.webgpu.min.js vendor/onnxruntime-web/ort-wasm-simd-threaded.asyncify.wasm \
+         .well-known/security.txt privacy/index.html schools/index.html security/index.html; do
   test -s "$out/$f" || { echo "::error::$out/$f is missing or empty; not deploying"; exit 1; }
 done
 echo "site files: $(find "$out" -type f | wc -l); data files: $(find "$out/data" -type f | wc -l); $(du -sh "$out" | cut -f1)"

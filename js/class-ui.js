@@ -34,7 +34,14 @@ const ClassUI = (() => {
     not_castable: 'This play cannot be cast.',
     revision_mismatch: 'This play has changed since it was cast.',
   };
-  const say = (err) => WORDS[codeOf(err)] || 'Ear Drama could not be reached.';
+  const say = (err) => WORDS[codeOf(err)] || R.refusal(codeOf(err));
+  /** A class's YYYY-MM-DD as the person's own date words; the date is a day, never shifted by a zone. */
+  const dateText = (ymd) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || '');
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+  };
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const plusDays = (n) => { const d = new Date(Date.now() + n * 86400000); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
   function stopPickups() { pickups.forEach((p) => { p.stop = true; }); pickups = []; if (player) { player.pause(); player = null; } }
 
@@ -109,6 +116,7 @@ const ClassUI = (() => {
       showCode);
 
     const out = [head];
+    if (cls.under13 && !cls.school_consent) out.push(authorizationBox(cls, offline, redraw));
     if (productions.length) out.push(startBox(cls, productions, offline));
     const reviewBox = h.el('section', { class: 'block', id: 'cl-review', 'aria-labelledby': 'cl-review-h' });
     const waitingRow = h.el('p', { class: 'cl-waiting' });
@@ -116,6 +124,7 @@ const ClassUI = (() => {
     out.push(seatsBox(cls, offline, redraw));
     out.push(playsBox(cls, productions, offline, redraw));
     out.push(reviewBox);
+    out.push(classBox(cls, offline, redraw));
     body.replaceChildren(...out);
     const paintReview = () => reviewQueue(reviewBox, waitingRow, cls, productions, offline);
     paintReview();
@@ -134,6 +143,67 @@ const ClassUI = (() => {
         } catch { /* the next arrival or a reload shows the counts */ }
       });
     }
+  }
+
+  /**
+   * An under-13 class: the school or district decides (FTC COPPA FAQ N.3; Decision 084). The teacher
+   * confirms it and names who approved; until then no student's voice leaves their device.
+   */
+  function authorizationBox(cls, offline, redraw) {
+    const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+    const ref = h.el('input', { class: 'field-input', type: 'text', maxlength: '120', id: 'cl-auth-ref', placeholder: 'School or district, and the approval',
+      'aria-label': 'Approved by', required: true });
+    const ok = h.el('input', { type: 'checkbox', id: 'cl-auth-ok' });
+    const go = h.el('button', { type: 'submit', class: 'btn btn-primary', disabled: offline }, 'Record');
+    const form = h.el('form', { class: 'cl-auth', onsubmit: async (e) => {
+      e.preventDefault();
+      line.textContent = '';
+      if (!ok.checked) { line.textContent = R.refusal('confirmations_required'); return; }
+      if (!ref.value.trim()) { line.textContent = R.refusal('reference_required'); return; }
+      go.disabled = true;
+      try { await API.plays.schoolConsent(cls.id, ref.value.trim()); redraw(); }
+      catch (err) { console.error(err); line.textContent = say(err); go.disabled = false; }
+    } },
+    h.el('label', { class: 'check', for: 'cl-auth-ok' }, ok, h.el('span', { class: 'body' }, 'My school or district approved Ear Drama for this class.')),
+    h.el('label', { class: 'field', for: 'cl-auth-ref' }, h.el('span', { class: 'caption' }, 'Approved by'), ref),
+    h.el('div', { class: 'actions' }, go));
+    return h.el('section', { class: 'block', 'aria-labelledby': 'cl-auth-h' },
+      h.el('h2', { class: 'section-header', id: 'cl-auth-h' }, 'School approval'), form, line);
+  }
+
+  /** The class itself (Decision 084): when it ends, Change date, Export class, Delete class. */
+  function classBox(cls, offline, redraw) {
+    const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+    const ends = h.el('p', { class: 'body cl-ends' }, cls.ends_on ? `Ends ${dateText(cls.ends_on)}` : '');
+    const date = h.el('input', { class: 'field-input', type: 'date', id: 'cl-end', value: cls.ends_on || '', min: today(), max: plusDays(400), 'aria-label': 'End date' });
+    const set = h.el('button', { type: 'submit', class: 'btn', disabled: offline }, 'Change date');
+    const dateForm = h.el('form', { class: 'take-form cl-end-form', onsubmit: async (e) => {
+      e.preventDefault();
+      if (!date.value || date.value === cls.ends_on) return;
+      set.disabled = true; line.textContent = '';
+      try { await API.plays.setClassEnd(cls.id, date.value); h.announce(`Ends ${dateText(date.value)}`); redraw(); }
+      catch (err) { console.error(err); line.textContent = say(err); set.disabled = false; }
+    } }, date, set);
+    const exp = h.el('button', { type: 'button', class: 'btn', disabled: offline }, 'Export class');
+    exp.addEventListener('click', async () => {
+      exp.disabled = true; line.textContent = '';
+      try {
+        const data = await API.plays.exportClass(cls.id);
+        const name = `${(cls.name || 'Class').replace(/[\\/:*?"<>|]+/g, '').trim() || 'Class'} export.json`;
+        DataExport.save(name, 'application/json', `${JSON.stringify(data, null, 2)}\n`);
+      } catch (err) { console.error(err); line.textContent = say(err); }
+      exp.disabled = offline;
+    });
+    const del = h.el('button', { type: 'button', class: 'btn btn-ghost cl-remove', disabled: offline }, 'Delete class');
+    del.addEventListener('click', async () => {
+      if (!confirm(`Delete ${cls.name}? Its names, casting and notes are deleted. Published plays stay.`)) return;
+      del.disabled = true; line.textContent = '';
+      try { await API.plays.deleteClass(cls.id); h.navigate('?view=library&tab=dramas', true); }
+      catch (err) { console.error(err); line.textContent = say(err); del.disabled = false; }
+    });
+    return h.el('section', { class: 'block', id: 'cl-class', 'aria-labelledby': 'cl-class-h' },
+      h.el('h2', { class: 'section-header', id: 'cl-class-h' }, 'Class'),
+      ends, dateForm, h.el('div', { class: 'actions' }, exp, del), line);
   }
 
   function startBox(cls, productions, offline) {
@@ -402,5 +472,5 @@ const ClassUI = (() => {
 
   function leave() { stopPickups(); token += 1; }
 
-  return { render, leave };
+  return { render, leave, dateText };
 })();

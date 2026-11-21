@@ -38,7 +38,7 @@ risk: what could happen, how likely, how bad, and what we do. Starting list:
 | Risk | Current safeguard | Gap |
 |---|---|---|
 | Stolen Cloudflare, GitHub, Apple, Google, or archive.org credentials | Owner accounts; secrets as Worker secrets, never in git (AGENTS.md hard rule) | Confirm hardware-key or app-based 2FA on every one *(owner)* |
-| A class code guessed, a student joining a class they are not in | Per-address join limits (`SEAT_JOIN_LIMITER`, `READ_JOIN_LIMITER`), 6-character codes | Seat claim shows the class's seat list to anyone with the code; acceptable (first names only) but say so |
+| A class code guessed, a student joining a class they are not in | Per-address join limits (`SEAT_JOIN_LIMITER`, `READ_JOIN_LIMITER`), 8-character class codes (40 bits) | Seat claim shows the class's seat list to anyone with the code; acceptable (first names only) but say so |
 | A seat key reused by the next student on a shared device | Keys in memory or per tab only (Decision 082c) | Home-relay keys in Keychain/Keystore: add expiry |
 | Take audio kept by mistake | No R2, KV, or D1 audio; a test fails if a route stores audio | Keep the test; review on every relay change |
 | Logs holding personal data | Four `console.log` calls; no persisted observability | Confirm Workers Logs is off in the dashboard *(owner)* |
@@ -59,8 +59,12 @@ risk: what could happen, how likely, how bad, and what we do. Starting list:
   else with access.)*
 - **Separation:** student classes never mix with public listings; an
   under-13 class has no Publish.
-- **Deletion that works:** account deletion and (when built) class deletion
-  remove every row by name and by foreign key; tested.
+- **Deletion that works:** account deletion and class deletion remove every row by name and by foreign
+  key, and the retention sweep runs hourly; tested (`account.test.js`, `retention.test.js`), each rule
+  with a mutant that must fail the suite.
+- **No third-party code:** the website serves the ONNX Runtime itself (`tools/fetch_onnx_runtime.py`,
+  pinned and integrity-checked); `tools/test_no_third_party_code.mjs` fails on any other code host.
+- **Vulnerability disclosure:** `/.well-known/security.txt` and `security/` (owner to read the words).
 
 ## 5. Testing and monitoring (NIST CSF: Detect)
 
@@ -93,7 +97,7 @@ risk: what could happen, how likely, how bad, and what we do. Starting list:
 Listed in the privacy policy with what each receives: Cloudflare (Worker,
 database), GitHub (website, catalog files), Internet Archive (audio, and
 published 13-and-over recordings), Wikimedia Commons, Library of Congress,
-Smithsonian (images), jsDelivr (one web runtime file), Apple and Google (only
+Smithsonian (images), Apple and Google (only
 when someone signs in). Before adding one, check its terms protect the data
 at least as well as ours and update the list.
 

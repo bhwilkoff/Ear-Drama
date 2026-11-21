@@ -440,6 +440,29 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
     var showCode by remember { mutableStateOf(false) }
     var choosing by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
+    var busy by remember { mutableStateOf(false) }
+    var pickingDate by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
+    var exported by remember { mutableStateOf<String?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val saveExport = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        val text = exported
+        exported = null
+        if (uri != null && text != null) {
+            scope.launch {
+                try {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray(Charsets.UTF_8)) } }
+                } catch (e: CancellationException) { throw e } catch (_: Exception) { failure = ReadCore.refusal("error") }
+            }
+        }
+    }
+    fun guard(work: suspend () -> Unit) {
+        if (busy) return
+        busy = true
+        scope.launch {
+            try { work(); failure = null } catch (e: CancellationException) { throw e } catch (e: ReadFailure) { failure = ReadCore.refusal(e.code) } catch (e: Exception) { failure = say(e) } finally { busy = false }
+        }
+    }
     var waiting by remember { mutableStateOf<List<com.example.appname.plays.ClassReviewItem>>(emptyList()) }
     var reviewScripts by remember { mutableStateOf<Map<String, PlayScript>>(emptyMap()) }
     var recordScripts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
@@ -477,6 +500,9 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
     Scaffold(topBar = { BackBar(onBack, detail?.name ?: "Class") }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
             failure?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            detail?.takeIf { it.under13 && !it.schoolConsent }?.let {
+                SchoolApproval(busy, null, onRecord = { reference -> guard { wire.schoolConsent(id, reference); attempt += 1 } })
+            }
             detail?.code?.let { code ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(if (showCode) com.example.appname.plays.PlaysShare.classCodeDisplay(code) else "•••• ••••", style = MaterialTheme.typography.headlineSmall)
@@ -532,7 +558,30 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
                 }
                 TextButton(onClick = { onCasting(id, p.id) }) { Text("Casting") }
             }
+            detail?.let { d ->
+                ClassSection(
+                    endsOn = d.endsOn, busy = busy,
+                    onChangeDate = { pickingDate = true },
+                    onExport = { guard { exported = wire.exportClass(id); saveExport.launch(exportFileName(d.name)) } },
+                    onDelete = { deleting = true },
+                )
+            }
         }
+    }
+    if (pickingDate) {
+        ClassDateDialog(
+            endsOn = detail?.endsOn,
+            onPick = { day -> pickingDate = false; guard { wire.setEnd(id, day); attempt += 1 } },
+            onDismiss = { pickingDate = false },
+        )
+    }
+    if (deleting) {
+        DestructiveConfirm(
+            message = "Delete ${detail?.name.orEmpty()}? Its names, casting and notes are deleted. Published plays stay.",
+            action = "Delete class",
+            onConfirm = { deleting = false; guard { wire.deleteClass(id); container.sharing.loadClasses(); onBack() } },
+            onDismiss = { deleting = false },
+        )
     }
     if (choosing) {
         val scripts by produceScripts()

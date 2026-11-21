@@ -21,6 +21,9 @@ struct SharedProductionSection: View {
     @State private var consent: PlaysConsent?
     @State private var asking = false
     @State private var notNow = false
+    @State private var age = AgeQuestion()
+    @State private var deleting = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         if account.status != .unavailable {
@@ -31,8 +34,10 @@ struct SharedProductionSection: View {
                     ProgressView()
                 } else if account.isSignedIn {
                     Button {
-                        name = ""
-                        naming = true
+                        age.ask {
+                            name = ""
+                            naming = true
+                        }
                     } label: {
                         Label("Share", systemImage: "person.2.badge.plus")
                     }
@@ -45,6 +50,7 @@ struct SharedProductionSection: View {
                 }
             }
             .disabled(shared.busy.contains(production.id))
+            .ageQuestion(age)
             .alert("Share", isPresented: $naming) {
                 TextField("Your name", text: $name)
                 Button("Share") { Task { await shared.share(production, script: script, store: plays.store, name: name) } }
@@ -67,7 +73,7 @@ struct SharedProductionSection: View {
     @ViewBuilder private func sharedRows(_ rec: SharedRecord) -> some View {
         let me = shared.userID
         if rec.director == me {
-            InviteRow(productionID: production.id)
+            InviteRow(productionID: production.id, age: age)
         }
         uploadRow(rec, me: me)
         Button {
@@ -79,6 +85,16 @@ struct SharedProductionSection: View {
             Text(rec.hiddenTakes == 1 ? "1 take is hidden from you." : "\(rec.hiddenTakes) takes are hidden from you.")
                 .foregroundStyle(Color.brandTextMuted)
         }
+        if rec.director == me, rec.archive == nil {
+            Button("Delete for everyone", role: .destructive) { deleting = true }
+                .confirmationDialog("Delete \(production.title) for everyone in it?", isPresented: $deleting, titleVisibility: .visible) {
+                    Button("Delete for everyone", role: .destructive) {
+                        Task { if await shared.deleteForEveryone(production.id, store: plays.store) { dismiss() } }
+                    }
+                } message: {
+                    Text("Its takes leave the server.")
+                }
+        }
         if let line = PlaysShare.archiveLine(rec) {
             archiveRow(line, rec)
         } else if shared.queued.contains(rec.id) {
@@ -87,7 +103,7 @@ struct SharedProductionSection: View {
             if let consent, consent.publishes == true, !notNow {
                 ConsentWords(text: consent.text)
                 Button("I agree to publish my recording under CC0.") {
-                    Task { await shared.agree(production.id, store: plays.store, script: script, consent: consent) }
+                    age.ask { Task { await shared.agree(production.id, store: plays.store, script: script, consent: consent) } }
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.brandPrimary)
@@ -101,7 +117,7 @@ struct SharedProductionSection: View {
                         .accessibilityValue(agreed ? "Agreed" : "Not yet")
                 }
                 Button {
-                    asking = true
+                    age.ask { asking = true }
                 } label: {
                     Label("Publish", systemImage: "tray.and.arrow.up")
                 }
@@ -232,6 +248,7 @@ struct ChangeLinesSection: View {
 /// carries it; the caption is the fact of how long it works.
 private struct InviteRow: View {
     let productionID: String
+    let age: AgeQuestion
     @Environment(PlaysLibrary.self) private var plays
     @Environment(SharedPlays.self) private var shared
 
@@ -248,7 +265,7 @@ private struct InviteRow: View {
             }
         } else {
             Button {
-                Task { await shared.invite(productionID, store: plays.store) }
+                age.ask { Task { await shared.invite(productionID, store: plays.store) } }
             } label: {
                 Label("Invite", systemImage: "envelope")
             }
@@ -518,14 +535,9 @@ struct ClassesSection: View {
         Section("Classes") {
             if let classes = shared.classes {
                 ForEach(classes.teaching) { c in
-                    VStack(alignment: .leading, spacing: Spacing.s1) {
-                        PushLink(value: Route.classPage(c.id)) { Text(verbatim: c.name).font(TypeRamp.body) }
-                        if let code = c.code {
-                            Text(verbatim: SharedPlays.grouped(code)).font(TypeRamp.tabular).textSelection(.enabled)
-                        }
-                        if c.under13 && c.schoolConsent != true {
-                            Text("Waits for the school’s consent").font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
-                        }
+                    PushLink(value: Route.classPage(c.id)) {
+                        ClassListRow(name: c.name, code: c.code, waitsForSchool: c.under13 && c.schoolConsent != true,
+                                     deletesOn: c.deletesOn)
                     }
                 }
                 ForEach(classes.memberOf) { c in

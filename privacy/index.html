@@ -16,69 +16,162 @@
   </header>
 
   <main id="main-content" tabindex="-1">
+    <!-- Owner-approved words, 2026-11-21 ("The policy wording looks good to me."); Decision 084.
+         The record of the draft is docs/research/design/R3d-drafts/. A change to how student
+         information is used changes the version below and is told to schools first. -->
     <article class="view prose" aria-labelledby="page-h">
       <h1 id="page-h" class="view-heading">Privacy</h1>
-      <!-- OWNER: update this page in the same change that adds sign-in (Decision 057). -->
+      <p class="caption">Last updated November 21, 2026. Version privacy-2026-11-21.</p>
 
-      <p>Listening needs no sign-in, no email address, and no name. Signing in is optional; it only keeps your listening the same on your devices.</p>
+      <p>Ear Drama is free. It has no ads. We do not sell, rent, or trade anyone's information, and we never will. We collect as little as we can, and we tell you exactly what that is below.</p>
+      <p>Ear Drama is made by Learning is Change, 8287 S. Pennsylvania Ct., Littleton, CO 80122. Questions: <a href="mailto:ben@learningischange.com">ben@learningischange.com</a>.</p>
 
-      <h2 class="section-header">What stays on this device</h2>
-      <p>The web app keeps these in this browser's local storage. They are never sent to Ear Drama.</p>
+      <h2 class="section-header">The short version</h2>
       <ul>
-        <li>Where you stopped in each episode, for the last 500 episodes</li>
-        <li>The episodes you played, for the last 200</li>
-        <li>Your queue</li>
-        <li>The series you follow</li>
-        <li>Your playback speed</li>
-        <li>Plays you record: every take and the finished mix, in this browser's IndexedDB storage, never uploaded</li>
+        <li>You can listen without signing in. We don't ask for your name or email.</li>
+        <li>What you record stays on your device unless you choose to share it.</li>
+        <li>In a class, students don't need accounts or emails. Their teacher types their first names.</li>
+        <li>A student's recording passes through our server to the teacher's device and is not kept on our server.</li>
+        <li>Work by a class of students under 13 is never published.</li>
+        <li>No ads, no tracking, no selling, no profiles of you.</li>
       </ul>
-      <p>The browser also keeps copies of the site's pages and the catalog pages you have opened, so the app opens without a connection. It keeps no audio.</p>
-      <p>Clear history in Library removes your history and the places you stopped. Clearing this site's data in your browser removes everything.</p>
 
-      <!-- OWNER: review before sign-in or rooms go live -->
-      <h2 class="section-header">In the iPhone, iPad, Mac, Apple TV, and Android apps</h2>
-      <p>The apps keep these on the device. They are never sent to Ear Drama unless you sign in.</p>
+      <h2 class="section-header">What we never do</h2>
       <ul>
-        <li>Where you stopped in each episode, and the episodes you played</li>
-        <li>Your queue</li>
-        <li>The series you follow</li>
-        <li>Episodes you download, in the app's own storage</li>
-        <li>Plays you record: every take and the finished mix, never uploaded</li>
+        <li>We never show ads, and never use anything about you to target ads.</li>
+        <li>We never sell or rent personal information.</li>
+        <li>We never build a profile of a student except to run their class.</li>
+        <li>We never use your recordings to train AI. (A play you choose to publish is public under CC0, so others may; the consent says so.)</li>
+        <li>We never use analytics, tracking pixels, or advertising cookies.</li>
+        <li>We never store a synthetic copy of anyone's voice.</li>
+        <li>We never measure or match anyone's voice to tell who they are.</li>
       </ul>
-      <p>The apps ask for the microphone only when you press Start recording. A take is kept on the device. A finished play leaves it only when you export it yourself.</p>
-      <p>Signing in in an app works as it does on the web. The app keeps your sign-in encrypted on the device: in the Keychain on Apple devices, and with a key held by Android Keystore on Android.</p>
 
-      <!-- OWNER: review before sign-in or rooms go live -->
-      <h2 class="section-header">Listen Together</h2>
-      <p>A room needs no account. On the web and Android, the room is kept on Ear Drama's server: the episode, the file, where it is, whether it is playing, and its speed. Each person in the room is a random number, the hash of a random key, and when they joined and were last heard from. No name and no address are kept.</p>
-      <p>The server sees your IP address and counts the requests from it, a minute at a time, to limit how many one address can make. The count is not kept after that minute.</p>
-      <p>A person not heard from for 2 minutes has left, and what the room kept for them is deleted within the hour. A room with no one left, or with no change and no one joining for 6 hours, is deleted within the hour.</p>
-      <p>On iPhone, iPad, Mac, and Apple TV, Listen Together uses SharePlay in a FaceTime call; Ear Drama's server is not involved.</p>
+      <h2 class="section-header">Listening</h2>
+      <p>Listening needs no account. Your app or browser keeps your history, your queue, the shows you follow, and your playback speed <strong>on your device</strong>. We never see them unless you sign in.</p>
+      <p>The audio plays straight from the Internet Archive, which sees the request (including your internet address), as any website does.</p>
 
-      <!-- OWNER: review this section's words before sign-in goes live (Decision 063). -->
-      <h2 class="section-header">If you sign in</h2>
-      <p>Signing in with Apple or Google sends Ear Drama an account number from them; it does not keep your name or email address. While you are signed in, the places you stopped, your history, your queue, and the series you follow are copied to Ear Drama's server so your other devices can use them. Recorded plays stay on the device.</p>
-      <p>This browser keeps your sign-in in local storage (<code>ed.account</code>, <code>ed.stamps</code>) and IndexedDB (<code>ed-auth</code>), encrypted with a key the browser keeps.</p>
-      <p><a href="../delete-account/">Delete an account</a> removes everything the server holds.</p>
+      <h2 class="section-header">Recording on your own device</h2>
+      <p>The app asks to use the microphone only when you press Start recording. Your takes and finished plays are saved on your device. They leave it only if you share, export, or publish them yourself.</p>
 
-      <h2 class="section-header">If you send a take-down request</h2>
-      <p>Ear Drama keeps what you enter on the form: your name, contact details, the links, and the work you name. It is stored on Ear Drama's server, seen only by its owner, and never published. Your IP address is not stored. Your details are erased three years after the request closes. A record that a recording was removed stays, with a date and a case number and no one's name.</p>
+      <h2 class="section-header">Signing in (optional)</h2>
+      <p>You can sign in with Apple or Google. They send us an account number. We do not keep your name or email address. While you are signed in, we copy your history, queue, and followed shows to our server so your other devices can use them. Your sign-in is kept encrypted on your device.</p>
+      <p>You can delete your account at any time in the app or at <a href="../delete-account/">eardrama.org/delete-account</a>. That deletes your account, sessions, history, queue, follows, and classes from our server right away. A play you made with others passes to the person who joined it first, with their takes; one no one else is in is deleted. Two things stay, without your name: lines of a play that was already published stay on the Internet Archive (your name is taken off the credits), and a report someone made about you keeps its record with your account removed.</p>
 
-      <h2 class="section-header">What Ear Drama does not collect</h2>
-      <p>No analytics, no cookies, and no advertising. The only scripts from other companies are Apple's and Google's sign-in scripts, loaded only when you open sign-in.</p>
+      <h2 class="section-header">Making plays with other people</h2>
+      <p>If you make a play with others (by invite link):</p>
+      <ul>
+        <li>We keep the production: the script, who plays which part, and the name you chose to show (it can be a nickname).</li>
+        <li>Each recording ("take") passes through our server to the director's device. Our server does not keep the sound. It keeps details about the take, like which line it is and how long it is.</li>
+        <li>We keep a record that you agreed to publish, if you did, and which version of the words you agreed to.</li>
+        <li>If you report someone or block someone, we keep that report or block.</li>
+      </ul>
+      <p>The director can delete a production that has not been published. That deletes it from our server for everyone in it.</p>
 
-      <h2 class="section-header">Who receives your requests</h2>
-      <p>The site is served by <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub Pages</a>, which receives each page request, including your IP address, as any web host does.</p>
-      <!-- OWNER: confirm the host if eardrama.org moves off GitHub Pages. -->
-      <p>Audio plays directly from the <a href="https://archive.org/about/terms.php">Internet Archive</a>, which receives those requests.</p>
+      <h2 class="section-header">Reading together in a room</h2>
+      <p>A read room shares a place in a script among devices. It needs no account. If you type a name to join, other people in the room see it. A room and everything in it is deleted 6 hours after it is last used.</p>
+      <p>Listen Together rooms work the same way, with no names at all. On iPhone, iPad, Mac, and Apple TV, Listen Together uses SharePlay in a FaceTime call, and our server is not involved.</p>
+
+      <h2 class="section-header">Classes: for teachers and students</h2>
+      <p>A teacher makes a class and types each student's name (a first name, a nickname, or something like "Group 3"). A student joins with the class code and taps their name. <strong>Students do not make accounts and do not give an email, a birth date, or a photo.</strong></p>
+      <p>What our server keeps for a class:</p>
+      <ul>
+        <li>the class name and code, and whether it is a class of students under 13;</li>
+        <li>the names the teacher typed;</li>
+        <li>who reads which part;</li>
+        <li>details about each take (not the sound);</li>
+        <li>the teacher's Approve or Again marks, and any typed notes the teacher writes to a student;</li>
+        <li>for a class under 13, a record that the teacher confirmed the school's permission, and who gave it.</li>
+      </ul>
+      <p>A student's take goes <strong>through</strong> our server to the teacher's device and is deleted from our server the moment it arrives. If the teacher's app is not open, the take waits on the student's device until it is.</p>
+      <p>The recordings themselves live on the teacher's device. The teacher decides what happens to them.</p>
+      <p><strong>How long:</strong> a class stays until the teacher deletes it, or until its end date, whichever comes first. Every class ends on July 31, at the end of the school year it was made in, unless the teacher changes the date. A class no one has used for 12 months is deleted too; the teacher's class list shows the date 30 days before. Deleting a class deletes everything above from our server. A play the class already published stays on the Internet Archive, under the teacher's name, with no student's name.</p>
+      <p>The teacher can export the class's information as a file at any time: the names, who read which part, the marks and notes, and the details of each take.</p>
+      <p>Students and the teacher are the only people who can see a class.</p>
+
+      <h2 class="section-header">Children under 13</h2>
+      <p>We don't knowingly let children under 13 sign in or share recordings on their own. A child under 13 can use Ear Drama to listen, and to record on their own device. Before anyone first shares, invites, or publishes outside a class, the app asks the year they were born. It keeps only whether they are under 13, on that device, and never sends it to us. Under 13, sharing stays off on that device.</p>
+      <p>A child under 13 can record and send takes in a class only after their teacher confirms that the school or district has approved Ear Drama for that class, and names who approved it, as the federal children's privacy law (COPPA) allows a school to do for school use. The school can only give that permission for learning at school. So:</p>
+      <ul>
+        <li>we use a student's information only to run their class;</li>
+        <li>we never publish an under-13 class's work;</li>
+        <li>a parent can ask the school, or us, to see or delete their child's information (see "Your choices").</li>
+      </ul>
+      <p>If we learn we have a child's information without that permission, we delete it.</p>
+
+      <h2 class="section-header">Teens 13 and over and adults: publishing</h2>
+      <p>Publishing puts a play on the Internet Archive, in public, forever, under CC0 (anyone may reuse it for any purpose). Before anything is published, each performer agrees in the app, using these words:</p>
+      <ul>
+        <li>Publishing puts this play on the Internet Archive.</li>
+        <li>Your recording will be public. You can replace it with a new take or remove it later, but copies others have already made can't be called back.</li>
+        <li>You dedicate it to the public domain (CC0). Anyone may copy, change, or sell it, for any purpose and without credit, including training AI and cloning voices.</li>
+        <li>It must be your own live voice: no synthetic or cloned voices, and no imitating a real person.</li>
+        <li>You're 13 or older, or your teacher has recorded your school's consent.</li>
+      </ul>
+      <p>For a class of students 13 and over, the teacher publishes the finished play under the teacher's name, after confirming that every performer agreed and that the school has a media release for each performer under 18. <strong>Students' names are not put on the Internet Archive.</strong></p>
+
+      <h2 class="section-header">Who else receives requests</h2>
+      <p>These companies help run Ear Drama. Each one gets only what it needs:</p>
+      <ul>
+        <li><strong>Cloudflare</strong>: requests to our server, including your internet address. It runs our server and database.</li>
+        <li><strong>GitHub</strong>: requests for the website and catalog files. It hosts the website.</li>
+        <li><strong>Internet Archive</strong>: requests for audio, and plays that people choose to publish. It holds the recordings.</li>
+        <li><strong>Wikimedia Commons, Library of Congress, Smithsonian</strong>: requests for pictures. They hold the pictures.</li>
+        <li><strong>Apple, Google</strong>: only if you choose to sign in with them.</li>
+      </ul>
+      <p>None of them gets a student's name, a class, or a student's recording from us.</p>
+      <p>Our server counts requests from each internet address for one minute to stop abuse. We don't store the address.</p>
+
+      <h2 class="section-header" id="retention">How long we keep things</h2>
+      <p>We keep a piece of personal information only while it does the job it was collected for, then delete it. Student information is kept for the school's purposes only, and the school (through the teacher) decides when it goes. Nothing is kept "in case."</p>
+      <p><strong>Classes</strong></p>
+      <ul>
+        <li><strong>Names the teacher typed, who reads which part, take details, marks and notes, the school's permission record:</strong> until the teacher removes the student or deletes the class, or the class ends (July 31 unless the teacher changes it), or 12 months with no use, after 30 days' notice in the teacher's class list. Then deleted.</li>
+        <li><strong>A seat's device key</strong> (kept only scrambled): until the teacher lets the seat go, or the class is deleted.</li>
+        <li><strong>A take's sound:</strong> never written to our server; it passes through to the teacher's device in seconds.</li>
+        <li><strong>Recordings on the teacher's device:</strong> until the teacher deletes them.</li>
+        <li><strong>A student's takes on the device that recorded them:</strong> until they are deleted on that device.</li>
+        <li><strong>A published play by a class 13 and over:</strong> kept, on the Internet Archive and in our list of finished plays, under the teacher's name, with no student's name. A performer or the teacher can remove a line; copies others made cannot be called back.</li>
+      </ul>
+      <p><strong>Accounts</strong></p>
+      <ul>
+        <li><strong>Your account, history, queue, follows, productions, consents, and names you chose:</strong> until you remove them or delete your account. An account not signed into for 3 years is deleted the same way; signing in during the last 30 days keeps it (we hold no email to remind you).</li>
+        <li><strong>Sign-in sessions:</strong> 60 days, or until you sign out.</li>
+        <li><strong>Reports and blocks:</strong> until the account that made them is deleted. A report about someone loses their account when that account is deleted.</li>
+        <li><strong>Take-down requests:</strong> the requester's details are erased 3 years after the request closes.</li>
+        <li><strong>Internet addresses:</strong> not stored; counted for one minute.</li>
+      </ul>
+      <p><strong>Backups.</strong> Our database keeps a recovery copy for up to 30 days. A deleted row can live in that copy until it expires, and is never restored except to repair our own failure.</p>
+      <p><strong>When a school asks.</strong> A teacher, or the school through our privacy contact, can ask us to delete a class's information at any time. We do it within 30 days and confirm in writing. Deleting the class in the app does it at once.</p>
+      <p>We review this schedule once a year, and whenever we start keeping a new kind of information.</p>
+
+      <h2 class="section-header">Your choices and rights</h2>
+      <ul>
+        <li><strong>See or download your data.</strong> In Library, choose Export my data. A teacher can export a class.</li>
+        <li><strong>Delete.</strong> Delete your account in the app. A teacher can remove a student's name, or delete a class.</li>
+        <li><strong>Parents and students.</strong> A parent (or a student 18 or over) can ask to see, fix, or delete a student's information. The quickest way is to ask the teacher, who can do it in the app. You can also write to us; we will check with the school and answer within 30 days.</li>
+        <li><strong>Schools.</strong> A school can ask us to delete a class's information at any time, and can sign a data privacy agreement with us. See <a href="../schools/">For schools</a>.</li>
+      </ul>
+
+      <h2 class="section-header" id="security">Keeping information safe</h2>
+      <p>We keep very little, which is the best protection. Connections are encrypted. Keys and tokens are stored only in scrambled (hashed) form. Only the owner can reach the database. We follow a written security program and review it every year: a named person in charge, a yearly check of the risks, the safeguards for each, tests that run on every change to the server, and a plan for what to do if something goes wrong. To report a security problem, see <a href="../security/">Security</a>.</p>
+      <p>If someone gets into information they should not, we will tell affected schools within 72 hours of confirming it, and post a notice in the app and on this page (we have no email addresses to write to).</p>
+
+      <h2 class="section-header">Take-down requests</h2>
+      <p>If you send a take-down request, we keep your name and contact details to answer it. We never publish them. They are erased 3 years after the request closes.</p>
+
+      <h2 class="section-header">Changes to this policy</h2>
+      <p>If we change this policy, we change the date and version at the top. If a change would let us use student information in a new way, we ask schools first and do not apply it to information we already have.</p>
 
       <h2 class="section-header">Contact</h2>
-      <p>Privacy questions: <a href="mailto:ben@learningischange.com">ben@learningischange.com</a>, Learning is Change, Inc.</p>
+      <p>Privacy questions, parent requests, and school requests: <a href="mailto:ben@learningischange.com">ben@learningischange.com</a>. Learning is Change, 8287 S. Pennsylvania Ct., Littleton, CO 80122.</p>
     </article>
     <footer class="site-footer caption">
       <a href="../">Ear Drama</a>
       <a href="../credits/">Credits</a>
       <a href="./" aria-current="page">Privacy</a>
+      <a href="../schools/">For schools</a>
+      <a href="../security/">Security</a>
       <a href="../takedown/">Take-down requests</a>
       <a href="../delete-account/">Delete an account</a>
     </footer>

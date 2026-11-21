@@ -23,6 +23,7 @@ import { handleSeat, isSeatRoute } from "./plays-seats.js";
 import { handleTakedown, sweepTakedowns } from "./takedown.js";
 import { handleReadRooms, sweepReadRooms } from "./read-rooms.js";
 import { ARCHIVE_CRON, runArchive } from "./plays-archive.js";
+import { handleOperator, isOperatorRoute, sweepRetention } from "./plays-retention.js";
 import { clientAddress, corsHeaders, json, limited, originAllowed, problem, withCors } from "./http.js";
 
 export { ReadRoom } from "./read-rooms.js";
@@ -44,6 +45,9 @@ async function route(request, env, url) {
   }
 
   if (pathname === "/v1/takedown" || pathname.startsWith("/v1/takedown/")) return handleTakedown(url, request, env);
+
+  // A school's deletion request, run by the owner with OPERATOR_TOKEN (Decision 084).
+  if (isOperatorRoute(pathname)) return handleOperator(url, request, env);
 
   // Read rooms (Decision 082): no account to read; limited per member, with READ_IP_LIMITER as their address floor.
   if (isReadRoute(pathname)) return handleReadRooms(url, request, env, ip);
@@ -90,7 +94,7 @@ export default {
   async scheduled(event, env, ctx) {
     // The five-minute trigger only uploads to archive.org; the hourly one also sweeps.
     if (event.cron === ARCHIVE_CRON) return ctx.waitUntil(runArchive(env));
-    ctx.waitUntil(Promise.all([sweepSessions(env), sweepRooms(env), sweepReadRooms(env), sweepPlays(env), sweepTakedowns(env), runArchive(env)]));
+    ctx.waitUntil(Promise.all([sweepSessions(env), sweepRooms(env), sweepReadRooms(env), sweepPlays(env), sweepTakedowns(env), sweepRetention(env), runArchive(env)]));
   },
 
   async fetch(request, env) {

@@ -18,6 +18,12 @@
  * oscillator never connected to the speakers, its level set by the harness) on each reader, the
  * room's take routes and pickup, the TV pairing routes, names on join, and the ended and unknown
  * room refusals.
+ *
+ *   PRIVACY=1 node tools/read_frames.mjs docs/research/design/img/privacy
+ *
+ * draws the student-privacy controls (PLAYS-DESIGN §12.12, Decision 084): the class page's Class section
+ * (Ends, Change date, Export class, Delete class), an under-13 class's School approval, the class list's
+ * idle notice, and the age question with its refusal.
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -46,7 +52,8 @@ const parts = [...new Set(cast.map((c) => c[1]).filter((p) => p.startsWith("role
 /* ---- The stub Worker ---- */
 const now = () => Date.now();
 const seats = ["Lucy", "Tom", "Ana", "Ben", "Mia", "Sam"].map((label, i) => ({ id: `S${i + 1}`, label, claimed: i < 2, claimed_at: i < 2 ? now() : null }));
-const klass = { id: "C1", name: "Room 7", code: "K7QM4XRB", under13: false, school_consent: false, members: [], seats };
+const klass = { id: "C1", name: "Room 7", code: "K7QM4XRB", under13: false, school_consent: false, ends_on: "2027-07-31", deletes_on: null, members: [], seats };
+const young = { id: "C2", name: "Grade 4 Readers", code: "M3RT8KQW", under13: true, school_consent: false, ends_on: "2027-07-31", deletes_on: null, members: [], seats: seats.slice(0, 3) };
 let assignments = [{ part: parts[0], seat: "S1" }, { part: parts[1], seat: "S2" }, { part: parts[2], seat: "S3" }];
 const speechIds = cast.filter((c) => c[1].startsWith("role:"));
 const tomLine = cast.find((c) => c[1] === parts[1]);
@@ -162,7 +169,10 @@ function apiRoute(method, url, body, headers) {
     pr.room = P.normalizeCode(pa[1]);
     return [200, { paired: true }];
   }
-  if (p === "/v1/plays/classes" && method === "GET") return [200, { teaching: [{ id: "C1", name: klass.name, code: klass.code, under13: false, school_consent: false }], member_of: [] }];
+  if (p === "/v1/plays/classes" && method === "GET") return [200, { teaching: [{ id: "C1", name: klass.name, code: klass.code, under13: false, school_consent: false, ends_on: klass.ends_on, deletes_on: null }, ...(process.env.PRIVACY ? [{ id: "C2", name: young.name, code: young.code, under13: true, school_consent: false, ends_on: young.ends_on, deletes_on: "2026-12-21" }] : [])], member_of: [] }];
+  if (p === "/v1/plays/classes/C2") return [200, young];
+  if (p === "/v1/plays/classes/C2/progress") return [200, { class_id: "C2", productions: [] }];
+  if (p === "/v1/plays/classes/C2/school-consent") return [503, { error: "pending_owner_policy" }];
   if (p === "/v1/plays/classes/C1") return [200, klass];
   if (p === "/v1/plays/classes/C1/progress") return [200, progress()];
   if (p === "/v1/plays/classes/C1/seats" && method === "POST") return [201, { seats: [], refused: [] }];
@@ -336,6 +346,7 @@ async function main() {
 
   try {
     if (process.env.T5) { await recordFrames(device); done(); console.log(`${frames.length} frames`); process.exit(0); }
+    if (process.env.PRIVACY) { await privacyFrames(device); done(); console.log(`${frames.length} frames`); process.exit(0); }
     const teacher = await device("teacher");
     await teacher.open("?view=library&tab=dramas");
     await teacher.eval("await win.eval(\"API.account.signIn('google', 'id-token', 'nonce')\"); return true;");
@@ -499,6 +510,42 @@ async function recordFrames(device) {
   await ann.click("button", "Join");
   await sleep(1200);
   await ann.shot("t5-join-unknown");
+}
+
+/** The student-privacy controls (PLAYS-DESIGN §12.12): what a teacher sees, and the age question. */
+async function privacyFrames(device) {
+  const t = await device("teacher");
+  await t.open("?view=library&tab=dramas");
+  await t.eval("await win.eval(\"API.account.signIn('google', 'id-token', 'nonce')\"); return true;");
+  const waitFor = async (sel) => {
+    for (let i = 0; i < 60; i++) { if (await t.eval(`return !!doc.querySelector(${JSON.stringify(sel)});`)) return; await sleep(250); }
+    throw new Error(`never drawn: ${sel}`);
+  };
+  const scrollTo = async (sel) => { await waitFor(sel); return t.eval(`const e = doc.querySelector(${JSON.stringify(sel)}); if (!e) throw new Error('no ${sel}'); e.scrollIntoView({ block: 'start' }); return true;`); };
+  for (const [w, dark] of [[375, false], [375, true], [1440, false]]) {
+    await t.open("?class=C1", w, dark, 900);
+    await sleep(1500);
+    await scrollTo("#cl-class");
+    await t.shot("privacy-class-section");
+    await t.open("?class=C2", w, dark, 900);
+    await waitFor(".cl-auth");
+    await t.shot("privacy-school-approval");
+    await t.click("button", "Record");
+    await sleep(500);
+    await t.eval("doc.getElementById('cl-auth-ok').checked = true; doc.getElementById('cl-auth-ref').value = 'Lakeview School District, NDPA 2026'; doc.querySelector('.cl-auth').requestSubmit(); return true;");
+    await sleep(1200);
+    await t.shot("privacy-school-approval-refused");
+    await t.open("?view=library&tab=dramas", w, dark, 1100);
+    await sleep(2000);
+    await scrollTo("#classes-h");
+    await t.shot("privacy-class-list");
+    const el = "(tag, a = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(a || {})) { if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else if (v === true) e.setAttribute(k, ''); else if (v !== false && v != null) e.setAttribute(k, v); } e.append(...kids.flat().filter((x) => x != null)); return e; }";
+    await t.eval(`win.localStorage.removeItem('ed.over13'); win.eval(${JSON.stringify(`AgeGate.ask({ el: ${el} })`)}); return true;`);
+    await t.shot("privacy-age-question");
+    await t.eval(`doc.querySelector('.age-sheet').close(); win.localStorage.setItem('ed.over13', '0'); win.eval(${JSON.stringify(`AgeGate.ask({ el: ${el} })`)}); return true;`);
+    await t.shot("privacy-age-refused");
+    await t.eval("doc.querySelectorAll('dialog').forEach((d) => d.close()); win.localStorage.removeItem('ed.over13'); return true;");
+  }
 }
 
 main().catch((e) => { console.error(e); console.log("FAIL read_frames"); process.exit(1); });

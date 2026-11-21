@@ -507,6 +507,19 @@ internal fun TakesContent(
     }
 }
 
+/** The two confirmations a class publish adds before the teacher's own consent (§12.12 item 6). */
+@Composable
+internal fun PublishConfirmations(performers: Boolean, onPerformers: (Boolean) -> Unit, released: Boolean, onReleased: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(performers, onPerformers)
+        Text("Every performer agreed to publish.")
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(released, onReleased)
+        Text("The school has a media release for each performer under 18.")
+    }
+}
+
 /** Publish under my name (§12.10 item 5): the credit name, the CC0 consent, then each line's file from this device. */
 @Composable
 private fun PublishForm(seam: RoomSeam, pid: String, local: com.example.appname.plays.Production, script: PlayScript) {
@@ -515,6 +528,8 @@ private fun PublishForm(seam: RoomSeam, pid: String, local: com.example.appname.
     var credit by remember { mutableStateOf(prefs.getString("credit", "").orEmpty()) }
     var consent by remember { mutableStateOf<Consent?>(null) }
     var agreed by remember { mutableStateOf(false) }
+    var performers by remember { mutableStateOf(false) }
+    var released by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val published by seam.publish.collectAsState()
     var refusal by remember { mutableStateOf<String?>(null) }
@@ -527,6 +542,7 @@ private fun PublishForm(seam: RoomSeam, pid: String, local: com.example.appname.
             if (c == null) "" else if (c.publishes) c.text else "Publishing opens when the Ear Drama archive account is connected.",
             style = MaterialTheme.typography.labelMedium,
         )
+        PublishConfirmations(performers, { performers = it }, released, { released = it })
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(agreed, { agreed = it })
             Text("I agree")
@@ -536,6 +552,10 @@ private fun PublishForm(seam: RoomSeam, pid: String, local: com.example.appname.
         Button(
             enabled = c != null && c.publishes && agreed && credit.isNotBlank() && !busy,
             onClick = {
+                if (!performers || !released) {
+                    refusal = ReadCore.refusal("confirmations_required")
+                    return@Button
+                }
                 busy = true
                 refusal = null
                 seam.scope.launch {

@@ -40,7 +40,7 @@ for (const p of SHELL) {
 }
 
 const shellPaths = new Set(SHELL.map((p) => new URL(p, SCOPE).pathname));
-for (const page of ['index.html', 'credits/index.html', 'privacy/index.html', 'takedown/index.html']) {
+for (const page of ['index.html', 'credits/index.html', 'privacy/index.html', 'schools/index.html', 'security/index.html', 'takedown/index.html']) {
   const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
   const refs = [...html.matchAll(/<(?:script|link)[^>]+(?:src|href)="([^"]+\.(?:js|css))"/g)].map((m) => m[1]);
   for (const r of refs) {

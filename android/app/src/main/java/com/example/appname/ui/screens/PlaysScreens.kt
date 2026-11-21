@@ -400,6 +400,7 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
     var refusal by remember { mutableStateOf<String?>(null) }
     var taking by remember { mutableStateOf<PartID?>(null) }
     var confirmingDelete by remember { mutableStateOf(false) }
+    var confirmingDeleteAll by remember { mutableStateOf(false) }
     val haptics = rememberHaptics()
     val container = LocalAppContainer.current
     val sharing = container.sharing
@@ -548,6 +549,11 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
                     TextButton(onClick = { confirmingDelete = true }) {
                         Text("Delete production", color = AppSemantics.colors.error)
                     }
+                    if (link != null && rec != null && rec.archive == null && PlaysShare.isDirector(rec, me)) {
+                        TextButton(onClick = { confirmingDeleteAll = true }) {
+                            Text("Delete for everyone", color = AppSemantics.colors.error)
+                        }
+                    }
                 }
             }
         }
@@ -563,6 +569,27 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
         }
         if (castHandle != null) pickingVoice?.let { VoicePickerSheet(castHandle, script, it) { pickingVoice = null } }
         if (confirmingDelete) DeleteProductionDialog(production, onDismiss = { confirmingDelete = false }, onDeleted = onBack)
+        if (confirmingDeleteAll) {
+            DestructiveConfirm(
+                message = "Delete ${production.title} for everyone in it? Its takes leave the server.",
+                action = "Delete for everyone",
+                onConfirm = {
+                    confirmingDeleteAll = false
+                    scope.launch {
+                        try {
+                            sharing.deleteForEveryone(id)
+                            plays.delete(production.id)
+                            onBack()
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            refusal = PlaysShare.line(e)
+                        }
+                    }
+                },
+                onDismiss = { confirmingDeleteAll = false },
+            )
+        }
     }
 }
 

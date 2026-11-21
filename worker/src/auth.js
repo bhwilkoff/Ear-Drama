@@ -84,11 +84,13 @@ async function issueSession(env, userId, device, family = null) {
   const now = Date.now();
   const id = crypto.randomUUID();
   const refresh = randomToken(32);
-  await env.DB.prepare(
-    "INSERT INTO sessions (id, user_id, family, token_hash, device, created_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-  )
-    .bind(id, userId, family || id, await sha256Hex(refresh), device, now, now + REFRESH_TTL_MS)
-    .run();
+  await env.DB.batch([
+    env.DB.prepare(
+      "INSERT INTO sessions (id, user_id, family, token_hash, device, created_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+    ).bind(id, userId, family || id, await sha256Hex(refresh), device, now, now + REFRESH_TTL_MS),
+    // The idle-account clock (Decision 084): any sign-in or refresh restarts it and cancels a notice.
+    env.DB.prepare("UPDATE users SET seen_at = ?2, idle_notice_at = NULL WHERE id = ?1").bind(userId, now),
+  ]);
   const nowS = Math.floor(now / 1000);
   const access = await signHS256(
     { iss: ISSUER, aud: AUDIENCE, sub: userId, sid: id, iat: nowS, exp: nowS + ACCESS_TTL_S },

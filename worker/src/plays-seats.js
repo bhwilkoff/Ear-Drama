@@ -88,7 +88,7 @@ export async function reviewsFor(env, pid) {
   return Object.fromEntries(results.map((r) => [r.take_id, { state: r.state, note: r.note, reviewed_at: r.reviewed_at }]));
 }
 
-async function teacherClass(env, classId, userId) {
+export async function teacherClass(env, classId, userId) {
   const c = await env.DB.prepare("SELECT * FROM play_classes WHERE id = ?1").bind(classId).first();
   if (!c) return { error: problem(404, "class_not_found") };
   if (c.user_id !== userId) return { error: problem(403, "teacher_only") };
@@ -230,6 +230,11 @@ export async function review(auth, request, env, p, takeId, now) {
 async function progress(auth, env, classId) {
   const t = await teacherClass(env, classId, auth.userId);
   if (t.error) return t.error;
+  return json(await classProgress(env, classId));
+}
+
+/** The progress counts, for the route and the class export. */
+export async function classProgress(env, classId) {
   const labels = Object.fromEntries((await seatsOf(env, classId)).map((s) => [s.id, s.label]));
   const { results: prods } = await env.DB.prepare("SELECT id, title, cast_sheet FROM play_productions WHERE class_id = ?1 ORDER BY created_at").bind(classId).all();
   const out = [];
@@ -258,7 +263,7 @@ async function progress(auth, env, classId) {
       seats: [...seats].map(([seat, parts]) => ({ seat, label: labels[seat] ?? null, parts: [...parts.values()] })),
     });
   }
-  return json({ class_id: classId, productions: out });
+  return { class_id: classId, productions: out };
 }
 
 /** The class subroutes past plays.js's own; null when none matches. */

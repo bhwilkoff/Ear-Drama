@@ -140,6 +140,7 @@ private final class StubWorker: PlaysTransport {
     func classes() async throws -> PlayClasses { throw unused }
     func createClass(name: String, under13: Bool) async throws -> PlayClass { throw unused }
     func joinClass(code: String, displayName: String?) async throws -> PlayClass { throw unused }
+    func deleteProduction(_ pid: String) async throws { throw unused }
 }
 
 // MARK: - What is uploaded

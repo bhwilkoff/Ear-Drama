@@ -107,3 +107,6 @@ roku/dist/
 .claude/settings.local.json
 _site/
 .wrangler/
+
+# The site's ONNX Runtime, fetched and checked by tools/fetch_onnx_runtime.py (never committed)
+/vendor/

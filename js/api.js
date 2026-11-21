@@ -1612,6 +1612,12 @@ const API = (() => {
       releaseSeat: (id, seat) => c('POST', `${P}/classes/${encodeURIComponent(id)}/seats/${encodeURIComponent(seat)}/release`, {}),
       classProduction: (id, body) => c('POST', `${P}/classes/${encodeURIComponent(id)}/productions`, body),
       progress: (id) => c('GET', `${P}/classes/${encodeURIComponent(id)}/progress`),
+      /* Retention (Decision 084): Delete class, the end date, the class export, the school's authorization. */
+      deleteClass: (id) => c('DELETE', `${P}/classes/${encodeURIComponent(id)}`),
+      setClassEnd: (id, endsOn) => c('PATCH', `${P}/classes/${encodeURIComponent(id)}`, { ends_on: endsOn }),
+      exportClass: (id) => c('GET', `${P}/classes/${encodeURIComponent(id)}/export`),
+      schoolConsent: (id, reference) => c('POST', `${P}/classes/${encodeURIComponent(id)}/school-consent`, { reference }),
+      deleteProduction: (pid) => c('DELETE', at(pid)),
       assign: (pid, assignments) => c('PUT', `${at(pid)}/assignments`, { assignments }),
       review: (pid, takeId, state, note) => c('POST', `${at(pid)}/takes/${encodeURIComponent(takeId)}/review`,
         { state, ...(note ? { note } : {}) }),

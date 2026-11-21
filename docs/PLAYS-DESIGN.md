@@ -1190,7 +1190,20 @@ The owner's answers in §9 hold on the server, word for word:
 - **Classes.** A teacher makes a class and students join by an eight-character
   code. A class marked under 13 (fixed when made) takes no student until its
   teacher records the school's consent, and that record is refused until the
-  owner names the privacy policy's version that covers school consent.
+  owner names the privacy policy's version that covers school consent. The
+  school or district decides (FTC COPPA FAQ N.3): the teacher names which
+  authorization (`reference`, required since Decision 084).
+- **Retention** (Decision 084, owner 2026-11-21: "I don't mind deleting the
+  info about who recorded what, but we need to be able to keep the recorded Ear
+  Dramas in our database"). A class ends the day after its end date (by
+  default the July 31 that closes its school year; the teacher changes it), goes
+  after 12 idle months and a 30-day notice, or when its teacher deletes it or
+  its school asks (the owner's operator route, within 30 days). Its seats and
+  names, take-to-seat links, notes, casting, membership, school record and every
+  unsubmitted production are deleted; a submitted production stays, detached and
+  without its seats. A director deletes an unsubmitted production. An account
+  idle 3 years is deleted after a 30-day notice any sign-in cancels. The
+  teacher exports the class as one file (no audio: none is stored). Client rules: §12.12.
 - **Deletion** (Decision 063) removes every row, the person's take audio in
   the bucket (none since Decision 082), and their classes. A **submitted production** (its publish is
   queued or done) survives any member's deletion (owner, 2026-10-29: "Account
@@ -1210,7 +1223,7 @@ The owner's answers in §9 hold on the server, word for word:
 | P2 | The CC0 consent words (Decision 059) | Answered 2026-10-29: the owner's words at version `cc0-2026-10-29` |
 | P3 | A vetted deny list for names | A short seed list in `worker/src/plays-names.js` |
 | P4 | Who reads reports, how they arrive, and how fast they are answered (guideline 1.2 asks for timely action and a published contact) | Reports wait in D1 with status `open`; nothing notifies anyone, and nothing auto-hides a take for everyone |
-| P5 | The privacy policy that covers school consent for students under 13 | `SCHOOL_CONSENT_POLICY` unset: no school consent can be recorded, so no under-13 class takes a student |
+| P5 | The privacy policy that covers school consent for students under 13 | Words approved 2026-11-21 ("The policy wording looks good to me."); `SCHOOL_CONSENT_POLICY` is set to the published policy's version at deploy. Until it is set, no school consent can be recorded, so no under-13 class takes a student |
 | P6 | The Ear Drama archive.org account and its keys | Answered 2026-10-29: keys given; the uploader runs once both are Worker secrets (Decision 073) |
 | P14 | Does deleting an account remove that person's lines from the item? An Ear Drama collection on archive.org? | Answered by the owner 2026-10-29: "Account deletion should definitely not remove their recordings from already submitted works" (lines stay, uncredited); "community audio is just fine, as long as we are doing a good job of labeling the ear dramas within archive.org" |
 | P7 | The 7-day claim lapse (C6 and C7 are answered, §9) | Applied as the default |
@@ -1503,7 +1516,9 @@ works the same way: the take waits until the teacher's app is open. No take audi
 on Cloudflare (no R2, no Durable Object, KV or D1 audio). The full recording is the
 leader's: the teacher uploads it to archive.org **under their own name** through the
 existing uploader (Decision 073), for classes marked **13 and over** only, after each
-performer's CC0 consent; an **under-13 class never publishes** and the teacher exports a
+performer's CC0 consent: the teacher's own, with the teacher's confirmation that every
+performer agreed and that the school holds a media release for each performer under 18
+(Decision 084, §12.12 item 6); an **under-13 class never publishes** and the teacher exports a
 file.
 
 ### §12.6 Failure states
@@ -1726,7 +1741,9 @@ the leader.
    (`credit` on the take, the name filter applied at join; a reader who gave none is "A reader").
    The take is a row of the director's production, so the row names the director as owner and the
    credit names the maker; the director is the performer of none of it. A class seat's take stays
-   the teacher's, credited to the seat (Decision 082; the teacher consents).
+   the teacher's, credited to the seat (Decision 082); the teacher consents for their own credit and
+   confirms that every performer agreed and that the school holds a media release for each performer
+   under 18 (Decision 084, §12.12 item 6).
 7. Publish needs every performer's own CC0 consent at the current version. A maker who has only a
    name has none to give, so **a production with any line by such a maker cannot publish**: the
    Worker answers `409 consent_missing` with `credits` (the names), and Publish shows who still
@@ -1736,3 +1753,54 @@ the leader.
    `GET /consent`'s, never written into a client.
 8. Only the director opens a room on an adult production (a stranger's room cannot write takes
    into it); a class's room still takes its class's production.
+
+### §12.12 Student privacy: delete, end, export, confirm, ask (Decision 084, owner 2026-11-21; binding on every client)
+
+> **Owner, 2026-11-21**: *"We want this to work for the vast majority of school districts, schools, teachers and
+> students. The only way to do this is to build upon the work of the teachers and other advocacy groups that have
+> already shown how to allow schools to create such great works of art (ear dramas) without compromising student
+> privacy."* On retention: *"I don't mind deleting the info about who recorded what, but we need to be able to keep
+> the recorded Ear Dramas in our database."* The Worker's side is `docs/WORKER.md` ("Retention and deletion"); each
+> rule has a test in `worker/test/retention.test.js` and a break (`084:`) in `worker/test/mutations.mjs`.
+
+Same verbs on every platform that has the class page (web, iOS, iPadOS, macOS, Android phone; a TV records nothing
+and has no class page). Words are exactly these; a refusal is `ReadCore.refusal(code)`'s line.
+
+1. **The Class section** closes the teacher's class page: one line **Ends {date}** (the class's `ends_on`, a day,
+   shown in the person's date style and never shifted by a time zone), then **Change date** (the platform's date
+   picker, today to 400 days ahead; `PATCH /classes/:id`), **Export class**, and **Delete class**.
+2. **Delete class** asks first, in the platform's destructive confirmation: **"Delete {class}? Its names, casting
+   and notes are deleted. Published plays stay."** with **Delete class** (destructive) and Cancel; then
+   `DELETE /classes/:id` and back to the list. The received takes on the teacher's device are the teacher's and
+   stay until they delete them.
+3. **Export class** saves `GET /classes/:id/export` as `{class name} export.json` through the platform's own save
+   (web: a download; Apple: the share sheet or a file exporter; Android: the system's create-document picker). No
+   audio is in it.
+4. **The teacher's class list** shows **Deleted {date} unless opened** under a class whose `deletes_on` is set (a
+   12-month idle notice); opening the class ends the notice.
+5. **School approval** (an under-13 class without `school_consent`) heads the class page: a checkbox **My school or
+   district approved Ear Drama for this class.**, a field **Approved by** (placeholder "School or district, and the
+   approval", up to 120 characters, required), and **Record** (`POST /classes/:id/school-consent { reference }`).
+   Until the owner sets `SCHOOL_CONSENT_POLICY` the Worker answers `503 pending_owner_policy`, shown as its refusal.
+6. **Publishing a 13-and-over class** adds two checkboxes before the teacher's own CC0 consent: **Every performer
+   agreed to publish.** and **The school has a media release for each performer under 18.** Publish sends
+   `performers_agreed: true, media_release: true`; with either unchecked it is refused on the device with
+   **Check both boxes first.** This replaces §12.11 item 6's "the teacher consents" for a class: the teacher's
+   CC0 consent covers their own credit and the item, the two confirmations cover the students.
+7. **Delete production** is offered to a shared production's director, and only while it has no archive job:
+   **"Delete {title} for everyone in it? Its takes leave the server."** and the button **Delete for everyone**,
+   then `DELETE /productions/:id`, and the local copy goes too. A submitted production is not offered it (its
+   lines are removed one by one, P12).
+8. **The age question** comes before a person's first **Share** (making a production shared), **Invite**, **Take
+   part** from an invite, **Publish**, or **I agree to publish**, outside a class: **"What year were you born?"**,
+   a year picker with no default (this year back 120 years), **Continue** and **Cancel**. Only "under 13 or not" is
+   kept, on the device (web `localStorage` `ed.over13`; Apple `UserDefaults` `ed.over13`; Android preferences
+   `ed.over13`), never sent. The year a 12-year-old shares with a 13-year-old counts as under 13 (`year - birth
+   year <= 13`); an under-13 answer shows **"Sharing is for 13 and over. Your teacher can add you to a class."** and
+   that device keeps sharing off. Seats and classes never ask: the school decides there.
+9. **Refusal words**, added to every `ReadCore` table: `confirmations_required` "Check both boxes first.",
+   `reference_required` "Name the school or district.", `pending_owner_policy` "Not open yet.", `bad_end_date`
+   "That is not a date.", `end_date_past` "Pick a later date.", `end_date_too_far` "Pick an earlier date.",
+   `submitted` "A published play stays."
+10. **Never**: speaker identification, voice matching, or any analysis of a student's take (R3d T5); a birth year
+    stored or sent; a notice by email (none is held).

@@ -27,6 +27,22 @@ nonisolated struct ReadClassDetail: Codable, Equatable, Sendable {
     var name: String
     var code: String?
     var seats: [Seat]?
+    var under13: Bool?
+    var schoolConsent: Bool?
+    var endsOn: String?
+    var deletesOn: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, code, seats, under13, schoolConsent = "school_consent", endsOn = "ends_on", deletesOn = "deletes_on"
+    }
+}
+
+nonisolated struct ReadClassEnd: Codable, Equatable, Sendable {
+    var id: String
+    var endsOn: String
+    var deletesOn: String?
+
+    enum CodingKeys: String, CodingKey { case id, endsOn = "ends_on", deletesOn = "deletes_on" }
 }
 
 nonisolated struct ReadProgress: Codable, Equatable, Sendable {
@@ -68,6 +84,10 @@ nonisolated protocol ReadClassWire: Sendable {
     func releaseSeat(_ id: String, seat: String) async throws
     func classProduction(_ id: String, scriptID: String, revision: String, cast: [PlaysShare.CastLine]) async throws -> ReadClassProduction
     func assign(_ pid: String, assignments: [ReadCore.Assignment]) async throws -> [ReadCore.Assignment]
+    func deleteClass(_ id: String) async throws
+    func setEnd(_ id: String, endsOn: String) async throws -> ReadClassEnd
+    func exportClass(_ id: String) async throws -> Data
+    func schoolConsent(_ id: String, reference: String) async throws
 }
 
 nonisolated struct WorkerReadClass: ReadClassWire {
@@ -138,6 +158,23 @@ nonisolated struct WorkerReadClass: ReadClassWire {
         let lines = cast.map { ["id": $0.id, "part": $0.part] }
         let body: [String: Any] = ["script_id": scriptID, "script_revision": revision, "cast": lines]
         return try decode(ReadClassProduction.self, try await call("POST", "\(Self.root)/classes/\(Self.esc(id))/productions", json: body))
+    }
+
+    func deleteClass(_ id: String) async throws {
+        _ = try await call("DELETE", "\(Self.root)/classes/\(Self.esc(id))")
+    }
+
+    func setEnd(_ id: String, endsOn: String) async throws -> ReadClassEnd {
+        try decode(ReadClassEnd.self, try await call("PATCH", "\(Self.root)/classes/\(Self.esc(id))", json: ["ends_on": endsOn]))
+    }
+
+    /// The class's export exactly as the Worker serves it, for the person to save.
+    func exportClass(_ id: String) async throws -> Data {
+        try await call("GET", "\(Self.root)/classes/\(Self.esc(id))/export")
+    }
+
+    func schoolConsent(_ id: String, reference: String) async throws {
+        _ = try await call("POST", "\(Self.root)/classes/\(Self.esc(id))/school-consent", json: ["reference": reference])
     }
 
     func assign(_ pid: String, assignments: [ReadCore.Assignment]) async throws -> [ReadCore.Assignment] {

@@ -541,22 +541,29 @@ const ReadUI = (() => {
   function publishForm(el, s, line) {
     const credit = el('input', { class: 'field-input', type: 'text', maxlength: '40', value: chosenName(), placeholder: 'Credit name', 'aria-label': 'Credit name' });
     const agree = el('input', { type: 'checkbox' });
+    // Decision 084 (owner 2026-11-21): both confirmations, then the teacher's own CC0 consent.
+    const performers = el('input', { type: 'checkbox' });
+    const release = el('input', { type: 'checkbox' });
     const terms = el('p', { class: 'caption' });
     const go = el('button', { type: 'submit', class: 'btn btn-primary', disabled: true }, 'Publish under my name');
     let consent = null;
     API.plays.consent().then((c) => { consent = c; terms.textContent = c.publishes === true ? c.text : 'Publishing opens when the Ear Drama archive account is connected.'; go.disabled = c.publishes !== true; }).catch(() => {});
     return el('form', { class: 'rr-publish', onsubmit: async (e) => {
       e.preventDefault();
+      if (!performers.checked || !release.checked) { line.className = 'caption refusal'; line.textContent = R.refusal('confirmations_required'); return; }
       if (!agree.checked || !consent) return;
       go.disabled = true; line.textContent = '';
       try {
         await API.plays.agree(s.production_id, consent.version);
-        await API.plays.publish(s.production_id, { credit_name: credit.value.trim() });
+        await API.plays.publish(s.production_id, { credit_name: credit.value.trim(), performers_agreed: true, media_release: true });
         keepName(credit.value.trim());
         line.className = 'caption'; line.textContent = 'Queued for archive.org';
         sendFiles(s.production_id, line);
       } catch (err) { line.className = 'caption refusal'; line.textContent = R.refusal(codeOf(err)); go.disabled = false; }
-    } }, credit, terms, el('label', { class: 'check' }, agree, el('span', { class: 'body' }, 'I agree')), go);
+    } }, credit,
+      el('label', { class: 'check' }, performers, el('span', { class: 'body' }, 'Every performer agreed to publish.')),
+      el('label', { class: 'check' }, release, el('span', { class: 'body' }, 'The school has a media release for each performer under 18.')),
+      terms, el('label', { class: 'check' }, agree, el('span', { class: 'body' }, 'I agree')), go);
   }
 
   /** The director's device sends each line's chosen take to archive.org, one at a time; not laid out yet waits for the cron. */

@@ -48,6 +48,7 @@ import {
 import MANIFEST from "./castable-manifest.json";
 import { extOf, fileName, iaConfigured, sendFile } from "./plays-archive.js";
 import { assignmentRows, classHandlers, putAssignments, review, reviewsFor, rosterFor, seatsOf } from "./plays-seats.js";
+import { deleteClassRoute, deleteProductionRoute, deletesOn, exportClass, schoolYearEnd, setEndDate, touchClass } from "./plays-retention.js";
 
 /** Tables that hold no person's rows; test/account.test.js checks they reference no user. */
 export const PLAYS_ANONYMOUS_TABLES = ["play_archive_files", "play_class_seats", "play_assignments", "play_reviews"];
@@ -667,14 +668,18 @@ function classIncomplete(cast, chosen) {
  * A class production goes to archive.org only for a class marked 13 and over,
  * under its teacher's own name (Decision 082): the item's every line is
  * credited to the teacher's chosen name, and the teacher's own CC0 consent at
- * the current version is the one the publish needs. An under-13 class never
- * publishes; its teacher exports a file.
+ * the current version is the one the publish needs, with the teacher's two
+ * confirmations (Decision 084). An under-13 class never publishes; its teacher
+ * exports a file.
  */
 async function classPublishRefusal(request, env, p) {
   const c = await env.DB.prepare("SELECT under13 FROM play_classes WHERE id = ?1").bind(p.class_id).first();
   if (!c || c.under13) return problem(403, "under_13_never_published");
   const { body, error } = await readJson(request, 4 * 1024);
   if (error) return error;
+  // Owner, 2026-11-21: the teacher confirms every performer agreed, and that the school holds a media
+  // release for each performer under 18 (Decision 084). The teacher's own CC0 consent is still asked below.
+  if (body.performers_agreed !== true || body.media_release !== true) return problem(422, "confirmations_required");
   if (body.credit_name !== undefined) {
     const refusal = nameRefusal(body.credit_name);
     if (refusal) return problem(422, refusal);
@@ -693,9 +698,11 @@ async function publish(auth, request, env, p, now) {
   if (!iaConfigured(env)) return problem(503, "publishing_unavailable");
   const job = await env.DB.prepare("SELECT status, take_ids, created_at FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first();
   if (job && job.status !== "failed") return json({ status: job.status, take_ids: JSON.parse(job.take_ids), created_at: job.created_at });
+  let confirmed = null;
   if (p.class_id) {
     const refusal = await classPublishRefusal(request, env, p);
     if (refusal) return refusal;
+    confirmed = now;
   }
   const left = p.class_id
     ? classIncomplete(p.cast, await chosenLines(env, p.id))
@@ -724,10 +731,11 @@ async function publish(auth, request, env, p, now) {
   const takeIds = chosen.map((t) => t.id);
   // Again after a failure: the lines already on the item stay sent (plays-archive.js seedFiles).
   await env.DB.prepare(
-    "INSERT INTO play_archive_jobs (production_id, user_id, status, take_ids, created_at, updated_at) VALUES (?1, ?2, 'queued', ?3, ?4, ?4) " +
-      "ON CONFLICT (production_id) DO UPDATE SET status = 'queued', take_ids = excluded.take_ids, reason = NULL, attempts = 0, next_attempt_at = 0, updated_at = excluded.updated_at",
+    "INSERT INTO play_archive_jobs (production_id, user_id, status, take_ids, created_at, updated_at, performers_agreed_at, media_release_at) VALUES (?1, ?2, 'queued', ?3, ?4, ?4, ?5, ?5) " +
+      "ON CONFLICT (production_id) DO UPDATE SET status = 'queued', take_ids = excluded.take_ids, reason = NULL, attempts = 0, next_attempt_at = 0, updated_at = excluded.updated_at, " +
+      "performers_agreed_at = excluded.performers_agreed_at, media_release_at = excluded.media_release_at",
   )
-    .bind(p.id, auth.userId, JSON.stringify(takeIds), now)
+    .bind(p.id, auth.userId, JSON.stringify(takeIds), now, confirmed)
     .run();
   return json({ status: "queued", take_ids: takeIds, created_at: job ? job.created_at : now }, job ? 200 : 201);
 }
@@ -794,16 +802,18 @@ async function createClass(auth, request, env, now) {
   if (refusal) return problem(422, refusal);
   if (body.under13 !== undefined && typeof body.under13 !== "boolean") return problem(400, "bad_request", "under13 is true or false");
   const id = crypto.randomUUID();
+  // Decision 084: every class ends with its school year unless its teacher changes the date.
+  const endsOn = schoolYearEnd(now);
   for (let attempt = 0; attempt < 3; attempt++) {
     const bytes = new Uint8Array(CLASS_CODE_LENGTH);
     crypto.getRandomValues(bytes);
     const code = classCode(bytes);
     const r = await env.DB.prepare(
-      "INSERT INTO play_classes (id, user_id, name, code, under13, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT (code) DO NOTHING",
+      "INSERT INTO play_classes (id, user_id, name, code, under13, created_at, ends_on, touched_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?6) ON CONFLICT (code) DO NOTHING",
     )
-      .bind(id, auth.userId, name, code, body.under13 ? 1 : 0, now)
+      .bind(id, auth.userId, name, code, body.under13 ? 1 : 0, now, endsOn)
       .run();
-    if (r.meta.changes) return json({ id, name, code, under13: !!body.under13, school_consent: false }, 201);
+    if (r.meta.changes) return json({ id, name, code, under13: !!body.under13, school_consent: false, ends_on: endsOn, deletes_on: null }, 201);
   }
   return problem(503, "try_again");
 }
@@ -843,6 +853,8 @@ async function schoolConsent(auth, request, env, classId, now) {
   if (error) return error;
   const reference = typeof body.reference === "string" ? body.reference.trim() : "";
   if (reference.length > 120 || /[\u0000-\u001f]/.test(reference)) return problem(400, "bad_request", "reference");
+  // FTC COPPA FAQ N.3: the school or district decides; the teacher records which authorization (Decision 084).
+  if (!reference) return problem(422, "reference_required");
   await env.DB.prepare(
     "INSERT INTO play_school_consents (class_id, user_id, policy_version, reference, recorded_at) VALUES (?1, ?2, ?3, ?4, ?5) " +
       "ON CONFLICT (class_id) DO UPDATE SET user_id = excluded.user_id, policy_version = excluded.policy_version, reference = excluded.reference, recorded_at = excluded.recorded_at",
@@ -852,7 +864,7 @@ async function schoolConsent(auth, request, env, classId, now) {
   return json({ class_id: classId, policy_version: env.SCHOOL_CONSENT_POLICY, recorded_at: now }, 201);
 }
 
-async function getClass(auth, env, classId) {
+async function getClass(auth, env, classId, now) {
   const c = await env.DB.prepare(
     "SELECT c.*, s.policy_version FROM play_classes c LEFT JOIN play_school_consents s ON s.class_id = c.id WHERE c.id = ?1",
   )
@@ -860,12 +872,13 @@ async function getClass(auth, env, classId) {
     .first();
   if (!c) return problem(404, "class_not_found");
   if (c.user_id === auth.userId) {
+    await touchClass(env, classId, now);
     const { results } = await env.DB.prepare(
       "SELECT user_id, display_name, joined_at FROM play_class_members WHERE class_id = ?1 ORDER BY joined_at",
     )
       .bind(classId)
       .all();
-    return json({ id: c.id, name: c.name, code: c.code, under13: !!c.under13, school_consent: !!c.policy_version, members: results, seats: await rosterFor(env, classId) });
+    return json({ id: c.id, name: c.name, code: c.code, under13: !!c.under13, school_consent: !!c.policy_version, ends_on: c.ends_on, deletes_on: null, members: results, seats: await rosterFor(env, classId) });
   }
   const m = await env.DB.prepare("SELECT 1 FROM play_class_members WHERE class_id = ?1 AND user_id = ?2").bind(classId, auth.userId).first();
   if (!m) return problem(404, "class_not_found");
@@ -874,13 +887,13 @@ async function getClass(auth, env, classId) {
 
 async function listClasses(auth, env) {
   const [t, m] = await env.DB.batch([
-    env.DB.prepare("SELECT c.id, c.name, c.code, c.under13, s.policy_version FROM play_classes c LEFT JOIN play_school_consents s ON s.class_id = c.id WHERE c.user_id = ?1 ORDER BY c.created_at").bind(auth.userId),
+    env.DB.prepare("SELECT c.id, c.name, c.code, c.under13, c.ends_on, c.notice_at, s.policy_version FROM play_classes c LEFT JOIN play_school_consents s ON s.class_id = c.id WHERE c.user_id = ?1 ORDER BY c.created_at").bind(auth.userId),
     env.DB.prepare(
       "SELECT c.id, c.name, c.under13 FROM play_class_members m JOIN play_classes c ON c.id = m.class_id WHERE m.user_id = ?1 ORDER BY m.joined_at",
     ).bind(auth.userId),
   ]);
   const flag = (r) => ({ ...r, under13: !!r.under13 });
-  const taught = ({ policy_version, ...r }) => ({ ...flag(r), school_consent: !!policy_version });
+  const taught = ({ policy_version, notice_at, ...r }) => ({ ...flag(r), school_consent: !!policy_version, deletes_on: deletesOn(notice_at) });
   return json({ teaching: t.results.map(taught), member_of: m.results.map(flag) });
 }
 
@@ -933,7 +946,10 @@ export async function handlePlays(url, request, env, auth) {
     if (!b && m === "POST") return createClass(auth, request, env, now);
     if (!b && m === "GET") return listClasses(auth, env);
     if (b === "join" && !c && m === "POST") return joinClass(auth, request, env, now);
-    if (b && !c && m === "GET") return getClass(auth, env, b);
+    if (b && !c && m === "GET") return getClass(auth, env, b, now);
+    if (b && b !== "join" && !c && m === "DELETE") return deleteClassRoute(auth, env, b);
+    if (b && b !== "join" && !c && m === "PATCH") return setEndDate(auth, request, env, b, now);
+    if (b && c === "export" && !d && m === "GET") return exportClass(auth, env, b, now);
     if (b && c === "school-consent" && !d && m === "POST") return schoolConsent(auth, request, env, b, now);
     if (b && c === "members" && d && !e && m === "DELETE") return removeClassMember(auth, env, b, d);
     return (await classHandlers(auth, request, env, seg, now)) || problem(404, "not_found");
@@ -947,6 +963,7 @@ export async function handlePlays(url, request, env, auth) {
   const p = await production(env, b);
   if (!p || !(await member(env, p.id, auth.userId))) return problem(404, "not_found");
   if (!c && m === "GET") return json(await recordFor(env, p, auth.userId, now));
+  if (!c && m === "DELETE") return deleteProductionRoute(auth, env, p);
   if (c === "invites" && !d && m === "POST") return createInvite(auth, request, env, p, now);
   if (c === "invites" && d && !e && m === "DELETE") return revokeInvite(auth, env, p, d);
   if (c === "claim" && !d && m === "POST") return claimAsMember(auth, request, env, p, now);

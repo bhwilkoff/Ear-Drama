@@ -31,6 +31,7 @@ DEFAULT_SUITES="js/api.test.js
   js/voice-cast.test.js
   js/kokoro.test.js
   js/plays-share.test.js
+  js/age-gate.test.js
   js/account.test.js
   js/export.test.js
   js/together.test.js
@@ -38,6 +39,7 @@ DEFAULT_SUITES="js/api.test.js
   js/relay.test.js
   js/label.test.js
   tools/test_tv_focus.mjs
+  tools/test_no_third_party_code.mjs
   tools/test_tv_ua.mjs
   tools/test_packaged_origin.mjs
   tools/test_pulse_charts.mjs

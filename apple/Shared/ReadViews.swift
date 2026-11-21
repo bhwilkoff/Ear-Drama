@@ -270,12 +270,24 @@ struct ClassPageScreen: View {
     @State private var reviewScripts: [String: PlayScript] = [:]
     @State private var recordScripts: [String: String] = [:]
     @State private var heard = SystemTakePlayer()
+    @State private var working = false
+    @State private var classFailure: String?
+    @State private var approvalFailure: String?
+    @State private var exported: ClassExportFile?
+    @State private var exporting = false
+    @Environment(\.dismiss) private var dismiss
+    @Environment(SharedPlays.self) private var shared
 
     private let wire = WorkerReadClass(api: .shared)
 
     var body: some View {
         List {
             if let failure { Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError) }
+            if detail?.under13 == true, detail?.schoolConsent != true {
+                Section("School approval") {
+                    SchoolApprovalRows(failure: approvalFailure, busy: working) { reference in recordApproval(reference) }
+                }
+            }
             if let code = detail?.code {
                 Section {
                     HStack {
@@ -329,12 +341,57 @@ struct ClassPageScreen: View {
                     }
                 }
             }
+            if let detail {
+                Section("Class") {
+                    ClassSectionRows(name: detail.name, endsOn: detail.endsOn, failure: classFailure, busy: working,
+                                     change: changeDate, export: exportClass, delete: deleteClass)
+                }
+            }
         }
+        .fileExporter(isPresented: $exporting, document: exported ?? ClassExportFile(data: Data()), contentType: .json,
+                      defaultFilename: ClassExportFile.filename(detail?.name ?? "")) { _ in exported = nil }
         .navigationTitle(detail?.name ?? "Class")
         .task { await load() }
         .refreshable { await load() }
         .onDisappear { inbox?.release() }
         .sheet(isPresented: $choosing) { playPicker }
+    }
+
+    private func recordApproval(_ reference: String) {
+        guard !reference.isEmpty else { approvalFailure = ReadCore.refusal("confirmations_required"); return }
+        working = true
+        Task {
+            defer { working = false }
+            do { try await wire.schoolConsent(id, reference: reference); approvalFailure = nil; await load() }
+            catch let f as ReadFailure { approvalFailure = ReadCore.refusal(f.code) } catch { approvalFailure = ReadCore.refusal("error") }
+        }
+    }
+
+    private func changeDate(_ day: String) {
+        working = true
+        Task {
+            defer { working = false }
+            do { _ = try await wire.setEnd(id, endsOn: day); classFailure = nil; await load() }
+            catch let f as ReadFailure { classFailure = ReadCore.refusal(f.code) } catch { classFailure = ReadCore.refusal("error") }
+        }
+    }
+
+    private func exportClass() {
+        working = true
+        Task {
+            defer { working = false }
+            do { exported = ClassExportFile(data: try await wire.exportClass(id)); classFailure = nil; exporting = true }
+            catch let f as ReadFailure { classFailure = ReadCore.refusal(f.code) } catch { classFailure = ReadCore.refusal("error") }
+        }
+    }
+
+    private func deleteClass() {
+        working = true
+        Task {
+            defer { working = false }
+            do { try await wire.deleteClass(id); await shared.loadClasses(); dismiss() }
+            catch let f as ReadFailure { classFailure = ReadCore.refusal(f.code) } catch { classFailure = ReadCore.refusal("error") }
+        }
     }
 
     private func act(_ work: @escaping () async throws -> Void) {

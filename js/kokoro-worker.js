@@ -4,12 +4,12 @@
  * as a transferred Float32Array. Keeps nothing: no storage, no network but the runtime itself.
  *
  * The runtime is onnxruntime-web (MIT), WASM only, single-threaded: eardrama.org cannot send the
- * cross-origin isolation headers threads need. PROTOTYPE loads it from jsDelivr at a pinned
- * version; the shipped build self-hosts it.
+ * cross-origin isolation headers threads need. It is served from the site itself (Decision 084, R3d
+ * T1): tools/fetch_onnx_runtime.py places the pinned, integrity-checked files at /vendor/onnxruntime-web/.
  */
 /* global ort */
 'use strict';
-const ORT = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/';
+const ORT = new URL('../vendor/onnxruntime-web/', self.location.href).href;
 let session = null;
 let table = null;
 const STYLE = 256;
