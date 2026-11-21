@@ -2,7 +2,7 @@
 
     play_art.pictures(play_id)  ->  {"titlePage": art or None, "authorArt": art or None, "picture": art or None}
 
-Reads only caches (harvest_art_v2.py --phase plays and pages; no network), and judges every candidate
+Reads only caches (harvest_art_v2.py --phase plays and pages, harvest_loc_photos.py --phase ftp; no network), and judges every candidate
 with art_policy again: the work's image and the author's portrait under the portrait license classes
 (`play_image_served`), the edition's title page under the age rule (`edition_served` already judged it at
 harvest; a leaf with no scan-data title page was never kept). An art object is
@@ -73,20 +73,57 @@ def _best(files_list, files, died=None, live=None, of_the_work=None):
     return fn, fv
 
 
+def _ftp_index():
+    """{play-title words: [Library of Congress record]} over the Federal Theatre Project records (Decision 040 V3).
+    The rights class is read again from the record's own words, so a rule change needs no re-harvest."""
+    import photo_match as M
+    path = os.path.join(CACHE, "loc", "records.json.gz")
+    out = {}
+    for rec in _rj(path, {}).values():
+        owners = " ".join(str(x) for x in list(rec.get("contributors") or []) + list(rec.get("partof") or []))
+        if not AP.FTP.search(owners + " " + (rec.get("title") or "")) or not rec.get("online"):
+            continue
+        creator = " | ".join(map(str, (rec.get("contributors") or []) + (rec.get("partof") or []) + [rec.get("call_number") or ""]))
+        rec = dict(rec, rights_class=M.rights_class(rec.get("rights"), creator)[0])
+        summary = rec.get("summary") if isinstance(rec.get("summary"), str) else " ".join(rec.get("summary") or [])
+        for t in AP.ftp_titles(rec.get("title"), summary, rec.get("description")):
+            out.setdefault(tuple(AP._title_words(t)), []).append(rec)
+    return out
+
+
+def production(title, ctx, live=None, authors=None):
+    """The one Federal Theatre Project picture of this play's production, or None (art_policy.ftp_play_served)."""
+    rows = []
+    for rec in ctx.get("ftp", {}).get(tuple(AP._title_words(AP.play_title(title))), []):
+        summary = rec.get("summary") if isinstance(rec.get("summary"), str) else " ".join(rec.get("summary") or [])
+        if AP.ftp_play_served(rec["rights_class"], True, rec.get("contributors"), rec.get("partof"), rec.get("title"),
+                              summary, rec.get("description"), title, None, None, authors) \
+                and AP.alive(live, rec["image_largest"]):
+            poster = "poster" in (rec.get("description") or "").lower()
+            rows.append((poster, rec["id"], rec))
+    if not rows:
+        return None
+    _p, _i, rec = min(rows, key=lambda r: (r[0], r[1]))
+    return {"url": rec["image_largest"], "width": None, "height": None, "credit": None, "evidence": rec["url"],
+            "face": None, "source": "loc:federal-theatre-project", "tie": "title"}
+
+
 def load():
     plays = _rj(os.path.join(DIR, "plays.json.gz"), {})
     files = dict(_rj(os.path.join(DIR, "files.json.gz"), {}))
     people = _rj(os.path.join(CACHE, "people_wd", "files.json.gz"), {})
     for k, v in people.items():
         files.setdefault(k, v)
-    return {"plays": plays, "files": files, "live": _rj(os.path.join(DIR, "liveness.json.gz"), {})}
+    return {"plays": plays, "files": files, "live": _rj(os.path.join(DIR, "liveness.json.gz"), {}), "ftp": _ftp_index()}
 
 
-def pictures(play_id, ctx):
+def pictures(play_id, ctx, title=None, authors=None):
     split = re.match(r"^gut-[0-9]+-[0-9]+$", play_id)   # a play cut from a volume: the volume's author, never its work or edition
     rec = ctx["plays"].get(re.sub(r"-[0-9]+$", "", play_id) if split else play_id)
     out = {"titlePage": None, "authorArt": None, "picture": None}
     if not rec:
+        prod = production(title, ctx, ctx["live"], authors) if title else None
+        out["picture"] = dict(prod, kind="production") if prod else None
         return out
     files, live = ctx["files"], ctx["live"]
     work = None
@@ -108,7 +145,8 @@ def pictures(play_id, ctx):
         got = _best(a.get("files") or [], files, a.get("died"), live)
         if got:
             out["authorArt"] = _art(got[0], got[1], "wikidata:P18", a.get("basis") or "name+dated person")
-    lead = AP.pick_play([(k, v) for k, v in (("work", work), ("titlePage", out["titlePage"]),
+    prod = production(title or rec.get("title"), ctx, live, authors or rec.get("authors"))
+    lead = AP.pick_play([(k, v) for k, v in (("work", work), ("production", prod), ("titlePage", out["titlePage"]),
                                              ("author", out["authorArt"])) if v])
     out["picture"] = dict(lead[1], kind=lead[0]) if lead else None
     return out
@@ -120,7 +158,7 @@ def attach(rows, ctx=None):
     if not ctx["plays"]:
         return rows
     for r in rows:
-        p = pictures(r["id"], ctx)
+        p = pictures(r["id"], ctx, r.get("title"), r.get("authors"))
         for k, v in p.items():
             if v:
                 r[k] = v

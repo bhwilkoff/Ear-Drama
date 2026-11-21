@@ -3,9 +3,9 @@ archives other than Wikimedia Commons (reports/F-photo-archives.md).
 
 Rights are classed from the archive's OWN statement on the record, quoted
 verbatim beside the class; nothing is inferred from a photo's look or age
-alone. Owner rule (2026-10): no human review queue — an image is used when
-its own record carries public-domain or free-licence evidence a reader can
-open, and removed on request.
+alone. Owner rule (2026-11-21, Decision 040, replacing the 2026-10 rule that an
+image needs evidence of its own): no human review queue — an image is used
+unless its own record marks a restriction, and removed on request.
 
     no_known_restrictions  the record says "No known restrictions" (LoC), or
                            is marked public domain / CC0 by the holder
@@ -16,18 +16,20 @@ open, and removed on request.
                            copyright, or permission required
     cc0                    the holder marks the image file itself CC0
                            (Smithsonian Open Access per-media usage)
-    unknown                anything else ("Rights status not evaluated", no
-                           statement, served by appointment only)
+    unmarked               the record states no restriction: no rights sentence, or
+                           "Rights status not evaluated" (a neutral line), 040
+    unknown                a government creator whose record is served by
+                           appointment only (no image online)
 
-`usable` = class is no_known_restrictions or government AND an image file is
-online. A restriction on the record always beats a government creator: a
+`usable` = class is no_known_restrictions, government, cc0 or unmarked AND an
+image file is online. A restriction on the record always beats a government creator: a
 World-Telegram print of an OWI photo that says "Publication may be restricted"
 is restricted (LoC applies it because the print may come from a wire service).
 """
 import re
 import unicodedata
 
-USABLE = ("no_known_restrictions", "government", "cc0")
+USABLE = ("no_known_restrictions", "government", "cc0", "unmarked")
 
 _RESTRICT = re.compile(
     r"publication (?:may be|is) restricted|restricted|copyright(?:ed)?\b(?! (?:status )?(?:not|undetermined|unknown))|"
@@ -44,10 +46,15 @@ _GOV = re.compile(
     r"state|commerce)", re.I)
 
 
+# LoC closes a rights line with a pointer to its general page ("For information see ... Copyright and Other
+# Restrictions"): the pointer's own words are not the record's statement.
+_POINTER = re.compile(r"\bfor (?:more |general )?information,? see\b.*$", re.I | re.S)
+
+
 def rights_class(statement, creator_text=""):
     """(class, why). `statement` is the record's rights text verbatim; `creator_text`
     joins contributor, collection and call-number strings."""
-    s = (statement or "").strip()
+    s = _POINTER.sub("", (statement or "")).strip()
     if s and _RESTRICT.search(s) and not re.search(r"\bno known restrictions\b", s, re.I):
         return "restricted", "record states a restriction"
     if s and re.search(r"\bno known restrictions\b", s, re.I) and re.search(r"publication may be restricted", s, re.I):
@@ -58,7 +65,7 @@ def rights_class(statement, creator_text=""):
         return "government", "federal creator named on the record"
     if s and _NKR.search(s):
         return "no_known_restrictions", "record states no known restrictions / public domain"
-    return "unknown", "no free statement on the record" if s else "no rights statement on the record"
+    return "unmarked", "the record states no restriction" if s else "no rights statement on the record"
 
 
 def fold(s):

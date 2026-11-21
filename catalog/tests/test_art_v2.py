@@ -293,7 +293,8 @@ check("play title: cut at a subtitle or a note", [AP.play_title("She Stoops to C
       ["She Stoops to Conquer", "The Tragical History of Doctor Faustus", "Ghosts"])
 check("play image: a PD file at a tile size", AP.play_image_served("pd_us", None, 400, 500), True)
 check("control: under the tile floor", AP.play_image_served("pd_us", None, 100, 100), False)
-check("control: a class portraits are not served under", AP.play_image_served("pd_source_only", None, 400, 500), False)
+check("play image: public domain where it was made is used (040)", AP.play_image_served("pd_source_only", None, 400, 500), True)
+check("control: a restricted play image is refused", AP.play_image_served("restricted", None, 400, 500), False)
 check("control: CC BY with no author to credit", AP.play_image_served("cc_by", "Unknown", 400, 500), False)
 check("control: an own work dated after the author's death",
       AP.play_image_served("pd_release", None, 400, 500, True, "2019", "1918"), False)

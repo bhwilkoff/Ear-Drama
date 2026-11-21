@@ -51,7 +51,7 @@ CREATE TABLE archive_photos (
   source TEXT, record_id TEXT, title TEXT, date TEXT, year INTEGER, collection TEXT,
   creators TEXT,            -- JSON list as the record gives them
   rights_statement TEXT,    -- verbatim from the record
-  rights_class TEXT,        -- no_known_restrictions | government | cc0 | restricted | unknown
+  rights_class TEXT,        -- no_known_restrictions | government | cc0 | unmarked | restricted | unknown
   rights_why TEXT, usable INTEGER,
   evidence_url TEXT,        -- the record page that carries the statement
   image_url TEXT,           -- largest JPEG the record lists
@@ -149,6 +149,9 @@ def loc_rows():
         big = max(jpg, key=lambda f: f["width"]) if jpg else None
         text = " ".join(filter(None, [r.get("title"), r.get("description"), " ".join(r.get("summary") or []) if isinstance(r.get("summary"), list) else r.get("summary"),
                                       " ".join(r.get("notes") or []), " ".join(r.get("subjects") or [])]))
+        # classed again from the record's own words, so a rule change needs no re-harvest (040)
+        creator_text = " | ".join(map(str, (r.get("contributors") or []) + (r.get("partof") or []) + [r.get("call_number") or ""]))
+        r["rights_class"], r["rights_why"] = M.rights_class(r.get("rights"), creator_text)
         out.append({
             "source": "loc", "record_id": r["id"], "title": r.get("title"), "date": r.get("date"),
             "year": M.year_of(r.get("date") or (r.get("dates") or [""])[0]),
@@ -396,6 +399,8 @@ def main():
     rep["targets_with_usable_photo_title_or_heading"] = {k: len(v) for k, v in targets.items()}
     magazines(c, rep)
     c.commit()
+    import enrich_magazine_pages   # R3b V5 (Decision 040): needs magazine_rights, written just above, and series_marks
+    rep["magazine_pages"] = enrich_magazine_pages.write(c)
     rep["refused"] = dict(rep["refused"])
     for s in rep["sources"].values():
         s["by_class"] = dict(s["by_class"])

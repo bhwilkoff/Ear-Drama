@@ -42,13 +42,17 @@ LICENCES (`license_class`, read from the Commons file page's wikitext; Track D's
           free_use    "Copyrighted free use" (the holder permits any use)
           cc_by       CC BY (attribution required)
           cc_by_sa    CC BY-SA (attribution + share-alike)
-  not     gfdl_only   GFDL with no CC alternative (the licence text must travel)
-          pd_source_only  PD-old-* with no US template (no US evidence)
+  usable  pd_source_only  PD-old-* with no US template (public domain where it was made; 040)
           no_known_restrictions  Flickr / Library of Congress "no known copyright
                       restrictions" (PD-Van Vechten, PD-Bain, PD-Harris-Ewing ...): a
-                      statement that nothing is known, not a determination
+                      statement that nothing is known (040: not a restriction)
+          unmarked    nothing recognized and nothing restricting: no rights sentence (040)
+  not     gfdl_only   GFDL with no CC alternative (the licence text must travel)
+          restricted  a non-free or fair-use template, a no-reuse or non-commercial license, a
+                      copyright notice or "all rights reserved" on a page with no free class
+                      (art_policy.restricted_template / restriction_in)
           contested   a deletion request, copyvio, no-permission/no-source/no-licence tag
-          unknown     nothing recognized
+          unread      the file page was never read
 A file page is recorded with its template as written and its author/source; a
 person still opens the page before a portrait ships (Track D: many no-notice tags
 rest on no visible evidence).
@@ -67,6 +71,7 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ia_lib import CACHE, OUT, write_json  # noqa: E402
 from harvest_ext_commons import template_class  # noqa: E402
+import art_policy as AP  # noqa: E402
 from art_policy import face_count, face_text  # noqa: E402
 
 DIR = os.path.join(CACHE, "people_wd")
@@ -81,8 +86,8 @@ RELEVANT_OCC = re.compile(
     r"violinist|arranger|comedian|entertainer|performer|vaudevillian|ventriloquist|"
     r"journalist|newscaster|news anchor|commentator|narrator|impressionist|humorist|"
     r"sound designer|showrunner|dancer|magician)\b", re.I)
-USABLE = {"pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa"}
-PREFER = {c: i for i, c in enumerate(("pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa"))}
+USABLE = set(AP.SERVED_CLASSES)   # 040: free classes, and the ones that state no restriction
+PREFER = dict(AP.PREFER)
 OBLIGATIONS = {"cc_by": "attribution", "cc_by_sa": "attribution, share-alike"}
 CONTESTED = re.compile(r"^(delete|deletionrequest|copyvio|nopermissionsince|nosourcesince|"
                        r"nolicensesince|nolicense|speedydelete|speedy|dr|copyrightviolation)$")
@@ -289,7 +294,9 @@ def license_class(text):
     for t in toks:
         k = _k(t)
         low = t.lower().strip()
-        if k in ALIASES:
+        if AP.restricted_template(t) and k not in ALIASES:
+            found.setdefault("restricted", t)
+        elif k in ALIASES:
             found.setdefault(ALIASES[k], t)
         elif CONTESTED.match(k):
             found.setdefault("contested", t)
@@ -316,11 +323,17 @@ def license_class(text):
         found["pd_us"] = tw
     if "contested" in found:
         return "contested", found["contested"], None
+    if "restricted" in found:
+        return "restricted", found["restricted"], None
     for c in ("pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa", "gfdl_only",
               "pd_source_only", "no_known_restrictions"):
         if c in found:
+            if c in ("pd_source_only", "no_known_restrictions") and AP.restriction_in(text):
+                return "restricted", AP.restriction_in(text), None
             return c, found[c], OBLIGATIONS.get(c)
-    return "unknown", None, None
+    if AP.restriction_in(text):
+        return "restricted", AP.restriction_in(text), None
+    return "unmarked", None, None
 
 
 def _strip_markup(s):

@@ -1,18 +1,23 @@
 """Which portraits the projection serves, and how each is credited (contract §3.3).
 
 One predicate, imported by build_projection.py (and through it the web
-projection), so no builder decides for itself. An image is served only when
-its own record carries the evidence (DECISIONS 055), and only when the PERSON
-match carries it too:
+projection), so no builder decides for itself. An image is served unless its
+own record marks a restriction (DECISIONS 040, owner 2026-11-21), and only when
+the PERSON match carries identity:
 
-  * the file's license class is one enrich_people_art.py counts usable
-    (a US public-domain template, a government work, CC0, the holder's own
-    release, CC BY, CC BY-SA);
+  * the file's license class is one enrich_people_art.py counts usable: a
+    free class (a US public-domain template, a government work, CC0, the
+    holder's own release, CC BY, CC BY-SA), or a class that states no
+    restriction (PD in the source country only, "no known restrictions", a page
+    with no rights sentence). A copyright notice, "all rights reserved", a
+    non-free or fair-use license, a no-reuse license, or "permission required"
+    is `restricted` and never served;
   * the person was matched on a DATE (OTRRpedia's birth or death agreeing with
-    Wikidata's). The undated rule (one namesake of the right trade and era) is
-    not served: it is the only rule that fails on its own logic, and about 1 in
-    30 of its matches is someone else (catalog/reports/E-people-portraits.md;
-    RESEARCH.md §12 V1 asks the owner whether to open it);
+    Wikidata's), or on the undated rule (one namesake, a radio, stage or screen
+    occupation of their own, an era that fits) when no other person of that
+    name in our credits competes (`undated_served`); about 1 in 30 undated
+    matches is someone else (catalog/reports/E-people-portraits.md), and the
+    take-down path answers that;
   * the file is the person's own Wikidata image (P18). A file found because its
     Structured Data depicts the person can be a group photograph, which a
     portrait slot would crop to the wrong face;
@@ -30,7 +35,11 @@ import urllib.parse
 import networks as NW
 import polish as PL
 
-SERVED_CLASSES = ("pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa")
+# The first seven are free licenses; the last three say nothing against reuse (040): the file is public domain
+# where it was made (PD-old with no US template), the holder's own "no known restrictions", or its record has no
+# rights sentence. They rank after every free class.
+SERVED_CLASSES = ("pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa",
+                  "pd_source_only", "no_known_restrictions", "unmarked")
 PREFER = {c: i for i, c in enumerate(SERVED_CLASSES)}
 NEEDS_CREDIT = {"cc_by", "cc_by_sa"}
 UNDATED_BASIS = "name+occupation+unique"
@@ -107,9 +116,83 @@ def earliest_death(rows):
     return out
 
 
-def served(basis, cls, usable, found_via, author, own_work=False, date_field=None, died=None):
-    """True when this (person match, file) may leave the pipeline."""
-    if not usable or cls not in PREFER or found_via != SERVED_VIA or not dated_match(basis):
+# --------------------------------------------------------------- 040: an explicit restriction is the only refusal
+# A restriction is what the file's own page or record says against reuse. Template names are compared with
+# everything but letters and digits dropped. A sentence is read only when the page names no free class, because a
+# no-notice or not-renewed page quotes the original notice ("(c) 1941 NBC. All rights reserved") as the reason it
+# is free.
+RESTRICTED_TEMPLATES = ("nonfree", "fairuse", "allrightsreserved", "ccbync", "ccbynd", "ccnc", "ccnd", "noncommercial",
+                        "permissionrequired", "restricted", "noreuse", "copyrightrestricted", "copyvio")
+RESTRICTED_EXACT = ("copyrighted",)
+RESTRICTION_TEXT = re.compile(
+    r"all rights reserved|non-?free|fair[- ]use|rights?[ -]restricted|restricted (?:rights|use|access)|"
+    r"permission (?:is |are )?(?:required|needed)|no[- ]reuse|not for reuse|"
+    r"may not be (?:reproduced|reused|used)|reproduction (?:is )?prohibited|publication may be restricted|"
+    r"used by permission only|creative commons[^.]{0,30}non-?commercial|\bby-n[cd]\b", re.I)
+
+
+def restricted_template(name):
+    """True when a template's own name is a restriction ('Non-free poster', 'Fair use', 'Cc-by-nc-3.0')."""
+    k = re.sub(r"[^a-z0-9]", "", (name or "").lower())
+    return k in RESTRICTED_EXACT or any(k.startswith(t) for t in RESTRICTED_TEMPLATES)
+
+
+def restriction_in(text):
+    """The sentence on a page or record that restricts reuse, or None. Used for a page that names no free class."""
+    m = RESTRICTION_TEXT.search(text or "")
+    return m.group(0) if m else None
+
+
+ENWIKI_LOCAL = re.compile(r"upload\.wikimedia\.org/wikipedia/en/", re.I)
+
+
+def enwiki_local(url):
+    """A file under /wikipedia/en/ is hosted on English Wikipedia itself: its non-free (fair-use) files live there."""
+    return bool(ENWIKI_LOCAL.search(url or ""))
+
+
+# R3b V1, owner 2026-11-21: an undated person match is served when the person's own record names a radio, stage or
+# screen occupation and no other person of that name in our credits competes for the face.
+STAGE_SCREEN_RADIO_OCC = re.compile(
+    r"\b(act(or|ress)|voice|radio|announcer|broadcast\w*|disc jockey|presenter|host|comedian|entertainer|performer|"
+    r"vaudevillian|ventriloquist|singer|musician|bandleader|organist|pianist|violinist|screenwriter|playwright|"
+    r"dramatist|scriptwriter|(?:film|radio|television|theat(?:re|er)|stage|motion picture)\s+(?:director|producer)|"
+    r"newscaster|news anchor|commentator|narrator|impressionist|humorist|dancer|magician)\b", re.I)
+
+# The doors 040 opens (an undated match, a class that only states no restriction) admit a face and nothing else: the
+# file shows exactly one confident face and is no trailer frame, title card, poster, logo, grave or signature. The
+# older doors keep their old checks.
+OPENED_CLASSES = ("pd_source_only", "no_known_restrictions", "unmarked")
+NOT_A_PORTRAIT = re.compile(r"(?<![a-z])(trailers?|screenshots?|screen\s?captures?|title cards?|posters?|logos?|covers?|"
+                            r"stamps?|signatures?|autographs?|graves?|tombs?|statues?|monuments?|plaques?|ads?|"
+                            r"advertisements?)(?![a-z])", re.I)
+
+
+def norm_name(name):
+    t = re.sub(r"[^a-z0-9]+", " ", PL.unescape(name or "").casefold().replace("’", "'").replace("'", ""))
+    return t.strip()
+
+
+def name_competes(name, counts):
+    """True when another person of this name is among our credits. counts: {normalized name: distinct people}."""
+    return counts.get(norm_name(name), 0) > 1
+
+
+def undated_served(basis, occupations, competes):
+    """The undated portrait rule: the match was made on name, occupation and a single candidate; the person's own
+    Wikidata occupations include a radio, stage or screen one; and no other person of that name competes."""
+    return (basis == UNDATED_BASIS and not competes
+            and any(STAGE_SCREEN_RADIO_OCC.search(o or "") for o in occupations or ()))
+
+
+def served(basis, cls, usable, found_via, author, own_work=False, date_field=None, died=None, undated_ok=False,
+           faces=None, file=None):
+    """True when this (person match, file) may leave the pipeline. `undated_ok` is `undated_served` for the person;
+    `faces` and `file` are judged for the doors 040 opens (OPENED_CLASSES, the undated rule)."""
+    if not usable or cls not in PREFER or found_via != SERVED_VIA or not (dated_match(basis) or (
+            basis == UNDATED_BASIS and undated_ok)):
+        return False
+    if (cls in OPENED_CLASSES or basis == UNDATED_BASIS) and (faces != 1 or NOT_A_PORTRAIT.search(file or "")):
         return False
     if cls in NEEDS_CREDIT and NO_AUTHOR.match(author or ""):
         return False
@@ -143,11 +226,13 @@ def face_count(facts):
     return sum(1 for f in faces if (list(f) + [1.0])[4] >= FACE_CONFIDENCE)
 
 
-def alternate(basis, cls, usable, found_via, author, own_work=False, date_field=None, died=None, faces=None):
+def alternate(basis, cls, usable, found_via, author, own_work=False, date_field=None, died=None, faces=None,
+              undated_ok=False, file=None):
     """True when a depicts file may stand in for this person's own image: every check `served`
     makes, on a file showing one face."""
     return (found_via == ALTERNATE_VIA and faces == 1
-            and served(basis, cls, usable, SERVED_VIA, author, own_work, date_field, died))
+            and served(basis, cls, usable, SERVED_VIA, author, own_work, date_field, died, undated_ok, faces,
+                       file))
 
 
 # ---------------------------------------------------------------- H5: archive photographs through people
@@ -157,7 +242,8 @@ def alternate(basis, cls, usable, found_via, author, own_work=False, date_field=
 # was alive and grown in the photograph's year, and the match is one the person rule serves (a dated Wikidata
 # match, or our own birth and death years both known). Only for a person with no Commons portrait of their own:
 # it changes who has a face, never which face a person who has one wears.
-ARCHIVE_CLASS = {"no_known_restrictions": "no_known_restrictions", "government": "pd_us_gov", "cc0": "cc0"}
+ARCHIVE_CLASS = {"no_known_restrictions": "no_known_restrictions", "government": "pd_us_gov", "cc0": "cc0",
+                 "unmarked": "unmarked"}
 ARCHIVE_VIA = {"loc": "loc:record-title", "smithsonian": "smithsonian:sitter"}
 PORTRAIT_FILLER = frozenset(
     "portrait photograph photo head shoulders half three quarter length full bust standing seated sitting facing slightly "
@@ -800,12 +886,13 @@ def name_hit_served(file, categories, date_field, series_name, first_date, last_
     return any(RADIO.search(h) for h in [file or ""] + [c for c in categories or ()])
 
 
-def lead_image_served(page_image_free, commons_status):
+def lead_image_served(page_image_free, commons_status, url=None):
     """H3 (R3b section 4.1): an English Wikipedia article's lead image leads a show only when
     Wikipedia itself calls it free (`pageprops.page_image_free`) AND it is on Commons (its Commons file
     page reads, with a license the policy serves): 40 of 70 lead images measured were enwiki-local
-    fair-use files, which are never served. `show_served` still demands the item's identity (rule 1)."""
-    return bool(page_image_free) and commons_status == "ok"
+    fair-use files, which are never served (a file hosted on English Wikipedia itself is non-free: `enwiki_local`).
+    `show_served` still demands the item's identity (rule 1)."""
+    return bool(page_image_free) and commons_status == "ok" and not enwiki_local(url)
 
 
 # A screen capture or a screen producer's credit: "episode screenshot (NBC)", "NBC Productions", "Universal Pictures".
@@ -1015,7 +1102,8 @@ def play_image_served(cls, author, width, height, own_work=False, date_field=Non
     return not implausible_own_work(own_work, date_field, died)
 
 
-PLAY_KINDS = ("work", "titlePage", "author")   # what leads a play: the work's image, a title page, the author
+PLAY_KINDS = ("work", "production", "titlePage", "author")   # what leads a play: the work's image, a Federal Theatre
+# Project production picture (040), a title page, the author
 
 
 def pick_play(rows):
@@ -1023,3 +1111,132 @@ def pick_play(rows):
     None (the script-page label). rows: (kind, ...) in any order."""
     order = {k: i for i, k in enumerate(PLAY_KINDS)}
     return min(rows, key=lambda r: order[r[0]]) if rows else None
+
+
+# --------------------------------------------------------------- 040 V3: Federal Theatre Project pictures for plays
+# A photograph or poster of the Federal Theatre Project (a federal agency's work, records with no rights sentence)
+# is the picture of a play it staged when the record's own title or quoted title is that play. A costume or scene
+# design, a script, a clipping or a program is a drawing or a document, not a picture of the production.
+FTP = re.compile(r"federal theat(?:re|er) project", re.I)
+FTP_DESIGN = re.compile(r"costume designs?|set designs?|scene designs?|scenic designs?|prop(?:erty)? designs?|"
+                        r"lighting|clippings?|scripts?|budget|playbill", re.I)
+QUOTED = re.compile(r"[\"“]([^\"”]{3,80})[\"”]")
+FTP_CLASSES = ("government", "no_known_restrictions", "unmarked", "cc0")
+
+
+def ftp_titles(title, summary=None, description=None):
+    """The production names an FTP record gives: its quoted titles ('presents "Horse eats hat"') and, for a
+    production photograph, the words before the first colon ('The Trojan Incident: Strapless gold gown')."""
+    out = [m.group(1) for t in (title, summary, description) for m in QUOTED.finditer(t or "")]
+    head = re.sub(r"^\[|\]$", "", (title or "").strip()).split(":", 1)
+    if len(head) == 2 and head[0].strip():
+        out.append(head[0].strip())
+    return out
+
+
+BY_AUTHOR = re.compile(r"\bby\s+((?:[A-Z][\w.'\-]*\.?\s*){1,5})")
+
+
+def ftp_play_served(rights_class, usable, contributors, partof, title, summary, description, play, width=None,
+                    height=None, authors=None):
+    """True when this Library of Congress record is a picture of this play's Federal Theatre Project production:
+    the record is the Federal Theatre Project's (its contributors or collections), its rights class is usable
+    (no restriction on the record), it is no design drawing or document, it is big enough for a tile when its
+    size is known, and one of the production names it gives IS the play's title, word for word (an article
+    dropped). A title that only contains the play's is another work."""
+    if not usable or rights_class not in FTP_CLASSES:
+        return False
+    owners = " ".join(str(x) for x in list(contributors or []) + list(partof or []))
+    if not FTP.search(owners + " " + (title or "")):
+        return False
+    if FTP_DESIGN.search(" ".join([title or "", owners])):
+        return False
+    if width and height and min(width, height) < SHOW_MIN_SIDE:
+        return False
+    need = _title_words(play_title(play))
+    if sum(len(w) for w in need) < TITLE_MIN:
+        return False
+    if not any(_title_words(t) == need for t in ftp_titles(title, summary, description)):
+        return False
+    # A poster that says who wrote the play it announces is that play only when the author is ours: the Federal
+    # Theatre's "Brothers" by Herbert Ashton Jr. is not Terence's "The Brothers" (spot check, 2026-11-21).
+    said = [m.group(1) for t in (title, summary, description) for m in BY_AUTHOR.finditer(t or "")]
+    if said and authors:
+        words = set(_words(" ".join(said)))
+        return any(sn in words for sn in (surname_of(a).lower() for a in authors) if len(sn) >= 3)
+    return True
+
+
+# --------------------------------------------------------------- 040 V5: pages of unrenewed radio magazine issues
+# An issue is free when its year was not renewed (or is public domain by age): the issue-year row of
+# `magazine_rights`. The issue's own notice is what lapsed. A notice on the PAGE that is somebody else's (a photograph
+# credited "(c) NBC", an advertisement's "Copyright 1938 General Foods") is that holder's own claim, and the page is
+# refused. The page is tied to a program only when its own text names the program, or a person the program's record
+# marks, and its year lies inside the run.
+MAGAZINE_STATUS = ("not_renewed", "pd_by_age")
+MAGAZINE_SOURCE = "archive.org:magazine"
+PUBLISHERS = ("macfadden", "triangle publications", "triangle pub", "annenberg", "fawcett", "radio stars",
+              "radio mirror", "radio guide", "movie and radio guide", "tower magazines", "dell publishing")
+NOTICE = re.compile(r"(?:©|\(c\)|\bcopyright\b|\bcopr\.?)\s*(?:19|20)?\d{0,2}\d{0,2}[^.\n]{0,70}", re.I)
+MAGAZINE_MIN_WORDS, MAGAZINE_MAX_WORDS = 25, 450
+
+
+def page_notice(text):
+    """The first copyright notice on a page that is not the magazine publisher's own, or None."""
+    for m in NOTICE.finditer(text or ""):
+        held = m.group(0).lower()
+        if not any(p in held for p in PUBLISHERS):
+            return m.group(0).strip()
+    return None
+
+
+# The page is about the program, not a listing or an advertisement that mentions it: a magazine for listeners (not
+# a trade paper's directory), the name at least twice on the page or in its first words (a headline), and a name
+# particular enough to mean the program (two content words, or ten letters). A spot check of the first version, which
+# accepted any mention, found most pages were directory entries, advertisements and articles that named the program
+# in passing (2026-11-21).
+LISTENER_MAGAZINES = ("Radio Mirror", "Radio Guide", "Radio Stars", "Radio Digest", "Tune In", "Screen and Radio Weekly",
+                      "Radio Varieties", "Radio Album", "Radioland", "Radio Life")
+HEADLINE_CHARS = 80
+
+
+def _about(phrase, folded):
+    import photo_match as M
+    p = re.sub(r"^the ", "", M.fold(phrase))
+    if not p:
+        return False
+    hits = re.findall(r"(?<![a-z0-9])" + re.escape(p) + r"(?![a-z0-9])", folded)
+    return len(hits) >= 2 and p in folded[:HEADLINE_CHARS]
+
+
+# A sponsor's advertisement names programs and stars as its testimonial or its hour; it is not about them.
+ADVERTISEMENT = re.compile(r"\b(cigarettes?|tobacco|luckies|soap|toothpaste|powder|cream|lotion|laxative|coupon|"
+                           r"send (?:\d+ )?cents?|for \d+ days|per cent|ovaltine|pepsodent|chesterfield|camels?|"
+                           r"cosmetics?|complexion|dentists?|trial offer|money back)\b", re.I)
+
+
+def magazine_page_served(status, nwords, text, year, series_name, people=(), first_date=None, last_date=None,
+                         folded=None, magazine=None):
+    """The tie when this page of this issue is about this program ("name" when the page is about the program,
+    "marked person" when it is about a person the program's record marks), else False.
+    status: the issue-year row's status; nwords/text: the short page as harvested; year: the issue's."""
+    import photo_match as M
+    if status not in MAGAZINE_STATUS or not (MAGAZINE_MIN_WORDS <= (nwords or 0) <= MAGAZINE_MAX_WORDS):
+        return False
+    if magazine is not None and magazine not in LISTENER_MAGAZINES:
+        return False
+    if page_notice(text) or ADVERTISEMENT.search(text or ""):
+        return False
+    if first_date and last_date and year:
+        if not (year_of(first_date) - YEAR_SLACK <= year <= year_of(last_date) + YEAR_SLACK):
+            return False
+    folded = folded or M.fold(text)
+    content = [w for w in M.fold(re.sub(r"^the ", "", M.fold(series_name or ""))).split() if w not in M.GENERIC]
+    if M.series_name_ok(series_name) and (len(content) >= 2 or len(M.fold(series_name).replace(" ", "")) >= 10) \
+            and _about(series_name, folded):
+        return "name"
+    for p in people or ():
+        n = M.fold(p)
+        if len(n.replace(" ", "")) >= PERSON_MIN and len(n.split()) >= 2 and _about(n, folded):
+            return "marked person"
+    return False

@@ -71,6 +71,13 @@ COLLECTIONS = [
     ("look", "radio look magazine", None),
     ("ftp", "radio", "partof:federal theatre project, 1935 to 1939"),
 ]
+# Decision 040 (V3): every Federal Theatre Project photograph and poster, for the plays they staged. The
+# records carry no rights sentence and the creator is a federal agency; photo_match classes them `government`.
+FTP_JOBS = [
+    ("coll:ftp_all", {"fa": "partof:federal theatre project, 1935 to 1939"}),
+    ("coll:ftp_posters", {"q": "federal theatre project",
+                          "fa": "partof:by the people, for the people: posters from the wpa, 1936-1943"}),
+]
 
 
 class Blocked(Exception):
@@ -209,13 +216,25 @@ def star_terms(have):
     return [n for n, _ in rows if M.name_ok(n) and n not in have]
 
 
-def run_search(budget, fails, recs):
+def run_search(budget, fails, recs, ftp_only=False):
+    if ftp_only:
+        jobs = list(FTP_JOBS)
+    else:
+        jobs = _all_jobs()
+    return _run(jobs, budget, fails, recs)
+
+
+def _all_jobs():
     jobs = [("topic:" + t, {"q": t, "dates": "1920/1965"}) for t in TOPICS]
     jobs += [("coll:" + lab, {"q": q, "fa": fa}) for lab, q, fa in COLLECTIONS]
     ser, ppl = db_terms()
     jobs += [("series:" + n, {"q": f'"{n}"', "dates": "1920/1975"}) for n in ser]
     jobs += [("person:" + n, {"q": f'"{n}"', "dates": "1915/1980"}) for n in ppl]
     jobs += [("person:" + n, {"q": f'"{n}"', "dates": "1915/1980"}) for n in star_terms(set(ppl))]
+    return jobs + FTP_JOBS
+
+
+def _run(jobs, budget, fails, recs):
     done = 0
     for label, params in jobs:
         res, ok = search(label, params, budget, fails)
@@ -287,7 +306,7 @@ def save_records(path, fresh):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", default="all", choices=["search", "items", "all"])
+    ap.add_argument("--phase", default="all", choices=["search", "items", "all", "ftp"])
     ap.add_argument("--max-requests", type=int, default=2000)
     ap.add_argument("--max-items", type=int, default=150,
                     help="item JSON fetches this run (the rest keep the search page's largest preview)")
@@ -298,9 +317,9 @@ def main():
     recs = {}
     status = "complete"
     try:
-        n, ok = run_search(a.max_requests, fails, recs)
+        n, ok = run_search(a.max_requests, fails, recs, a.phase == "ftp")
         print(f"search: {ok}/{n} queries complete, {len(recs)} photo records", file=sys.stderr)
-        if a.phase in ("items", "all"):
+        if a.phase in ("items", "all"):  # `ftp` keeps the search pages' largest preview
             import enrich_photo_archives as E
             targets = E.loc_targets(list(recs.values()))
             print(f"items: {len(targets)} usable matched records", file=sys.stderr)
