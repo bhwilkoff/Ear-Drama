@@ -1507,3 +1507,26 @@ fixtures for each restriction class and for each newly allowed class (no rights 
 unrenewed issue), each with a negative control. Who gains: listeners (more real pictures).
 Who pays: Ear Drama carries the take-down path for any picture a holder disputes (the existing
 take-down page and 48-hour reply).
+
+**Built and measured 2026-11-21** (same session as the rule). Rights: `art_policy.restricted_template` /
+`restriction_in` refuse a non-free, fair-use, non-commercial or no-derivatives template, "all rights reserved",
+"permission required", "rights restricted" and a file hosted on English Wikipedia itself; a page with none is
+class `unmarked` and is served, as are PD-where-made (`pd_source_only`) and "no known restrictions"; all three rank
+after the free classes. A free class that quotes the original notice (a not-renewed page) stays free. The doors
+this opens (those classes, and the undated person rule) admit only a file with exactly one confident face that is no
+trailer frame, title card, poster, logo, grave or signature: a spot check of 33 new portraits found a film
+trailer frame (Robert Donat), a wedding photograph (Anya Seton) and a politician matched on "record producer".
+Undated person matches need a radio, stage or screen occupation of their own and no other person of the name in our
+credits (`undated_served`, `build_projection.undated_people`). Federal Theatre Project records (5,228 harvested,
+`harvest_loc_photos.py --phase ftp`) are a play's `production` picture only when the quoted production title is the
+play's title word for word and any author the poster names is ours (the FTP's "Brothers" by Herbert Ashton Jr. is
+not Terence's); they reach 2 of the 803 library plays, because the FTP staged few Gutenberg classics. Magazine
+pages (`harvest_magazine_pages.py`, 560 issues of Radio Mirror, Radio Guide, Radio Stars, Radio Digest and others
+whose year is `not_renewed` or `pd_by_age`) would join a series' gallery only, never lead, but the owner ruled them OFF for this batch (the main thread, 2026-11-21: right subject about one time in two): `art_policy.SERVE_MAGAZINE_PAGES = False` and the projection serves none, tested. The page rule, if switched on, is: the page is short (25 to 450
+words), carries no notice of another holder and no advertisement words, and names the program twice with the name in
+its first 80 characters. The first version (any mention) was right for about one page in three by eye, the last
+for about one in two; the take-down path is the remedy for the rest, and the gallery is where a wrong page costs least.
+
+**How to apply**: a rule change here needs no re-harvest (`enrich_people_art`, `enrich_photo_archives` and
+`enrich_magazine_pages` class every file and record again from their own words); `tests/test_image_rule_040.py` holds
+a control for each rule, each seen to fail.

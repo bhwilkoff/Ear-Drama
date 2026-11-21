@@ -394,6 +394,19 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     for sk, f in face_of.items():
         if f and sk not in pictures:
             pictures[sk] = (portraits["by_person"][f[0]], f[1], f[2])
+    # R3b V5 (Decision 040): pages of unrenewed radio magazine issues that name the program or a marked person.
+    # They join the gallery only: a magazine page is a page, not a tile, so it never leads.
+    for sk, rows in sorted(served_magazine_rows(s, served_series, live).items()):
+        have = json.loads(galleries.get(sk) or "[]")
+        ids = []
+        for url, w, h, evidence, tie in rows[:max(0, AP.GALLERY_MAX - len(have))]:
+            if url not in file_ids:
+                d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
+                    next_id, url, w, h, "pd_us", None, None, evidence, None, None, AP.MAGAZINE_SOURCE, tie))
+                file_ids[url], next_id = next_id, next_id + 1
+            ids.append(file_ids[url])
+        if ids:
+            galleries[sk] = json.dumps(have + ids)
 
     recs_by_ep = {}
     for row in s.execute("SELECT episode_id, rank, archive_id, file, format, kbps, length_s, variant, partial "
@@ -1077,6 +1090,29 @@ def served_show_rows(s, series_keys, live=None, radio_only=False):
     return rows
 
 
+def served_magazine_rows(s, series_keys, live=None):
+    """{series key: [(url, width, height, evidence url, tie)]}: the magazine pages enrich_magazine_pages.py found for a
+    program, judged again here from their rows (the issue-year status, the tie, the run). A source without the table
+    (a fixture, an older build) serves none."""
+    tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    if not AP.SERVE_MAGAZINE_PAGES or not {"magazine_pages", "magazine_rights"} <= tables:
+        return {}
+    status = {(t, y): st for t, y, st in s.execute("SELECT title, year, status FROM magazine_rights")}
+    run = AP.run_dates(s)
+    out = {}
+    for sk, item, leaf, magazine, year, tie, words, evidence, url in s.execute(
+            "SELECT series_key, item_id, leaf, magazine, year, tie, words, evidence_url, image_url FROM magazine_pages "
+            "ORDER BY series_key, (tie != 'name'), words, year, item_id, leaf"):
+        first, last = run.get(sk, (None, None))
+        if sk not in series_keys or status.get((magazine, year)) not in AP.MAGAZINE_STATUS or tie not in (
+                "name", "marked person") or not AP.alive(live, url):
+            continue
+        if first and last and not (AP.year_of(first) - AP.YEAR_SLACK <= year <= AP.year_of(last) + AP.YEAR_SLACK):
+            continue
+        out.setdefault(sk, []).append((url, None, None, evidence, "issue+" + tie.replace(" ", "-")))
+    return out
+
+
 def served_show_images(s, series_keys, live=None):
     """{series key: the one show image}: pick_show over served_show_rows."""
     names = dict(s.execute("SELECT key, name FROM series"))
@@ -1111,17 +1147,22 @@ def served_portraits(s, people, same=None, live=None):
     wcols = {r[1] for r in s.execute("PRAGMA table_info(people_wikidata)")}
     died = "w.death" if "death" in wcols else "NULL"
     faces = "a.faces" if "faces" in cols else "NULL"
+    occs = "w.occupations" if "occupations" in wcols else "NULL"
     stand_ins = {}
-    for pid, file, cls, usable, via, author, template, basis, own_work, when, died, n in s.execute(
+    undated = undated_people(s, same)   # 040: the undated matches no other person of the name competes with
+    for pid, file, cls, usable, via, author, template, basis, own_work, when, died, n, occ in s.execute(
             f"SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, a.template, w.basis, "
-            f"{own}, {dated}, {died}, {faces} FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
+            f"{own}, {dated}, {died}, {faces}, {occs} FROM people_art a "
+            f"JOIN people_wikidata w ON w.person_id = a.person_id"):
+        orig = pid
         pid = (same or {}).get(pid, pid)
         if pid not in people or not AP.alive(live, file):   # H9: a file found gone falls back to the next
             continue
         px = AP.fill_px(*dims.get(file, (None, None)), AP.face_list(focus.get(file)))
-        if AP.served(basis, cls, usable, via, author, own_work, when, died):
+        ok = basis == AP.UNDATED_BASIS and AP.undated_served(basis, json.loads(occ or "[]"), orig in undated["competing"])
+        if AP.served(basis, cls, usable, via, author, own_work, when, died, ok, n, file):
             by_person.setdefault(pid, []).append((file, cls, template, author, True, px, n))
-        elif AP.alternate(basis, cls, usable, via, author, own_work, when, died, n):
+        elif AP.alternate(basis, cls, usable, via, author, own_work, when, died, n, ok, file):
             stand_ins.setdefault(pid, []).append((file, cls, template, author, False, px, n))
     ids = {}
     for pid in sorted(by_person):
@@ -1134,6 +1175,26 @@ def served_portraits(s, people, same=None, live=None):
         out["rows"].append(row)
         out["by_person"][pid] = len(out["rows"])
     return out
+
+
+def undated_people(s, same=None):
+    """{"competing": person ids whose name (or an alias of it) another person of ours also carries}. The undated
+    portrait rule (art_policy.undated_served) serves a person only when nobody else of the name is in our credits;
+    a person merged into another by `same_person` is the same person, not a competitor."""
+    same = same or {}
+    who = {}
+    owners = {}
+    has_names = "names" in {r[1] for r in s.execute("PRAGMA table_info(people)")}   # a fixture may not carry aliases
+    for pid, name, names in s.execute(f"SELECT id, name, {'names' if has_names else 'NULL'} FROM people"):
+        try:
+            aliases = json.loads(names or "[]")
+        except ValueError:
+            aliases = []
+        keys = {AP.norm_name(x) for x in [name] + list(aliases) if x} - {""}
+        who[pid] = keys
+        for k in keys:
+            owners.setdefault(k, set()).add(same.get(pid, pid))
+    return {"competing": {pid for pid, keys in who.items() if any(len(owners[k]) > 1 for k in keys)}}
 
 
 def served_archive_portraits(s, people, same, live, have):

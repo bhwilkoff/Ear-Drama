@@ -51,9 +51,15 @@ check("World-Telegram restricted -> restricted", M.rights_class(WTS, "NYWTS - BI
 check("FSA/OWI -> government", M.rights_class(FSA, "farm security administration/office of war information black-and-white negatives")[0] == "government")
 check("OWI creator but restricted print -> restricted",
       M.rights_class(WTS, "United States. Office of War Information")[0] == "restricted")
-check("not evaluated -> unknown", M.rights_class("Rights status not evaluated.", "")[0] == "unknown")
-check("no statement -> unknown", M.rights_class("", "")[0] == "unknown")
-check("restricted is not usable", "restricted" not in M.USABLE and "unknown" not in M.USABLE)
+check("not evaluated -> unmarked, used (040)", M.rights_class("Rights status not evaluated.", "")[0] == "unmarked")
+check("not evaluated beside LoC's pointer to its copyright page is not a restriction",
+      M.rights_class("Rights status not evaluated. For general information see \"Copyright and Other Restrictions ...,\" "
+                     "https://www.loc.gov/rr/print/195_copr.html", "")[0] == "unmarked")
+check("no statement -> unmarked, used (040)", M.rights_class("", "")[0] == "unmarked")
+check("control: 'publication may be restricted' is still restricted",
+      M.rights_class("Publication may be restricted. For information see \"World-Telegram\" https://x", "")[0] == "restricted")
+check("restricted and unknown are not usable", "restricted" not in M.USABLE and "unknown" not in M.USABLE
+      and "unmarked" in M.USABLE)
 
 # ---- series matching
 SER = [("fibbermcgeeandmolly", "Fibber McGee And Molly", 1935, 1959), ("suspense", "Suspense", 1942, 1962),

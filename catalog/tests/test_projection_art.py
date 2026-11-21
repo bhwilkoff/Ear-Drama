@@ -45,7 +45,7 @@ def check(name, got, want):
 
 CONTRACT = {
     "every image's class is served": "SELECT COUNT(*) FROM art WHERE license NOT IN ({})".format(
-        ",".join(f"'{c}'" for c in AP.SERVED_CLASSES + ("no_known_restrictions",))),   # H5: a Library of Congress record's own statement
+        ",".join(f"'{c}'" for c in AP.SERVED_CLASSES)),
     "an image owes a credit exactly when its license does": "SELECT COUNT(*) FROM art WHERE (credit IS NOT NULL) != "
         "(license IN ({}))".format(",".join(f"'{c}'" for c in AP.NEEDS_CREDIT)),
     "a credit names an author": "SELECT COUNT(*) FROM art WHERE credit IS NOT NULL AND (author IS NULL OR author = '')",
@@ -66,6 +66,7 @@ CONTRACT = {
         "(SELECT 1 FROM art a WHERE a.id = j.value)))".format(AP.GALLERY_MAX),
     "a series with a hero or a gallery has a show picture": "SELECT COUNT(*) FROM series WHERE (hero IS NOT NULL OR "
         "gallery IS NOT NULL) AND picture_kind IS NOT 'show'",
+    "no magazine page is published while the switch is off": "SELECT COUNT(*) FROM art WHERE source = 'archive.org:magazine'",
     "every show image has a source from the show's own records and a tie": "SELECT COUNT(*) FROM art a WHERE "
         "(a.source IS NULL OR a.tie IS NULL OR a.source NOT IN ({}, 'wikidata:P18', {})) AND EXISTS (SELECT 1 FROM series s "
         "WHERE s.picture = a.id OR s.hero = a.id)".format(",".join(f"'{x}'" for x in AP.SHOW_SOURCES),
@@ -137,13 +138,16 @@ def retrace(projection, source):
     died = "w.death" if "death" in {r[1] for r in s.execute("PRAGMA table_info(people_wikidata)")} else "NULL"
     faces = "a.faces" if "faces" in cols else "NULL"
     stand_ins, owners = set(), set()
-    for pid, file, cls, usable, via, author, basis, own_work, when, died, n in s.execute(
+    occs = "w.occupations" if "occupations" in {r[1] for r in s.execute("PRAGMA table_info(people_wikidata)")} else "NULL"
+    competing = B.undated_people(s)["competing"]
+    for pid, file, cls, usable, via, author, basis, own_work, when, died, n, occ in s.execute(
             f"SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, w.basis, {own}, "
-            f"{dated}, {died}, {faces} FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
-        if AP.served(basis, cls, usable, via, author, own_work, when, died):
+            f"{dated}, {died}, {faces}, {occs} FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
+        und = AP.undated_served(basis, json.loads(occ or "[]"), pid in competing)
+        if AP.served(basis, cls, usable, via, author, own_work, when, died, und, n, file):
             ok.add((pid, AP.evidence_url(file)))
             owners.add(pid)
-        elif AP.alternate(basis, cls, usable, via, author, own_work, when, died, n):
+        elif AP.alternate(basis, cls, usable, via, author, own_work, when, died, n, und, file):
             stand_ins.add((pid, AP.evidence_url(file)))
     ok |= {(pid, ev) for pid, ev in stand_ins if pid in owners}   # a stand-in only for a person with an own image
     # H5: an archive portrait is judged again by the same predicate, only for a person with no Commons portrait
@@ -168,14 +172,17 @@ def floor_misses(projection, source, slot=AP.LARGEST_SLOT):
         return []
     died = "w.death" if "death" in {r[1] for r in s.execute("PRAGMA table_info(people_wikidata)")} else "NULL"
     owners, rows = set(), []
-    for pid, file, cls, usable, via, author, basis, own_work, when, died, w, h, f, n in s.execute(
+    occs = "w.occupations" if "occupations" in {r[1] for r in s.execute("PRAGMA table_info(people_wikidata)")} else "NULL"
+    competing = B.undated_people(s)["competing"]
+    for pid, file, cls, usable, via, author, basis, own_work, when, died, w, h, f, n, occ in s.execute(
             "SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, w.basis, a.own_work, "
-            f"a.date_field, {died}, a.width, a.height, a.face, a.faces FROM people_art a "
+            f"a.date_field, {died}, a.width, a.height, a.face, a.faces, {occs} FROM people_art a "
             "JOIN people_wikidata w ON w.person_id = a.person_id ORDER BY a.person_id, a.file"):
-        own = AP.served(basis, cls, usable, via, author, own_work, when, died)
+        und = AP.undated_served(basis, json.loads(occ or "[]"), pid in competing)
+        own = AP.served(basis, cls, usable, via, author, own_work, when, died, und, n, file)
         owners |= {pid} if own else set()
         if pid in published and n == 1 and (own or AP.alternate(basis, cls, usable, via, author, own_work, when,
-                                                                 died, n)):
+                                                                 died, n, und, file)):
             rows.append((pid, file, AP.fill_px(w, h, AP.face_list(f))))
     s.close()
     out = []
@@ -228,13 +235,34 @@ import enrich_people_art as E
 check("the served classes are exactly the ones the license reader calls usable", set(AP.SERVED_CLASSES), E.USABLE)
 DATED = "name+birth_day+death_day"
 check("served: a dated match's own PD image", AP.served(DATED, "pd_us", 1, "wikidata:P18", None), True)
-check("control: the undated rule is never served", AP.served(AP.UNDATED_BASIS, "pd_us", 1, "wikidata:P18", None), False)
+check("control: the undated rule is not served unless its own check passed (040)",
+      AP.served(AP.UNDATED_BASIS, "pd_us", 1, "wikidata:P18", None), False)
+check("served: the undated rule once its occupation and name check passed (040)",
+      AP.served(AP.UNDATED_BASIS, "pd_us", 1, "wikidata:P18", None, undated_ok=True, faces=1), True)
+check("control: the undated rule needs exactly one face (a group photograph is not them)",
+      [AP.served(AP.UNDATED_BASIS, "pd_us", 1, "wikidata:P18", None, undated_ok=True, faces=n) for n in (0, 2, None)],
+      [False, False, False])
+check("control: the undated rule refuses a trailer frame or a title card",
+      [AP.served(AP.UNDATED_BASIS, "pd_us", 1, "wikidata:P18", None, undated_ok=True, faces=1, file=f)
+       for f in ("Goodbye Mr Chips Trailer1.jpg", "Robert Donat title card.jpg")], [False, False])
+check("control: an undated_ok flag cannot rescue an unmatched person",
+      AP.served("ambiguous_undated", "pd_us", 1, "wikidata:P18", None, undated_ok=True), False)
 check("control: an unmatched person is never served", AP.served("ambiguous_dated", "pd_us", 1, "wikidata:P18", None), False)
 check("control: a depicts file is never served", AP.served(DATED, "pd_us", 1, "commons:depicts", None), False)
-check("control: 'no known restrictions' is never served",
+check("served: 'no known restrictions' states no restriction (040)",
+      AP.served(DATED, "no_known_restrictions", 1, "wikidata:P18", None, faces=1), True)
+check("control: a class that only states no restriction needs exactly one face",
+      [AP.served(DATED, c, 1, "wikidata:P18", None, faces=n) for c in AP.OPENED_CLASSES for n in (0, 2)], [False] * 6)
+check("control: the older doors keep their old checks (a group photograph of a free class still serves)",
+      AP.served(DATED, "pd_us", 1, "wikidata:P18", None, faces=3), True)
+check("control: a file the license reader did not call usable is not served",
       AP.served(DATED, "no_known_restrictions", 0, "wikidata:P18", None), False)
-check("control: a usable flag cannot rescue an unserved class", AP.served(DATED, "pd_source_only", 1, "wikidata:P18", None),
-      False)
+check("served: public domain where it was made, with no US template (040)",
+      AP.served(DATED, "pd_source_only", 1, "wikidata:P18", None, faces=1), True)
+check("served: a page with no rights sentence (040)", AP.served(DATED, "unmarked", 1, "wikidata:P18", None, faces=1), True)
+check("control: a restricted file is never served, usable flag or not",
+      [AP.served(DATED, "restricted", 1, "wikidata:P18", None), AP.served(DATED, "unread", 1, "wikidata:P18", None)],
+      [False, False])
 check("served: CC BY with its author", AP.served(DATED, "cc_by", 1, "wikidata:P18", "Alan Light"), True)
 check("control: CC BY with no author to credit", AP.served(DATED, "cc_by_sa", 1, "wikidata:P18", "Unknown"), False)
 # An uploader's word is not evidence: an own-work license dated after the person's death (2026-10-29).
@@ -548,8 +576,11 @@ check("control: a description without years is no identity", AP.series_identity(
 SHOW = ("title+years", "wikidata:P18", "pd_us", None, 640, 480, "Gildersleeve cast.jpg", ["Category:The Great Gildersleeve"])
 check("show: the item's own PD image, matched on the years", AP.show_served(*SHOW), True)
 check("control: a title-only match is refused", AP.show_served("title", *SHOW[1:]), False)
-check("control: a show image without license evidence is refused", AP.show_served(*SHOW[:2], "unknown", *SHOW[3:]), False)
-check("control: 'no known restrictions' is refused", AP.show_served(*SHOW[:2], "no_known_restrictions", *SHOW[3:]), False)
+check("show: a file with no rights sentence is used (040)", AP.show_served(*SHOW[:2], "unmarked", *SHOW[3:]), True)
+check("control: a restricted show image is refused", AP.show_served(*SHOW[:2], "restricted", *SHOW[3:]), False)
+check("show: 'no known restrictions' states no restriction (040)",
+      AP.show_served(*SHOW[:2], "no_known_restrictions", *SHOW[3:]), True)
+check("control: a file page that was never read is refused", AP.show_served(*SHOW[:2], "unread", *SHOW[3:]), False)
 check("control: archive.org cover art is not a show source", AP.show_served(SHOW[0], "archive.org:cover", *SHOW[2:]),
       False)
 check("control: CC BY with no author is refused", AP.show_served(*SHOW[:2], "cc_by", "Unknown", *SHOW[4:]), False)

@@ -115,7 +115,8 @@ check("PD-US-not renewed", LC("{{PD-US-not renewed}}")[0] == "pd_us")
 check("PD-USGov-Military", LC("{{PD-USGov-Military-Army}}")[0] == "pd_us_gov")
 check("PD-old-auto-expired is US-expired", LC("{{PD-old-auto-expired|deathyear=1930}}")[0] == "pd_us")
 check("PD-Art wrapper reads its parameter", LC("{{PD-Art|PD-old-auto-expired}}")[0] == "pd_us")
-check("PD-old-70 alone is not US evidence", LC("{{PD-old-70}}")[0] == "pd_source_only")
+check("PD-old-70 alone is public domain where it was made (040: used, ranked after the free classes)",
+      LC("{{PD-old-70}}")[0] == "pd_source_only")
 check("cc-zero", LC("{{cc-zero}}")[0] == "cc0")
 c, t, ob = LC("{{self|cc-by-sa-4.0|GFDL}}")
 check("self wrapper: CC BY-SA with its obligations", c == "cc_by_sa" and ob == "attribution, share-alike")
@@ -135,10 +136,30 @@ check("LOC no-known-restrictions is not a status", LC("{{PD-Van Vechten}}")[0] =
 check("Gottlieb's own dedication", LC("{{PD-Gottlieb}}")[0] == "pd_release")
 check("LOC Bain is not a status", LC("{{PD-Bain}}")[0] == "no_known_restrictions")
 check("LA Times UCLA is CC BY", LC("{{LATimes UCLA}}")[:3:2] == ("cc_by", "attribution"))
-check("unknown", LC("{{Information|description=x}}")[0] == "unknown")
+check("a page with no rights sentence is unmarked (040: used)", LC("{{Information|description=x}}")[0] == "unmarked")
 check("unread page", LC(None)[0] == "unread")
-check("usable set", {"pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa"} == P.USABLE
-      and not ({"gfdl_only", "pd_source_only", "contested", "unknown", "no_known_restrictions"} & P.USABLE))
+check("usable set (040): the free classes and the ones that state no restriction",
+      {"pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa",
+       "pd_source_only", "no_known_restrictions", "unmarked"} == P.USABLE
+      and not ({"gfdl_only", "contested", "restricted", "unread"} & P.USABLE))
+
+# --- 040: an explicit restriction is the only refusal; each class below has a control that serves
+check("restricted: a non-free template", LC("{{Non-free poster}}\n{{Information|description=x}}")[0] == "restricted")
+check("restricted: fair use", LC("{{Fair use|image=x}}")[0] == "restricted")
+check("restricted: a non-commercial license", LC("{{cc-by-nc-3.0}}")[0] == "restricted")
+check("restricted: a no-derivatives license", LC("{{cc-by-nd-2.0}}")[0] == "restricted")
+check("restricted: all rights reserved on a page naming no free class",
+      LC("{{Information|description=Photo. All rights reserved by the studio.}}")[0] == "restricted")
+check("restricted: permission required", LC("{{Information|description=Permission required to reuse.}}")[0] == "restricted")
+check("restricted: a rights-restricted status", LC("{{Information|description=Rights restricted by the archive.}}")[0] == "restricted")
+check("restricted: PD in the source country only, with a notice sentence",
+      LC("{{PD-old-70}} All rights reserved.")[0] == "restricted")
+check("restricted: a non-free template beats a free one", LC("{{PD-US-no notice}}{{Non-free promotional}}")[0] == "restricted")
+check("control: a free class quoting the original notice stays free",
+      LC("{{PD-US-not renewed}} Original notice: (c) 1941 NBC. All rights reserved.")[0] == "pd_us")
+check("control: 'Copyrighted free use' is the holder's permission, not a restriction",
+      LC("{{Copyrighted free use}}")[0] == "free_use")
+check("control: CC BY is not non-commercial", LC("{{cc-by-3.0}}")[0] == "cc_by")
 
 ff = P.file_facts("{{Information\n|description=x\n|date=1947\n|source=[https://www.ebay.com/itm/1 eBay]\n"
                   "|author=[[User:Abc|NBC Radio]]\n}}")
