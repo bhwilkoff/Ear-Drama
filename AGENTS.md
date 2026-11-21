@@ -414,7 +414,7 @@ State section first, then work.
 - **Ear Drama's catalog rules** (owner; DECISIONS 055 and
   `catalog/DECISIONS.md`): unclaimed recordings are kept and removed on
   request, never called public domain; no paid license; an image is used
-  when its own record carries the evidence (no review queue); a synthetic
+  unless its record marks a restriction (owner 2026-11-21); a synthetic
   voice is a live stand-in only, never stored. *Check:
   `catalog/tests/test_audio_rights.py`.*
 - **AGENTS.md stays under 24,000 bytes.** A new platform rule goes in its

@@ -1481,3 +1481,29 @@ from source rows (`served_show_rows`, `retrace_shows`). A served file is hot-lin
 liveness phase (`harvest_art_v2.py --phase liveness`, a HEAD on a 14-day TTL) records `gone` for a 404 or 410
 only, and the builder drops a gone candidate so the next one leads. Network and sponsor logos, magazine
 pages and undated person matches are not served (owner rulings 2026-11-19).
+
+## 040 — An image is used unless its own record marks a restriction (owner 2026-11-21)
+
+**Rule**: a portrait or picture is served when nothing in its own record restricts it: no
+copyright notice or "all rights reserved", no non-free or fair-use license (including non-free
+files hosted on English Wikipedia), no "rights restricted" or "permission required" status, and no
+license that forbids reuse. Absence of a rights sentence is no longer a refusal. This replaces
+"an image is used when its own record carries the evidence" (055/069, 002's cover-art reasoning
+for uploaded art stays: an uploader's own item license is not a statement about the picture).
+Identity and accuracy rules are unchanged: a title alone is no identity, television and film
+stills are refused, a picture must be of the right subject and dated inside the run.
+
+**Why**: the owner, 2026-11-21: *"As for image rights, portraits and images that don't have
+explicit copyright issues, should be included in our app."* This answers RESEARCH §12 V1-V5 and
+R3b §7: Federal Theatre Project photographs (no rights sentence, WPA work) are used (V3); pages
+and covers from unrenewed radio magazine issues are used on the issue's renewal record unless the
+page carries its own notice (V5); LoC "no known restrictions" and Smithsonian CC0 were already used
+(V2, V4). Undated person matches (V1) are an accuracy question, not a rights one: they are used
+when the person's own record names a radio, stage, or screen occupation and no other person of
+that name in our credits competes; otherwise withheld.
+
+**How to apply**: `art_policy.py` rights predicates refuse only on an explicit restriction;
+fixtures for each restriction class and for each newly allowed class (no rights sentence, FTP,
+unrenewed issue), each with a negative control. Who gains: listeners (more real pictures).
+Who pays: Ear Drama carries the take-down path for any picture a holder disputes (the existing
+take-down page and 48-hour reply).
