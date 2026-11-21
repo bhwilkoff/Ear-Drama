@@ -395,3 +395,13 @@ privacy words) is folded in when it arrives, never waited on.
   Worker deploy for T7c's protocol fix (production still on the old rule; the 1.0.153 apps work
   against it). Resume: run `npm run test:mutations` in a scratch worktree when the Mac is idle,
   then `wrangler deploy` (no migrations). Owner items: see the summary below this line in chat.
+- **2026-11-21**: owner rulings: image rule 040 (used unless the record marks a restriction);
+  privacy (R3d research + drafts; Learning is Change signs, ben@learningischange.com, 8287 S.
+  Pennsylvania Ct., Littleton, CO 80122; delete who-recorded-what on schedule, keep ear dramas;
+  13+ publish confirmations; neutral age question); policy wording approved; security page
+  approved as written. Privacy build merged locally (1.0.154; Decision 084; Worker 455, web 27,
+  macOS 544, Android 662). Deploy order: mutation run (running) -> D1 0010 -> wrangler deploy
+  (also ships T7c) -> push (pages go live) -> Duo launch check before TestFlight. Held for the
+  owner: SCHOOL_CONSENT_POLICY (opens under-13 classes; R3d recommends a lawyer's read first);
+  OPERATOR_TOKEN secret (classifier refused setting it; route fails closed). Running: image harvest
+  under rule 040.
