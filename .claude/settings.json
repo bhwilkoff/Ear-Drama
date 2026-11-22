@@ -65,7 +65,15 @@
       "Bash(open *)",
       "Bash(./tools/refresh-skills.sh)",
       "Bash(./tools/install-android-skills.sh)",
-      "Bash(bash ./android/scripts/sync_shared_assets.sh)"
+      "Bash(bash ./android/scripts/sync_shared_assets.sh)",
+      "Bash(tools/secrets.sh list)",
+      "Bash(tools/secrets.sh gen *)",
+      "Bash(tools/secrets.sh put-file *)",
+      "Bash(tools/secrets.sh keychain-import-asc)",
+      "Bash(tools/secrets.sh renew-signing *)",
+      "Bash(gh workflow run operator.yml *)",
+      "Bash(gh workflow run takedown-check.yml *)",
+      "Bash(gh workflow run appstore-submit.yml *)"
     ]
   }
 }
