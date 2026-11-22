@@ -56,7 +56,7 @@ import time
 
 import numpy as np
 
-TAPS = ["tap_f0", "tap_N", "tap_enc", "tap_dec", "tap_har", "tap_hs", "tap_g0", "tap_post"] \
+TAPS = ["tap_f0", "tap_N", "tap_enc", "tap_dec", "tap_low", "tap_hi", "tap_har", "tap_hs", "tap_g0", "tap_post"] \
     if os.environ.get("KOKORO_TAPS") == "1" else []
 
 HF = "hexgrad/Kokoro-82M"
@@ -233,6 +233,21 @@ def build(km):
             self.shared = BiLSTM(km.predictor.shared)
             self.register_buffer("harmonics", torch.arange(1, 10, dtype=torch.float32).view(1, 1, 9))
             self.wnorm = float(gen.m_source.l_linear.weight.detach().norm())
+            # F.interpolate(scale_factor=300, mode="linear") written out: output 300k + r reads source position
+            # k + (r + 0.5) / 300 - 0.5, so the first half of each step blends k-1 into k and the second k into k+1
+            # (clamped at both ends, as interpolate does). Core ML's own linear upsample put the source's harmonics
+            # out of phase with PyTorch's (the decoder's source alone measured 3 dB SNR, 2026-11-22).
+            r = (np.arange(300) + 0.5) / 300 - 0.5
+            self.register_buffer("w_prev", torch.from_numpy(np.where(r < 0, -r, 0.0).astype(np.float32)).view(1, 1, 300, 1))
+            self.register_buffer("w_next", torch.from_numpy(np.where(r > 0, r, 0.0).astype(np.float32)).view(1, 1, 300, 1))
+
+        def upsample(self, x):  # (1, L, C) -> (1, 300 L, C)
+            L, C = x.shape[1], x.shape[2]
+            prev = torch.cat([x[:, :1], x[:, :-1]], dim=1).unsqueeze(2)
+            nxt = torch.cat([x[:, 1:], x[:, -1:]], dim=1).unsqueeze(2)
+            xx = x.unsqueeze(2)
+            y = xx + (prev - xx) * self.w_prev + (nxt - xx) * self.w_next
+            return y.reshape(1, L * 300, C)
 
         def forward(self, en, asr, ref_s, noise, length):
             Fb = en.shape[-1]
@@ -268,11 +283,11 @@ def build(km):
             phase = torch.cumsum(rad, dim=1) * (2 * math.pi)
             uv_low = (f0c.unsqueeze(-1) > 10).to(torch.float32)
             # One linear upsample for both: thresholding the interpolated voicing at 0.5 is exactly nearest.
-            hi = F.interpolate(torch.cat([phase * up, uv_low], dim=-1).transpose(1, 2), scale_factor=float(up),
-                               mode="linear").transpose(1, 2)  # 1, 600F, 10
-            # Wrapped before the sine: the phase reaches about 1e5 radians, and Core ML's sin is not range-reduced
-            # there (fp32, no quantization: the decoder alone measured 3 to 5 dB spectral SNR against PyTorch).
-            sines = torch.sin(torch.remainder(hi[..., :9], 2 * math.pi)) * 0.1
+            low = torch.cat([phase * up, uv_low], dim=-1)  # 1, 2F, 10
+            taps["tap_low"] = low
+            hi = self.upsample(low)  # 1, 600F, 10
+            taps["tap_hi"] = hi
+            sines = torch.sin(hi[..., :9]) * 0.1
             uv = (hi[..., 9:] > 0.5).to(torch.float32)
             amp = uv * 0.003 + (1 - uv) * (0.1 / 3)
             har = torch.tanh(g.m_source.l_linear(sines * uv) + amp * self.wnorm * noise).squeeze(-1)  # 1, 600F
