@@ -405,3 +405,9 @@ privacy words) is folded in when it arrives, never waited on.
   owner: SCHOOL_CONSENT_POLICY (opens under-13 classes; R3d recommends a lawyer's read first);
   OPERATOR_TOKEN secret (classifier refused setting it; route fails closed). Running: image harvest
   under rule 040.
+- **2026-11-21, later**: Worker deployed (4057b8ef; D1 0010; 456 tests; mutation run 305 caught + the two
+  survivors closed by new tests); 1.0.154 pushed (Duo launch clean, frames blind); privacy/, schools/,
+  security/, security.txt live with the approved words. Release catalog-2026-11-21 + plays-library-2026-11-21
+  published (publish 44968377954, deploy 44969982597): plays with a picture 551/803 (authorArt 471, title
+  page 176, production 6); series picture 319, hero 21; no magazine art served. Owner still: OPERATOR_TOKEN
+  secret; SCHOOL_CONSENT_POLICY (open under-13 classes) after a lawyer's read or now.
