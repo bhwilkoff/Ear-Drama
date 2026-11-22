@@ -523,3 +523,23 @@ agent's job ([Apple: revoke tokens][apple-revoke]).
 - GitHub, push protection: <https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection>
 - GitHub, non-provider patterns: <https://docs.github.com/en/code-security/secret-scanning/using-advanced-secret-scanning-and-push-protection-features/non-provider-patterns>
 - gitleaks: <https://github.com/gitleaks/gitleaks>
+
+## Progress, 2026-11-22
+
+- Ear Drama: wrangler login in the Keychain (no plaintext config). OIDC operator and take-down routes
+  deployed (Worker b600ac47; 58/58 targeted mutants caught); operator.yml and takedown-check.yml ran
+  green on the live Worker. TAKEDOWN_TOKEN deleted from the Worker and GitHub; takedown.env moved to
+  the Trash. Worker secrets now: SESSION_SECRET, IA_S3_ACCESS_KEY, IA_S3_SECRET_KEY. Owner permission
+  rules added (user autoMode entry; project rules; local block removed).
+- Archive Watch: Worker deployed (b041ae6c); takedown-check green over OIDC; TAKEDOWN_TOKEN gone from
+  GitHub and the Worker; 11 files imported into the Keychain (byte-for-byte), 3 deleted by the import;
+  secrets.sh fixed (executable, pinned wrangler 4.152.0, failures reported) and the pre-commit hook
+  made executable in git.
+- GarageDoor: keystore + password in the Keychain; release.p12 deleted.
+- ACR-Helper: no secrets; scan + hook in place.
+- Duet-Connect: scan + hook in place; two tools still read the shared .p8 (being switched).
+- Template: skill secrets-without-bookkeeping + tools upstreamed (8182a5c2).
+- Remaining: binary Keychain reads for Archive Watch's keystore and Tizen certs; Archive Watch
+  asc_certs/asc_profiles and Duet-Connect submit/pulse to the Keychain; then the shared AuthKey .p8,
+  aw-ci-* files, roku-genkey.raw, upload .jks, Tizen certs and asc-credentials.env files to the Trash;
+  Play workload identity federation (phase 2, both apps together).
