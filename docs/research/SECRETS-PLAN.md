@@ -543,3 +543,16 @@ agent's job ([Apple: revoke tokens][apple-revoke]).
   asc_certs/asc_profiles and Duet-Connect submit/pulse to the Keychain; then the shared AuthKey .p8,
   aw-ci-* files, roku-genkey.raw, upload .jks, Tizen certs and asc-credentials.env files to the Trash;
   Play workload identity federation (phase 2, both apps together).
+
+## Done, 2026-11-22 (evening)
+
+All plaintext credentials moved off disk across Ear Drama, Archive Watch, Duet-Connect, GarageDoor,
+ACR-Helper and Tidbits-Trivia (Keychain, verified byte for byte; originals in the Trash): the shared
+AuthKey .p8 and aw-ci-* files, asc-credentials.env files, Play and Amazon JSON, Roku files, upload
+keystore and ~/.gradle UPLOAD_* lines (Archive Watch now signs locally through with_signing.sh), Tizen
+password (the Tizen Studio certificate folder lives in iCloud Drive behind a symlink), GarageDoor
+release keystore, both take-down token files. TAKEDOWN_TOKEN and OPERATOR_TOKEN retired (GitHub OIDC).
+Docs, runbooks, skills and agent memories in every app point at the new locations; the template ships
+the shared-key reader (asc_key.py + with_asc.sh) and the scan. Left on purpose: eardrama-upload.jks and
+tidbits-upload.jks (password-protected; a keychain-import recipe is a follow-up). Per clone:
+`git config core.hooksPath .githooks` (set in Ear Drama, Archive Watch, GarageDoor).
