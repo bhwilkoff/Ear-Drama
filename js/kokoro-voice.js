@@ -1,6 +1,6 @@
 /**
  * Kokoro, the downloadable voices, as a scene partner (PLAYS-DESIGN §2.8 engine 'kokoro', §5).
- * PROTOTYPE behind KokoroModel.enabled() (?kokoro=1); see docs/research/design/R2-kokoro-feasibility.md.
+ * Loaded on demand by js/voices.js (Decision 086; WebGPU only, Decision 078); see docs/research/design/R2-kokoro-feasibility.md.
  *
  * A line is rendered in a Web Worker (js/kokoro-worker.js) into a buffer held in memory, played
  * once through Web Audio, and dropped: like a system voice it is a live stand-in, never a take,
@@ -31,15 +31,19 @@ const KokoroVoice = (() => {
     gender: id[1] === 'f' ? 'female' : 'male',
   }));
   const GRADE = { A: 2, 'A-': 2, 'B-': 1 };
+  /** Kokoro's own grades, best to worst: the defaults' order inside the engine (Decision 086). */
+  const GRADES = ['A', 'A-', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F+'];
+  /** Grades under C- start out of the auto-cast pool (Settings > Voices can tick them back in). */
+  const LOW = (g) => GRADES.indexOf(g) > GRADES.indexOf('C-');
   /** Tokens per render: Kokoro rushes past ~400 (VOICES.md) and stops at 510. */
   const MAX_TOKENS = 400;
 
-  /** The voices the cast may use: none unless the prototype is on AND the model is downloaded. Best first. */
+  /** The voices the cast may use: none unless they are allowed (js/voices.js) AND downloaded. Best grade first. */
   function castable({ enabled, ready }) {
     if (!enabled || !ready) return [];
     return VOICES.map(v => ({ engine: 'kokoro', id: v.id, name: `${v.name} (Kokoro)`, lang: v.lang, tier: GRADE[v.grade] || 0,
-                              gender: v.gender, isDefault: false, index: v.index }))
-      .sort((a, b) => (b.tier - a.tier) || (a.index - b.index));
+                              grade: v.grade, gender: v.gender, isDefault: false, index: v.index, offByDefault: LOW(v.grade) }))
+      .sort((a, b) => (GRADES.indexOf(a.grade) - GRADES.indexOf(b.grade)) || (a.index - b.index));
   }
 
   /**
@@ -158,6 +162,26 @@ const KokoroVoice = (() => {
     return {
       prepare,
       /**
+       * The web's gate after a download (Decision 078, R2-kokoro-feasibility §6 item 5): two renders of
+       * one fixed phrase, nothing played. Passes when both are sound (finite, not silent) and the second,
+       * past the first render's warm-up, is faster than real time by the measured margin (RTF under 0.7).
+       */
+      async selfTest() {
+        try { await boot(); } catch (e) { return { ok: false, reason: String(e && e.message || e) }; }
+        const tokens = Int32Array.from(tokenize('ðɪs ɪz ə tˈɛst ʌv ðə vˈYsᵻz.', vocab));
+        let rtf = Infinity;
+        for (let i = 0; i < 2; i++) {
+          let out;
+          try { out = await call({ type: 'synth', tokens, voice: 0, speed: 1 }); } catch (e) { return { ok: false, reason: String(e && e.message || e) }; }
+          const s = out.samples;
+          let sum = 0;
+          for (let k = 0; k < s.length; k++) sum += s[k] * s[k];
+          if (!s.length || Math.sqrt(sum / s.length) < 1e-4) return { ok: false, reason: 'silent' };
+          rtf = out.ms / ((s.length / 24000) * 1000);
+        }
+        return { ok: rtf < 0.7, rtf: Math.round(rtf * 100) / 100, reason: rtf < 0.7 ? null : 'slow' };
+      },
+      /**
        * Reads `text` in Kokoro voice `voiceId`. Speed and pitch: the model renders at rate/pitch and
        * Web Audio plays it back at `pitch`, so the tempo is `rate` and the pitch moves by `pitch`.
        */
@@ -183,33 +207,37 @@ const KokoroVoice = (() => {
     };
   }
 
-  /** The page's one engine, made when the prototype is on and the model is ready. */
+  /** The page's one engine, made once the model exists. */
   function engine(opts) {
     if (!shared && opts && opts.model) shared = create(opts);
     return shared;
   }
 
-  /* ---- The page's one model and engine (the flag-only loader in app.js calls boot) ---- */
+  /* ---- The page's one model and engine (js/voices.js calls boot, on demand) ---- */
 
   let lab = null;
-  /** Makes the model and the engine; resolves when it is known whether the model is downloaded. */
-  async function boot({ manifestURL, phonemesBase = 'data/plays/library/phonemes/' } = {}) {
+  /**
+   * Makes the model and the engine; resolves when it is known whether the model is downloaded.
+   * `allowed()` is js/voices.js's gate (WebGPU, not switched off, the self-test passed); `muted` is ?mute=1.
+   */
+  async function boot({ manifestURL, phonemesBase = 'data/plays/library/phonemes/', muted = false, allowed = () => true } = {}) {
     if (lab) return lab;
     const model = KokoroModel.create(manifestURL ? { manifestURL } : {});
-    lab = { model, phonemesBase };
+    lab = { model, phonemesBase, allowed };
     await model.check();
-    engine({ model });
+    engine({ model, muted });
     return lab;
   }
-  /** Whether Kokoro voices may be cast now: the flag on and the model downloaded. */
-  const available = () => !!(lab && KokoroModel.enabled() && lab.model.isReady());
+  const ready = () => !!(lab && lab.model.isReady());
+  /** Whether Kokoro voices may be cast now: allowed and downloaded. */
+  const available = () => !!(ready() && lab.allowed());
   /** Castable Kokoro voices now (none unless available). */
-  const voices = () => castable({ enabled: KokoroModel.enabled(), ready: !!(lab && lab.model.isReady()) });
-  /** Fetches a play's published phonemes, once, when Kokoro is available. */
+  const voices = () => castable({ enabled: !!(lab && lab.allowed()), ready: ready() });
+  /** Fetches a play's published phonemes, once, when the model is here. */
   function prepare(script) {
-    if (available() && shared && script && script.id) shared.prepare(`${lab.phonemesBase}${script.id}.json`);
+    if (ready() && shared && script && script.id) shared.prepare(`${lab.phonemesBase}${script.id}.json`);
   }
   const model = () => (lab ? lab.model : null);
 
-  return { VOICES, MAX_TOKENS, castable, chunks, tokenize, keyOf, create, engine, boot, available, voices, prepare, model };
+  return { VOICES, GRADES, MAX_TOKENS, castable, chunks, tokenize, keyOf, create, engine, boot, available, voices, prepare, model };
 })();

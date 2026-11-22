@@ -13,6 +13,13 @@
  *   resolve() returning the stored voice without checking the device has it: the fallback test fails.
  *   StandInVoice reading every part's entry but ignoring rate and pitch: the per-part speed test fails.
  * The shared-cast test carries its own control: two players without a cast still disagree.
+ *
+ * Decision 086 (the defaults in Settings > Voices), seen to fail 2026-11-22:
+ *   ordered() without the engine rank (downloaded voices sorted among the device's by quality only):
+ *     "the Default pool: downloaded first, then the person's order" fails ("Heart first").
+ *   caster() writing auto-cast into storage on first read, as before: "a Default is worked out at
+ *     each read, never written in" fails.
+ *   loadDefaults() ignoring the stored row: "the defaults persist" and "at the default speed" fail.
  */
 'use strict';
 const fs = require('node:fs');
@@ -242,7 +249,7 @@ test('no voice yet (Chrome before voiceschanged): nothing is cast or stored, and
   eq(f.spoken.length, 0, 'nothing reached the synthesizer');
   f.synth.voices = RAW;
   eq(cast.resolve('role:MOLLY').voice.name, 'Ava (Premium)', 'the voices land: auto-cast runs');
-  ok(VoiceCast.load('p:P6', storage), 'and is kept');
+  eq(VoiceCast.load('p:P6', storage), null, 'a Default is worked out at each read, never written in as a choice (Decision 086)');
 });
 
 test('the cast is this browser\'s: a production starts from its play\'s cast, keys are bounded, storage failures are survived', () => {
@@ -280,6 +287,76 @@ test('the table read reads from a line to the end, each part in its voice, follo
   const src = fs.readFileSync(path.join(__dirname, 'plays-session.js'), 'utf8');
   const tr = src.slice(src.indexOf('const TableRead'));
   eq(/\bstore\b|\bfetch\s*\(|\bAPI\./.test(tr), false, 'the table read holds no store and calls no network');
+});
+
+/* ---- The device's voice defaults (Settings > Voices, Decision 086) ---- */
+
+const KOK = [
+  { engine: 'kokoro', id: 'af_heart', name: 'Heart (Kokoro)', lang: 'en-US', tier: 2, grade: 'A', gender: 'female' },
+  { engine: 'kokoro', id: 'am_michael', name: 'Michael (Kokoro)', lang: 'en-US', tier: 0, grade: 'C+', gender: 'male' },
+  { engine: 'kokoro', id: 'am_adam', name: 'Adam (Kokoro)', lang: 'en-US', tier: 0, grade: 'F+', gender: 'male', offByDefault: true },
+];
+
+test('the Default pool: downloaded first, then the person\'s order; left-out voices dropped; never empty', () => {
+  const sys = VoiceCast.systemVoices(RAW, 'en-US');
+  const all = [...sys, ...KOK];
+  const ids = (vs) => vs.map(v => v.id);
+  eq(ids(VoiceCast.poolOf(all)), ['af_heart', 'am_michael', 'com.ava.premium', 'com.karen', 'com.samantha', 'com.daniel'],
+     'Heart first: downloaded voices before the device\'s, Kokoro\'s lowest grade (Adam) left out, then the device\'s best first');
+  let d = VoiceCast.normalizeDefaults(null);
+  d = VoiceCast.move(all, d, sys.find(v => v.id === 'com.samantha'), -1);
+  d = VoiceCast.move(all, d, sys.find(v => v.id === 'com.samantha'), -1);
+  eq(ids(VoiceCast.poolOf(all, d)).slice(2), ['com.samantha', 'com.ava.premium', 'com.karen', 'com.daniel'], 'Samantha moved up twice, among the device\'s voices only');
+  eq(ids(VoiceCast.poolOf(all, d)).slice(0, 2), ['af_heart', 'am_michael'], 'a device voice never climbs over a downloaded one');
+  d = { ...d, off: { 'kokoro:af_heart': true, 'kokoro:am_adam': false } };
+  eq(ids(VoiceCast.poolOf(all, d)).slice(0, 2), ['am_michael', 'am_adam'], 'Heart left out by the person; Adam ticked back in');
+  const allOff = { order: [], off: Object.fromEntries(all.map(v => [VoiceCast.voiceKey(v), true])), rate: 1 };
+  eq(VoiceCast.poolOf(all, allOff).length, all.length, 'every voice left out: the pool falls back to them all, never silence');
+});
+
+test('untouched parts read Default at the defaults\' speed; a choice overrides and Default takes it back', () => {
+  const storage = memoryStorage();
+  const f = fakeSynth();
+  const script = fixtureScript();
+  VoiceCast.saveDefaults({ order: [], off: {}, rate: 1.2 }, storage);
+  const cast = VoiceCast.caster({ key: 'p:D1', parts: C.castParts(script), voices: voicesOf(f.synth), storage });
+  const r = cast.resolve('role:MOLLY');
+  eq([r.isDefault, r.voice.name, r.rate], [true, 'Ava (Premium)', 1.2], 'Default: the best voice, at the default speed');
+  cast.set('role:MOLLY', { engine: 'system', voice: 'com.daniel', name: 'Daniel' });
+  eq([cast.resolve('role:MOLLY').isDefault, cast.resolve('role:MOLLY').voice.name], [false, 'Daniel'], 'chosen in the picker');
+  eq(cast.defaultEntry('role:MOLLY').name, 'Ava (Premium)', 'the picker can still name what Default would read');
+  cast.reset('role:MOLLY');
+  eq([cast.resolve('role:MOLLY').isDefault, cast.resolve('role:MOLLY').voice.name], [true, 'Ava (Premium)'], 'Default chosen again');
+});
+
+test('a download reaches every untouched part at once, and leaves the person\'s choices alone', () => {
+  const storage = memoryStorage();
+  const f = fakeSynth();
+  const script = fixtureScript();
+  let downloaded = false;
+  const cast = VoiceCast.caster({ key: 'p:D2', parts: C.castParts(script), storage,
+                                  voices: () => [...(downloaded ? KOK : []), ...voicesOf(f.synth)()] });
+  cast.set('role:DOC', { engine: 'system', voice: 'com.samantha', name: 'Samantha' });
+  eq(cast.resolve('role:MOLLY').voice.engine, 'system', 'before the download: a device voice');
+  downloaded = true;
+  eq(cast.resolve('role:MOLLY').voice.id, 'af_heart', 'after: the largest part reads the best downloaded voice, with no Recast');
+  eq(cast.resolve('role:FIBBER').voice.id, 'am_michael', 'the next part the best of the other reported gender');
+  eq(cast.resolve('role:DOC').voice.name, 'Samantha', 'a part the person cast keeps its voice');
+});
+
+test('the defaults persist in this browser, are cleaned on read, and survive blocked storage; old auto rows are not choices', () => {
+  const storage = memoryStorage();
+  VoiceCast.saveDefaults({ order: ['system:com.daniel', 7], off: { 'system:com.karen': true, x: 'yes' }, rate: 9 }, storage);
+  eq(VoiceCast.loadDefaults(storage), { order: ['system:com.daniel'], off: { 'system:com.karen': true }, rate: 2 }, 'kept, cleaned, the speed clamped');
+  storage.setItem(VoiceCast.DEFAULTS_KEY, '{not json');
+  eq(VoiceCast.loadDefaults(storage), { order: [], off: {}, rate: 1 }, 'a broken row reads as no defaults');
+  const broken = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } };
+  VoiceCast.saveDefaults({ rate: 1.5 }, broken);
+  eq(VoiceCast.loadDefaults(broken).rate, 1, 'blocked storage: the plain defaults');
+  storage.setItem(VoiceCast.KEY, JSON.stringify({ 'p:old': { parts: { 'role:MOLLY': { engine: 'system', voice: 'com.samantha', name: 'Samantha' } }, at: 1 } }));
+  eq(VoiceCast.load('p:old', storage), null, 'a row from before Decision 086 (auto-cast written in) is not a choice');
+  const sync = fs.readFileSync(path.join(__dirname, 'sync.js'), 'utf8');
+  eq(/ed\.voices|loadDefaults/.test(sync), false, 'sync never carries the defaults');
 });
 
 (async () => {

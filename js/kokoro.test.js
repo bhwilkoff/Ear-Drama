@@ -1,5 +1,5 @@
 /**
- * Kokoro, the downloadable voices (Decision 076 S6 PROTOTYPE, behind ?kokoro=1), run against the
+ * Kokoro, the downloadable voices (Decision 076 S6; on by default where the gate passes, Decision 086), run against the
  * SHIPPED js/voice-cast.js, js/plays-voice.js, js/kokoro-model.js and js/kokoro-voice.js with a fake
  * engine and a fake synthesizer: nothing here speaks or loads a model.
  *   node js/kokoro.test.js
@@ -14,6 +14,9 @@
  *     written), the player kept null and never used Kokoro (negative control run 2026-11-15).
  *   2026-11-15 (S6a, the web model in parts): the four part checks in "a file served in parts" accepted
  *     a bad manifest, and "a model served in parts" fetched model.onnx whole (404), against the S6 file.
+ *   2026-11-22 (Decision 086, the gate in js/voices.js): start() loading the engine without asking
+ *     Cache Storage first fails "nothing of the engine loads at page start" (three checks); start()
+ *     without the kept self-test result fails "a cache from a stopped download loads nothing".
  * The source scan in js/plays.test.js gained the kokoro- files (a cache write in the voice file,
  * an AudioContext in the model file), each control seen caught.
  */
@@ -22,10 +25,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-for (const f of ['plays-core.js', 'voice-cast.js', 'kokoro-model.js', 'kokoro-voice.js', 'plays-voice.js']) {
+for (const f of ['plays-core.js', 'voice-cast.js', 'voices.js', 'kokoro-model.js', 'kokoro-voice.js', 'plays-voice.js']) {
   vm.runInThisContext(fs.readFileSync(path.join(__dirname, f), 'utf8'), { filename: f });
 }
 const VoiceCast = vm.runInThisContext('VoiceCast');
+const Voices = vm.runInThisContext('Voices');
 const StandInVoice = vm.runInThisContext('StandInVoice');
 const KokoroModel = vm.runInThisContext('KokoroModel');
 const KokoroVoice = vm.runInThisContext('KokoroVoice');
@@ -58,12 +62,79 @@ test('the cast lists downloaded voices only when on and ready', () => {
   eq(list.slice(0, 2).map(v => v.id), ['af_heart', 'af_bella'], 'Kokoro\'s own best grades first');
 });
 
-test('the prototype flag: ?kokoro=1 turns it on in this browser, ?kokoro=0 off', () => {
-  const s = memory();
-  eq(KokoroModel.enabled('', s), false, 'off by default');
-  eq(KokoroModel.enabled('?kokoro=1', s), true, 'on');
-  eq(KokoroModel.enabled('', s), true, 'kept');
-  eq(KokoroModel.enabled('?kokoro=0', s), false, 'off again');
+/* ---- The gate (js/voices.js, Decision 086): no ?kokoro=1; the engine loads only on demand ---- */
+
+function gateWith({ search = '', gpu = true, adapter = true, cached = false, storage = memory(), selfTest = { ok: true, rtf: 0.2 } } = {}) {
+  const loaded = [];
+  if (cached && !storage.getItem(Voices.CHECK)) storage.setItem(Voices.CHECK, JSON.stringify({ ok: true, rtf: 0.2, at: 1 }));
+  const fakeModel = { ready: cached, isReady() { return this.ready; },
+                      async download(progress) { progress(5, 10); progress(10, 10); this.ready = true; }, async remove() { this.ready = false; } };
+  const fakeKokoro = { boot: async (o) => { fakeKokoro.opts = o; return { model: fakeModel }; },
+                       engine: () => ({ selfTest: async () => selfTest }), voices: () => kok() };
+  const g = Voices.create({
+    search, storage,
+    env: { gpu, ok: true, adapter: async () => adapter, online: () => true },
+    cachesImpl: { has: async (name) => cached && name === Voices.CACHE, delete: async () => true },
+    fetchImpl: async () => new Response(JSON.stringify({ files: [{ bytes: 300e6 }, { bytes: 40e6 }] })),
+    loadScript: async (src) => { loaded.push(src); },
+    kokoro: () => fakeKokoro,
+  });
+  return { g, loaded, fakeKokoro, storage };
+}
+
+test('nothing of the engine loads at page start when the voices are not downloaded', async () => {
+  const { g, loaded } = gateWith({ cached: false });
+  eq(await g.start(), false, 'start: not here');
+  eq(loaded, [], 'no engine script requested');
+  eq(g.voices(), [], 'and nothing to cast');
+  eq(g.offered(), true, '"Better voices" is offered');
+  eq(await g.size(), 340e6, 'the size comes from the manifest alone');
+  eq(loaded, [], 'still no engine after reading the size');
+});
+
+test('a finished download loads the engine at page start, and its voices cast; a stopped one does not', async () => {
+  const { g, loaded, fakeKokoro } = gateWith({ cached: true });
+  eq(await g.start(), true, 'start: here');
+  eq(loaded, ['js/kokoro-model.js', 'js/kokoro-voice.js'], 'the engine, on demand');
+  eq(g.status(), 'ready', 'the kept self-test passed');
+  eq(g.voices().length, 28, 'the voices cast');
+  eq(fakeKokoro.opts.allowed(), true, 'the engine is allowed while ready');
+  eq(g.offered(), false, 'no offer once here');
+  const stopped = gateWith({ cached: false });
+  const partial = Voices.create({ storage: memory(), env: { gpu: true, ok: true, adapter: async () => true, online: () => true },
+    cachesImpl: { has: async () => true }, loadScript: async (src) => stopped.loaded.push(src), kokoro: () => stopped.fakeKokoro });
+  eq([await partial.start(), stopped.loaded], [false, []], 'a cache from a stopped download (no self-test result) loads nothing');
+});
+
+test('the person\'s download loads the engine, reports progress, then the self-test decides', async () => {
+  const { g, loaded } = gateWith({ cached: false });
+  const seen = [];
+  g.onChange(() => seen.push(g.status()));
+  await g.download();
+  eq(loaded, ['js/kokoro-model.js', 'js/kokoro-voice.js'], 'loaded by the download');
+  ok(seen.includes('downloading') && seen.includes('checking'), `downloading, then checking (${seen.join(', ')})`);
+  eq([g.status(), g.progress()], ['ready', { done: 10, total: 10 }], 'ready');
+  await g.remove();
+  eq([g.status(), g.voices()], ['absent', []], 'Delete: gone, nothing casts');
+  const slow = gateWith({ cached: false, selfTest: { ok: false, rtf: 1.3, reason: 'slow' } });
+  await slow.g.download();
+  eq([slow.g.status(), slow.g.voices()], ['refused', []], 'a browser that renders too slowly is refused after download');
+});
+
+test('?kokoro=0 switches it off (kept until ?kokoro=1); no WebGPU adapter is a refusal; neither loads anything', async () => {
+  const storage = memory();
+  const off = gateWith({ search: '?kokoro=0', cached: true, storage });
+  eq([await off.g.start(), off.loaded, off.g.status(), off.g.offered()], [false, [], 'unsupported', false], '?kokoro=0: nothing, even downloaded');
+  const still = gateWith({ search: '', cached: true, storage });
+  eq([await still.g.start(), still.loaded], [false, []], 'kept on the next page');
+  const back = gateWith({ search: '?kokoro=1', cached: true, storage });
+  eq([await back.g.start(), back.loaded.length], [true, 2], '?kokoro=1 clears the switch');
+  const noApi = gateWith({ gpu: false, cached: true });
+  eq([await noApi.g.start(), noApi.loaded, noApi.g.status()], [false, [], 'unsupported'], 'no navigator.gpu');
+  const noAdapter = gateWith({ adapter: false, cached: true });
+  eq([await noAdapter.g.start(), noAdapter.loaded], [false, []], 'navigator.gpu but no adapter');
+  eq(noAdapter.g.status(), 'unsupported', 'refused in Settings');
+  eq(Voices.CACHE, KokoroModel.CACHE, 'the gate asks the cache the model writes');
 });
 
 test('a Kokoro casting resolves to the Kokoro voice when it is downloaded', () => {
@@ -88,16 +159,17 @@ test('a system voice id that happens to equal a Kokoro id is never confused with
   eq(r.missing, 'George (Kokoro)', 'the engine is part of the match');
 });
 
-test('the caster offers downloaded voices first when they are present (castFor order)', () => {
+test('the Default casts downloaded voices first once they are here (Decision 086 replaces "a download recasts nothing")', () => {
   const storage = memory();
   let ready = false;
   const cast = VoiceCast.caster({ key: 's:x', parts: PARTS, storage,
                                   voices: () => [...KokoroVoice.castable({ enabled: true, ready }), ...sys] });
   eq(cast.resolve('role:MOLLY').voice.engine, 'system', 'before the download, system voices cast');
   ready = true;
-  eq(cast.resolve('role:MOLLY').voice.engine, 'system', 'a download never recasts a part already cast');
-  cast.recast();
-  eq(cast.resolve('role:MOLLY').voice.id, 'af_heart', 'Recast all gives the largest part the best downloaded voice');
+  eq(cast.resolve('role:MOLLY').voice.id, 'af_heart', 'after it, the largest untouched part reads the best downloaded voice');
+  const pool = VoiceCast.poolOf(KokoroVoice.castable({ enabled: true, ready: true }));
+  eq(pool.length, 16, 'Kokoro\'s grades under C- start out of the Default pool');
+  ok(!pool.some(v => ['am_adam', 'am_santa'].includes(v.id)), 'Adam (F+) and Santa (D-) are not cast unless ticked');
 });
 
 function fakeSynth() {

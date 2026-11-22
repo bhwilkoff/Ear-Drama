@@ -508,6 +508,8 @@ const PlaysUI = (() => {
         if (listen && listen.playing) chips.forEach(c => c.paint());
         else rerender();
       } }, 'Recast all'));
+      const better = CastUI.offer();
+      if (better) manage.append(better);
     }
     if (C.unusedTakes(p).length) {
       manage.append(h.el('button', { type: 'button', class: 'btn', onclick: async () => {

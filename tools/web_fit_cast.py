@@ -138,7 +138,7 @@ def main():
             settle()
             # Auto-cast: the largest part is read by the best voice; directions Not read.
             chips = json.loads(ev("JSON.stringify([...document.querySelectorAll('.pl-part')].map(c => { const ch = c.querySelector('.vc-chip'); const r = c.getBoundingClientRect(); const cr = ch && ch.getBoundingClientRect();"
-                                  " return { name: c.querySelector('.pl-part-name').textContent, chip: ch ? ch.textContent : null, state: ch && ch.dataset.state, out: ch ? (cr.right > r.right + 1 || cr.left < r.left - 1) : false }; }))"))
+                                  " return { name: c.querySelector('.pl-part-name').textContent, chip: ch ? ch.querySelector('.vc-chip-name').textContent : null, tune: ch && ch.querySelector('.vc-chip-tune') ? ch.querySelector('.vc-chip-tune').textContent : '', state: ch && ch.dataset.state, out: ch ? (cr.right > r.right + 1 || cr.left < r.left - 1) : false }; }))"))
             if not chips or chips[0]['chip'] != 'Ava (Premium)': bad(f'the largest part is not read by the best voice: {chips[:1]}')
             if any(c['out'] for c in chips): bad(f'a chip spills out of its card: {[c["name"] for c in chips if c["out"]]}')
             dirs = [c for c in chips if c['name'] == 'Stage directions']
@@ -147,8 +147,12 @@ def main():
             if ev(sideways): bad('the cast sheet scrolls sideways')
             shot('sheet')
             # A cast voice this browser lacks: the second part falls back, visibly.
-            ev("(() => { const all = JSON.parse(localStorage.getItem('ed.cast')); const k = Object.keys(all).find(x => x.startsWith('p:')); const parts = all[k].parts;"
-               " const id = Object.keys(parts).filter(x => x.startsWith('role:'))[1]; parts[id] = { engine: 'system', voice: 'gone', name: 'Allison (Enhanced)', rate: 1, pitch: 1 };"
+            # Only choices are kept (Decision 086): write one for the second part, as the picker would.
+            ev("(() => { const all = JSON.parse(localStorage.getItem('ed.cast') || '{}');"
+               " const links = [...document.querySelectorAll('.pl-part-link')].map(a => new URL(a.href).searchParams);"
+               " const pid = links[0].get('production'); const id = links.map(q => q.get('part')).filter(x => x.startsWith('role:'))[1];"
+               " const k = 'p:' + pid; const row = all[k] || { parts: {}, at: Date.now() }; row.v = 2;"
+               " row.parts[id] = { engine: 'system', voice: 'gone', name: 'Allison (Enhanced)', rate: 1, pitch: 1 }; all[k] = row;"
                " localStorage.setItem('ed.cast', JSON.stringify(all)); })()")
             # Decision 079 deletes a production with no take on load, so give this one a first take (a short
             # silence written through the page's own store) before the reload.
@@ -173,7 +177,7 @@ def main():
             pk = json.loads(ev("JSON.stringify((() => { const d = document.querySelector('dialog.vc-sheet[open]'); const r = d.getBoundingClientRect();"
                                " return { w: r.width, right: r.right, rows: d.querySelectorAll('.vc-row').length, checked: (d.querySelector('input:checked') || {}).value || null, sw: d.scrollWidth > d.clientWidth + 1 }; })())"))
             if pk['right'] > w + 1 or pk['sw']: bad(f'the picker is wider than the screen: {pk}')
-            if pk['rows'] != 7: bad(f'the picker lists {pk["rows"]} voices, want the 7 local English ones')
+            if pk['rows'] != 8: bad(f'the picker lists {pk["rows"]} rows, want Default and the 7 local English voices')
             if not pk['checked']: bad('no voice is checked in the picker')
             shot('picker')
             ev("window.__spoken.length = 0; document.querySelectorAll('dialog.vc-sheet[open] .vc-hear')[2].click()")
@@ -190,7 +194,7 @@ def main():
             ev("[...document.querySelectorAll('.pl-part')].find(c => c.querySelector('.pl-part-name').textContent === 'Stage directions').querySelector('.vc-chip').click()")
             if wait("document.querySelector('dialog.vc-sheet[open]')", 'the directions picker'):
                 v = ev("(document.querySelector('dialog.vc-sheet[open] input:checked') || {}).value")
-                if v != 'none': bad(f'Stage directions picker: {v!r} checked, want Not read')
+                if v != 'default': bad(f'Stage directions picker: {v!r} checked, want Default (Not read)')
                 if w in (375, 1440): shot('picker-directions')
                 ev("document.querySelector('dialog.vc-sheet[open]').close()")
             # The reader: Voices, then Hear the cast.

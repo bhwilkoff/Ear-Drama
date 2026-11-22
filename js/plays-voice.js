@@ -39,7 +39,7 @@ const StandInVoice = (() => {
   const said = (text) => (text || '').replace(/_/g, '').trim();
 
   /**
-   * `kokoro` is the downloadable voices' engine (js/kokoro-voice.js, a prototype behind ?kokoro=1):
+   * `kokoro` is the downloaded voices' engine (js/kokoro-voice.js, loaded on demand by js/voices.js):
    * a part cast to a Kokoro voice is handed to it, and read by its system fallback voice when
    * Kokoro cannot read the line. This file still holds no audio: the engine plays and keeps nothing.
    */
@@ -63,12 +63,12 @@ const StandInVoice = (() => {
       return { read: true, voice: list[index % list.length], rate: 1, pitch: PITCHES[Math.floor(index / list.length) % PITCHES.length] };
     }
 
-    /** The system voice that reads a Kokoro part's line Kokoro cannot read: the part's auto-cast system voice. */
+    /** The system voice that reads a Kokoro part's line Kokoro cannot read: the part's Default among system voices. */
     function systemFallback(part) {
       const sysOnly = list.filter(v => v.engine === 'system');
       if (!sysOnly.length) return null;
       const parts = cast ? cast.parts : [part];
-      const auto = VoiceCast.autoCast(parts, sysOnly)[part];
+      const auto = VoiceCast.autoCast(parts, VoiceCast.poolOf(sysOnly, cast ? cast.defaults() : VoiceCast.loadDefaults()))[part];
       return (auto && sysOnly.find(v => v.id === auto.voice)) || sysOnly[0];
     }
 

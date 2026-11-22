@@ -100,6 +100,8 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md` and 046-065 in `doc
 - 082: Reading together: read rooms, classes that own productions, takes that pass through (owner 2026-11-19)
 - 083: Relay across time, and credit the maker (owner 2026-11-19, T6)
 - 084: Student privacy: who recorded what is deleted on a schedule, the ear drama is kept, and the school decides (owner 2026-11-21)
+- 085: The owner's routes take a GitHub OIDC token, not a stored one (owner 2026-11-22)
+- 086: Voice defaults live in Settings; Kokoro leads them where it can run; a play's cast only overrides (owner 2026-11-22)
 
 ---
 
@@ -891,3 +893,17 @@ for the room. New client states or words for a take are changed in §12.11 first
 - The workflow needs `permissions: id-token: write` and asks for the token with the Worker's origin as its audience; its log is public, so it prints ids, dates and counts only.
 - Renaming a pinned workflow file, the repository or the default branch locks the routes until the constant changes with it.
 - The owner's own take-down commands (`open`, `list`, `show`, `decide`) read the private record in D1 through their own wrangler login (in the Keychain), never through a token.
+
+## 086: Voice defaults live in Settings; Kokoro leads them where it can run; a play's cast only overrides (owner 2026-11-22)
+
+**Rule**: a part nobody cast reads its **Default**: auto-cast (PLAYS-DESIGN §2.8 rule 4) over the device's voice defaults, worked out at each read and never written into the cast. The defaults live in **Settings > Voices** on every platform (§2.8 rule 11): the Kokoro download, a default speed, and an order of voices, downloaded (Kokoro, best grade first) before the device's own (best quality first), each tickable and movable. Kokoro is on by default wherever its gate passes (web: a WebGPU adapter and the self-test after download, Decision 078; Android: the q8 module, on in release; Apple: S6e once measured on an iPhone), and its grades under C- start unticked. The device's own voices are ordered best quality first. A play's cast sheet only overrides a part ("Default" is its first choice), and Recast all returns every part to its Default. The cast keeps only the person's choices (web rows carry `v: 2`; rows from before this, which wrote auto-cast in as if chosen, are read as no choice). On the web the Kokoro engine loads only when the person downloads or a finished download is here; `?kokoro=1` is gone as a gate, `?kokoro=0` stays as a kill switch. A synthetic voice is still a live stand-in, never stored (Decision 076).
+
+**Why**: the owner, 2026-11-22: *"I thought we started allowing for multiple different voices to be downloaded/used with the recordings. It seems like everything is still using super robotic voices that no realistic person would want to use to listen to a play (or having other characters reading the lines as you record your own). Can we make it easier to use the high-fidelity voices and how to implement them as a default from the settings tab vs from the individual play that you are casting?"* Three things kept people on the robotic voices: on the web Kokoro sat behind `?kokoro=1`, which nobody types; §2.8 rule 10 said a download recasts nothing, so even a person who downloaded heard the old voices until they recast every play; and the cast wrote auto-cast into storage the first time it was read, so every play ever opened stayed pinned to the voices of that day. A default is a device-wide preference, so it belongs in Settings, set once; a play's cast is where a person makes a casting decision for that play. Keeping the defaults out of each cast is what makes a change in Settings reach every untouched part.
+
+**How to apply**:
+- Never write a Default into a cast; store only what the person picked. A test reads the stored cast after a first read and must find nothing (`js/voice-cast.test.js` "a Default is worked out at each read").
+- A new voice engine joins the Default pool by `VoiceCast.ordered`'s engine rank, never by being written into casts.
+- The person, not the app, decides what a Default sounds like: the order and ticks are theirs; the app only seeds them (Kokoro's grades, the platform's tier). No voice is chosen by a part's name or the script (rule 4).
+- The Apple and Android ports follow `docs/research/design/VOICES-PORT-BRIEF.md`; their casts drop stored auto entries the same way.
+
+**Who was in the room, who gains, who pays:** the owner asked; people listening to or rehearsing a play gain voices worth hearing without hunting a flag or recasting each play; the cost is the download (340 MB on the web, more than three times the apps') and the casts a person made on the web before this, whose auto-cast entries are dropped (their explicit choices could not be told apart from auto-cast, so a part chosen by hand before 2026-11-22 returns to its Default once).

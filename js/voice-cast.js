@@ -4,10 +4,14 @@
  * the reader's Hear the cast), kept in this browser only and never synced (Q8).
  *
  * A part's casting is { engine, voice, name, rate, pitch }: engine 'system' (the browser's
- * own voices), 'kokoro' (downloadable voices, S6; a prototype behind ?kokoro=1) or 'none' (Not read); voice is
+ * own voices), 'kokoro' (the downloaded voices, S6) or 'none' (Not read); voice is
  * the engine's identifier (a voiceURI here), never a language. Auto-cast reads only the
  * voices (their quality, the person's language, and a gender only when the platform reports
  * one for the VOICE); it never reads a part's name or the script (§2.8 rule 4).
+ *
+ * Only a person's choices are kept (Decision 086). A part nobody chose reads its Default: auto-cast
+ * over the device's voice defaults (Settings > Voices: the order, the voices left out, a speed),
+ * worked out at each read, so a download or a reorder there reaches every untouched part at once.
  *
  * No speech API here: js/plays-voice.js is the only file that touches the synthesizer.
  */
@@ -15,6 +19,7 @@ const VoiceCast = (() => {
   'use strict';
 
   const KEY = 'ed.cast';
+  const DEFAULTS_KEY = 'ed.voices';
   const KEEP = 80;
   /** Voices repeat on a device with few of them; pitch tells two parts on one voice apart. */
   const PITCHES = [1.0, 0.86, 1.14, 0.93, 1.07];
@@ -54,7 +59,7 @@ const VoiceCast = (() => {
       });
   }
 
-  const entryOf = (v, pitch = 1) => ({ engine: v.engine, voice: v.id, name: v.name, rate: 1, pitch });
+  const entryOf = (v, pitch = 1, rate = 1) => ({ engine: v.engine, voice: v.id, name: v.name, rate, pitch });
 
   /**
    * Auto-cast (§2.8 rule 4). `parts` in cast order (largest first: PlaysCore.castParts), `voices`
@@ -63,7 +68,7 @@ const VoiceCast = (() => {
    * out the list starts again at the next pitch. Directions and sound are Not read.
    * Reads nothing of a part but its place in the list.
    */
-  function autoCast(parts, voices) {
+  function autoCast(parts, voices, rate = 1) {
     const out = {};
     let pool = [];
     let round = -1;
@@ -80,7 +85,7 @@ const VoiceCast = (() => {
       }
       const v = pool.splice(k, 1)[0];
       if (v.gender) last = v.gender;
-      out[id] = entryOf(v, PITCHES[round % PITCHES.length]);
+      out[id] = entryOf(v, PITCHES[round % PITCHES.length], rate);
     }
     return out;
   }
@@ -116,11 +121,65 @@ const VoiceCast = (() => {
     return { read: true, entry: e, voice: fb, rate: e.rate, pitch: fe.pitch, missing: e.name || e.voice };
   }
 
-  /* ---- Storage: this browser only, newest KEEP casts ---- */
-
   function defaultStorage() {
     try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch { return null; }
   }
+
+  /* ---- The device's voice defaults (Settings > Voices, Decision 086): this browser only ---- */
+
+  const voiceKey = (v) => `${v.engine}:${v.id}`;
+  const EMPTY_DEFAULTS = Object.freeze({ order: [], off: {}, rate: 1 });
+
+  function normalizeDefaults(d) {
+    if (!d || typeof d !== 'object') return { order: [], off: {}, rate: 1 };
+    const order = Array.isArray(d.order) ? d.order.filter(k => typeof k === 'string').slice(0, 400) : [];
+    const off = {};
+    if (d.off && typeof d.off === 'object') for (const [k, v] of Object.entries(d.off)) if (typeof v === 'boolean') off[k] = v;
+    return { order, off, rate: clamp(d.rate, RATE, 1) };
+  }
+  function loadDefaults(storage = defaultStorage()) {
+    try { return normalizeDefaults(JSON.parse((storage && storage.getItem(DEFAULTS_KEY)) || 'null')); } catch { return normalizeDefaults(null); }
+  }
+  function saveDefaults(d, storage = defaultStorage()) {
+    try { if (storage) storage.setItem(DEFAULTS_KEY, JSON.stringify(normalizeDefaults(d))); } catch { /* private window: forgotten, never wrong */ }
+  }
+
+  /** Whether the defaults use a voice: the person's tick, else the voice's own default (Kokoro's lowest grades start out). */
+  const usesVoice = (v, d = EMPTY_DEFAULTS) => (Object.prototype.hasOwnProperty.call(d.off, voiceKey(v)) ? !d.off[voiceKey(v)] : !v.offByDefault);
+
+  /**
+   * Every voice in the defaults' order: the downloaded (Kokoro) voices before the device's own, inside
+   * each engine the person's order, then the rest best first as `voices` gave them. Nothing left out.
+   */
+  function ordered(voices, d = EMPTY_DEFAULTS) {
+    const at = new Map(d.order.map((k, i) => [k, i]));
+    const rank = (v) => (at.has(voiceKey(v)) ? at.get(voiceKey(v)) : Infinity);
+    const engineRank = (v) => (v.engine === 'kokoro' ? 0 : 1);
+    return (voices || []).map((v, i) => ({ v, i }))
+      .sort((a, b) => (engineRank(a.v) - engineRank(b.v)) || (rank(a.v) - rank(b.v)) || (a.i - b.i))
+      .map(x => x.v);
+  }
+
+  /** The auto-cast pool: `ordered`, less the voices the defaults leave out; never empty while a voice exists. */
+  function poolOf(voices, d = EMPTY_DEFAULTS) {
+    const all = ordered(voices, d);
+    const used = all.filter(v => usesVoice(v, d));
+    return used.length ? used : all;
+  }
+
+  /** The defaults with `voice` moved one place up (-1) or down (+1) among its engine's voices. */
+  function move(voices, d, voice, by) {
+    const list = ordered(voices, d).filter(v => v.engine === voice.engine);
+    const i = list.findIndex(v => voiceKey(v) === voiceKey(voice));
+    const j = i + by;
+    if (i < 0 || j < 0 || j >= list.length) return d;
+    [list[i], list[j]] = [list[j], list[i]];
+    const keys = list.map(voiceKey);
+    return { ...d, order: [...keys, ...d.order.filter(k => !keys.includes(k))] };
+  }
+
+  /* ---- Storage: this browser only, newest KEEP casts ---- */
+
   function readAll(storage) {
     try { const v = JSON.parse((storage && storage.getItem(KEY)) || 'null'); return v && typeof v === 'object' ? v : {}; } catch { return {}; }
   }
@@ -129,13 +188,14 @@ const VoiceCast = (() => {
     if (keys.length > KEEP) keys.sort((a, b) => (all[a].at || 0) - (all[b].at || 0)).slice(0, keys.length - KEEP).forEach(k => delete all[k]);
     try { if (storage) storage.setItem(KEY, JSON.stringify(all)); } catch { /* private window: the cast is forgotten, never wrong */ }
   }
+  /** A cast's chosen parts. Rows from before Decision 086 (no `v`) wrote auto-cast in as if chosen: not choices. */
   function load(key, storage = defaultStorage()) {
     const row = readAll(storage)[key];
-    return row && row.parts && typeof row.parts === 'object' ? row.parts : null;
+    return row && row.v === 2 && row.parts && typeof row.parts === 'object' ? row.parts : null;
   }
   function save(key, parts, storage = defaultStorage()) {
     const all = readAll(storage);
-    all[key] = { parts, at: Date.now() };
+    all[key] = { v: 2, parts, at: Date.now() };
     writeAll(storage, all);
   }
   function forget(key, storage = defaultStorage()) {
@@ -149,53 +209,56 @@ const VoiceCast = (() => {
   /**
    * The one cast for a production (or a play): every player on this device reads parts
    * through this. `parts` in cast order; `voices()` the device's voices now (best first);
-   * `seed` a key to start from (the play's cast) when this one has never been made.
+   * `seed` a key to start from (the play's cast) when this one has never been made;
+   * `defaults()` the device's voice defaults (Settings > Voices).
    */
-  function caster({ key, parts, voices, seed = null, storage = defaultStorage() }) {
+  function caster({ key, parts, voices, seed = null, storage = defaultStorage(), defaults = () => loadDefaults(storage) }) {
     const ids = parts.map(p => (typeof p === 'string' ? p : p.id));
     const list = () => voices() || [];
-    function stored() { return load(key, storage) || (seed && load(seed, storage)) || null; }
-    /** Fills any part without a casting by auto-cast, once there is a voice to cast; keeps every choice made. */
-    function ensure() {
-      const v = list();
-      const have = load(key, storage);
-      const base = have || (seed && load(seed, storage)) || {};
-      if (!v.length) return base;
-      const auto = autoCast(parts, v);
-      let changed = !have;
-      const next = { ...base };
-      for (const id of ids) if (!normalize(next[id]) && auto[id]) { next[id] = auto[id]; changed = true; }
-      if (changed) save(key, next, storage);
-      return next;
+    const chosen = () => load(key, storage) || (seed && load(seed, storage)) || {};
+    /** Every part's Default now: auto-cast over the defaults' pool, at the defaults' speed. */
+    function auto() {
+      const d = defaults() || EMPTY_DEFAULTS;
+      return autoCast(parts, poolOf(list(), d), d.rate || 1);
     }
     const api = {
       key,
       parts: ids,
       voices: list,
-      /** How `part` is read now (resolve). */
+      defaults: () => defaults() || EMPTY_DEFAULTS,
+      /** How `part` is read now (resolve), and whether it is its Default (nobody chose). */
       resolve(part) {
-        const v = list();
-        const cast = ensure();
-        return resolve(cast[part], part, v, autoCast(parts, v));
+        const c = normalize(chosen()[part]);
+        return { ...resolve(c, part, list(), auto()), isDefault: !c };
       },
-      entry(part) { return normalize(ensure()[part]) || null; },
+      /** The part's casting now: the choice, else its Default. */
+      entry(part) { return normalize(chosen()[part]) || auto()[part] || null; },
+      /** The person's own choice for `part`, or null when it reads its Default. */
+      choice(part) { return normalize(chosen()[part]); },
+      /** What the part's Default reads now, chosen or not. */
+      defaultEntry(part) { return auto()[part] || null; },
       set(part, change) {
-        const cast = ensure();
-        const before = normalize(cast[part]) || { ...NOT_READ };
+        const c = chosen();
+        const before = normalize(c[part]) || auto()[part] || { ...NOT_READ };
         const next = normalize({ ...before, ...change });
         if (!next) return;
-        save(key, { ...cast, [part]: next }, storage);
+        save(key, { ...c, [part]: next }, storage);
       },
-      /** Recast all: auto-cast again over the voices on this device now. */
-      recast() {
-        const v = list();
-        if (v.length) save(key, autoCast(parts, v), storage);
+      /** Back to the Default: the part's choice is dropped. */
+      reset(part) {
+        const c = { ...chosen() };
+        if (!(part in c)) return;
+        delete c[part];
+        save(key, c, storage);
       },
-      stored,
+      /** Recast all: every part back to its Default. */
+      recast() { save(key, {}, storage); },
+      stored: () => load(key, storage) || (seed && load(seed, storage)) || null,
     };
     return api;
   }
 
-  return { KEY, PITCHES, RATE, PITCH, NOT_READ, tierOf, genderOf, systemVoices, autoCast, resolve, normalize,
-           load, save, forget, productionKey, scriptKey, caster };
+  return { KEY, DEFAULTS_KEY, PITCHES, RATE, PITCH, NOT_READ, tierOf, genderOf, systemVoices, autoCast, resolve, normalize,
+           load, save, forget, productionKey, scriptKey, caster,
+           voiceKey, loadDefaults, saveDefaults, normalizeDefaults, usesVoice, ordered, poolOf, move };
 })();
