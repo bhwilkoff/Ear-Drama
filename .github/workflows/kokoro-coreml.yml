@@ -52,10 +52,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:  # TEMPORARY: the push runs compare variants and publish nothing
-        include: ${{ fromJSON(github.event_name == 'push' && '[{"p":"fp32","w":"none"},{"p":"mixed","w":"none"},{"p":"mixed","w":"int8"}]' || format('[{{"p":"{0}","w":"{1}"}}]', inputs.precision, inputs.weights)) }}
+        include: ${{ fromJSON(github.event_name == 'push' && '[{"p":"fp32","w":"none"}]' || format('[{{"p":"{0}","w":"{1}"}}]', inputs.precision, inputs.weights)) }}
     env:
       VERSION: ${{ inputs.version || '3' }}
       PUBLISH: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.publish) != 'false' && 'true' || 'false' }}
+      KOKORO_CHECK_DIAG: '1'
       PRECISION: ${{ matrix.p }}
       WEIGHTS: ${{ matrix.w }}
       GH_TOKEN: ${{ github.token }}

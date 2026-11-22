@@ -515,7 +515,7 @@ def main():
             with torch.no_grad():
                 du, d, t = dur_m(torch.from_numpy(ids), torch.from_numpy(ref), torch.tensor([1.0]), torch.tensor([float(n)]))
             en_t, asr_t, _ = align(du.numpy(), d.numpy(), t.numpy(), n)
-            for key, v in dict(want=want, noise=noise, ids=ids, ref=ref, en=en_t, asr=asr_t,
+            for key, v in dict(want=want, noise=noise, ids=ids, ref=ref, en=en_t, asr=asr_t, du=du.numpy(), dd=d.numpy(), te=t.numpy(),
                                meta=np.array([li, vi, nf, n])).items():
                 cases[f"{k}_{key}"] = v
             k += 1
@@ -589,6 +589,25 @@ def verify(work, precision, wq, units):
                                  "length": put(f"{k}-frames", np.array([nf], np.float32))},
                       "outputs": {"audio": os.path.join(cases, f"{k}-audio.out")}})
     decoded = run(calls, "decoder")
+    if os.environ.get("KOKORO_CHECK_DIAG") == "1":  # each model alone: duration outputs, the decoder on PyTorch's alignment
+        for k, (li, vi, nf, n) in enumerate(meta):
+            r = durations[k]
+            print(f"diag {k}: duration max diff {np.abs(r['duration'][0][:n] - c(k, 'du')[0][:n]).max():.4f}, "
+                  f"d SNR {snr_db(c(k, 'dd')[0][:n].ravel(), r['d'][0][:n].ravel()):.1f} dB, "
+                  f"t_en SNR {snr_db(c(k, 'te')[0][:, :n].ravel(), r['t_en'][0][:, :n].ravel()):.1f} dB", flush=True)
+        ref_calls = []
+        for k, (li, vi, nf, n) in enumerate(meta):
+            fb = bucket(nf, FRAME_BUCKETS)
+            ref_calls.append({**calls[k], "inputs": {**calls[k]["inputs"], "en": put(f"{k}-ten", pad_to(c(k, "en"), 2, fb)),
+                                                     "asr": put(f"{k}-tasr", pad_to(c(k, "asr"), 2, fb))},
+                              "outputs": {"audio": os.path.join(cases, f"{k}-taudio.out")}})
+        for k, r in enumerate(run(ref_calls, "decoder-on-pytorch")):
+            nf = meta[k][2]
+            a = r["audio"].reshape(-1)[:600 * nf]
+            want = c(k, "want")
+            print(f"diag {k}: decoder on PyTorch's alignment: spectral SNR {spec_snr_db(want, a):.1f} dB, wave "
+                  f"{snr_db(want, a):.1f} dB, peak {np.abs(a).max():.3f} vs {np.abs(want).max():.3f}, "
+                  f"first {a[:4].round(4).tolist()} vs {want[:4].round(4).tolist()}", flush=True)
     worst = 99.0
     report["lines"] = []
     for k, (li, vi, nf, n) in enumerate(meta):
