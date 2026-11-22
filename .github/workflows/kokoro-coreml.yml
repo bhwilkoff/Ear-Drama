@@ -8,7 +8,9 @@
 #   convert  tools/convert_kokoro_coreml.py: hexgrad's weights at the pinned revision; refuses a model
 #            whose wrappers drift from kokoro's forward (SNR < 30 dB), whose padding changes a line
 #            (< 30 dB), that renders a non-finite sample, or whose Core ML audio drifts from PyTorch
-#            (spectral SNR < 15 dB over 12 renders: 4 lines x 3 voices, every bucket they fall in).
+#            (spectral SNR < 15 dB over 12 renders: 4 lines x 3 voices, every bucket they fall in). The
+#            Core ML side runs through Core ML itself (tools/kokoro_coreml_predict.swift): coremltools'
+#            MLModel segfaults loading the decoder here too.
 #   publish  tools/publish_kokoro_model.py --coreml: one asset per file in each package, then the
 #            manifest last, each size and SHA-256 read back from the Release. Never --clobber: a
 #            version already there is refused, so a rerun publishes a new `version`.
@@ -19,7 +21,7 @@
 name: Kokoro Core ML
 
 on:
-  push:  # TEMPORARY: first runs from the agent branch (a new workflow cannot be dispatched before it is on main)
+  push:  # TEMPORARY: the first publish runs from the agent branch (a new workflow cannot be dispatched before it is on main)
     branches: [worktree-agent-a8d5267110917305a]
     paths: ['.github/workflows/kokoro-coreml.yml', 'tools/convert_kokoro_coreml.py', 'tools/kokoro_coreml_predict.swift']
   workflow_dispatch:
@@ -49,17 +51,13 @@ jobs:
   convert:
     runs-on: macos-26
     timeout-minutes: 240
-    strategy:
-      fail-fast: false
-      matrix:  # TEMPORARY: the push runs compare variants and publish nothing
-        include: ${{ fromJSON(github.event_name == 'push' && '[{"p":"fp32","w":"none"}]' || format('[{{"p":"{0}","w":"{1}"}}]', inputs.precision, inputs.weights)) }}
     env:
       VERSION: ${{ inputs.version || '3' }}
-      PUBLISH: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.publish) != 'false' && 'true' || 'false' }}
-      KOKORO_CHECK_DIAG: '1'
-      KOKORO_TAPS: '1'
-      PRECISION: ${{ matrix.p }}
-      WEIGHTS: ${{ matrix.w }}
+      PUBLISH: ${{ format('{0}', inputs.publish) == 'false' && 'false' || 'true' }}
+      PRECISION: ${{ inputs.precision || 'mixed' }}
+      WEIGHTS: ${{ inputs.weights || 'int8' }}
+      # KOKORO_CHECK_DIAG: '1' prints each model checked alone; KOKORO_TAPS: '1' adds the decoder's intermediate
+      # tensors as outputs and compares each (bisection only: a tapped model must never be published).
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
     steps:
@@ -108,7 +106,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kokoro-coreml-${{ matrix.p }}-${{ matrix.w }}
+          name: kokoro-coreml-${{ env.PRECISION }}-${{ env.WEIGHTS }}
           retention-days: 7
           if-no-files-found: ignore
           path: |
@@ -119,6 +117,7 @@ jobs:
       - name: Publish kokoro-vN-apple
         if: env.PUBLISH == 'true'
         run: |
+          if [ "${KOKORO_TAPS:-}" = "1" ]; then echo "::error::a tapped model is never published"; exit 1; fi
           python3 tools/publish_kokoro_model.py "$RUNNER_TEMP/pub" --coreml "$RUNNER_TEMP/work" --version "$VERSION"
           n=$(gh release view kokoro-model -R "$REPO" --json assets -q '.assets[].name' | grep -c "^kokoro-v${VERSION}-")
           echo "[kokoro-coreml] published $n assets of kokoro-v${VERSION} (Apple)"
