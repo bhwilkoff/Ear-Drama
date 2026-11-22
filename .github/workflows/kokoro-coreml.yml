@@ -57,6 +57,7 @@ jobs:
       VERSION: ${{ inputs.version || '3' }}
       PUBLISH: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.publish) != 'false' && 'true' || 'false' }}
       KOKORO_CHECK_DIAG: '1'
+      KOKORO_TAPS: '1'
       PRECISION: ${{ matrix.p }}
       WEIGHTS: ${{ matrix.w }}
       GH_TOKEN: ${{ github.token }}

@@ -56,6 +56,9 @@ import time
 
 import numpy as np
 
+TAPS = ["tap_f0", "tap_N", "tap_enc", "tap_dec", "tap_har", "tap_hs", "tap_g0", "tap_post"] \
+    if os.environ.get("KOKORO_TAPS") == "1" else []
+
 HF = "hexgrad/Kokoro-82M"
 REV = "f3ff3571791e39611d31c381e3a41a3af07b4987"
 TOKEN_BUCKETS = [32, 64, 128]
@@ -243,10 +246,12 @@ def build(km):
             for block in p.N:
                 n = block(n, s)
             f0, n = p.F0_proj(f0).squeeze(1), p.N_proj(n).squeeze(1)  # 1, 2F
+            taps = {"tap_f0": f0, "tap_N": n}
             d = self.dec
             F0 = d.F0_conv(f0.unsqueeze(1))
             N = d.N_conv(n.unsqueeze(1))
             x = d.encode(torch.cat([asr, F0, N], dim=1), sref)
+            taps["tap_enc"] = x
             asr_res = d.asr_res(asr)
             res = True
             for block in d.decode:
@@ -255,6 +260,7 @@ def build(km):
                 x = block(x, sref)
                 if block.upsample_type != "none":
                     res = False
+            taps["tap_dec"] = x
             g, up = self.gen, 300
             # The source: harmonics of the F0 curve (replicated past the end, as interpolation clamps there).
             f0c = f0.index_select(-1, ctx.last(2 * Fb, 2))
@@ -271,6 +277,7 @@ def build(km):
             amp = uv * 0.003 + (1 - uv) * (0.1 / 3)
             har = torch.tanh(g.m_source.l_linear(sines * uv) + amp * self.wnorm * noise).squeeze(-1)  # 1, 600F
             har = har.index_select(-1, ctx.last(600 * Fb, 600))
+            taps["tap_har"] = har
             st = g.stft
             wav = F.pad(har, (st.n_fft // 2, st.n_fft // 2), mode="replicate").unsqueeze(1)
             re = F.conv1d(wav, st.weight_forward_real, stride=st.hop_length)
@@ -279,6 +286,7 @@ def build(km):
             ph = torch.atan2(im, re)
             ph = torch.where((im == 0) & (re < 0), torch.full_like(ph, math.pi), ph)
             hs = torch.cat([mag, ph], dim=1)
+            taps["tap_hs"] = hs
             for i in range(g.num_upsamples):
                 x = F.leaky_relu(x, negative_slope=0.1)
                 xs_ = g.noise_res[i](g.noise_convs[i](hs), sref)
@@ -291,13 +299,18 @@ def build(km):
                     r = g.resblocks[i * g.num_kernels + j](x, sref)
                     acc = r if acc is None else acc + r
                 x = acc / g.num_kernels
+                if i == 0:
+                    taps["tap_g0"] = x
             x = g.conv_post(F.leaky_relu(x))
+            taps["tap_post"] = x
             nb = g.post_n_fft // 2 + 1
             spec = torch.exp(x[:, :nb, :])
             pha = torch.sin(x[:, nb:, :])
             out = F.conv_transpose1d(ctx.keep(spec * torch.cos(pha)), st.weight_backward_real, stride=st.hop_length) - \
                 F.conv_transpose1d(ctx.keep(spec * torch.sin(pha)), st.weight_backward_imag, stride=st.hop_length)
             pad = st.n_fft // 2
+            if TAPS:
+                return (out[:, 0, pad:-pad],) + tuple(taps[t] for t in TAPS)
             return out[:, 0, pad:-pad]
 
     def unmasked(fn):
@@ -409,7 +422,8 @@ def main():
                 noise = rng.standard_normal((1, 600 * nf, 1)).astype(np.float32)
             F = fb or nf
             a = dec_m(torch.from_numpy(pad_to(en, 2, F)), torch.from_numpy(pad_to(asr, 2, F)), ref,
-                      torch.from_numpy(pad_to(noise, 1, 600 * F)), torch.tensor([float(nf)]))[0].numpy()
+                      torch.from_numpy(pad_to(noise, 1, 600 * F)), torch.tensor([float(nf)]))
+            a = (a[0] if TAPS else a)[0].numpy()
         return a[:600 * nf], nf, noise
 
     # 1. The unpadded wrappers against kokoro's own forward (noise zero on both sides).
@@ -485,7 +499,7 @@ def main():
                                ct.TensorType("ref_s", shape=(1, 256), dtype=np.float32),
                                ct.TensorType("noise", shape=(1, 600 * b, 1), dtype=np.float32),
                                ct.TensorType("length", shape=(1,), dtype=np.float32)]
-                        outs = [ct.TensorType("audio")]
+                        outs = [ct.TensorType("audio")] + [ct.TensorType(t) for t in TAPS]
                 m = ct.convert(tr, inputs=ins, outputs=outs, **common)
                 if wq == "int8":
                     m = linear_quantize_weights(m, qc)
@@ -517,6 +531,12 @@ def main():
             with torch.no_grad():
                 du, d, t = dur_m(torch.from_numpy(ids), torch.from_numpy(ref), torch.tensor([1.0]), torch.tensor([float(n)]))
             en_t, asr_t, _ = align(du.numpy(), d.numpy(), t.numpy(), n)
+            if TAPS:
+                with torch.no_grad():
+                    tt = dec_m(torch.from_numpy(en_t), torch.from_numpy(asr_t), torch.from_numpy(ref),
+                               torch.from_numpy(noise), torch.tensor([float(nf)]))
+                for name, v in zip(TAPS, tt[1:]):
+                    cases[f"{k}_{name}"] = v.numpy()
             for key, v in dict(want=want, noise=noise, ids=ids, ref=ref, en=en_t, asr=asr_t, du=du.numpy(), dd=d.numpy(), te=t.numpy(),
                                meta=np.array([li, vi, nf, n])).items():
                 cases[f"{k}_{key}"] = v
@@ -602,9 +622,17 @@ def verify(work, precision, wq, units):
             fb = bucket(nf, FRAME_BUCKETS)
             ref_calls.append({**calls[k], "inputs": {**calls[k]["inputs"], "en": put(f"{k}-ten", pad_to(c(k, "en"), 2, fb)),
                                                      "asr": put(f"{k}-tasr", pad_to(c(k, "asr"), 2, fb))},
-                              "outputs": {"audio": os.path.join(cases, f"{k}-taudio.out")}})
+                              "outputs": {"audio": os.path.join(cases, f"{k}-taudio.out"),
+                                          **{t: os.path.join(cases, f"{k}-{t}.out") for t in TAPS}}})
         for k, r in enumerate(run(ref_calls, "decoder-on-pytorch")):
             nf = meta[k][2]
+            fb = bucket(nf, FRAME_BUCKETS)
+            for t in TAPS:
+                ref_t, got_t = c(k, t), r[t]
+                L = ref_t.shape[-1]
+                g = got_t[..., :L]
+                print(f"diag {k} {t}: torch {list(ref_t.shape)} coreml {list(got_t.shape)} SNR "
+                      f"{snr_db(ref_t.ravel(), g.ravel()):.1f} dB, max diff {np.abs(ref_t - g).max():.4f}", flush=True)
             a = r["audio"].reshape(-1)[:600 * nf]
             want = c(k, "want")
             print(f"diag {k}: decoder on PyTorch's alignment: spectral SNR {spec_snr_db(want, a):.1f} dB, wave "
