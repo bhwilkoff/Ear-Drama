@@ -316,6 +316,20 @@ describe("idle accounts: three years, after a thirty-day notice any sign-in canc
   });
 });
 
+describe("an account already past three idle years gets its notice before it goes", () => {
+  it("the first sweep only gives the notice; deleted only once the notice has run", async () => {
+    const long = await person("acct-long");
+    const now = Date.now();
+    await env.DB.prepare("UPDATE users SET seen_at = ?2, idle_notice_at = NULL WHERE id = ?1").bind(long.user_id, now - ACCOUNT_IDLE_MS - 10 * DAY).run();
+    await sweepRetention(env, now);
+    expect(await count("SELECT COUNT(*) AS n FROM users WHERE id = ?1 AND idle_notice_at IS NOT NULL", long.user_id)).toBe(1);
+    await sweepRetention(env, now + NOTICE_MS - DAY);
+    expect(await count("SELECT COUNT(*) AS n FROM users WHERE id = ?1", long.user_id)).toBe(1);
+    await sweepRetention(env, now + NOTICE_MS + DAY);
+    expect(await count("SELECT COUNT(*) AS n FROM users WHERE id = ?1", long.user_id)).toBe(0);
+  });
+});
+
 describe("the teacher's class export", () => {
   it("only the teacher; seat labels, casting, progress, review states and notes; no audio", async () => {
     const { teacher, c, made } = await classWithWork("export");

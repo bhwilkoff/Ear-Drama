@@ -320,6 +320,13 @@ describe("finished ear dramas are listed and credited", () => {
     const mid = await finished("m", { at: 2_000_000 });
     const tieA = await finished("ta", { at: 2_000_000 });
     const tied = [mid.p.id, tieA.p.id].sort().reverse();
+    // Rows come back in table order when ORDER BY leaves a tie, and the ids are random, so half the time
+    // table order already matched (the "finished ties unordered" mutant survived 2026-11-21). Renumber
+    // the tied jobs so the ascending id comes first in the table: only the id tiebreak can reverse them.
+    let rowid = 1_000_000;
+    for (const id of [...tied].reverse()) {
+      await env.DB.prepare("UPDATE play_archive_jobs SET rowid = ?2 WHERE production_id = ?1").bind(id, rowid++).run();
+    }
     const { body } = await list();
     expect(body.productions.map((x) => x.id)).toEqual([newest.p.id, ...tied, old.p.id]);
   });
