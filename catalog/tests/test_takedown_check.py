@@ -156,5 +156,27 @@ check("a run removes at most its cap on its own",
       sum(1 for u in ups if u["status"] == "removed") == K.MAX_REMOVALS and
       sum(1 for u in ups if u["status"] == "held") == len(many) - K.MAX_REMOVALS)
 
+# no stored token: the Worker call needs takedown-check.yml's OIDC token, and the owner's
+# commands quote every value they hand to D1
+saved = {k: os.environ.pop(k, None) for k in ("ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "TAKEDOWN_TOKEN")}
+os.environ["TAKEDOWN_TOKEN"] = "an-old-stored-token"
+try:
+    K.token()
+    check("outside Actions, no token, even with an old TAKEDOWN_TOKEN set", "returned", "exited")
+except SystemExit:
+    check("outside Actions, no token, even with an old TAKEDOWN_TOKEN set", True)
+for k, v in saved.items():
+    os.environ.pop(k, None)
+    if v is not None:
+        os.environ[k] = v
+check("a quote in a value cannot end the SQL literal", K.q("O'Brien'); DROP TABLE x; --"), "'O''Brien''); DROP TABLE x; --'")
+check("a missing value is NULL, a flag is 0 or 1", (K.q(None), K.q(True), K.q(False), K.q(7)), ("NULL", "1", "0", "7"))
+try:
+    K.check_ref("TD-1' OR '1'='1")
+    check("a case number that is not one is refused", "accepted", "refused")
+except SystemExit:
+    check("a case number that is not one is refused", True)
+check("a new case number has the Worker's shape", bool(K.REF.match(K.new_ref())))
+
 print(f"{ran - failed}/{ran} passed")
 sys.exit(1 if failed else 0)

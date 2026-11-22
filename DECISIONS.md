@@ -500,9 +500,9 @@ hours, owner 2026-11-14, was one week.) The full rule, signals and tests are cat
 
 **How to apply**: a Worker change reruns `cd worker && npm test && npm run test:mutations`;
 a change to `catalog/tools/takedown_*.py` reruns `catalog/tests/test_takedown_check.py`.
-The deploy needs migration `0005_takedowns.sql` on D1 `eardrama`, the Worker secret
-`TAKEDOWN_TOKEN` (`wrangler secret put`), the same value as the repository secret
-`TAKEDOWN_TOKEN`, and `wrangler deploy` (adds the `TAKEDOWN_LIMITER` binding). No
+The deploy needs migration `0005_takedowns.sql` on D1 `eardrama` and `wrangler deploy`
+(adds the `TAKEDOWN_LIMITER` binding). The case routes once took a stored `TAKEDOWN_TOKEN`;
+since Decision 085 they take only `takedown-check.yml`'s GitHub OIDC token. No
 platform app change: each already links to the web page (PARITY.md).
 
 ## 075: Five sections with Record among them; Home opens on what is on the air (answered 2026-11-14)
@@ -873,9 +873,21 @@ for the room. New client states or words for a take are changed in §12.11 first
 - **The sweep never deletes a submitted production.** `deleteClass` (`worker/src/plays-retention.js`) detaches a submitted production first (seat links, notes and casting go; `class_id` is cleared), then deletes the rest; account deletion already did the same (`playsBeforeDeletion`). Every rule has a test in `worker/test/retention.test.js` and a break (`084:`) in `test/mutations.mjs`.
 - **The end date is a date, not a time**: `ends_on` is the class's last day; the class may go from noon UTC the next day, after that day has ended in every US time zone. Idle counts the teacher opening the class, its productions' activity, and its seats being claimed; the teacher's list shows `deletes_on` during a notice.
 - **No notice by email**: we hold none. The class notice is in the teacher's list; the account notice can only be the published policy, and any sign-in cancels it.
-- **A school's request** is `GET /v1/operator/classes?code=` or `?reference=`, then `DELETE /v1/operator/classes/:id`, with the `OPERATOR_TOKEN` secret (`docs/WORKER.md` "A school asks"); the owner confirms in writing within 30 days.
+- **A school's request** is `GET /v1/operator/classes?code=` or `?reference=`, then `DELETE /v1/operator/classes/:id`, dispatched through `.github/workflows/operator.yml` with no stored key (Decision 085; `docs/WORKER.md` "A school asks"); the owner confirms in writing within 30 days.
 - **The class export** is the teacher's file (`GET /classes/:id/export`): labels, casting, progress, takes' fields with review states and notes; no audio, since none is stored.
 - **Words** are the owner's, approved 2026-11-21 ("The policy wording looks good to me."): the privacy page, the schools page, and in the apps only the controls' own labels and refusals.
 - Not built, and so not promised: shared-device clearing of a student's takes (R3d D5, the owner's Q6), seat-key expiry at home (D6), report notes fading (D7), and keeping the school's authorization record a year after its class (deleted with the class instead).
 
 **Who was in the room, who gains, who pays:** the owner ruled on retention, the signing entity, the 13+ confirmations and the age question; R3d's research and the agent set the mechanisms. Schools and families gain a schedule they can read and a deletion they can ask for; teachers gain Delete, Extend and Export, and carry two confirmations before a class publishes. Students lose nothing they made: the published work stays, without their names. The owner pays in promises that bind every future feature, and in running a school's request by hand.
+
+## 085: The owner's routes take a GitHub OIDC token, not a stored one (owner 2026-11-22)
+
+**Rule**: `/v1/operator/*` and the take-down case routes accept only a GitHub Actions OIDC token, verified against GitHub's published keys, with `aud` equal to the Worker's origin and `repository`, `repository_id`, `ref` (`refs/heads/main`), `job_workflow_ref` (one named workflow file) and `event_name` pinned as constants in `worker/src/github-oidc.js`. There is no `OPERATOR_TOKEN` or `TAKEDOWN_TOKEN` in code. Any other secret value moves only through `tools/secrets.sh`'s fixed recipes, and `tools/test_no_secrets.py` (pre-commit and `secrets-check.yml`) fails on anything shaped like a secret in git.
+
+**Why**: the owner, 2026-11-22: *"I do not want to set or keep track of keys and passwords for this repo."* A stored operator key would have had to be minted, kept and typed by someone; the classifier refused an agent minting one, rightly. A token GitHub signs for one run of one workflow on main needs no keeping, expires in minutes, is never given to a fork's pull request, and leaves `actor` and `run_id` for the audit trail. The pins are constants rather than `[vars]` so no environment can loosen them; the only test seam is the bench's `LOCAL_TEST_JWKS`, which a Worker refuses to carry on a public host. Research: `docs/research/SECRETS-PLAN.md`.
+
+**How to apply**:
+- A new owner route names its workflow and events in `OWNER_WORKFLOWS`, gets a refused-claims test in `worker/test/github-oidc.test.js` and an `oidc:` mutant per check; never a new shared token.
+- The workflow needs `permissions: id-token: write` and asks for the token with the Worker's origin as its audience; its log is public, so it prints ids, dates and counts only.
+- Renaming a pinned workflow file, the repository or the default branch locks the routes until the constant changes with it.
+- The owner's own take-down commands (`open`, `list`, `show`, `decide`) read the private record in D1 through their own wrangler login (in the Keychain), never through a token.

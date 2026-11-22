@@ -1,0 +1,77 @@
+name: Operator
+
+# A school's deletion request (Decision 084, docs/WORKER.md "A school asks"), with
+# no stored key: GitHub issues this run a short-lived OIDC token whose audience is
+# the Worker's origin, and the Worker lets in only this file, on main, dispatched
+# (worker/src/github-oidc.js). Only people with write access can dispatch it:
+#   gh workflow run operator.yml -f action=list -f reference="Lakeview District NDPA"
+#   gh workflow run operator.yml -f action=delete-class -f class_id=<id>
+# The log is public, so it prints class ids, dates and counts, never a class's
+# name, code, or the school's reference.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: list finds the classes; delete-class deletes one
+        type: choice
+        options: [list, delete-class]
+        required: true
+      reference:
+        description: the school's request reference (list)
+        required: false
+      code:
+        description: a class code (list)
+        required: false
+      class_id:
+        description: the class id from list (delete-class)
+        required: false
+
+concurrency:
+  group: operator
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  operator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      API: https://eardrama-api.benwilkoff.workers.dev
+      ACTION: ${{ inputs.action }}
+      REFERENCE: ${{ inputs.reference }}
+      CODE: ${{ inputs.code }}
+      CLASS_ID: ${{ inputs.class_id }}
+    steps:
+      - name: Ask the Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "$REFERENCE" ] && echo "::add-mask::$REFERENCE"
+          [ -n "$CODE" ] && echo "::add-mask::$CODE"
+          tok=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$(jq -rn --arg v "$API" '$v|@uri')" | jq -r .value)
+          echo "::add-mask::$tok"
+          [ -n "$tok" ] && [ "$tok" != null ] || { echo "::error::no OIDC token"; exit 1; }
+          out="$RUNNER_TEMP/answer.json"
+          case "$ACTION" in
+            list)
+              if [ -n "$CODE" ]; then q="code=$(jq -rn --arg v "$CODE" '$v|@uri')"
+              elif [ -n "$REFERENCE" ]; then q="reference=$(jq -rn --arg v "$REFERENCE" '$v|@uri')"
+              else echo "::error::list needs a reference or a code"; exit 1; fi
+              status=$(curl -sS -o "$out" -w '%{http_code}' -H "Authorization: Bearer $tok" "$API/v1/operator/classes?$q")
+              echo "HTTP $status"
+              [ "$status" = 200 ] || exit 1
+              jq -r '"\(.classes | length) class(es)", (.classes[] | "\(.id) under13=\(.under13) created=\(.created_at / 1000 | floor | todate) ends_on=\(.ends_on // "-")")' "$out"
+              ;;
+            delete-class)
+              [[ "$CLASS_ID" =~ ^[A-Za-z0-9_-]{1,64}$ ]] || { echo "::error::delete-class needs a class_id from list"; exit 1; }
+              status=$(curl -sS -o "$out" -w '%{http_code}' -X DELETE -H "Authorization: Bearer $tok" "$API/v1/operator/classes/$CLASS_ID")
+              echo "HTTP $status"
+              [ "$status" = 200 ] || exit 1
+              jq -r '"deleted \(.class_id) at \(.deleted_at / 1000 | floor | todate)"' "$out"
+              ;;
+          esac

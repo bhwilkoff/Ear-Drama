@@ -714,23 +714,30 @@ The sweep handles 25 classes and 25 accounts an hour at most.
 ### A school asks
 
 A school or district writes to ben@learningischange.com to delete a class's
-data. The owner confirms the request comes from the school, then, with the
-`OPERATOR_TOKEN` secret (never in git):
+data. The owner confirms the request comes from the school, then the owner or an
+agent dispatches `.github/workflows/operator.yml`. There is no key to keep: the
+run asks GitHub for a short-lived OIDC token whose audience is the Worker's
+origin, and the Worker (`src/github-oidc.js`) lets in only a token from this
+repository (by name and id), on `refs/heads/main`, from exactly that workflow
+file (`job_workflow_ref`), on `workflow_dispatch`. Only people with write access
+can dispatch it.
 
 ```sh
-API=https://eardrama-api.benwilkoff.workers.dev
-curl -s -H "authorization: Bearer $OPERATOR_TOKEN" "$API/v1/operator/classes?code=K7QF2M9X"
-curl -s -H "authorization: Bearer $OPERATOR_TOKEN" "$API/v1/operator/classes?reference=Lakeview%20District%20NDPA"
-curl -s -X DELETE -H "authorization: Bearer $OPERATOR_TOKEN" "$API/v1/operator/classes/<class id>"
+gh workflow run operator.yml -f action=list -f code=K7QF2M9X
+gh workflow run operator.yml -f action=list -f reference="Lakeview District NDPA"
+gh workflow run operator.yml -f action=delete-class -f class_id=<class id>
+gh run list --workflow operator.yml --limit 1   # then: gh run view <id> --log
 ```
 
-The first two list the matching classes (id, name, code, under13, created_at,
-ends_on, reference; never a seat's name): by the class code the teacher gives,
-or by the school's authorization reference (exact, any case). The third deletes
-one class as Delete class does and answers `{ deleted, class_id, deleted_at }`.
-The owner answers the school in writing with the date, within 30 days of the
-request (the policy's promise). Without the secret every operator route answers
-`403`.
+`list` finds the matching classes by the class code the teacher gives or by the
+school's authorization reference (exact, any case); the route answers id, name,
+code, under13, created_at, ends_on and reference (never a seat's name), and the
+log, which is public, prints only each class's id, under13, created and ends_on,
+with the code and reference masked. `delete-class` deletes one class as Delete
+class does and prints its id and the time; the Worker's own log records the
+dispatching `actor` and `run_id`. The owner answers the school in writing with
+the date, within 30 days of the request (the policy's promise). Any other caller
+gets `403`.
 
 ## Schema
 
@@ -801,14 +808,16 @@ A value starting `REPLACE_WITH` is never accepted as an audience, and a
 provider with no real audience answers `503 not_configured` rather than
 trusting anything.
 
-Secrets, with `wrangler secret put` (never in git, never in `wrangler.toml`):
+Secrets, with `tools/secrets.sh` (`gen SESSION_SECRET`, `put-file NAME FILE`), which pipes each value into
+`wrangler secret put` without printing it (never in git, never in `wrangler.toml`, never in a file). The
+owner's routes, `/v1/operator/*` and the take-down case routes, need no secret: they take a GitHub Actions
+OIDC token from one named workflow (`src/github-oidc.js`, "A school asks"):
 
 | Name | Meaning |
 |---|---|
 | `SESSION_SECRET` | signs access tokens; at least 32 characters (`openssl rand -base64 48`). Without it, sign-in answers `503` |
 | `APPLE_PRIVATE_KEY` | the Sign in with Apple key (`.p8` contents), only for token revocation |
 | `IA_S3_ACCESS_KEY`, `IA_S3_SECRET_KEY` | the Ear Drama archive.org account's S3 keys (archive.org/account/s3.php). Publish and the uploader stay closed until both are set |
-| `OPERATOR_TOKEN` | the owner's key to `/v1/operator/*`, a school's deletion request (`openssl rand -base64 48`). Without it every operator route answers `403` |
 
 Rate limits (`[[ratelimits]]`, Archive Watch's `limited()`; counts are kept
 for the window only):
@@ -960,9 +969,8 @@ Each of these is the owner's, in this order. The repository cannot show which ar
     the seed deny list in `plays-names.js` with a vetted one; decide how
     reports reach you and how fast they are answered (guideline 1.2); set
     `SCHOOL_CONSENT_POLICY` to the published policy's version (`privacy-2026-11-21`,
-    printed at the top of `privacy/`) in `wrangler.toml` `[vars]`; put the
-    operator key in with `openssl rand -base64 48 | npx wrangler secret put OPERATOR_TOKEN`
-    and keep a copy only in your password manager; and
+    printed at the top of `privacy/`) in `wrangler.toml` `[vars]`; (the school-request
+    route needs no key: `operator.yml`, "A school asks"); and
     put the Ear Drama archive.org keys in with
     `npx wrangler secret put IA_S3_ACCESS_KEY` and `... IA_S3_SECRET_KEY`,
     apply `0004_archive_uploader.sql`, and deploy; the first publish then

@@ -4,7 +4,7 @@
 // operator's school-request route, the 13+ publish confirmations, and the school's reference.
 // Scripts come from the castable file by their data, never by name.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { call, env, installProviderKeys, signIn } from "./helpers.js";
+import { call, env, githubToken, installProviderKeys, signIn } from "./helpers.js";
 import { claimByInvite, createBody, createProduction, invite, order } from "./plays-helpers.js";
 import { isSpeaking } from "../src/plays-relay.js";
 import { ACCOUNT_IDLE_MS, CLASS_IDLE_MS, NOTICE_MS, endDateRefusal, endsAt, schoolYearEnd, sweepRetention } from "../src/plays-retention.js";
@@ -13,7 +13,6 @@ import { createExecutionContext, createScheduledController, waitOnExecutionConte
 import worker from "../src/index.js";
 
 const KEYS = { IA_S3_ACCESS_KEY: "TESTIAACCESSret", IA_S3_SECRET_KEY: "TESTIASECRETret" };
-const OP = { authorization: "Bearer test-only-operator-token" };
 const DAY = 24 * 60 * 60 * 1000;
 
 beforeEach(() => {
@@ -352,15 +351,15 @@ describe("the teacher's class export", () => {
 });
 
 describe("a school's deletion request: the operator route", () => {
-  it("needs the operator token; finds by code or the school's reference; deletes as Delete class does", async () => {
+  it("needs operator.yml's GitHub OIDC token; finds by code or the school's reference; deletes as Delete class does", async () => {
+    const OP = { authorization: `Bearer ${await githubToken("operator.yml")}` };
     const { teacher, c, made } = await classWithWork("operator", { under13: true });
     const kept = await made();
     await publishedNow(kept, teacher.user_id);
     const policy = { SCHOOL_CONSENT_POLICY: "privacy-test-3" };
     expect((await call("POST", `/v1/plays/classes/${c.id}/school-consent`, { token: teacher.access_token, body: { reference: "Lakeview District NDPA" }, envOverride: policy })).status).toBe(201);
     expect((await call("GET", `/v1/operator/classes?code=${c.code}`)).status).toBe(403);
-    expect((await call("GET", `/v1/operator/classes?code=${c.code}`, { headers: { authorization: "Bearer test-only-takedown-token" } })).status).toBe(403);
-    expect((await call("GET", `/v1/operator/classes?code=${c.code}`, { headers: OP, envOverride: { OPERATOR_TOKEN: undefined } })).status).toBe(403);
+    expect((await call("GET", `/v1/operator/classes?code=${c.code}`, { token: await githubToken("takedown-check.yml") })).status).toBe(403);
     const byCode = await (await call("GET", `/v1/operator/classes?code=${c.code.toLowerCase()}`, { headers: OP })).json();
     expect(byCode.classes.map((x) => x.id)).toEqual([c.id]);
     expect(JSON.stringify(byCode)).not.toMatch(/Lucy|Tom|Ana/);

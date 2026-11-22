@@ -13,22 +13,31 @@ The workflow's log and the issues it opens are public. Nothing it prints or
 files comes from a requester's own words, and that includes the links and the
 name of the work: it says only a case number, a key the catalog itself serves,
 and a reason from REASONS below.
+
+No stored token: judge and report call the Worker with takedown-check.yml's
+GitHub OIDC token, and the owner's open, list, show and decide read and write
+the private record in D1 through their own wrangler login.
 """
 import argparse
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import takedown_check as C
 
-API = "https://eardrama-api.benwilkoff.workers.dev/v1/takedown"
-ENV_FILE = os.path.expanduser("~/.config/eardrama/takedown.env")
+ORIGIN = "https://eardrama-api.benwilkoff.workers.dev"
+API = ORIGIN + "/v1/takedown"
+WORKER = os.path.join(os.path.dirname(os.path.dirname(HERE)), "worker")
+ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+REF = re.compile(r"^TD-[0-9A-Z]{8}$")
 MAX_REMOVALS = 5     # a run removes at most this many on its own; the rest wait
 
 REASONS = {
@@ -41,15 +50,30 @@ REASONS = {
 }
 
 
+_token = []
+
+
 def token() -> str:
-    t = os.environ.get("TAKEDOWN_TOKEN")
-    if not t and os.path.exists(ENV_FILE):
-        for line in open(ENV_FILE).read().splitlines():
-            if line.startswith("TAKEDOWN_TOKEN="):
-                t = line.split("=", 1)[1].strip()
-    if not t:
-        sys.exit("No TAKEDOWN_TOKEN in the environment or " + ENV_FILE)
-    return t
+    """takedown-check.yml's GitHub OIDC token for the Worker (worker/src/github-oidc.js): no stored secret.
+
+    Only that workflow, on main, can get one the Worker accepts; the owner's own
+    commands (open, list, show, decide) read the private record through D1 instead.
+    """
+    if _token:
+        return _token[0]
+    url = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL")
+    bearer = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+    if not url or not bearer:
+        sys.exit("judge and report run only in takedown-check.yml (gh workflow run takedown-check.yml)")
+    sep = "&" if "?" in url else "?"
+    req = urllib.request.Request(url + sep + "audience=" + urllib.parse.quote(ORIGIN, safe=""),
+                                 headers={"Authorization": "bearer " + bearer, "User-Agent": "EarDrama-takedown"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        value = json.load(r).get("value")
+    if not value:
+        sys.exit("no OIDC token: the job needs permissions id-token: write")
+    _token.append(value)
+    return value
 
 
 def call(path, body=None):
@@ -62,6 +86,35 @@ def call(path, body=None):
             return json.load(r)
     except urllib.error.HTTPError as e:
         sys.exit(f"{path}: HTTP {e.code}")
+
+
+def q(v) -> str:
+    """One SQL literal. wrangler d1 execute takes no bound parameters, so every value is quoted here."""
+    if v is None:
+        return "NULL"
+    if isinstance(v, bool):
+        return "1" if v else "0"
+    if isinstance(v, int):
+        return str(v)
+    return "'" + str(v).replace("'", "''") + "'"
+
+
+def d1(sql: str) -> list:
+    """The owner's read and write of the private record, through their own wrangler login (in the
+    Keychain since `wrangler login --use-keyring`). Nothing is printed unless the command prints it."""
+    out = subprocess.run(["npx", "--no-install", "wrangler", "d1", "execute", "eardrama", "--remote", "--json",
+                          "--command", sql], cwd=WORKER, check=True, capture_output=True, text=True).stdout
+    return json.loads(out)[0].get("results", [])
+
+
+def check_ref(ref: str) -> str:
+    if not REF.match(ref):
+        sys.exit("a case number looks like TD-XXXXXXXX")
+    return ref
+
+
+def new_ref() -> str:
+    return "TD-" + "".join(ALPHABET[b % 32] for b in os.urandom(8))
 
 
 def gh(*args) -> str:
@@ -191,17 +244,25 @@ def main():
     r.add_argument("--updates", required=True)
     a = ap.parse_args()
     if a.cmd == "open":
-        print(call("/cases", {
-            "kind": "copyright", "links": a.links, "work": a.work, "source": a.source,
-            "external_ref": a.ref, "name": a.name, "org": a.org, "complete": a.complete})["ref"])
+        ref = new_ref()
+        d1("INSERT INTO takedown_cases (ref, created_ms, status, kind, complete, source, external_ref, links, work, "
+           "name, org) VALUES (" + ", ".join(q(v) for v in (
+               ref, int(datetime.datetime.now().timestamp() * 1000), "open", "copyright", a.complete, a.source,
+               a.ref[:200] or None, a.links[:4000], a.work[:1000] or None, a.name[:200] or None,
+               a.org[:200] or None)) + ")")
+        print(ref)
     elif a.cmd == "list":
-        for c in call("/cases?status=open,approved,held")["cases"]:
+        for c in d1("SELECT ref, status, source FROM takedown_cases WHERE status IN ('open','approved','held') "
+                    "ORDER BY created_ms LIMIT 50"):
             print(c["ref"], c["status"], c["source"])
     elif a.cmd == "show":
-        print(json.dumps(call("/cases/" + a.ref), indent=1))
+        rows = d1("SELECT * FROM takedown_cases WHERE ref = " + q(check_ref(a.ref)))
+        print(json.dumps(rows[0], indent=1) if rows else "unknown case")
     elif a.cmd == "decide":
         status = "approved" if a.word == "remove" else "declined"
-        call("/cases/" + a.ref, {"status": status, "note": a.note})
+        closed = int(datetime.datetime.now().timestamp() * 1000) if status == "declined" else None
+        d1(f"UPDATE takedown_cases SET status = {q(status)}, closed_ms = {q(closed)}, "
+           f"note = COALESCE({q(a.note[:2000] or None)}, note) WHERE ref = {q(check_ref(a.ref))}")
         if a.word == "keep":
             number = owner_decision(a.ref)[1]
             if number:

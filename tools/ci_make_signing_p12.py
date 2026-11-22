@@ -10,8 +10,11 @@ private key locally (we generate the keypair), so the .p12 is built with openssl
 allows 2 Apple Distribution certs; this uses the 2nd slot. When local builds are dead (beta-OS,
 ITMS-90301), the CI cert becomes the one that owns the App Store provisioning profiles.
 
-Usage:  ci_make_signing_p12.py <distribution|mac_installer> <out.p12> <p12password>
-Env:    ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_PATH (the .p8). ASC_ORG_NAME (optional) for the CSR subject.
+Usage:  ci_make_signing_p12.py <distribution|mac_installer> <out.p12> <p12password | ->
+        `-` reads the password from P12_PASSWORD, so it is on no command line (tools/secrets.sh).
+Env:    ASC_KEY_ID, ASC_ISSUER_ID, and the key as ASC_KEY_P8 (base64 of the .p8, the GitHub secret's
+        form, read from the Keychain by tools/secrets.sh) or ASC_KEY_PATH (the .p8 file).
+        ASC_ORG_NAME (optional) for the CSR subject.
         NOTHING is written to git (build/ ignored).
 """
 import sys, os, time, json, base64, subprocess, urllib.request, urllib.error
@@ -23,11 +26,15 @@ ORG = os.environ.get("ASC_ORG_NAME", "<ORG_NAME>")
 
 def token():
     kid = os.environ["ASC_KEY_ID"]; iss = os.environ["ASC_ISSUER_ID"]
-    kp = os.environ.get("ASC_KEY_PATH", os.path.expanduser(f"~/.appstoreconnect/private_keys/AuthKey_{kid}.p8"))
+    if os.environ.get("ASC_KEY_P8"):
+        pem = base64.b64decode(os.environ["ASC_KEY_P8"]).decode()
+    else:
+        kp = os.environ.get("ASC_KEY_PATH", os.path.expanduser(f"~/.appstoreconnect/private_keys/AuthKey_{kid}.p8"))
+        pem = open(kp).read()
     now = int(time.time())
     # ES256 JWT — the ASC API requires an EC P-256 signature (the .p8 is an EC key).
     return jwt.encode({"iss": iss, "iat": now, "exp": now + 600, "aud": "appstoreconnect-v1"},
-                      open(kp).read(), algorithm="ES256", headers={"kid": kid, "typ": "JWT"})
+                      pem, algorithm="ES256", headers={"kid": kid, "typ": "JWT"})
 
 
 def api(method, path, body=None):
@@ -44,7 +51,8 @@ def api(method, path, body=None):
 def main():
     if len(sys.argv) != 4 or sys.argv[1] not in TYPE:
         raise SystemExit(__doc__)
-    ctype = TYPE[sys.argv[1]]; out_p12 = sys.argv[2]; pw = sys.argv[3]
+    ctype = TYPE[sys.argv[1]]; out_p12 = sys.argv[2]
+    passout = "env:P12_PASSWORD" if sys.argv[3] == "-" else f"pass:{sys.argv[3]}"
     os.makedirs("build", exist_ok=True)
     base = os.path.join("build", f"ci_{ctype.lower()}")
     key, csr, cer, pem = base + ".key", base + ".csr", base + ".cer", base + ".pem"
@@ -68,7 +76,7 @@ def main():
     # `security import` CANNOT read ("MAC verification failed"). -legacy uses the SHA1/3DES PBE that
     # the macOS keychain accepts.
     subprocess.run(["openssl", "pkcs12", "-export", "-legacy", "-inkey", key, "-in", pem,
-                    "-out", out_p12, "-passout", f"pass:{pw}", "-name", f"AppName CI {sys.argv[1]}"],
+                    "-out", out_p12, "-passout", passout, "-name", f"AppName CI {sys.argv[1]}"],
                    check=True, capture_output=True)
     print(f"{cid}\t{out_p12}")
 

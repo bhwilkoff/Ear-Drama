@@ -1,17 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createExecutionContext, createScheduledController, waitOnExecutionContext } from "cloudflare:test";
 import worker from "../src/index.js";
-import { call, env } from "./helpers.js";
+import { call, env, githubToken, installProviderKeys } from "./helpers.js";
 import { sweepTakedowns } from "../src/takedown.js";
 
-const TOKEN = "test-only-takedown-token";
+beforeEach(() => {
+  installProviderKeys();
+});
+afterEach(() => vi.restoreAllMocks());
+
 const notice = {
   kind: "copyright", links: "https://eardrama.org/series/x", work: "My Show",
   name: "Jane Requester", email: "jane@example.com", phone: "555-0100",
   address: "12 Private Lane", goodFaith: true, accurate: true, signature: "Jane Requester",
 };
 const send = (body, extra) => call("POST", "/v1/takedown", { body, ...extra });
-const owner = (method, path, body) => call(method, path, { body, token: TOKEN });
+// takedown-check.yml's GitHub OIDC token, as its scheduled run sends it (github-oidc.js).
+const owner = async (method, path, body) => call(method, path, { body, token: await githubToken("takedown-check.yml", { event_name: "schedule" }) });
 const row = (ref) => env.DB.prepare("SELECT * FROM takedown_cases WHERE ref = ?1").bind(ref).first();
 
 describe("take-down cases", () => {
@@ -61,6 +66,7 @@ describe("take-down cases", () => {
       ["POST", `/v1/takedown/cases/${ref}`, { status: "closed" }], ["POST", "/v1/takedown/cases", { links: "x" }]]) {
       expect((await call(m, p, { body: b })).status).toBe(403);
       expect((await call(m, p, { body: b, token: "wrong-token-of-any-length!!" })).status).toBe(403);
+      expect((await call(m, p, { body: b, token: await githubToken("operator.yml") })).status).toBe(403);
     }
   });
 

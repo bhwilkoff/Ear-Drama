@@ -117,8 +117,8 @@ namespace_id = "8310"
   limit = 60
   period = 60
 
-# Take-down form (takedown.js), counted per address. The secret TAKEDOWN_TOKEN
-# (wrangler secret put) guards the case routes the check and the owner use.
+# Take-down form (takedown.js), counted per address. The case routes take only
+# takedown-check.yml's GitHub OIDC token (github-oidc.js); no stored secret.
 [[ratelimits]]
 name = "TAKEDOWN_LIMITER"
 namespace_id = "8312"

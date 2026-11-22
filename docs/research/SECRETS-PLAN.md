@@ -15,6 +15,95 @@ not run because `ASC_KEY_ID` / `ASC_ISSUER_ID` were not in the agent's shell.
 Every value below is listed by **name and location only**. No secret was read
 or printed while writing this.
 
+## Status (2026-11-22)
+
+**Done by the owner:** step 1, `wrangler login --use-keyring` (the token is in
+the Keychain; no plaintext `default.toml`).
+
+**Built (on a branch; not deployed):**
+
+- **Worker, GitHub OIDC** (`worker/src/github-oidc.js`, Decision 085). The
+  operator and take-down case routes take only a GitHub Actions OIDC token:
+  GitHub's JWKS (fetched and cached), `aud` = the Worker's origin, and
+  `repository` + `repository_id` (`1430156519`), `ref` = `refs/heads/main`,
+  `job_workflow_ref` = exactly `operator.yml` or `takedown-check.yml`, and
+  `event_name` (operator: `workflow_dispatch`; take-down: `schedule` or
+  `workflow_dispatch`) pinned as constants. `OPERATOR_TOKEN` and
+  `TAKEDOWN_TOKEN` are gone from the code; a stored value set on the Worker is
+  refused (tested). Tests: `worker/test/github-oidc.test.js`; 12 new or
+  rewritten `oidc:`/`084:` mutants, all caught.
+- **`.github/workflows/operator.yml`** (`action` = `list` | `delete-class`,
+  `reference`, `code`, `class_id`; `id-token: write`, `contents: read`). The
+  log masks the code and reference and prints class ids, dates and counts
+  only. `docs/WORKER.md` "A school asks" is rewritten for it.
+- **`takedown-check.yml`** asks for the OIDC token (`id-token: write`) and no
+  longer reads `secrets.TAKEDOWN_TOKEN`. `catalog/tools/takedown_cases.py`
+  gets the token in CI only and no longer reads `~/.config/eardrama/takedown.env`;
+  the owner's `open`, `list`, `show` and `decide` read and write the private
+  record in D1 through the owner's own wrangler login.
+- **`tools/secrets.sh`**: `list`, `gen SESSION_SECRET`, `put-file NAME FILE`
+  (`APPLE_PRIVATE_KEY`, `IA_S3_ACCESS_KEY`, `IA_S3_SECRET_KEY`),
+  `keychain-import-asc [P8] [ISSUER_ID] [--delete]`, `renew-signing`.
+  `tools/ci_make_signing_p12.py` now takes the key as `ASC_KEY_P8` and the
+  password as `P12_PASSWORD` (`-`). Test: `tools/test_secrets_sh.py` (every
+  recipe against a fake store; five negative controls).
+- **`tools/test_no_secrets.py`** with `tools/no_secrets_allowlist.txt`, the
+  `.githooks/pre-commit` hook, and `.github/workflows/secrets-check.yml` (both
+  tests on every push and pull request). It proves each rule on planted samples
+  before scanning.
+
+**Enable the hook once per clone** (an isolated agent may not change the shared
+git config, so the main thread or the owner runs it in the main checkout):
+
+```sh
+git config core.hooksPath .githooks
+```
+
+**What remains for the owner** (no value is typed or seen):
+
+1. Add the permission entries below (3d): the project rules and the
+   `autoMode.allow` sentence in `~/.claude/settings.json`. Permission changes
+   are the owner's.
+2. Approve, in one message, deleting the plaintext files:
+   `~/.config/eardrama/takedown.env`,
+   `~/.appstoreconnect/private_keys/aw-ci-p12.password` (for Ear Drama), and the
+   `.p8` once `tools/secrets.sh keychain-import-asc <issuer id> --delete` has
+   put it in the Keychain.
+
+**What remains for the main thread:**
+
+1. Merge, then run `git config core.hooksPath .githooks` in the main checkout.
+2. Deploy in one step with the merge: `cd worker && npx wrangler deploy`. The
+   old Worker needs the token and the new workflows send none, so a scheduled
+   take-down check between the merge and the deploy fails (red, harmless);
+   dispatch `takedown-check.yml` after the deploy to prove it.
+3. Prove the operator route: `gh workflow run operator.yml -f action=list -f
+   reference=no-such-school` answers `0 class(es)`.
+4. Then delete the old values: `npx wrangler secret delete TAKEDOWN_TOKEN`,
+   `gh secret delete TAKEDOWN_TOKEN` (`OPERATOR_TOKEN` was never set).
+5. Plan items not in this batch: retire `asc-credentials.env` and
+   `~/.config/play/PLAY_SERVICE_ACCOUNT.json` from tools and docs; public ids
+   to repository variables; `android-build.yml`'s `KEYSTORE_*` names; turn on
+   non-provider patterns; Play on Workload Identity Federation (phase 2).
+6. `AGENTS.md` is 19 bytes under its 24,000-byte limit, so the hard rule's
+   "Check: `tools/test_no_secrets.py`" mark needs a trim elsewhere first.
+
+**Where this plan was wrong, found while building:**
+
+- The audience is the Worker's origin, not a fixed `eardrama-operator` name:
+  it needs no config and a token for one host is useless at another.
+- `renew-signing distribution|mac_installer` cannot renew one: both `.p12`s
+  share `APPLE_P12_PASSWORD`, so a new password for one breaks the other. It
+  renews both.
+- `keychain-import-asc` cannot take everything from the `.p8`: the issuer id is
+  not in it, and the GitHub copy cannot be read back. It is an argument. The
+  file is deleted only with `--delete`, since deleting it is the owner's call.
+- The take-down tool's local commands cannot become a workflow dispatch: `show`
+  prints the private record, and Actions logs and dispatch inputs are public.
+  They use D1 through the owner's wrangler login instead.
+- `tools/secrets.sh list` reads Keychain names with `security dump-keychain`
+  (attributes only, no values).
+
 ---
 
 ## 1. Inventory
@@ -310,8 +399,8 @@ mode):
 "Bash(tools/secrets.sh list)",
 "Bash(tools/secrets.sh gen *)",
 "Bash(tools/secrets.sh put-file *)",
-"Bash(tools/secrets.sh keychain-import-asc)",
-"Bash(tools/secrets.sh renew-signing *)",
+"Bash(tools/secrets.sh keychain-import-asc *)",
+"Bash(tools/secrets.sh renew-signing)",
 "Bash(gh workflow run operator.yml *)",
 "Bash(gh workflow run takedown-check.yml *)",
 "Bash(gh workflow run appstore-submit.yml *)"

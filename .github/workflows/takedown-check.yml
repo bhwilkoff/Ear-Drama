@@ -4,7 +4,8 @@ name: Takedown check
 # applies what the rule decides (catalog/DECISIONS.md 029). The log is public:
 # catalog/tools/takedown_cases.py prints case numbers, served catalog keys and
 # fixed reasons only, and catalog/tests/test_takedown_check.py proves it with
-# planted data. Needs the repository secret TAKEDOWN_TOKEN.
+# planted data. No stored key: the job's GitHub OIDC token (id-token: write) is
+# what the Worker lets in, and only for this file on main (worker/src/github-oidc.js).
 
 on:
   schedule:
@@ -23,13 +24,13 @@ permissions:
   contents: write
   issues: write
   actions: write
+  id-token: write
 
 jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      TAKEDOWN_TOKEN: ${{ secrets.TAKEDOWN_TOKEN }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
