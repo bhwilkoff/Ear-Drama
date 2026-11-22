@@ -387,7 +387,7 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    of the same name, each with the same preview of the part's own first line; then
    **Delete downloaded voices (107 MB)**; then the attribution the licenses ask for
    ("Kokoro-82M by hexgrad, Apache-2.0. Trained in part on Koniwa (CC BY 3.0) and SIWIS
-   (CC BY 4.0)."). Since Decision 086 the download lives in Settings > Voices (rule 11) and
+   (CC BY 4.0)."). Since Decision 086 the download lives in Library > Voices (rule 11) and
    the picker lists the voices once here; the picker's download button is gone. Kokoro voices
    lead the Default pool where the platform's gate passes. *Replaced* 2026-11-22: "Auto-cast
    never casts a Kokoro voice (downloading recasts nothing); a Kokoro voice is a person's
@@ -399,9 +399,8 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    phonemized on the device. After Delete a part cast to a Kokoro voice falls back
    visibly (rule 8) and its choice returns with the download. A Kokoro render is held in
    memory, played once, and refused by every writer (§5).
-11. **The voice defaults live in Settings** (Decision 086; owner, 2026-11-22: "I thought we started allowing for multiple different voices to be downloaded/used with the recordings. It seems like everything is still using super robotic voices that no realistic person would want to use to listen to a play (or having other characters reading the lines as you record your own). Can we make it easier to use the high-fidelity voices and how to implement them as a default from the settings tab vs from the individual play that you are casting?").
-   Each platform's Settings (web: Library's Settings row, WEB-DESIGN §4.11a; the apps: see
-   `docs/research/design/VOICES-PORT-BRIEF.md`) has a **Voices** section: the Kokoro download
+11. **The voice defaults live in Library, in a Voices section** (Decision 086, amended 2026-11-22; owner, 2026-11-22: "I thought we started allowing for multiple different voices to be downloaded/used with the recordings. It seems like everything is still using super robotic voices that no realistic person would want to use to listen to a play (or having other characters reading the lines as you record your own). Can we make it easier to use the high-fidelity voices and how to implement them as a default from the settings tab vs from the individual play that you are casting?").
+   Amendment, owner 2026-11-22: *"I was talking about the fact that the "library" page shows the "settings" of the app, even without calling it a settings page. I don't think we need a settings page, but we should continue to iterate upon the library page to make it serve all of the given purposes we need."* No platform gets a Settings page or scene for this; Library is the settings home and Voices is a section of it (web: WEB-DESIGN §4.11a; the apps: `docs/research/design/VOICES-PORT-BRIEF.md`, whose Settings row and scene are superseded by a Voices section in Library, and whose "no Settings" rules in the iOS, macOS and Android design docs therefore stand). Each platform's Library has a **Voices** section: the Kokoro download
    (rule 10's words: size, progress, Cancel, Delete, attribution; where the platform cannot
    run them, one refusal), a default **Speed**, and the voices in the **Default order**:
    downloaded (Kokoro, best grade first) before the device's own (best quality first), each
@@ -411,7 +410,7 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    Auto-cast (rule 4) runs over it at the default speed. A Kokoro part's line Kokoro cannot
    read is read by the part's Default among the device's own voices. Kept on the device
    only, never synced. Where the voices are not downloaded but could be, the cast sheet and
-   the reader's Voices carry one quiet **Better voices** that opens Settings > Voices.
+   the reader's Voices carry one quiet **Better voices** that opens Library at Voices.
 
 
 ### §2.9 The studio inside the reader (Decision 076, phase S3; binding on every platform that records)

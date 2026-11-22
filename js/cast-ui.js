@@ -151,7 +151,7 @@ const CastUI = (() => {
         hearBtn);
     }
 
-    // The downloaded voices (Decision 086): listed once here; Settings > Voices downloads them.
+    // The downloaded voices (Decision 086): listed once here; Library > Voices downloads them.
     const dlHead = el('h3', { class: 'caption vc-group', hidden: true }, 'Downloaded');
     const dlList = el('ul', { class: 'vc-list', role: 'radiogroup', 'aria-label': `Downloaded voices for ${title}`, hidden: true });
     function paintDownloaded(kv) {
@@ -227,12 +227,12 @@ const CastUI = (() => {
 
   /**
    * The one quiet offer while the high-fidelity voices are not downloaded (Decision 086): "Better
-   * voices", opening Settings > Voices. Nothing where this browser cannot run them or they are here.
+   * voices", opening Library at Voices. Nothing where this browser cannot run them or they are here.
    */
   function offer() {
     const h = hifi();
     if (!h || typeof VoiceSettings === 'undefined' || !h.offered()) return null;
-    return el('button', { type: 'button', class: 'btn btn-ghost vc-better', onclick: () => VoiceSettings.open() }, 'Better voices');
+    return el('button', { type: 'button', class: 'btn btn-ghost vc-better', onclick: (e) => { const dlg = e.currentTarget.closest('dialog'); if (dlg) dlg.close(); VoiceSettings.open(); } }, 'Better voices');
   }
 
   /** One caster per production (seeded from its play's cast) or per play (the reader). */
@@ -243,7 +243,7 @@ const CastUI = (() => {
       key: production ? V.productionKey(production) : V.scriptKey(script.id),
       seed: production ? V.scriptKey(script.id) : null,
       parts: C.castParts(script),
-      // Every voice on this device; the defaults (Settings > Voices) order the Default pool, downloaded first.
+      // Every voice on this device; the defaults (Library > Voices) order the Default pool, downloaded first.
       voices: () => { const h = hifi(); return [...(h ? h.voices() : []), ...StandInVoice.voices()]; },
     });
   }

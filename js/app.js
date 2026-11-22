@@ -11,7 +11,7 @@
  *   ?series={key}&season={1948-49|undated}       a series page
  *   ?item={episode id}                episode Detail
  *   ?view=search&q=                   Search
- *   ?view=library&tab=continue|queue|following|history|dramas    Library (this device)
+ *   ?view=library&tab=continue|queue|following|history|dramas&section=voices    Library (this device; Voices is its last section)
  *   ?play={script id}, ?production={id}, ?production={id}&part={part id}
  *                                     an ear drama (js/plays-ui.js; this browser only)
  * Older names are rewritten in place: listen, series, radio; plays and browse&kind=plays open Record.
@@ -85,7 +85,6 @@
     find: 'M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z',
     mic: 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1a7 7 0 0 0 6-6.9z',
     shuffle: 'M10.6 9.2 5.4 4 4 5.4l5.2 5.2zM14.5 4l2 2L4 18.6 5.4 20 18 7.5l2 2V4zm.3 9.4-1.4 1.4 3.1 3.1-2 2H20v-5.5l-2 2z',
-    settings: 'M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4L10.7 6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.3 2.6h4l.3-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z',
   };
   function icon(name) {
     const ns = 'http://www.w3.org/2000/svg';
@@ -581,6 +580,7 @@
     if (r.view !== 'reader' && r.view !== 'readroom') Reader.close();
     if (r.view !== 'readroom') ReadUI.pause();
     if (r.view !== 'class') ClassUI.leave();
+    if (r.view !== 'library') VoiceSettings.leave();
     VIEWS.forEach(v => { $(`view-${v}`).hidden = v !== r.view; });
     const tab = TAB_OF[r.view];
     document.querySelectorAll('[data-nav]').forEach(a => {
@@ -2509,10 +2509,13 @@
     setTitle('Library');
     AccountUI.paintRow($('account-row'));
     TogetherUI.paintRow($('together-row'));
-    // Settings (Decision 086; WEB-DESIGN §4.11a): one row, a sheet; today it holds Voices.
-    $('settings-row').replaceChildren(el('button', { type: 'button', class: 'btn btn-ghost account-open', onclick: () => VoiceSettings.open() },
-      icon('settings'), 'Settings'));
     paintExportRow($('export-row'));
+    // Voices (Decision 086; WEB-DESIGN §4.11a): a section of Library, below the account rows.
+    VoiceSettings.mount($('voices'));
+    if (r.p.get('section') === 'voices') requestAnimationFrame(() => {
+      $('voices').scrollIntoView();
+      $('voices-h').focus({ preventScroll: true });
+    });
     const tab = LIBRARY_TABS.includes(r.p.get('tab')) ? r.p.get('tab') : 'continue';
     document.querySelectorAll('#library-tabs [data-lib]').forEach(b =>
       b.setAttribute('aria-pressed', String(b.dataset.lib === tab)));
@@ -2846,25 +2849,21 @@
   const doorSeconds = Number(params.get('door_seconds'));
   if (doorSeconds > 0) setTimeout(() => navigate('?view=home'), doorSeconds * 1000);
   /* The high-fidelity voices (Decision 086): the Kokoro engine loads only when its model is already
-     downloaded (or when the person downloads it in Settings > Voices); ?kokoro=0 switches it off in this
+     downloaded (or when the person downloads it in Library > Voices); ?kokoro=0 switches it off in this
      browser for testing, ?kokoro=1 back on; ?kokoro_manifest= points it at another model manifest. */
   Voices.shared({ manifestURL: params.get('kokoro_manifest') || undefined, muted: params.get('mute') === '1' })
     .start().catch(e => console.error('kokoro voices', e));
   VoiceSettings.configure({
     muted: params.get('mute') === '1',
-    // A Hear in Settings reads a line of today's scene (the play's own words, with published phonemes).
+    go: () => navigate('?view=library&section=voices'),
+    // A Hear in Voices reads a line of today's scene (the play's own words, with published phonemes).
     sample: async () => {
       const sc = await loadScene();
       const script = sc && sc.whole;
       const line = script && Array.isArray(script.lines) ? script.lines.find(l => l.kind === 'speech' && PlaysCore.spokenText(l).trim()) : null;
       return line ? { text: PlaysCore.spokenText(line), script } : null;
     },
-    onClose: () => {
-      const u = new URL(location.href);
-      if (u.searchParams.has('settings')) { u.searchParams.delete('settings'); history.replaceState(history.state, '', u); }
-    },
   });
-  if (params.get('settings') === 'voices') VoiceSettings.open();
   /* Offline (WEB-DESIGN §7.3): a status line while the browser reports no network; what was
      opened before still opens from the service worker's copies. */
   const paintOnline = () => { $('offline-note').hidden = !API.offlineLine(); };

@@ -358,6 +358,7 @@ web app follows today.
   390 and 430 px and fails on a wrapped button, a sideways scroll, an overflowing tile name, a full
   section that drew nothing or an empty one with no caption. The tab strip scrolls inside itself
   (`.segmented-scroll`) when five labels do not fit.
+  Library's foot holds the rare jobs, in order: the account row, Listen together, Export, and **Voices** (§4.11a, Decision 086; no Settings page exists).
 - **§4.9 Stations** (was Radio, Decision 068: *"collections of ear dramas
   should be stations"*) = the stations row, then Tonight's schedule.
   **The stations row** (R10, contract §8) lists Tonight in 19xx first, then
@@ -475,7 +476,7 @@ web app follows today.
     "This browser has no voice on this device." **Recast all** (every part
     back to its Default) sits with Discard unused takes and Delete production,
     and, while this browser can run Kokoro voices and they are not here, one
-    quiet **Better voices** (a ghost button opening Settings > Voices, §4.11a);
+    quiet **Better voices** (a ghost button opening Library at Voices, §4.11a);
     the reader's and the studio's Voices list carry the same one offer. The cast lives in this
     browser only (`localStorage` `ed.cast`, keyed `p:<production>` and, for
     the reader, `s:<script>`; newest 80 kept; only the person's choices are
@@ -1217,15 +1218,19 @@ web app follows today.
   Delete an account (§4.11).
   They are never featured in the main UI (AGENTS.md "side doors").
 
-- **§4.11a Settings lives in one row of Library** (Decision 086; owner,
-  2026-11-22: *"how to implement them as a default from the settings tab vs
-  from the individual play that you are casting?"*). Like the account (§4.11),
-  settings are a rare job: no tab, no route of its own. One row in Library's
-  footer group, under Listen together: **Settings** (a gear icon, a ghost
-  button), opening a `<dialog showModal>` (the reader's sheet: full screen on a
-  phone, a 480 px card from 600 px). `?settings=voices` opens it on any view
-  (a deep link and the frames' door) and is cleared from the address on close.
-  Today it holds one section, **Voices**, in this order:
+- **§4.11a Voices are a section of Library** (Decision 086, amended 2026-11-22;
+  owner, 2026-11-22: *"I was talking about the fact that the "library" page shows the "settings" of the app, even without calling it a settings page. I don't think we need a settings page, but we should continue to iterate upon the library page to make it serve all of the given purposes we need."*). There is no Settings
+  page, row, sheet, or route: Library is the app's settings home, and each
+  preference is a section of it. A preference that holds across the whole app
+  is a rare job like the account (§4.11), so it sits at the foot: below the
+  person's own collections (the scope, §4.7), after the account, Listen
+  together and Export rows (`learner-experience-design`: account pages hold
+  rare jobs). Today the one section is **Voices**, an `<h2 id="voices-h">` in
+  `<section id="voices">`, the last part of Library. `?view=library&section=voices`
+  is its deep link (the page scrolls it into view and focuses its heading, like
+  `tab=`); the cast sheet's and reader's **Better voices** close any open
+  dialog and navigate to it. Same three parts as before, in the page rather
+  than a dialog, in this order:
   1. **Kokoro voices** (PLAYS-DESIGN §2.8 rules 10 and 11): **Download (… MB)**,
      the size summed from the manifest before anything else loads, an ink
      primary button; never started for the person. While downloading: a

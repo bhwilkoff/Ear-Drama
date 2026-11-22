@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fit gate and frames for Settings > Voices and the cast's Defaults (Decision 086; WEB-DESIGN 4.11a; PLAYS-DESIGN 2.8
+"""Fit gate and frames for Library > Voices and the cast's Defaults (Decision 086; WEB-DESIGN 4.11a; PLAYS-DESIGN 2.8
 rule 11), light and dark, at 375 and 1440 px, in headless Chrome over the DevTools protocol (tools/web_run.py).
 
 Nothing is spoken and no model is fetched: before the page loads, `speechSynthesis` is a stub with a fixed voice list
@@ -8,7 +8,7 @@ stub; in the downloading state the model's bytes are a stream that stops partway
 answers for the model and the self-test result is preset. The state comes from the URL's #fit= so one injected script
 serves them all.
 
-Frames (with --shots DIR): Settings > Voices not downloaded, downloading, downloaded, and unsupported; the cast sheet
+Frames (with --shots DIR): Library, scrolled to its Voices section, not downloaded, downloading, downloaded, and unsupported; the cast sheet
 with its Default chips and the "Better voices" offer (not downloaded), and with the Kokoro Defaults (downloaded).
 
 Fails on a sideways scroll, a sheet wider than the screen, a Download button without the manifest's size, no progress
@@ -161,23 +161,27 @@ def main():
                 cdp.call('Page.navigate', {'url': url}, timeout=30)
                 time.sleep(0.5)
 
-            sheet = "document.querySelector('dialog.vs-sheet[open]')"
-            fits = ("(() => { const d = document.querySelector('dialog.vs-sheet[open]'); const r = d.getBoundingClientRect();"
+            sheet = "document.querySelector('#view-library:not([hidden]) #voices')"
+            fits = ("(() => { const d = document.querySelector('#voices'); const r = d.getBoundingClientRect();"
                     " return r.right <= innerWidth + 1 && d.scrollWidth <= d.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth; })()")
+            lib = f'{base}?view=library&section=voices&mute=1'
+            no_settings = "!document.querySelector('#settings-row') && ![...document.querySelectorAll('#view-library button, #view-library a, dialog')].some(b => /^Settings$/.test(b.textContent.trim()))"
             engine = "window.__scripts.some(s => /kokoro-(model|voice)\\.js/.test(s))"
 
-            # 1. Not downloaded: from Library's Settings row; the size from the manifest; device voices only.
-            go(f'{base}?view=library&mute=1#fit=absent')
-            if not wait("[...document.querySelectorAll('#settings-row button')].some(b => /Settings/.test(b.textContent))", "Library's Settings row"): return
-            ev("document.querySelector('#settings-row button').click()")
-            if not wait(f"{sheet} && document.querySelector('.vs-hifi[data-state=absent] .vs-get')", 'Settings > Voices, not downloaded'): return
+            # 1. Not downloaded: Library's Voices section, reached by its deep link; no Settings page or row anywhere.
+            go(f'{lib}#fit=absent')
+            if not wait(f"{sheet} && document.querySelector('.vs-hifi[data-state=absent] .vs-get')", 'Library > Voices, not downloaded'): return
+            if not ev(no_settings): bad('Library still offers a Settings row or sheet')
+            if ev("document.querySelector('#voices').getBoundingClientRect().top") > ev("innerHeight") * 0.5: bad('the section link did not scroll Voices into view')
+            tail = ev("[...document.querySelectorAll('#view-library .library-account > *')].map(n => n.id)")
+            if tail[-1] != 'voices': bad(f'Voices is not the last part of Library: {tail}')
             label = ev("document.querySelector('.vs-get').textContent")
             if label != 'Download (340 MB)': bad(f'the Download button reads {label!r}, want the manifest size')
             if ev("document.querySelectorAll('.vs-row[data-voice^=kokoro]').length"): bad('Kokoro voices listed before the download')
             rows = ev("document.querySelectorAll('.vs-row').length")
             if rows != 6: bad(f'{rows} device voice rows, want the 6 local English ones')
             if ev(engine): bad('the engine scripts loaded while the model is absent')
-            if not ev(fits): bad('Settings is wider than the screen (not downloaded)')
+            if not ev(fits): bad('Voices is wider than the screen (not downloaded)')
             first = ev("document.querySelector('.vs-row .vc-name').textContent")
             if first != 'Ava (Premium)': bad(f'the best device voice is not first: {first!r}')
             shot('absent')
@@ -191,29 +195,27 @@ def main():
             time.sleep(0.3)
             sp = json.loads(ev("JSON.stringify(window.__spoken)") or '[]')
             if not sp or sp[0]['volume'] != 0: bad(f'a Hear under ?mute=1 was not muted: {sp[:1]}')
-            ev(f"{sheet}.close()")
 
             # 2. Downloading: Download pressed; the stream stops partway.
-            go(f'{base}?settings=voices&mute=1#fit=absent')
+            go(f'{lib}#fit=absent')
             if not wait("document.querySelector('.vs-hifi[data-state=absent] .vs-get:not([disabled])')", 'the Download button'): return
             ev("document.querySelector('.vs-get').click()")
             if not wait("document.querySelector('.vs-hifi[data-state=downloading] progress') && Number(document.querySelector('.vs-progress').value) > 50e6", 'download progress'): return
             prog = ev("document.querySelector('.vs-hifi .tabular').textContent")
             if not prog or not prog.endswith('of 340 MB'): bad(f'the progress reads {prog!r}')
-            if not ev(fits): bad('Settings is wider than the screen (downloading)')
+            if not ev(fits): bad('Voices is wider than the screen (downloading)')
             shot('downloading')
 
             # 3. Downloaded: Kokoro first, attribution, Delete with the size; the device's voices folded.
-            go(f'{base}?settings=voices&mute=1#fit=ready')
-            if not wait("document.querySelector('.vs-hifi[data-state=ready]') && document.querySelectorAll('.vs-row[data-voice^=kokoro]').length", 'Settings > Voices, downloaded'): return
+            go(f'{lib}#fit=ready')
+            if not wait("document.querySelector('.vs-hifi[data-state=ready]') && document.querySelectorAll('.vs-row[data-voice^=kokoro]').length", 'Library > Voices, downloaded'): return
             k = ev("document.querySelectorAll('.vs-row[data-voice^=kokoro]').length")
             if k != 28: bad(f'{k} Kokoro rows, want 28')
             if ev("document.querySelector('.vs-row .vc-name').textContent") != 'Heart (Kokoro)': bad('Heart (Kokoro) is not first')
             if 'Apache-2.0' not in (ev("(document.querySelector('.vs-credit') || {}).textContent") or ''): bad('no attribution under the voices')
             if ev("document.querySelector('.vs-delete').textContent") != 'Delete (340 MB)': bad('Delete does not name the size')
-            if not ev(fits): bad('Settings is wider than the screen (downloaded)')
+            if not ev(fits): bad('Voices is wider than the screen (downloaded)')
             shot('ready')
-            ev(f"{sheet}.close()")
 
             # 4. The cast sheet with the Kokoro Defaults.
             go(f'{base}?play={script["id"]}&mute=1#fit=ready')
@@ -242,11 +244,10 @@ def main():
             if ev(engine): bad('the engine scripts loaded on the cast sheet while the model is absent')
             shot('cast-absent')
             ev("document.querySelector('.vc-better').click()")
-            if not wait(sheet, 'Better voices opening Settings > Voices'): return
-            ev(f"{sheet}.close()")
+            if not wait(f"{sheet} && !document.querySelector('dialog[open]') && location.search.includes('section=voices')", 'Better voices opening Library at Voices'): return
 
             # 6. Unsupported: no WebGPU.
-            go(f'{base}?settings=voices&mute=1#fit=unsupported')
+            go(f'{lib}#fit=unsupported')
             if not wait("document.querySelector('.vs-hifi[data-state=unsupported] .refusal')", 'the refusal without WebGPU'): return
             ref = ev("document.querySelector('.vs-hifi .refusal').textContent")
             if ref != 'This browser can’t run Kokoro voices.': bad(f'the refusal reads {ref!r}')

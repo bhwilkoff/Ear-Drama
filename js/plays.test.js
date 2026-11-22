@@ -707,7 +707,7 @@ function writeViolations(file, source) {
   if (file === 'kokoro-model.js' && /AudioContext|AudioBuffer|createBufferSource|speechSynthesis|PlayStore/.test(source)) {
     out.push(`${file}: has an audio path`);
   }
-  // The voices' gate and Settings > Voices (Decision 086): a download and defaults, never a sound kept.
+  // The voices' gate and Library > Voices (Decision 086): a download and defaults, never a sound kept.
   if ((file === 'voices.js' || file === 'voice-settings.js')
       && /AudioContext|AudioBuffer|createBufferSource|\bBlob\b|createObjectURL|PlayStore|indexedDB|\.put\s*\(/.test(source)) {
     out.push(`${file}: has an audio path`);
@@ -735,7 +735,7 @@ test('only the store writes play audio, and the device voice has no audio path',
   eq(writeViolations('kokoro-voice.js', 'URL.createObjectURL(new Blob([s]))').length, 1, 'control: a Blob of Kokoro audio is caught');
   eq(writeViolations('kokoro-model.js', 'new AudioContext()').length, 1, 'control: an audio path in the model file is caught');
   eq(writeViolations('voices.js', 'cache.put(u, new Response(new Blob([s])))').length, 1, 'control: a kept sound in the voices gate is caught');
-  eq(writeViolations('voice-settings.js', 'new AudioContext()').length, 1, 'control: an audio path in Settings > Voices is caught');
+  eq(writeViolations('voice-settings.js', 'new AudioContext()').length, 1, 'control: an audio path in Library > Voices is caught');
 });
 
 test('the device voice offers only local English voices and is silent when muted', async () => {
