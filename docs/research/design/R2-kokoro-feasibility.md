@@ -6,7 +6,7 @@ estimating them. It covers licenses, pronunciation without eSpeak, runtime and s
 platform, and where the model lives. It also built a web prototype behind a flag. The
 recommendation and the build plan follow from the measurements.
 
-Nothing here ships to users. The web prototype loads only with `?kokoro=1`.
+Nothing here ships to users. The web prototype loads only with `?kokoro=1`. *(Updated 2026-11-22, Decision 086: the flag is gone; the web offers Kokoro in Settings > Voices where WebGPU works, loading the engine only on download.)*
 
 Rules this is held to (not restated below): a synthetic voice is a live stand-in, never
 stored (PLAYS-DESIGN §5, Decision 055); the casting unit is §2.8's

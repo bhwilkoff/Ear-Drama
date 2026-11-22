@@ -1,7 +1,7 @@
 /**
  * The downloadable voice model's files (Decision 076 S6 spike; docs/research/design/R2-kokoro-feasibility.md).
- * PROTOTYPE, behind a flag: nothing here runs unless the page was opened with ?kokoro=1 (kept in
- * this browser until ?kokoro=0). Not in the service worker's shell, not shown to anyone else.
+ * Loaded on demand by js/voices.js (Decision 086): only when the person downloads the voices in
+ * Settings > Voices, or when they are already downloaded; never in the service worker's shell.
  *
  * The model is data, like the play library: fetched only when the person asks (the size shown
  * first), each file checked against the SHA-256 its manifest records, kept in Cache Storage,
@@ -15,21 +15,9 @@
 const KokoroModel = (() => {
   'use strict';
 
-  const FLAG = 'ed.kokoro';
   const CACHE = 'ed-kokoro-v1';
   const LICENSES = ['Apache-2.0', 'MIT', 'BSD-2-Clause', 'BSD-3-Clause'];
   const DEFAULT_MANIFEST = 'data/kokoro/manifest.json';
-
-  /** Whether the prototype is on in this browser: ?kokoro=1 turns it on, ?kokoro=0 off. */
-  function enabled(search = (typeof location !== 'undefined' ? location.search : ''), storage = store()) {
-    const q = new URLSearchParams(search || '').get('kokoro');
-    try {
-      if (q === '1' && storage) storage.setItem(FLAG, '1');
-      if (q === '0' && storage) storage.removeItem(FLAG);
-      return !!(storage && storage.getItem(FLAG) === '1');
-    } catch { return q === '1'; }
-  }
-  function store() { try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch { return null; } }
 
   /**
    * A manifest is accepted only when every file names a size, a SHA-256 and a license on the
@@ -109,7 +97,7 @@ const KokoroModel = (() => {
       },
       isReady: () => ready,
       /** The person's explicit download: each file fetched, checked against its SHA-256, kept. */
-      async download(onProgress = () => {}) {
+      async download(onProgress = () => {}, signal = null) {
         const m = await loadManifest();
         const c = await cachesImpl.open(CACHE);
         const total = totalBytes(m);
@@ -117,11 +105,13 @@ const KokoroModel = (() => {
         for (const f of m.files) {
           for (const p of piecesOf(f)) {
             if (await c.match(urlOf(p))) { done += p.bytes; onProgress(done, total); continue; }
-            const r = await fetchImpl(urlOf(p));
+            // Cancel stops at once; every part already checked stays, so Download again resumes there.
+            const r = await fetchImpl(urlOf(p), signal ? { signal } : undefined);
             if (!r.ok || !r.body) throw new Error(`${p.path}: ${r.status}`);
             const reader = r.body.getReader();
             const chunks = [];
             for (;;) {
+              if (signal && signal.aborted) { try { await reader.cancel(); } catch { /* already closed */ } throw new DOMException('cancelled', 'AbortError'); }
               const { value, done: end } = await reader.read();
               if (end) break;
               chunks.push(value);
@@ -155,5 +145,5 @@ const KokoroModel = (() => {
     };
   }
 
-  return { FLAG, CACHE, LICENSES, enabled, accept, totalBytes, sizeText, create };
+  return { CACHE, LICENSES, accept, totalBytes, sizeText, create };
 })();

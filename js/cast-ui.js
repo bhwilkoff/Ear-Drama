@@ -63,7 +63,8 @@ const CastUI = (() => {
     b.paint = () => {
       const d = describe(cast, part);
       // Two parts on one voice differ by pitch (auto-cast's second round), so the chip says it.
-      const tune = d.r.read ? [d.r.rate !== 1 ? speedText(d.r.rate) : null, d.r.pitch !== 1 ? `pitch ${pitchText(d.r.pitch)}` : null].filter(Boolean).join(', ') : '';
+      const tune = [d.r.isDefault && !d.r.none ? 'Default' : null,
+        ...(d.r.read ? [d.r.rate !== 1 ? speedText(d.r.rate) : null, d.r.pitch !== 1 ? `pitch ${pitchText(d.r.pitch)}` : null] : [])].filter(Boolean).join(', ');
       b.replaceChildren(...[d.warn ? svg('warn', 'vc-warn') : null, el('span', { class: 'vc-chip-name' }, d.text),
         tune ? el('span', { class: 'vc-chip-tune' }, tune) : null, svg('more', 'vc-more')].filter(Boolean));
       b.setAttribute('aria-label', `Voice for ${C.partTitle(part)}: ${d.label}${tune ? `, ${tune}` : ''}`);
@@ -100,12 +101,18 @@ const CastUI = (() => {
     const speaking = C.isSpeaking(part);
     const text = firstLine(script, part);
     const warn = el('p', { class: 'pl-warn vc-missing', role: 'alert', hidden: true });
-    const list = el('ul', { class: 'vc-list', role: 'radiogroup', 'aria-label': `Voice for ${title}` });
+    const top = el('ul', { class: 'vc-list vc-top', role: 'radiogroup', 'aria-label': `Voice for ${title}` });
+    const list = el('ul', { class: 'vc-list', role: 'radiogroup', 'aria-label': `Voices on this device for ${title}` });
     const none = el('p', { class: 'caption refusal', hidden: true }, 'This browser has no voice on this device.');
     const more = el('p', { class: 'caption vc-more-voices' }, 'Your system’s speech settings add voices.');
     const group = el('h3', { class: 'caption vc-group' }, 'On this device');
     let hearing = null;
     const entry = () => cast.entry(part) || V.NOT_READ;
+    /** The voice the part's Default reads (shown beside Default while another voice is chosen). */
+    const defaultName = () => {
+      const a = cast.defaultEntry(part);
+      return !a || a.engine === 'none' ? 'Not read' : a.name;
+    };
     const reading = () => entry().engine !== 'none';
     const speed = stepper('Speed', V.RATE, () => entry().rate, (rate) => { cast.set(part, { rate }); changed(); }, speedText);
     const pitch = stepper('Pitch', V.PITCH, () => entry().pitch, (p) => { cast.set(part, { pitch: p }); changed(); }, pitchText);
@@ -132,7 +139,8 @@ const CastUI = (() => {
       const input = el('input', { type: 'radio', name: `vc-${part}`, value });
       input.addEventListener('change', () => {
         if (!input.checked) return;
-        if (v) cast.set(part, { engine: v.engine, voice: v.id, name: v.name });
+        if (value === 'default') cast.reset(part);
+        else if (v) cast.set(part, { engine: v.engine, voice: v.id, name: v.name });
         else cast.set(part, { engine: 'none' });
         changed();
       });
@@ -143,31 +151,12 @@ const CastUI = (() => {
         hearBtn);
     }
 
-    // The downloadable voices (Decision 076 S6 PROTOTYPE): shown only with ?kokoro=1.
+    // The downloaded voices (Decision 086): listed once here; Settings > Voices downloads them.
     const dlHead = el('h3', { class: 'caption vc-group', hidden: true }, 'Downloaded');
     const dlList = el('ul', { class: 'vc-list', role: 'radiogroup', 'aria-label': `Downloaded voices for ${title}`, hidden: true });
-    const dlGet = el('div', { class: 'vc-download', hidden: true });
     function paintDownloaded(kv) {
-      const on = typeof KokoroModel !== 'undefined' && typeof KokoroVoice !== 'undefined' && KokoroModel.enabled() && KokoroVoice.model();
-      dlHead.hidden = !on;
-      dlList.hidden = !on || !kv.length;
-      dlGet.hidden = !on || kv.length > 0;
-      if (!on) return;
+      dlHead.hidden = dlList.hidden = !kv.length;
       dlList.replaceChildren(...kv.map(v => row(v.id, v.name, v.lang, v)));
-      const m = KokoroVoice.model();
-      if (!kv.length && !dlGet.firstChild) {
-        const btn = el('button', { type: 'button', class: 'btn' }, 'Download voices');
-        const note = el('span', { class: 'caption tabular' });
-        m.loadManifest().then(man => { btn.textContent = `Download voices (${KokoroModel.sizeText(KokoroModel.totalBytes(man))})`; })
-          .catch(() => { btn.disabled = true; note.textContent = 'Not available.'; });
-        btn.addEventListener('click', () => {
-          btn.disabled = true;
-          m.download((done, total) => { note.textContent = `${Math.floor((100 * done) / total)}%`; })
-            .then(() => { dlGet.replaceChildren(); paint(); })
-            .catch(() => { btn.disabled = false; note.textContent = 'The download failed.'; });
-        });
-        dlGet.append(btn, note);
-      }
     }
 
     function paint() {
@@ -178,14 +167,13 @@ const CastUI = (() => {
       none.hidden = voices.length > 0;
       group.hidden = list.hidden = more.hidden = !voices.length;
       const e = entry();
-      const current = e.engine === 'none' ? 'none' : (d.r.voice ? d.r.voice.id : e.voice);
-      const rows = [];
-      if (!speaking) rows.push(row('none', 'Not read', null, null));
-      for (const v of voices) if (v.engine !== 'kokoro') rows.push(row(v.id, v.name, v.lang, v));
+      const current = d.r.isDefault ? 'default' : e.engine === 'none' ? 'none' : (d.r.voice ? d.r.voice.id : e.voice);
       stopHearing();
-      list.replaceChildren(...rows);
+      top.replaceChildren(row('default', 'Default', d.r.isDefault ? (d.r.read ? d.r.voice.name : 'Not read') : defaultName(), null),
+        ...(speaking ? [] : [row('none', 'Not read', null, null)]));
+      list.replaceChildren(...voices.filter(v => v.engine !== 'kokoro').map(v => row(v.id, v.name, v.lang, v)));
       paintDownloaded(voices.filter(v => v.engine === 'kokoro'));
-      for (const i of list.querySelectorAll('input')) i.checked = i.value === current;
+      for (const i of [top, dlList, list].flatMap(u => [...u.querySelectorAll('input')])) i.checked = i.value === current;
       speed.paint(reading() && voices.length > 0);
       pitch.paint(reading() && voices.length > 0);
     }
@@ -194,14 +182,14 @@ const CastUI = (() => {
     const d = el('dialog', { class: 'rd-sheet vc-sheet', 'aria-label': `Voice for ${title}` },
       el('div', { class: 'rd-sheet-head' }, el('h2', { class: 'section-header' }, title),
         el('button', { type: 'button', class: 'icon-btn rd-icon', 'aria-label': 'Close', onclick: () => d.close() }, svg('close'))),
-      warn, el('div', { class: 'vc-steps' }, speed, pitch), group, list, none, more, dlHead, dlList, dlGet);
+      warn, el('div', { class: 'vc-steps' }, speed, pitch), top, dlHead, dlList, group, list, none, more);
     d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
     const off = StandInVoice.onVoices(paint);
     d.addEventListener('close', () => { off(); voice.cancel(); d.remove(); });
     paint();
     document.body.append(d);
     d.showModal();
-    const checked = list.querySelector('input:checked');
+    const checked = d.querySelector('input:checked');
     if (checked) checked.focus();
     return d;
   }
@@ -227,11 +215,24 @@ const CastUI = (() => {
     }
     draw();
     const recast = el('button', { type: 'button', class: 'btn', onclick: () => { cast.recast(); paint(); onChange(); } }, 'Recast all');
-    const box = el('div', { class: 'vc-cast' }, ul, el('div', { class: 'actions' }, recast));
+    const box = el('div', { class: 'vc-cast' }, ul, el('div', { class: 'actions' }, recast, offer()));
     function paint() { chips.forEach(c => c.paint()); }
     box.paint = paint;
     box.setNames = (m) => { names = m || {}; draw(); };
     return box;
+  }
+
+  /** The page's high-fidelity voices (js/voices.js), or null on a page without them. */
+  const hifi = () => (typeof Voices !== 'undefined' ? Voices.shared() : null);
+
+  /**
+   * The one quiet offer while the high-fidelity voices are not downloaded (Decision 086): "Better
+   * voices", opening Settings > Voices. Nothing where this browser cannot run them or they are here.
+   */
+  function offer() {
+    const h = hifi();
+    if (!h || typeof VoiceSettings === 'undefined' || !h.offered()) return null;
+    return el('button', { type: 'button', class: 'btn btn-ghost vc-better', onclick: () => VoiceSettings.open() }, 'Better voices');
   }
 
   /** One caster per production (seeded from its play's cast) or per play (the reader). */
@@ -242,10 +243,10 @@ const CastUI = (() => {
       key: production ? V.productionKey(production) : V.scriptKey(script.id),
       seed: production ? V.scriptKey(script.id) : null,
       parts: C.castParts(script),
-      // Downloaded voices first (the person fetched them to use them): auto-cast and Recast all prefer them.
-      voices: () => [...(kokoro ? kokoro.voices() : []), ...StandInVoice.voices()],
+      // Every voice on this device; the defaults (Settings > Voices) order the Default pool, downloaded first.
+      voices: () => { const h = hifi(); return [...(h ? h.voices() : []), ...StandInVoice.voices()]; },
     });
   }
 
-  return { chip, picker, list, castFor, describe, firstLine };
+  return { chip, picker, list, castFor, describe, firstLine, offer, stepper, speedText, svg, el };
 })();

@@ -451,26 +451,35 @@ web app follows today.
     until given a voice, then any speed or pitch off normal, muted ("1.2×,
     pitch −1": auto-cast's second round on a voice is pitched, and the chip
     says so), and the warning glyph before the name when the cast voice is
-    not in this browser and the auto-cast one reads instead.
+    not in this browser and the auto-cast one reads instead. A part nobody
+    cast reads its **Default** (Decision 086, §4.11a) and its chip says
+    "Default" after the name, wrapping under it in a narrow card.
     A held part shows its performer as before. The chip opens the **voice
     picker**, a `<dialog>` (full screen on a phone, a card from 600 px, the
     reader's sheet): the part's name; the missing-voice warning when there
     is one ("Ava is not in this browser."); **Speed** and **Pitch**, each a
     − value + stepper (speed 0.5× to 2× by 0.1, pitch −5 to +5 steps of
-    0.1); then **On this device**, the browser's local English voices
+    0.1); then **Default** (a radio naming the voice the Default reads now;
+    choosing it drops the part's choice), and for directions and sound "Not
+    read"; then **Downloaded**, the Kokoro voices once here (Decision 086 puts
+    them above the device's, as the Default pool does); then **On this device**,
+    the browser's local English voices
     (`localService`; never an online voice) best first: names carrying
     Premium, then Enhanced, Natural or Neural, then the person's own
-    language, the default, the name (`VoiceCast.systemVoices`); for
-    directions and sound a "Not read" row first. Each row is a radio (the
+    language, the default, the name (`VoiceCast.systemVoices`). Each row is a radio (the
     voice's name, its language code beside it as a caption) and a Hear
     button that reads **this part's first line** in that voice, live and
     unrecorded (`StandInVoice.speakAs`). Choosing is kept at once; there is
     no Save. The list ends with "Your system's speech settings add
     voices." (a fact the page cannot otherwise show). No voice at all:
-    "This browser has no voice on this device." **Recast all** sits with
-    Discard unused takes and Delete production. The cast lives in this
+    "This browser has no voice on this device." **Recast all** (every part
+    back to its Default) sits with Discard unused takes and Delete production,
+    and, while this browser can run Kokoro voices and they are not here, one
+    quiet **Better voices** (a ghost button opening Settings > Voices, §4.11a);
+    the reader's and the studio's Voices list carry the same one offer. The cast lives in this
     browser only (`localStorage` `ed.cast`, keyed `p:<production>` and, for
-    the reader, `s:<script>`; newest 80 kept), is never synced or shared
+    the reader, `s:<script>`; newest 80 kept; only the person's choices are
+    written, never the Defaults), is never synced or shared
     (Q8), and leaves with Delete production. Voices arrive late in Chrome
     (`getVoices()` is empty until `voiceschanged`): chips draw once the list
     lands, and auto-cast waits for a non-empty list. Code:
@@ -1208,8 +1217,48 @@ web app follows today.
   Delete an account (§4.11).
   They are never featured in the main UI (AGENTS.md "side doors").
 
+- **§4.11a Settings lives in one row of Library** (Decision 086; owner,
+  2026-11-22: *"how to implement them as a default from the settings tab vs
+  from the individual play that you are casting?"*). Like the account (§4.11),
+  settings are a rare job: no tab, no route of its own. One row in Library's
+  footer group, under Listen together: **Settings** (a gear icon, a ghost
+  button), opening a `<dialog showModal>` (the reader's sheet: full screen on a
+  phone, a 480 px card from 600 px). `?settings=voices` opens it on any view
+  (a deep link and the frames' door) and is cleared from the address on close.
+  Today it holds one section, **Voices**, in this order:
+  1. **Kokoro voices** (PLAYS-DESIGN §2.8 rules 10 and 11): **Download (… MB)**,
+     the size summed from the manifest before anything else loads, an ink
+     primary button; never started for the person. While downloading: a
+     `<progress>` bar, "116 MB of 340 MB", and Cancel (the parts already
+     checked stay, so Download resumes there). Then "Checking this browser"
+     while the self-test runs. Once here: **Delete (… MB)** and the attribution
+     under it. A failed download: "The download failed." and Try again. Where the
+     browser has no WebGPU adapter, or the self-test refused it, one refusal
+     line, "This browser can't run Kokoro voices." (with Try again and Delete
+     after a refusal); offline, the button is disabled with "Offline".
+  2. **Speed**: the − value + stepper of the picker (§4.10), the speed every
+     part on its Default reads at.
+  3. One caption, a fact the page cannot otherwise show: "Parts you haven't
+     cast take the ticked voices in this order, the largest part first." Then
+     the voices in that order: **Downloaded** (Kokoro, best grade first) and
+     **On this device** (best first, `VoiceCast.systemVoices`), folded in a
+     `<details>` once Kokoro is here. Each row: a Use checkbox, the voice's
+     name with its quality under it (Kokoro's own grade, "Grade A"; a device
+     voice's tier, "Standard", unless its name already says Premium or Enhanced,
+     then its language code), Move up and Move down (within its group), and Hear,
+     which reads the first speech of today's scene (§4.2 item 5: the play's own
+     words, with published phonemes) live and unrecorded, else the voice's name.
+     The list ends with "Your system's speech settings add voices." No voice at
+     all: "This browser has no voice on this device."
+  Every choice is kept at once (`localStorage` `ed.voices`), on this device
+  only, never synced. The Kokoro engine's scripts load only when the person
+  downloads or a finished download is here (`js/voices.js`); `?kokoro=0`
+  switches them off in this browser for testing, `?kokoro=1` back on.
+  `tools/web_fit_voices.py` shoots the four Kokoro states and the cast sheet's
+  Defaults at 375 and 1440 px, light and dark.
+
 - **§4.11 The account lives in one row of Library** (Decision 057, 063;
-  LOOP-PLAN M5). The web has no Settings page, and an account is a rare
+  LOOP-PLAN M5). An account is a rare
   job, so it gets no tab, no route, and no header chrome: one row under
   Library's heading, above the Queue, History, Following scope, and a
   `<dialog showModal>` it opens (full screen on a phone, a 440 px sheet

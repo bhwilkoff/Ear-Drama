@@ -336,8 +336,11 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    parts first spoke in that session (R2 §8 item 1).
 3. **Each device keeps its own cast** (Q8): never synced, never uploaded, never part of a
    shared production. A shared production starts from auto-cast on each device.
-4. **Auto-cast** fills every part once, when the cast is first made on a device with at
-   least one voice: speaking parts in cast order (largest first) take **distinct** voices,
+4. **Auto-cast** is every part's **Default** (Decision 086): worked out at each read over the
+   device's voice defaults (rule 11), never written in as a choice, so a download or a
+   reorder in Settings reaches every part nobody cast. *Replaced* 2026-11-22: "fills every
+   part once, when the cast is first made on a device with at least one voice". Speaking
+   parts in cast order (largest first) take **distinct** voices,
    the best voice first (the platform's quality tier, then the person's own language,
    then the system default, then the name), so the largest part gets the best voice;
    where the platform reports a voice's own gender (Apple `gender`; the web and Android
@@ -345,13 +348,15 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    gender. It **never reads a character's name, a cast list's words, or the script** to
    guess a character's gender (Q7 (a)). When voices run out the list starts again at the
    next pitch (1.0, 0.86, 1.14, 0.93, 1.07), so two parts on one voice can be told apart.
-   "Recast all" runs it again. Golden-tested on every stack: the same voice list gives the
-   same cast, and renaming every part changes nothing.
+   "Recast all" returns every part to its Default. Golden-tested on every stack: the same
+   voice list gives the same cast, and renaming every part changes nothing.
 5. **Every choice is overridable**: a part's voice, speed and pitch, at any time, from the
-   cast sheet (and the reader's Voices sheet), each change kept at once.
+   cast sheet (and the reader's Voices sheet), each change kept at once. The picker's first
+   row is **Default** (naming the voice it reads now); choosing it drops the choice, and a
+   chip on its Default says "Default".
 6. **The picker previews the part's own first line** in the voice tapped (the play's own
    words, never a sample sentence), live, never stored (§5). Only local voices are listed
-   (§5 rule 5), grouped by engine ("On this device"; "Downloaded", rule 10), best
+   (§5 rule 5), grouped by engine ("Downloaded", rule 10, then "On this device"), best
    first, each by the name the platform gives it (which carries its tier: "Ava (Premium)",
    "Samantha (Enhanced)"). A way to add voices is offered where the platform has one
    (Apple: Settings > Accessibility > Spoken Content > Voices; Android: the engine's
@@ -382,8 +387,11 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    of the same name, each with the same preview of the part's own first line; then
    **Delete downloaded voices (107 MB)**; then the attribution the licenses ask for
    ("Kokoro-82M by hexgrad, Apache-2.0. Trained in part on Koniwa (CC BY 3.0) and SIWIS
-   (CC BY 4.0)."). Auto-cast never casts a Kokoro voice (downloading recasts nothing); a
-   Kokoro voice is a person's choice. A line is read by Kokoro only from the play's
+   (CC BY 4.0)."). Since Decision 086 the download lives in Settings > Voices (rule 11) and
+   the picker lists the voices once here; the picker's download button is gone. Kokoro voices
+   lead the Default pool where the platform's gate passes. *Replaced* 2026-11-22: "Auto-cast
+   never casts a Kokoro voice (downloading recasts nothing); a Kokoro voice is a person's
+   choice." A line is read by Kokoro only from the play's
    published phonemes (contract §4.1); a play with none (held for review) says "Not
    available for this play." in place of the voices, and a Kokoro part's line Kokoro
    cannot read (no phonemes, no model, a render with any non-finite sample or only
@@ -391,6 +399,19 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    phonemized on the device. After Delete a part cast to a Kokoro voice falls back
    visibly (rule 8) and its choice returns with the download. A Kokoro render is held in
    memory, played once, and refused by every writer (§5).
+11. **The voice defaults live in Settings** (Decision 086; owner, 2026-11-22: "I thought we started allowing for multiple different voices to be downloaded/used with the recordings. It seems like everything is still using super robotic voices that no realistic person would want to use to listen to a play (or having other characters reading the lines as you record your own). Can we make it easier to use the high-fidelity voices and how to implement them as a default from the settings tab vs from the individual play that you are casting?").
+   Each platform's Settings (web: Library's Settings row, WEB-DESIGN §4.11a; the apps: see
+   `docs/research/design/VOICES-PORT-BRIEF.md`) has a **Voices** section: the Kokoro download
+   (rule 10's words: size, progress, Cancel, Delete, attribution; where the platform cannot
+   run them, one refusal), a default **Speed**, and the voices in the **Default order**:
+   downloaded (Kokoro, best grade first) before the device's own (best quality first), each
+   with a Use tick, Move up and Move down within its group, its quality, and Hear (a line of
+   today's scene, live). Kokoro's grades under C- (D+ to F+) start unticked. The Default
+   pool is that order less the unticked voices (never empty: all unticked means all).
+   Auto-cast (rule 4) runs over it at the default speed. A Kokoro part's line Kokoro cannot
+   read is read by the part's Default among the device's own voices. Kept on the device
+   only, never synced. Where the voices are not downloaded but could be, the cast sheet and
+   the reader's Voices carry one quiet **Better voices** that opens Settings > Voices.
 
 
 ### §2.9 The studio inside the reader (Decision 076, phase S3; binding on every platform that records)
