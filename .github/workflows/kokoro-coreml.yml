@@ -51,11 +51,15 @@ jobs:
   convert:
     runs-on: macos-26
     timeout-minutes: 240
+    strategy:  # TEMPORARY comparison
+      fail-fast: false
+      matrix:
+        v: ${{ fromJSON(github.event_name == 'push' && '["mixed:none","fp32:int8"]' || '["dispatch"]') }}
     env:
       VERSION: ${{ inputs.version || '3' }}
-      PUBLISH: ${{ format('{0}', inputs.publish) == 'false' && 'false' || 'true' }}
-      PRECISION: ${{ inputs.precision || 'mixed' }}
-      WEIGHTS: ${{ inputs.weights || 'int8' }}
+      PUBLISH: ${{ github.event_name == 'push' && 'false' || (format('{0}', inputs.publish) == 'false' && 'false' || 'true') }}
+      PRECISION: ${{ github.event_name == 'push' && (matrix.v == 'mixed:none' && 'mixed' || 'fp32') || inputs.precision || 'mixed' }}
+      WEIGHTS: ${{ github.event_name == 'push' && (matrix.v == 'mixed:none' && 'none' || 'int8') || inputs.weights || 'int8' }}
       # KOKORO_CHECK_DIAG: '1' prints each model checked alone; KOKORO_TAPS: '1' adds the decoder's intermediate
       # tensors as outputs and compares each (bisection only: a tapped model must never be published).
       GH_TOKEN: ${{ github.token }}
