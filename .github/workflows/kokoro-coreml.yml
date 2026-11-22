@@ -21,7 +21,7 @@ name: Kokoro Core ML
 on:
   push:  # TEMPORARY: first runs from the agent branch (a new workflow cannot be dispatched before it is on main)
     branches: [worktree-agent-a8d5267110917305a]
-    paths: ['.github/workflows/kokoro-coreml.yml', 'tools/convert_kokoro_coreml.py']
+    paths: ['.github/workflows/kokoro-coreml.yml', 'tools/convert_kokoro_coreml.py', 'tools/kokoro_coreml_predict.swift']
   workflow_dispatch:
     inputs:
       version:

@@ -38,10 +38,9 @@ Writes WORK_DIR/KokoroDuration.mlpackage, KokoroDecoder.mlpackage (multifunction
 kokoro-coreml-report.json (sizes, SHA-256, the error measured); tools/publish_kokoro_model.py --coreml WORK_DIR
 publishes them. Refuses a model whose audio has a non-finite sample or that drifts from PyTorch.
 
-On macOS 27 coremltools 9.0 segfaults loading any Core ML model (MLModel.__init__, with or without torch in the
-process; Python crash reports 2026-11-15/16), so step 4 cannot run on the owner's Mac and must not be retried there: the
-conversion and steps 1-2 finish, the verify exits 245. The Swift engine is the check instead (apple/Tests/
-KokoroBenchTests.swift, docs/research/design/kokoro-spike/coreml_asr_check.py). Known waste, not yet fixed: every
+coremltools 9.0's MLModel segfaults loading the decoder (macOS 27, 2026-11-15/16; the macos-26 runner, 2026-11-22), so
+step 4 runs the converted models through Core ML itself (tools/kokoro_coreml_predict.swift, compiled with swiftc; Xcode
+needed). .github/workflows/kokoro-coreml.yml runs all of this on a released macOS and publishes the result. Known waste, not yet fixed: every
 `torch.zeros_like` / `full_like` / scalar on a select's other side is folded into a constant of the bucket's whole
 shape, one per function, and the int8 pass stores each: about 48 MB of the decoder's 112 MB weight.bin (2026-11-16).
 Deriving the filler from a runtime tensor (the mask) should remove it; untested, as the conversion needs a Mac where
@@ -529,48 +528,79 @@ def main():
 
 
 def verify(work, precision, wq, units):
-    """The Core ML half of the check (no torch in this process): writes the report's lines, sizes and SHA-256."""
-    import coremltools as ct
-    import faulthandler
-    faulthandler.enable()
+    """The Core ML half of the check (no torch in this process): writes the report's lines, sizes and SHA-256.
+
+    The predictions run through Core ML itself (tools/kokoro_coreml_predict.swift, compiled here with swiftc), not
+    coremltools' MLModel: its Python binding segfaults loading the decoder on macOS 26 and 27 (2026-11-16, -22)."""
+    import subprocess
     report = json.load(open(os.path.join(work, "kokoro-coreml-report.json")))
     global TOKEN_BUCKETS, FRAME_BUCKETS
     TOKEN_BUCKETS, FRAME_BUCKETS = report["token_buckets"], report["frame_buckets"]
     z = np.load(os.path.join(work, "check-cases.npz"))
     out = {n: os.path.join(work, n + ".mlpackage") for n in ("KokoroDuration", "KokoroDecoder")}
-    cu = {"cpu": ct.ComputeUnit.CPU_ONLY, "gpu": ct.ComputeUnit.CPU_AND_GPU, "ane": ct.ComputeUnit.CPU_AND_NE,
-          "all": ct.ComputeUnit.ALL}[units]
-    models = {}
+    cases = os.path.join(work, "cases")
+    shutil.rmtree(cases, ignore_errors=True)
+    os.makedirs(cases)
+    predict = os.path.join(cases, "predict")
+    here = os.path.dirname(os.path.abspath(__file__))
+    subprocess.run(["xcrun", "swiftc", "-O", os.path.join(here, "kokoro_coreml_predict.swift"), "-o", predict], check=True)
 
-    def model(name, fn):
-        if (name, fn) not in models:
-            models[(name, fn)] = ct.models.MLModel(out[name], compute_units=cu, function_name=fn)
-        return models[(name, fn)]
+    def put(name, a):
+        path = os.path.join(cases, name + ".bin")
+        a = np.ascontiguousarray(a, dtype=np.int32 if a.dtype.kind in "iu" else np.float32)
+        a.tofile(path)
+        return {"file": path, "shape": list(a.shape), "dtype": "int32" if a.dtype == np.int32 else "float32"}
 
-    worst = 99.0
-    report["lines"] = []
-    for k in range(int(z["count"][0])):
-        c = lambda key: z[f"{k}_{key}"]
-        li, vi, nf, n = (int(x) for x in c("meta"))
-        want, noise, ids, ref = c("want"), c("noise"), c("ids"), c("ref")
+    def run(calls, tag):
+        req, res = os.path.join(cases, tag + "-request.json"), os.path.join(cases, tag + "-result.json")
+        json.dump({"units": units, "calls": calls}, open(req, "w"))
+        r = subprocess.run([predict, req, res])
+        if r.returncode != 0:
+            sys.exit(f"refused: Core ML could not run the {tag} model (exit {r.returncode})")
+        got = json.load(open(res))
+        load.update(got["load_seconds"])
+        return [{"seconds": c["seconds"], **{k: np.fromfile(v["file"], "<f4").reshape(v["shape"])
+                                              for k, v in c["outputs"].items()}} for c in got["calls"]]
+
+    load = {}
+    count = int(z["count"][0])
+    c = lambda k, key: z[f"{k}_{key}"]
+    meta = [tuple(int(x) for x in c(k, "meta")) for k in range(count)]
+    calls = []
+    for k, (li, vi, nf, n) in enumerate(meta):
         tb = bucket(n, TOKEN_BUCKETS)
-        model("KokoroDuration", f"t{tb}")  # loaded (and compiled) before the clock starts
-        t0 = time.time()
-        r = model("KokoroDuration", f"t{tb}").predict({"input_ids": pad_to(ids, 1, tb), "ref_s": ref,
-                                                       "speed": np.array([1.0], np.float32),
-                                                       "length": np.array([n], np.float32)})
+        calls.append({"model": out["KokoroDuration"], "function": f"t{tb}",
+                      "inputs": {"input_ids": put(f"{k}-ids", pad_to(c(k, "ids"), 1, tb)), "ref_s": put(f"{k}-ref", c(k, "ref")),
+                                 "speed": put(f"{k}-speed", np.array([1.0], np.float32)),
+                                 "length": put(f"{k}-length", np.array([n], np.float32))},
+                      "outputs": {o: os.path.join(cases, f"{k}-{o}.out") for o in ("duration", "d", "t_en")}})
+    durations = run(calls, "duration")
+    calls, aligned = [], []
+    for k, (li, vi, nf, n) in enumerate(meta):
+        r = durations[k]
         en, asr, nf2 = align(r["duration"], r["d"], r["t_en"], n)
         if nf2 != nf:  # a duration rounding edge: the decoder is compared on the PyTorch alignment
-            en, asr = c("en"), c("asr")
+            en, asr = c(k, "en"), c(k, "asr")
+        aligned.append(nf2)
         fb = bucket(nf, FRAME_BUCKETS)
-        a = model("KokoroDecoder", f"f{fb}").predict({
-            "en": pad_to(en, 2, fb), "asr": pad_to(asr, 2, fb), "ref_s": ref,
-            "noise": pad_to(noise, 1, 600 * fb), "length": np.array([nf], np.float32)})["audio"][0][:600 * nf]
-        secs = time.time() - t0
+        calls.append({"model": out["KokoroDecoder"], "function": f"f{fb}",
+                      "inputs": {"en": put(f"{k}-en", pad_to(en, 2, fb)), "asr": put(f"{k}-asr", pad_to(asr, 2, fb)),
+                                 "ref_s": put(f"{k}-ref", c(k, "ref")), "noise": put(f"{k}-noise", pad_to(c(k, "noise"), 1, 600 * fb)),
+                                 "length": put(f"{k}-frames", np.array([nf], np.float32))},
+                      "outputs": {"audio": os.path.join(cases, f"{k}-audio.out")}})
+    decoded = run(calls, "decoder")
+    worst = 99.0
+    report["lines"] = []
+    for k, (li, vi, nf, n) in enumerate(meta):
+        want = c(k, "want")
+        a = decoded[k]["audio"].reshape(-1)[:600 * nf]
+        secs = durations[k]["seconds"] + decoded[k]["seconds"]
+        tb, fb = bucket(n, TOKEN_BUCKETS), bucket(nf, FRAME_BUCKETS)
         finite = bool(np.isfinite(a).all())
         snr = spec_snr_db(want, a) if finite else -99.0
-        row = {"line": li, "voice": vi, "tokens": n, "frames": nf, "coreml_frames": nf2, "buckets": [tb, fb],
+        row = {"line": li, "voice": vi, "tokens": n, "frames": nf, "coreml_frames": aligned[k], "buckets": [tb, fb],
                "finite": finite, "peak": round(float(np.abs(a).max()), 3) if finite else None,
+               "max_abs_diff": round(float(np.abs(want[:len(a)] - a).max()), 4) if finite else None,
                "wave_snr_db": round(snr_db(want, a), 1) if finite else None, "spec_snr_db": round(snr, 1),
                "mac_seconds": round(secs, 3), "rtf_mac": round(secs / (nf * 0.025), 3)}
         report["lines"].append(row)
@@ -578,6 +608,8 @@ def verify(work, precision, wq, units):
         if not finite:
             sys.exit("refused: the Core ML model rendered a non-finite sample")
         worst = min(worst, snr)
+    report["load_seconds"] = {k: round(v, 2) for k, v in sorted(load.items())}
+    shutil.rmtree(cases, ignore_errors=True)
     report["worst_spec_snr_db"] = round(worst, 1)
     files = []
     for name, p in out.items():
