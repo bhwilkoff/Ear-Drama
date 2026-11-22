@@ -19,6 +19,7 @@ async function rsaPair(kid) {
 export const keys = {
   apple: await rsaPair("apple-test-1"),
   google: await rsaPair("google-test-1"),
+  github: await rsaPair("github-test-1"),
   // Not published by any provider: a forger's key.
   forger: await rsaPair("apple-test-1"),
 };
@@ -30,6 +31,7 @@ export function installProviderKeys({ extra } = {}) {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input && input.url;
     if (url === "https://appleid.apple.com/auth/keys") return Response.json({ keys: [keys.apple.publicJwk] });
     if (url === "https://www.googleapis.com/oauth2/v3/certs") return Response.json({ keys: [keys.google.publicJwk] });
+    if (url === "https://token.actions.githubusercontent.com/.well-known/jwks") return Response.json({ keys: [keys.github.publicJwk] });
     if (extra) {
       const r = await extra(url, init);
       if (r) return r;
@@ -55,6 +57,31 @@ export function appleClaims(sub, over = {}) {
 export function googleClaims(sub, over = {}) {
   return { iss: "https://accounts.google.com", aud: GOOGLE_AUD, sub, iat: nowS(), exp: nowS() + 600, ...over };
 }
+
+/** The claims GitHub Actions puts in a workflow's OIDC token (docs.github.com, OIDC reference), for `workflow` on main. */
+export function githubClaims(workflow, over = {}) {
+  const ref = "refs/heads/main";
+  return {
+    iss: "https://token.actions.githubusercontent.com",
+    aud: "https://api.eardrama.test",
+    sub: `repo:bhwilkoff/Ear-Drama:ref:${ref}`,
+    repository: "bhwilkoff/Ear-Drama",
+    repository_id: "1430156519",
+    repository_owner: "bhwilkoff",
+    ref,
+    event_name: "workflow_dispatch",
+    workflow_ref: `bhwilkoff/Ear-Drama/.github/workflows/${workflow}@${ref}`,
+    job_workflow_ref: `bhwilkoff/Ear-Drama/.github/workflows/${workflow}@${ref}`,
+    actor: "bhwilkoff",
+    run_id: "1234567890",
+    iat: nowS(),
+    exp: nowS() + 300,
+    ...over,
+  };
+}
+
+/** A GitHub OIDC token for `workflow`, signed with the test key the mocked GitHub JWKS serves. */
+export const githubToken = (workflow, over, opts = {}) => mint(githubClaims(workflow, over), { key: keys.github, ...opts });
 
 let ipCounter = 1;
 

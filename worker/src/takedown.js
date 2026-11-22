@@ -2,10 +2,11 @@
  * Take-down cases (Decision 074). The form on /takedown/ posts here. A
  * requester's details are stored in this private table and nowhere else: the
  * repository is public, and so are its Actions logs, so the check reads a case
- * through a token and writes back only what it found about the file. No IP
+ * through the workflow's GitHub OIDC token and writes back only what it found about the file. No IP
  * address is stored; the rate limit is counted by Cloudflare for the window.
  */
 import { clientAddress, json, limited, problem } from "./http.js";
+import { githubCaller } from "./github-oidc.js";
 
 /** Not an account's rows: a requester has none, and the cron erases them. */
 export const TAKEDOWN_ANONYMOUS_TABLES = ["takedown_cases"];
@@ -65,16 +66,6 @@ async function insert(env, c, source, complete) {
   return ref;
 }
 
-function authorized(request, env) {
-  const given = (request.headers.get("authorization") || "").replace(/^Bearer /, "");
-  if (!env.TAKEDOWN_TOKEN || given.length !== env.TAKEDOWN_TOKEN.length) return false;
-  const a = new TextEncoder().encode(given);
-  const b = new TextEncoder().encode(env.TAKEDOWN_TOKEN);
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
-  return diff === 0;
-}
-
 async function body(request) {
   try {
     return await request.json();
@@ -101,8 +92,8 @@ export async function handleTakedown(url, request, env) {
     return json({ ref: await insert(env, c, "form", c.kind === "copyright") });
   }
 
-  // Everything below is the owner's tools and the check, by token.
-  if (!authorized(request, env)) return problem(403, "forbidden");
+  // Everything below is the check's, by takedown-check.yml's GitHub OIDC token (github-oidc.js).
+  if (!(await githubCaller(request, env, url, "takedown"))) return problem(403, "forbidden");
 
   if (pathname === "/v1/takedown/cases" && method === "POST") {
     const b = await body(request);

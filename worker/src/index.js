@@ -46,7 +46,7 @@ async function route(request, env, url) {
 
   if (pathname === "/v1/takedown" || pathname.startsWith("/v1/takedown/")) return handleTakedown(url, request, env);
 
-  // A school's deletion request, run by the owner with OPERATOR_TOKEN (Decision 084).
+  // A school's deletion request, run by operator.yml with its GitHub OIDC token (Decision 084).
   if (isOperatorRoute(pathname)) return handleOperator(url, request, env);
 
   // Read rooms (Decision 082): no account to read; limited per member, with READ_IP_LIMITER as their address floor.

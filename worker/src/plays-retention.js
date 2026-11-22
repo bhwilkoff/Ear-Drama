@@ -18,12 +18,13 @@
  * notice its teacher sees in the class list; an account idle 3 years goes, as
  * if its owner had deleted it, 30 days after its notice, and any sign-in in
  * between cancels it. A school's request is the owner's operator route
- * (OPERATOR_TOKEN), done within 30 days (docs/WORKER.md "A school asks").
+ * (operator.yml, by GitHub OIDC), done within 30 days (docs/WORKER.md "A school asks").
  */
 
 import { json, problem, readJson } from "./http.js";
 import { classProgress, rosterFor, teacherClass } from "./plays-seats.js";
 import { deleteAccount } from "./account.js";
+import { githubCaller } from "./github-oidc.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const CLASS_IDLE_MS = 365 * DAY_MS;
@@ -213,25 +214,17 @@ export async function exportClass(auth, env, classId, now) {
 
 /* ---- A school's deletion request: the owner's operator route ---- */
 
-function operatorAllowed(request, env) {
-  const given = (request.headers.get("authorization") || "").replace(/^Bearer /, "");
-  if (!env.OPERATOR_TOKEN || given.length !== env.OPERATOR_TOKEN.length) return false;
-  const a = new TextEncoder().encode(given);
-  const b = new TextEncoder().encode(env.OPERATOR_TOKEN);
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
-  return diff === 0;
-}
-
 export const isOperatorRoute = (pathname) => pathname === "/v1/operator" || pathname.startsWith("/v1/operator/");
 
 /**
- * The owner's tools, by OPERATOR_TOKEN (a Worker secret), for a school that writes to ask:
+ * The owner's tools, run only by .github/workflows/operator.yml with its GitHub OIDC token (github-oidc.js),
+ * for a school that writes to ask:
  * GET /v1/operator/classes?code=… or ?reference=… finds the classes (no seat names);
  * DELETE /v1/operator/classes/:id deletes one exactly as its teacher's Delete class does.
  */
 export async function handleOperator(url, request, env) {
-  if (!operatorAllowed(request, env)) return problem(403, "forbidden");
+  const caller = await githubCaller(request, env, url, "operator");
+  if (!caller) return problem(403, "forbidden");
   const m = request.method;
   const seg = url.pathname.slice("/v1/operator".length).split("/").filter(Boolean);
   if (seg[0] !== "classes") return problem(404, "not_found");
@@ -251,6 +244,8 @@ export async function handleOperator(url, request, env) {
     const c = await env.DB.prepare("SELECT id FROM play_classes WHERE id = ?1").bind(seg[1]).first();
     if (!c) return problem(404, "class_not_found");
     await deleteClass(env, c.id);
+    // The audit trail: who dispatched which run, in the Worker's private log, never the public Actions log.
+    console.log(JSON.stringify({ operator: "delete_class", class_id: c.id, actor: caller.actor, run_id: caller.run_id }));
     return json({ deleted: true, class_id: c.id, deleted_at: Date.now() });
   }
   return problem(404, "not_found");
