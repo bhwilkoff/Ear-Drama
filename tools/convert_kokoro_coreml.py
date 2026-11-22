@@ -264,7 +264,9 @@ def build(km):
             # One linear upsample for both: thresholding the interpolated voicing at 0.5 is exactly nearest.
             hi = F.interpolate(torch.cat([phase * up, uv_low], dim=-1).transpose(1, 2), scale_factor=float(up),
                                mode="linear").transpose(1, 2)  # 1, 600F, 10
-            sines = torch.sin(hi[..., :9]) * 0.1
+            # Wrapped before the sine: the phase reaches about 1e5 radians, and Core ML's sin is not range-reduced
+            # there (fp32, no quantization: the decoder alone measured 3 to 5 dB spectral SNR against PyTorch).
+            sines = torch.sin(torch.remainder(hi[..., :9], 2 * math.pi)) * 0.1
             uv = (hi[..., 9:] > 0.5).to(torch.float32)
             amp = uv * 0.003 + (1 - uv) * (0.1 / 3)
             har = torch.tanh(g.m_source.l_linear(sines * uv) + amp * self.wnorm * noise).squeeze(-1)  # 1, 600F
