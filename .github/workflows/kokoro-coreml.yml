@@ -1,0 +1,110 @@
+# Kokoro on Apple (Decision 078, R2-kokoro-feasibility S6e): convert Kokoro-82M to Core ML on a
+# released macOS, check it against PyTorch, publish it as kokoro-vN-apple-* on the kokoro-model Release.
+#
+# Why a runner: coremltools 9.0 segfaults loading any Core ML model on the owner's macOS 27 beta
+# (2026-11-15/16), so the converter's step 4 (Core ML against PyTorch) cannot run there. A released
+# macOS image runs all of it.
+#
+#   convert  tools/convert_kokoro_coreml.py: hexgrad's weights at the pinned revision; refuses a model
+#            whose wrappers drift from kokoro's forward (SNR < 30 dB), whose padding changes a line
+#            (< 30 dB), that renders a non-finite sample, or whose Core ML audio drifts from PyTorch
+#            (spectral SNR < 15 dB over 12 renders: 4 lines x 3 voices, every bucket they fall in).
+#   publish  tools/publish_kokoro_model.py --coreml: one asset per file in each package, then the
+#            manifest last, each size and SHA-256 read back from the Release. Never --clobber: a
+#            version already there is refused, so a rerun publishes a new `version`.
+#
+# Toolchain (pinned; the set that converted Kokoro-82M on 2026-11-16): Python 3.12, coremltools 9.0,
+# torch 2.7.0, numpy < 2.3, transformers < 4.50, kokoro 0.9.4 (no deps).
+
+name: Kokoro Core ML
+
+on:
+  push:  # TEMPORARY: first runs from the agent branch (a new workflow cannot be dispatched before it is on main)
+    branches: [worktree-agent-a8d5267110917305a]
+    paths: ['.github/workflows/kokoro-coreml.yml', 'tools/convert_kokoro_coreml.py']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Model version to publish (kokoro-vN-apple-manifest.json)'
+        default: '3'
+      publish:
+        description: 'Upload to the kokoro-model Release after the check passes'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kokoro-coreml
+  cancel-in-progress: false
+
+jobs:
+  convert:
+    runs-on: macos-26
+    timeout-minutes: 240
+    env:
+      VERSION: ${{ inputs.version || '3' }}
+      PUBLISH: ${{ format('{0}', inputs.publish) == 'false' && 'false' || 'true' }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Refuse a version already on the Release
+        run: |
+          if gh release view kokoro-model -R "$REPO" --json assets -q '.assets[].name' \
+              | grep -qx "kokoro-v${VERSION}-apple-manifest.json"; then
+            echo "::error::kokoro-v${VERSION}-apple-manifest.json is already published; dispatch a new version"
+            exit 1
+          fi
+
+      - name: Install the pinned toolchain
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          V="$RUNNER_TEMP/venv/bin"
+          "$V/pip" install --quiet coremltools==9.0 torch==2.7.0 "numpy<2.3" huggingface_hub loguru "transformers<4.50"
+          "$V/pip" install --quiet --no-deps kokoro==0.9.4
+          "$V/python" -c "import coremltools, torch, numpy, transformers, platform; print('[kokoro-coreml] toolchain', platform.mac_ver()[0], 'coremltools', coremltools.__version__, 'torch', torch.__version__, 'numpy', numpy.__version__, 'transformers', transformers.__version__)"
+          sw_vers
+
+      - name: The 28-voice table for the check
+        run: |
+          mkdir -p "$RUNNER_TEMP/work" "$RUNNER_TEMP/pub"
+          python3 tools/publish_kokoro_model.py "$RUNNER_TEMP/pub" --version "$VERSION" --native q8 --native-only --no-upload
+          cp "$RUNNER_TEMP/pub/publish/kokoro-v${VERSION}-voices-en.bin" "$RUNNER_TEMP/work/voices.bin"
+          rm -rf "$RUNNER_TEMP/pub/publish"
+
+      - name: Convert and check against PyTorch
+        run: |
+          "$RUNNER_TEMP/venv/bin/python" -u tools/convert_kokoro_coreml.py "$RUNNER_TEMP/work" --units cpu
+          python3 - "$RUNNER_TEMP/work/kokoro-coreml-report.json" <<'PY'
+          import json, sys
+          r = json.load(open(sys.argv[1]))
+          print(f"[kokoro-coreml] checked: wrapper SNR {r['wrapper_snr_db']} dB, padding worst {r['padding_worst_snr_db']} dB, "
+                f"Core ML worst spectral SNR {r['worst_spec_snr_db']} dB over {len(r['lines'])} renders, "
+                f"{r['total_bytes']} bytes in {len(r['files'])} files")
+          PY
+
+      - name: Keep the conversion for a week
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kokoro-coreml
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/work/kokoro-coreml-report.json
+            ${{ runner.temp }}/work/KokoroDuration.mlpackage
+            ${{ runner.temp }}/work/KokoroDecoder.mlpackage
+
+      - name: Publish kokoro-vN-apple
+        if: env.PUBLISH == 'true'
+        run: |
+          python3 tools/publish_kokoro_model.py "$RUNNER_TEMP/pub" --coreml "$RUNNER_TEMP/work" --version "$VERSION"
+          n=$(gh release view kokoro-model -R "$REPO" --json assets -q '.assets[].name' | grep -c "^kokoro-v${VERSION}-")
+          echo "[kokoro-coreml] published $n assets of kokoro-v${VERSION} (Apple)"
