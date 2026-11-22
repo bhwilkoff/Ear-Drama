@@ -1828,12 +1828,12 @@ body.reading #main-content { overflow: hidden; }
 .vc-cast-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-muted); }
 .vc-cast-row .vc-chip { margin: 0; flex: 0 1 auto; min-width: 0; }
 /* Settings > Voices (Decision 086; WEB-DESIGN §4.11a): Kokoro's download, the Default speed, the Default order. */
+.vs-voices { margin-top: var(--space-5); }
 .vs-head { margin: 0 0 var(--space-2); }
 .vs-hifi { margin-bottom: var(--space-3); }
 .vs-hifi:empty { display: none; }
 .vs-hifi-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); min-height: var(--tap); }
 .vs-hifi .caption { margin: var(--space-1) 0 0; }
-.vs-hifi .vs-delete { margin-right: calc(-1 * var(--space-2)); }
 .vs-progress { display: block; width: 100%; height: 6px; margin-top: var(--space-2); accent-color: var(--color-primary); }
 .vs-credit, .vs-order { color: var(--color-text-muted); }
 .vs-order { margin: 0 0 var(--space-3); }

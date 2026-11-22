@@ -1,7 +1,8 @@
 /**
- * Settings > Voices (Decision 086; WEB-DESIGN §4.11a; PLAYS-DESIGN §2.8 rule 11): the device's voice
- * defaults, which every part nobody cast reads. One sheet, opened from Library's Settings row, the
- * "Better voices" offer on a cast, or ?settings=voices.
+ * Library > Voices (Decision 086, amended 2026-11-22; WEB-DESIGN §4.11a; PLAYS-DESIGN §2.8 rule 11): the
+ * device's voice defaults, which every part nobody cast reads. A section of the Library view (no
+ * Settings page, no sheet), reached by ?view=library&section=voices, which the "Better voices" offer
+ * on a cast opens (`open()`).
  *
  *   1. The high-fidelity (Kokoro) voices: Download (the size from the manifest), progress and Cancel,
  *      Delete, the attribution; where this browser cannot run them, one refusal.
@@ -17,8 +18,7 @@ const VoiceSettings = (() => {
   const { el, stepper, speedText } = CastUI;
   const ATTRIBUTION = 'Kokoro-82M by hexgrad, Apache-2.0. Trained in part on Koniwa (CC BY 3.0) and SIWIS (CC BY 4.0).';
   const ARROW = { up: 'M7.4 15.4 12 10.8l4.6 4.6L18 14l-6-6-6 6z', down: 'M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z' };
-  const PATHS = { play: 'M8 5v14l11-7z', stop: 'M7 7h10v10H7z',
-                  close: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z' };
+  const PATHS = { play: 'M8 5v14l11-7z', stop: 'M7 7h10v10H7z' };
   function icon(d) {
     const ns = 'http://www.w3.org/2000/svg';
     const s = document.createElementNS(ns, 'svg');
@@ -31,8 +31,8 @@ const VoiceSettings = (() => {
   }
   const mb = (n) => `${Math.round(n / 1e6).toLocaleString('en-US')} MB`;
 
-  let config = { muted: false, sample: async () => null };
-  /** app.js: `muted` (?mute=1) and `sample()`, which resolves { text, script } (a line of today's scene) or null. */
+  let config = { muted: false, sample: async () => null, go: () => {} };
+  /** app.js: `muted` (?mute=1), `go()` (opens Library at Voices) and `sample()`, which resolves { text, script } (a line of today's scene) or null. */
   function configure(c) { config = { ...config, ...c }; }
 
   /** The quality a row states: Kokoro's own grade, or the tier a system voice's name carries. */
@@ -42,9 +42,14 @@ const VoiceSettings = (() => {
     return new RegExp(`\\b${word}\\b`, 'i').test(v.name) ? v.lang : `${word} · ${v.lang}`;
   }
 
-  let open_ = null;
-  function open() {
-    if (open_ && open_.open) return open_;
+  let mounted = null;
+  /** Library at the Voices section. */
+  function open() { config.go(); }
+  /** Stops a Hear in progress and lets go of the section (the route left Library). */
+  function leave() { if (mounted) { const m = mounted; mounted = null; m.leave(); } }
+  /** Paints the Voices section into `host` (an empty element in Library) and returns it. */
+  function mount(host) {
+    leave();
     const h = Voices.shared();
     const voice = StandInVoice.create({ muted: config.muted });
     let sample = null;
@@ -167,31 +172,25 @@ const VoiceSettings = (() => {
     }
 
     function paint() {
-      if (!d.isConnected) return;
+      if (!host.isConnected) { leave(); return; }
       paintHifi();
       speed.paint(true);
       paintLists();
     }
 
-    const d = el('dialog', { class: 'rd-sheet vs-sheet', 'aria-labelledby': 'vs-h' },
-      el('div', { class: 'rd-sheet-head' }, el('h2', { id: 'vs-h', class: 'section-header' }, 'Settings'),
-        el('button', { type: 'button', class: 'icon-btn rd-icon', 'aria-label': 'Close', onclick: () => d.close() }, icon(PATHS.close))),
-      el('section', { class: 'vs-voices', 'aria-labelledby': 'vs-voices-h' },
-        el('h3', { id: 'vs-voices-h', class: 'body-strong vs-head' }, 'Voices'),
-        hifi,
-        steps,
-        el('p', { class: 'caption vs-order' }, 'Parts you haven’t cast take the ticked voices in this order, the largest part first.'),
-        lists));
-    d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
+    host.replaceChildren(
+      el('h2', { id: 'voices-h', class: 'section-header vs-head', tabindex: '-1' }, 'Voices'),
+      hifi,
+      steps,
+      el('p', { class: 'caption vs-order' }, 'Parts you haven’t cast take the ticked voices in this order, the largest part first.'),
+      lists);
+    host.setAttribute('aria-labelledby', 'voices-h');
     const offVoices = StandInVoice.onVoices(paint);
     const offHifi = h.onChange(() => { if (h.status() === 'downloading') paintHifi(); else paint(); });
-    d.addEventListener('close', () => { offVoices(); offHifi(); voice.cancel(); d.remove(); open_ = null; if (config.onClose) config.onClose(); });
-    document.body.append(d);
+    mounted = { leave() { offVoices(); offHifi(); voice.cancel(); stopHearing(); } };
     paint();
-    d.showModal();
-    open_ = d;
-    return d;
+    return host;
   }
 
-  return { configure, open, quality, ATTRIBUTION };
+  return { configure, open, mount, leave, quality, ATTRIBUTION };
 })();
