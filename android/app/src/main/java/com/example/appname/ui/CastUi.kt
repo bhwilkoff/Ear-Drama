@@ -71,6 +71,8 @@ import com.example.appname.plays.DeviceVoiceSource
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PlayScript
 import com.example.appname.plays.PrefsCastStore
+import com.example.appname.plays.PrefsDefaultsStore
+import com.example.appname.plays.VoiceDefaultsStore
 import com.example.appname.plays.Resolved
 import com.example.appname.plays.VoiceCast
 import com.example.appname.plays.VoiceCasting
@@ -131,6 +133,7 @@ fun rememberCast(source: DeviceVoiceSource, script: PlayScript?, productionId: S
     // Behind a flag (PARITY "Downloadable voices"): none at all when off.
     val container = LocalAppContainer.current
     val kokoro = container.takeIf { BuildConfig.KOKORO_VOICES }?.kokoro
+    val defaultsStore = remember { PrefsDefaultsStore(context) }
     val handle = remember(source, script?.id, productionId) {
         script?.let {
             val cast = VoiceCast(
@@ -140,6 +143,7 @@ fun rememberCast(source: DeviceVoiceSource, script: PlayScript?, productionId: S
                 store = PrefsCastStore(context),
                 seed = productionId?.let { _ -> VoiceCasting.scriptKey(it.id) },
                 downloaded = { kokoro?.voices().orEmpty() },
+                defaults = { VoiceDefaultsStore.load(defaultsStore) },
             )
             CastHandle(source, cast, CastSpeaker(source, cast, kokoro?.let(::KokoroLive), it.id), kokoro, it.id)
         }
@@ -161,7 +165,7 @@ fun rememberCast(source: DeviceVoiceSource, script: PlayScript?, productionId: S
 }
 
 /** What the chip and the picker say about a part's voice now. */
-internal class VoiceLine(val resolved: Resolved, val text: String, val warn: Boolean, val label: String, val tune: String)
+internal class VoiceLine(val resolved: Resolved, val text: String, val warn: Boolean, val label: String, val tune: String, val isDefault: Boolean = false)
 
 internal fun describeVoice(handle: CastHandle, part: PartID): VoiceLine {
     @Suppress("UNUSED_EXPRESSION") handle.tick
@@ -179,7 +183,8 @@ internal fun describeVoice(handle: CastHandle, part: PartID): VoiceLine {
     } else {
         "Voice for $title: ${voice.name}"
     }
-    return VoiceLine(r, voice.name, r.missing != null, if (tune.isEmpty()) label else "$label, $tune", tune)
+    val said = if (tune.isEmpty()) label else "$label, $tune"
+    return VoiceLine(r, voice.name, r.missing != null, if (r.isDefault) "$said, Default" else said, tune, r.isDefault)
 }
 
 /** The voice chip: the voice's name, "Not read", or the warning glyph and the voice reading instead. */
@@ -193,6 +198,7 @@ fun VoiceChip(handle: CastHandle, part: PartID, onClick: () -> Unit, modifier: M
             Text(
                 buildAnnotatedString {
                     append(chipVoiceName(d.text))
+                    if (d.isDefault) withStyle(SpanStyle(color = muted)) { append("  Default") }
                     if (d.tune.isNotEmpty()) withStyle(SpanStyle(color = muted)) { append("  ${d.tune}") }
                 },
                 maxLines = 1,
@@ -212,7 +218,7 @@ private fun firstLine(script: PlayScript, part: PartID): String =
 
 /** A − value + stepper over a VoiceCast range. */
 @Composable
-private fun Stepper(label: String, value: Double, range: ClosedFloatingPointRange<Double>, enabled: Boolean, show: (Double) -> String, onChange: (Double) -> Unit) {
+internal fun Stepper(label: String, value: Double, range: ClosedFloatingPointRange<Double>, enabled: Boolean, show: (Double) -> String, onChange: (Double) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.widthIn(min = 72.dp), softWrap = false, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedIconButton(onClick = { onChange(Math.round((value - VoiceCasting.STEP) * 100) / 100.0) }, enabled = enabled && value > range.start + 1e-9) {
@@ -246,6 +252,8 @@ fun VoicePickerSheet(handle: CastHandle, script: PlayScript, part: PartID, onDis
     val voices = handle.cast.voices()
     val entry = handle.cast.entry(part) ?: VoiceCastEntry.NOT_READ
     val reading = entry.engine != VoiceCastEntry.NONE
+    val isDefault = d.resolved.isDefault
+    val current = if (isDefault) "default" else if (!reading) "none" else d.resolved.voice?.id ?: entry.voice
     val text = remember(script, part) { firstLine(script, part) }
     var hearing by remember { mutableStateOf<String?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
@@ -304,6 +312,36 @@ fun VoicePickerSheet(handle: CastHandle, script: PlayScript, part: PartID, onDis
                     Stepper("Pitch", entry.pitch, VoiceCasting.PITCH, reading && voices.isNotEmpty(), ::pitchText) { v -> change { copy(pitch = v) } }
                 }
             }
+            val kokoro = handle.kokoro
+            if (kokoro != null && kokoroState is KokoroModelStore.State.Ready && moduleState is KokoroModule.State.Installed) {
+                item(key = "downloaded") {
+                    Text(
+                        "Downloaded",
+                        Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (kokoro.hasPhonemes(handle.playId) == false) {
+                    item(key = "kokoro-none") {
+                        Text(
+                            "Not available for this play.",
+                            Modifier.padding(horizontal = Spacing.S4.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    items(kokoro.voices(), key = { "k:" + it.id }) { v ->
+                        VoiceRow(v.name, null, current == v.id, v.id, hearing == v.id, v.id, onHear = { hear(v) }) {
+                            val e = handle.cast.entry(part)
+                            val base = if (e == null || e.engine == VoiceCastEntry.NONE) VoiceCastEntry(VoiceCastEntry.KOKORO, v.id, v.name) else e
+                            change { base.copy(engine = VoiceCastEntry.KOKORO, voice = v.id, name = v.name) }
+                            haptics(Haptic.Selection)
+                        }
+                    }
+                }
+            }
             item(key = "group") {
                 Text(
                     "On this device",
@@ -322,7 +360,13 @@ fun VoicePickerSheet(handle: CastHandle, script: PlayScript, part: PartID, onDis
                     )
                 }
             }
-            val current = if (!reading) "none" else d.resolved.voice?.id ?: entry.voice
+            item(key = "default") {
+                VoiceRow("Default", handle.cast.defaultEntry(part)?.takeIf { it.engine != VoiceCastEntry.NONE }?.name, isDefault, "default", false, "Default", onHear = null) {
+                    handle.cast.reset(part)
+                    handle.changed()
+                    haptics(Haptic.Selection)
+                }
+            }
             if (!part.isSpeaking) {
                 item(key = "not-read") {
                     VoiceRow("Not read", null, current == "none", null, false, "Not read", onHear = null) {
@@ -350,13 +394,10 @@ fun VoicePickerSheet(handle: CastHandle, script: PlayScript, part: PartID, onDis
                     ) { Text("Get more voices") }
                 }
             }
-            val kokoro = handle.kokoro
-            if (kokoro != null) {
-                downloadedGroup(kokoro, kokoroState, moduleState, handle.playId, current, hearing, onHear = { hear(it) }) { v ->
-                    val e = handle.cast.entry(part)
-                    val base = if (e == null || e.engine == VoiceCastEntry.NONE) VoiceCastEntry(VoiceCastEntry.KOKORO, v.id, v.name) else e
-                    change { base.copy(engine = VoiceCastEntry.KOKORO, voice = v.id, name = v.name) }
-                    haptics(Haptic.Selection)
+            if (handle.kokoro != null && BetterVoicesOffered(kokoroState, moduleState)) {
+                item(key = "better") {
+                    val open = com.example.appname.ui.screens.LocalReadNav.current.openVoiceSettings
+                    TextButton(onClick = { stopHearing(); onDismiss(); open() }, Modifier.padding(horizontal = Spacing.S2.dp)) { Text("Better voices") }
                 }
             }
         }
@@ -364,47 +405,19 @@ fun VoicePickerSheet(handle: CastHandle, script: PlayScript, part: PartID, onDis
 }
 
 /**
- * The picker's "Downloaded" group (PLAYS-DESIGN §2.8 rule 6, Decision 078; ANDROID-DESIGN §4.9b): before the voices are
+ * Settings > Voices' Kokoro controls (PLAYS-DESIGN §2.8 rules 6 and 11, Decision 078; ANDROID-DESIGN §4.11): before the voices are
  * here, one Download voices button with the size of the engine module and the model together; while Play fetches the
  * module and then the app fetches the model, one progress line over both and Cancel (Play's own confirmation when it
- * asks first); once here, the 28 Kokoro voices with their previews, Delete, and the attribution the model's licenses
- * ask for. A play the catalog published no phonemes for says so instead of listing voices that would not read it.
+ * asks first); once here, Delete and the attribution the model's licenses ask for.
  */
-private fun androidx.compose.foundation.lazy.LazyListScope.downloadedGroup(
+fun androidx.compose.foundation.lazy.LazyListScope.kokoroControls(
     kokoro: KokoroReader,
     state: KokoroModelStore.State,
     module: KokoroModule.State,
-    playId: String,
-    current: String?,
-    hearing: String?,
-    onHear: (CastVoice) -> Unit,
-    onPick: (CastVoice) -> Unit,
 ) {
-    item(key = "downloaded") {
-        Text(
-            "Downloaded",
-            Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
     val here = state is KokoroModelStore.State.Ready && module is KokoroModule.State.Installed
     when {
         here -> {
-            if (kokoro.hasPhonemes(playId) == false) {
-                item(key = "kokoro-none") {
-                    Text(
-                        "Not available for this play.",
-                        Modifier.padding(horizontal = Spacing.S4.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            } else {
-                items(kokoro.voices(), key = { "k:" + it.id }) { v ->
-                    VoiceRow(v.name, null, current == v.id, v.id, hearing == v.id, v.id, onHear = { onHear(v) }) { onPick(v) }
-                }
-            }
             item(key = "kokoro-delete") {
                 val container = LocalAppContainer.current
                 TextButton(onClick = { container.deleteVoices() }, Modifier.padding(horizontal = Spacing.S2.dp)) {
@@ -495,11 +508,15 @@ private fun androidx.compose.foundation.lazy.LazyListScope.downloadedGroup(
     }
 }
 
+/** "Better voices" is offered while Kokoro could run here and is not downloaded. */
+fun BetterVoicesOffered(state: KokoroModelStore.State, module: KokoroModule.State): Boolean =
+    !(state is KokoroModelStore.State.Ready && module is KokoroModule.State.Installed)
+
 /** The attribution Kokoro-82M's card and the CC BY data sets in its training ask for (R2-kokoro-feasibility §2). */
 const val KOKORO_CREDIT = "Kokoro-82M by hexgrad, Apache-2.0. Trained in part on Koniwa (CC BY 3.0) and SIWIS (CC BY 4.0)."
 
 @Composable
-private fun VoiceRow(name: String, note: String?, selected: Boolean, rawId: String?, hearing: Boolean, hint: String, onHear: (() -> Unit)?, onPick: () -> Unit) {
+internal fun VoiceRow(name: String, note: String?, selected: Boolean, rawId: String?, hearing: Boolean, hint: String, onHear: (() -> Unit)?, onPick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -530,6 +547,9 @@ private fun VoiceRow(name: String, note: String?, selected: Boolean, rawId: Stri
 @Composable
 fun VoicesSheet(handle: CastHandle, script: PlayScript, onPick: (PartID) -> Unit, onDismiss: () -> Unit) {
     val haptics = rememberHaptics()
+    val kokoroState by (handle.kokoro?.store?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow<KokoroModelStore.State>(KokoroModelStore.State.Absent) })
+        .collectAsState()
+    val moduleState by LocalAppContainer.current.kokoroModule.state.collectAsState()
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 640.dp)) {
             item(key = "head") {
@@ -557,6 +577,12 @@ fun VoicesSheet(handle: CastHandle, script: PlayScript, onPick: (PartID) -> Unit
                     onClick = { handle.cast.recast(); handle.changed(); haptics(Haptic.Selection) },
                     Modifier.padding(horizontal = Spacing.S2.dp),
                 ) { Text("Recast all") }
+            }
+            if (handle.kokoro != null && BetterVoicesOffered(kokoroState, moduleState)) {
+                item(key = "better") {
+                    val open = com.example.appname.ui.screens.LocalReadNav.current.openVoiceSettings
+                    TextButton(onClick = { onDismiss(); open() }, Modifier.padding(horizontal = Spacing.S2.dp)) { Text("Better voices") }
+                }
             }
         }
     }

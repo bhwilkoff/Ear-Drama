@@ -32,7 +32,9 @@ nonisolated enum Kokoro {
         ("bm_daniel", "Daniel", "D"), ("bm_fable", "Fable", "C"), ("bm_george", "George", "C"), ("bm_lewis", "Lewis", "D+"),
     ].enumerated().map { Voice(id: $1.0, name: $1.1, grade: $1.2, index: $0) }
 
-    private static let tier: [String: Int] = ["A": 2, "A-": 2, "B-": 1]
+    /// Kokoro's grades, best first (VOICES.md); the ones under C- start unticked in the defaults.
+    static let grades = ["A", "A-", "B-", "C+", "C", "C-", "D+", "D", "D-", "F+"]
+    static func offByDefault(_ grade: String) -> Bool { (grades.firstIndex(of: grade) ?? grades.count) > grades.firstIndex(of: "C-")! }
 
     /// Symbols per render: Kokoro rushes past ~400 (VOICES.md) and stops at 510.
     static let maxTokens = 400
@@ -52,8 +54,10 @@ nonisolated enum Kokoro {
     /// The castable Kokoro voices: none until the model is downloaded; best grade first, then the table's order.
     static func castable(ready: Bool) -> [CastVoice] {
         guard ready else { return [] }
-        return voices.sorted { (tier[$0.grade] ?? 0, -$0.index) > (tier[$1.grade] ?? 0, -$1.index) }
-            .map { CastVoice(id: $0.id, name: "\($0.name) (Kokoro)", language: $0.language, tier: 0, gender: $0.gender, engine: .kokoro) }
+        func rank(_ v: Voice) -> Int { grades.firstIndex(of: v.grade) ?? grades.count }
+        return voices.sorted { (rank($0), $0.index) < (rank($1), $1.index) }
+            .map { CastVoice(id: $0.id, name: "\($0.name) (Kokoro)", language: $0.language, tier: 0, gender: $0.gender, engine: .kokoro,
+                             grade: $0.grade, offByDefault: offByDefault($0.grade)) }
     }
 
     /// A phoneme string split into renders of at most `max` symbols, at the last sentence punctuation, else the last

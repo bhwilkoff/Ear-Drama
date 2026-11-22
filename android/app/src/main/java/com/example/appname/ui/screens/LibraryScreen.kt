@@ -39,6 +39,8 @@ import com.example.appname.data.resolveFollowing
 import com.example.appname.ui.ListenTogetherRow
 import com.example.appname.ui.SeriesListItem
 import com.example.appname.plays.PlaysShare
+import com.example.appname.ui.screens.voicesItems
+import com.example.appname.ui.screens.rememberVoicesState
 import com.example.appname.ui.AccountRow
 import com.example.appname.ui.ExportRow
 import com.example.appname.ui.EmptyAction
@@ -70,6 +72,8 @@ fun LibraryScreen(
     onOpenProduction: (String) -> Unit,
     onListenTogether: () -> Unit,
     onOpenDownloads: () -> Unit,
+    /** Moves each time Better voices asks for the Voices section. */
+    voicesRequest: Int = 0,
     onBrowse: () -> Unit,
 ) {
     val container = LocalAppContainer.current
@@ -111,6 +115,10 @@ fun LibraryScreen(
     }
     val downloadRecords by container.downloads.records.collectAsState()
     var unfollowing by remember { mutableStateOf<SeriesRow?>(null) }
+    // Voices is a section of Library (Decision 086); a TV has none.
+    val voices = if (LocalIsTelevision.current) null else rememberVoicesState()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    androidx.compose.runtime.LaunchedEffect(voicesRequest) { if (voicesRequest > 0) listState.animateScrollToItem(1) }
     val scope = rememberCoroutineScope()
     unfollowing?.let { row ->
         AlertDialog(
@@ -133,9 +141,10 @@ fun LibraryScreen(
             val firstRow = remember { FocusRequester() }
             val tv = LocalIsTelevision.current
             if (!empty) ClaimTvFocus(firstRow, Unit)
-            LazyColumn(Modifier.fillMaxSize().focusRequester(firstRow), contentPadding = padding) {
+            LazyColumn(Modifier.fillMaxSize().focusRequester(firstRow), state = listState, contentPadding = padding) {
                 // §4.11: the account is the first row, above what this device holds.
                 item(key = "account") { AccountRow() }
+                voices?.let { voicesItems(it.first, it.second) }
                 item(key = "export") { ExportRow() }
                 item(key = "together") { ListenTogetherRow(onListenTogether) }
                 if (tv) {

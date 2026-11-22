@@ -8,10 +8,11 @@ import AVFoundation
 //
 // A part's casting is { engine, voice, name, rate, pitch }: voice is the engine's identifier
 // (`AVSpeechSynthesisVoice.identifier`, or a Kokoro voice id such as `af_heart` for the downloaded voices,
-// S6e: KokoroEngine.swift), never a language. Auto-cast casts system voices only, so downloading voices never
-// recasts a play; a Kokoro voice is a person's choice in the picker. Auto-cast reads only the voices (their
-// quality, the person's language, and the gender the VOICE reports); it never reads a part's name
-// or the script (§2.8 rule 4).
+// S6e: KokoroEngine.swift), never a language. The cast keeps only a person's choices; a part nobody cast reads its
+// Default, worked out at each read (never written) by auto-cast over the device's voice defaults (Settings >
+// Voices, Decision 086): downloaded Kokoro voices first, then the device's own, best first. Auto-cast reads only
+// the voices (their quality, the person's language, and the gender the VOICE reports); it never reads a part's
+// name or the script (§2.8 rule 4).
 
 nonisolated enum VoiceEngine: String, Sendable, Codable {
     case system, kokoro, none
@@ -30,6 +31,12 @@ nonisolated struct CastVoice: Equatable, Sendable, Identifiable {
     let tier: Int
     let gender: VoiceGender?
     var engine: VoiceEngine = .system
+    /// Kokoro's own grade ("A", "C+"); nil for a device voice.
+    var grade: String? = nil
+    /// Kokoro's grades under C- start unticked in the defaults.
+    var offByDefault = false
+    /// "engine:id", the key the voice defaults use.
+    var key: String { "\(engine.rawValue):\(id)" }
 
     /// "Ava (Premium)": the name with its quality, once.
     var displayName: String {
@@ -63,6 +70,8 @@ nonisolated struct ResolvedVoice: Equatable, Sendable {
     var missing: String?
     /// The device has no castable voice at all.
     var none: Bool
+    /// Nobody chose this part's voice: it reads its Default.
+    var isDefault = false
 
     static func notRead(_ entry: VoiceCastEntry = .notRead, none: Bool = false) -> ResolvedVoice {
         ResolvedVoice(read: false, entry: entry, voice: nil, rate: 1, pitch: 1, missing: nil, none: none)
@@ -87,15 +96,58 @@ nonisolated enum VoiceCasting {
         }
     }
 
-    private static func entry(_ v: CastVoice, pitch: Double = 1) -> VoiceCastEntry {
-        VoiceCastEntry(engine: v.engine, voice: v.id, name: v.displayName, rate: 1, pitch: pitch)
+    private static func entry(_ v: CastVoice, pitch: Double = 1, rate: Double = 1) -> VoiceCastEntry {
+        VoiceCastEntry(engine: v.engine, voice: v.id, name: v.displayName, rate: rate, pitch: pitch)
+    }
+
+    /// Whether the defaults use a voice: the person's tick, else the voice's own default.
+    static func uses(_ v: CastVoice, _ d: VoiceDefaults) -> Bool { d.off[v.key].map { !$0 } ?? !v.offByDefault }
+
+    /// Every voice in the defaults' order: downloaded (Kokoro) before the device's own, inside each engine the
+    /// person's order, then the rest as `voices` gave them (best first). Nothing is left out.
+    static func ordered(_ voices: [CastVoice], _ d: VoiceDefaults) -> [CastVoice] {
+        let at = Dictionary(d.order.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
+        func engineRank(_ v: CastVoice) -> Int { v.engine == .kokoro ? 0 : 1 }
+        return voices.enumerated().sorted { a, b in
+            if engineRank(a.element) != engineRank(b.element) { return engineRank(a.element) < engineRank(b.element) }
+            let ra = at[a.element.key] ?? Int.max, rb = at[b.element.key] ?? Int.max
+            if ra != rb { return ra < rb }
+            return a.offset < b.offset
+        }.map(\.element)
+    }
+
+    /// The auto-cast pool: `ordered` less the voices the defaults leave out; never empty while a voice exists.
+    static func pool(_ voices: [CastVoice], _ d: VoiceDefaults) -> [CastVoice] {
+        let all = ordered(voices, d)
+        let used = all.filter { uses($0, d) }
+        return used.isEmpty ? all : used
+    }
+
+    /// The defaults with a drag applied to one engine's group (`group` as shown), the group's order written first.
+    static func reorder(_ group: [CastVoice], _ d: VoiceDefaults, from: IndexSet, to: Int) -> VoiceDefaults {
+        var keys = group.map(\.key)
+        keys.move(fromOffsets: from, toOffset: to)
+        var next = d
+        next.order = keys + d.order.filter { !keys.contains($0) }
+        return next
+    }
+
+    /// The defaults with `voice` moved one place up (-1) or down (+1) among its engine's voices.
+    static func move(_ voices: [CastVoice], _ d: VoiceDefaults, _ voice: CastVoice, by: Int) -> VoiceDefaults {
+        var list = ordered(voices, d).filter { $0.engine == voice.engine }
+        guard let i = list.firstIndex(where: { $0.key == voice.key }), list.indices.contains(i + by) else { return d }
+        list.swapAt(i, i + by)
+        let keys = list.map(\.key)
+        var next = d
+        next.order = keys + d.order.filter { !keys.contains($0) }
+        return next
     }
 
     /// Auto-cast (§2.8 rule 4). `parts` in cast order (largest first), `voices` best first. Speaking parts
     /// take distinct voices, the best first; where voices report a gender, each next part takes the best
     /// remaining voice of the other one. When voices run out the list starts again at the next pitch.
     /// Directions and sound are Not read. Reads nothing of a part but its place in the list.
-    static func autoCast(_ parts: [PartID], _ voices: [CastVoice]) -> [PartID: VoiceCastEntry] {
+    static func autoCast(_ parts: [PartID], _ voices: [CastVoice], rate: Double = 1) -> [PartID: VoiceCastEntry] {
         var out: [PartID: VoiceCastEntry] = [:]
         var pool: [CastVoice] = []
         var round = -1
@@ -114,7 +166,7 @@ nonisolated enum VoiceCasting {
             if let last, let j = pool.firstIndex(where: { $0.gender != nil && $0.gender != last }) { k = j }
             let v = pool.remove(at: k)
             if let g = v.gender { last = g }
-            out[part] = entry(v, pitch: pitches[round % pitches.count])
+            out[part] = entry(v, pitch: pitches[round % pitches.count], rate: clamp(rate, rateRange, 1))
         }
         return out
     }
@@ -145,21 +197,23 @@ nonisolated enum VoiceCasting {
     static func resolve(_ entry: VoiceCastEntry?, _ part: PartID, _ voices: [CastVoice],
                         _ auto: [PartID: VoiceCastEntry], downloaded: [CastVoice] = []) -> ResolvedVoice {
         guard let e = entry.flatMap(normalize) ?? auto[part], e.engine != .none else {
-            return .notRead(entry.flatMap(normalize) ?? auto[part] ?? .notRead, none: voices.isEmpty)
+            return .notRead(entry.flatMap(normalize) ?? auto[part] ?? .notRead, none: voices.isEmpty && downloaded.isEmpty)
         }
-        if voices.isEmpty { return .notRead(e, none: true) }
+        if voices.isEmpty && downloaded.isEmpty { return .notRead(e, none: true) }
+        let isDefault = entry.flatMap(normalize) == nil
         let found: CastVoice? = switch e.engine {
         case .system: voices.first { $0.id == e.voice }
         case .kokoro: downloaded.first { $0.engine == .kokoro && $0.id == e.voice }
         case .none: nil
         }
         if let found {
-            return ResolvedVoice(read: true, entry: e, voice: found, rate: e.rate, pitch: e.pitch, missing: nil, none: false)
+            return ResolvedVoice(read: true, entry: e, voice: found, rate: e.rate, pitch: e.pitch, missing: nil, none: false,
+                                 isDefault: isDefault)
         }
-        let fallback = auto[part].flatMap { a in voices.first { $0.id == a.voice } } ?? voices[0]
+        let fallback = auto[part].flatMap { a in (voices + downloaded).first { $0.id == a.voice } } ?? (voices + downloaded)[0]
         let pitch = auto[part]?.pitch ?? 1
         return ResolvedVoice(read: true, entry: e, voice: fallback, rate: e.rate, pitch: pitch,
-                             missing: e.name ?? e.voice, none: false)
+                             missing: e.name ?? e.voice, none: false, isDefault: isDefault)
     }
 }
 
@@ -190,7 +244,46 @@ nonisolated struct CastStorage: Sendable {
     }
 }
 
+/// The device's voice defaults (Settings > Voices, Decision 086): `ed.voices`, this device only, never synced.
+nonisolated struct VoiceDefaults: Equatable, Sendable {
+    /// "engine:voice id" keys, the person's order.
+    var order: [String] = []
+    var off: [String: Bool] = [:]
+    var rate: Double = 1
+
+    static let empty = VoiceDefaults()
+
+    static func normalize(_ raw: Any?) -> VoiceDefaults {
+        guard let d = raw as? [String: Any] else { return .empty }
+        let order = ((d["order"] as? [Any]) ?? []).compactMap { $0 as? String }.prefix(400)
+        var off: [String: Bool] = [:]
+        for (k, v) in (d["off"] as? [String: Any]) ?? [:] { if let b = v as? Bool { off[k] = b } }
+        let rate = (d["rate"] as? NSNumber)?.doubleValue
+        let r = rate.flatMap { $0.isFinite ? ((min(2, max(0.5, $0)) * 100).rounded() / 100) : nil } ?? 1
+        return VoiceDefaults(order: Array(order), off: off, rate: r)
+    }
+
+    var dictionary: [String: Any] { ["order": order, "off": off, "rate": rate] }
+}
+
+nonisolated enum VoiceDefaultsStore {
+    static let key = "ed.voices"
+
+    static func load(_ defaults: UserDefaults = .standard) -> VoiceDefaults {
+        guard let data = defaults.data(forKey: key), let obj = try? JSONSerialization.jsonObject(with: data) else { return .empty }
+        return VoiceDefaults.normalize(obj)
+    }
+
+    static func save(_ d: VoiceDefaults, _ defaults: UserDefaults = .standard) {
+        let clean = VoiceDefaults.normalize(d.dictionary)
+        if let data = try? JSONSerialization.data(withJSONObject: clean.dictionary) { defaults.set(data, forKey: key) }
+    }
+}
+
 nonisolated enum VoiceCastBook {
+    /// Rows written before Decision 086 (no `v`) wrote auto-cast in as if chosen: they read as no choice.
+    static let version = 2
+
     static let keep = 80
 
     private static func all(_ s: CastStorage) -> [String: [String: Any]] {
@@ -208,13 +301,14 @@ nonisolated enum VoiceCastBook {
     }
 
     static func load(_ key: String, _ s: CastStorage) -> [String: Any]? {
-        all(s)[key]?["parts"] as? [String: Any]
+        guard let row = all(s)[key], row["v"] as? Int == version else { return nil }
+        return row["parts"] as? [String: Any]
     }
 
     static func save(_ key: String, _ parts: [PartID: VoiceCastEntry], _ s: CastStorage) {
         var book = all(s)
         book[key] = ["parts": Dictionary(uniqueKeysWithValues: parts.map { ($0.key.rawValue, VoiceCasting.dictionary($0.value)) }),
-                     "at": Date().timeIntervalSince1970 * 1000]
+                     "v": version, "at": Date().timeIntervalSince1970 * 1000]
         write(s, book)
     }
 
@@ -232,7 +326,8 @@ nonisolated enum VoiceCastBook {
 // MARK: - The caster
 
 /// The one cast for a production (or a play): every player on this device reads parts through this.
-/// It holds no state of its own; the storage is the cast, so every instance agrees.
+/// It holds no state of its own; the storage is the cast, so every instance agrees. The storage holds only
+/// the person's choices: a part without one reads its Default (`defaultEntry`), never written.
 nonisolated final class VoiceCast: Sendable {
     let key: String
     let parts: [PartID]
@@ -241,10 +336,13 @@ nonisolated final class VoiceCast: Sendable {
     private let seed: String?
     private let voicesNow: @Sendable () -> [CastVoice]
     private let downloadedNow: @Sendable () -> [CastVoice]
+    private let defaultsNow: @Sendable () -> VoiceDefaults
     private let storage: CastStorage
 
+    /// `voices` are the device's own; `downloaded` the Kokoro voices when the model is here. The Default pool is both.
     init(key: String, seed: String? = nil, playID: String? = nil, parts: [PartID],
          voices: @escaping @Sendable () -> [CastVoice], downloaded: @escaping @Sendable () -> [CastVoice] = { [] },
+         defaults: @escaping @Sendable () -> VoiceDefaults = { VoiceDefaultsStore.load() },
          storage: CastStorage = .defaults()) {
         self.key = key
         self.seed = seed
@@ -252,6 +350,7 @@ nonisolated final class VoiceCast: Sendable {
         self.parts = parts
         self.voicesNow = voices
         self.downloadedNow = downloaded
+        self.defaultsNow = defaults
         self.storage = storage
     }
 
@@ -276,66 +375,74 @@ nonisolated final class VoiceCast: Sendable {
                   voices: { DeviceVoices.castable() }, downloaded: deviceDownloaded)
     }
 
+    /// The device's own voices.
     func voices() -> [CastVoice] { voicesNow() }
 
     /// The downloaded (Kokoro) voices now: none until the model is on this device.
     func downloadedVoices() -> [CastVoice] { downloadedNow() }
 
-    /// Fills any part without a casting by auto-cast, once there is a voice to cast; keeps every choice made.
-    @discardableResult
-    func ensure() -> [PartID: VoiceCastEntry] {
-        let v = voicesNow()
-        let have = VoiceCastBook.load(key, storage)
-        let base = have ?? seed.flatMap { VoiceCastBook.load($0, storage) } ?? [:]
-        var next: [PartID: VoiceCastEntry] = [:]
-        for (k, raw) in base { if let e = VoiceCasting.normalize(raw) { next[PartID(rawValue: k)] = e } }
-        guard !v.isEmpty else { return next }
-        let auto = VoiceCasting.autoCast(parts, v)
-        var changed = have == nil
-        for id in parts where next[id] == nil {
-            if let a = auto[id] {
-                next[id] = a
-                changed = true
-            }
-        }
-        if changed { VoiceCastBook.save(key, next, storage) }
-        return next
+    func defaults() -> VoiceDefaults { defaultsNow() }
+
+    private func chosen() -> [PartID: VoiceCastEntry] {
+        let base = VoiceCastBook.load(key, storage) ?? seed.flatMap { VoiceCastBook.load($0, storage) } ?? [:]
+        var out: [PartID: VoiceCastEntry] = [:]
+        for (k, raw) in base { if let e = VoiceCasting.normalize(raw) { out[PartID(rawValue: k)] = e } }
+        return out
+    }
+
+    /// Every part's Default now: auto-cast over the defaults' pool (downloaded first), at the defaults' speed.
+    private func auto() -> [PartID: VoiceCastEntry] {
+        let d = defaultsNow()
+        return VoiceCasting.autoCast(parts, VoiceCasting.pool(downloadedNow() + voicesNow(), d), rate: d.rate)
     }
 
     func resolve(_ part: PartID) -> ResolvedVoice {
-        let v = voicesNow()
-        let cast = ensure()
-        return VoiceCasting.resolve(cast[part], part, v, VoiceCasting.autoCast(parts, v), downloaded: downloadedNow())
+        VoiceCasting.resolve(chosen()[part], part, voicesNow(), auto(), downloaded: downloadedNow())
     }
 
     /// The system voice that reads a Kokoro part's line Kokoro cannot read (no phonemes for the play, a refused
-    /// render): the part's auto-cast system voice at the part's speed (§2.8 rule 10). A system part reads as resolved.
+    /// render): the part's Default among the device's own voices at the part's speed (§2.8 rule 10). A system part
+    /// reads as resolved.
     func systemFallback(_ part: PartID) -> ResolvedVoice {
         let r = resolve(part)
         guard r.read, let voice = r.voice, voice.engine == .kokoro else { return r }
         let v = voicesNow()
-        let a = VoiceCasting.autoCast(parts, v)[part]
+        let d = defaultsNow()
+        let a = VoiceCasting.autoCast(parts, VoiceCasting.pool(v, d), rate: d.rate)[part]
         guard let fb = v.first(where: { $0.id == a?.voice }) ?? v.first else { return .notRead(r.entry, none: true) }
-        return ResolvedVoice(read: true, entry: r.entry, voice: fb, rate: r.rate, pitch: a?.pitch ?? 1, missing: nil, none: false)
+        return ResolvedVoice(read: true, entry: r.entry, voice: fb, rate: r.rate, pitch: a?.pitch ?? 1, missing: nil, none: false,
+                             isDefault: r.isDefault)
     }
 
-    func entry(_ part: PartID) -> VoiceCastEntry? { ensure()[part] }
+    /// The part's casting now: the choice, else its Default.
+    func entry(_ part: PartID) -> VoiceCastEntry? { chosen()[part] ?? auto()[part] }
 
-    /// Merges `change` into the part's current casting and keeps it.
+    /// The person's own choice for a part, or nil when it reads its Default.
+    func choice(_ part: PartID) -> VoiceCastEntry? { chosen()[part] }
+
+    /// What the part's Default reads now, chosen or not.
+    func defaultEntry(_ part: PartID) -> VoiceCastEntry? { auto()[part] }
+
+    /// Merges `change` into the part's choice, else into its Default entry, and keeps it as a choice.
     func set(_ part: PartID, _ change: (inout VoiceCastEntry) -> Void) {
-        var cast = ensure()
-        var e = cast[part] ?? .notRead
+        var cast = chosen()
+        var e = cast[part] ?? auto()[part] ?? .notRead
         change(&e)
         guard let next = VoiceCasting.normalize(e) else { return }
         cast[part] = next
         VoiceCastBook.save(key, cast, storage)
     }
 
-    /// Recast all: auto-cast again over the voices on this device now.
-    func recast() {
-        let v = voicesNow()
-        if !v.isEmpty { VoiceCastBook.save(key, VoiceCasting.autoCast(parts, v), storage) }
+    /// Back to the Default: the part's choice is dropped.
+    func reset(_ part: PartID) {
+        var cast = chosen()
+        guard cast[part] != nil else { return }
+        cast[part] = nil
+        VoiceCastBook.save(key, cast, storage)
     }
+
+    /// Recast all: every part back to its Default.
+    func recast() { VoiceCastBook.save(key, [:], storage) }
 
     /// A production deleted forgets its cast.
     static func forget(production id: String, storage: CastStorage = .defaults()) {

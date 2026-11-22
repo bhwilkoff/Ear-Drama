@@ -481,6 +481,7 @@ struct CastSheet: View {
                     #if os(iOS)
                     .sensoryFeedback(Haptic.selection.feedback, trigger: voices.revision)
                     #endif
+                BetterVoicesLink()
             }
             .modifier(CastColumnRows(on: sizeClass == .regular))
         }

@@ -1309,6 +1309,7 @@ struct LibraryScreen: View {
                 let empty = Self.emptied || (inProgress.isEmpty && played.isEmpty && queued.isEmpty && following.isEmpty
                     && downloads.records.isEmpty && plays.store.productions.isEmpty
                     && (!account.isSignedIn || shared.remote.isEmpty))
+                ScrollViewReader { proxy in
                 List {
                     if catalog.state == .unavailable {
                         CatalogUnavailableView()
@@ -1382,18 +1383,23 @@ struct LibraryScreen: View {
                         EarDramasSection()
                     }
                     Section { AccountRow() }
+                    #if os(iOS) || os(macOS)
+                    VoicesSection()
+                    #endif
                     #if os(iOS)
                     Section { SiteLinkRows() }
                     #endif
                 }
                 .pageMargins()
+                .onChange(of: app.libraryVoicesRequest) { withAnimation { proxy.scrollTo("voices", anchor: .top) } }
+                }
             } else {
                 List { SkeletonRows() }.pageMargins()
             }
         }
         .navigationTitle("Library")
         #if os(iOS)
-        .toolbar { if !queued.isEmpty { ToolbarItem(placement: .primaryAction) { EditButton() } } }
+        .toolbar { ToolbarItem(placement: .primaryAction) { EditButton() } }
         #endif
         .task(id: account.isSignedIn) { if account.isSignedIn { await shared.loadRemote() } }
         .task(id: LibraryKey(entries: history.entries, queue: queue.items, load: catalog.loadKey)) {

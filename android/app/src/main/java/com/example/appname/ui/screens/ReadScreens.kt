@@ -77,7 +77,7 @@ import kotlinx.serialization.json.buildJsonObject
 // page with its casting board. Rules are ReadCore's and the transport ReadSession's; these only draw the snapshot.
 
 /** Where the Library's classes and a play's Read together lead (provided once by AppRoot). */
-class ReadNav(val openClass: (String) -> Unit = {}, val openRoom: (String) -> Unit = {}, val showReading: () -> Unit = {}, val openParts: () -> Unit = {})
+class ReadNav(val openClass: (String) -> Unit = {}, val openRoom: (String) -> Unit = {}, val showReading: () -> Unit = {}, val openParts: () -> Unit = {}, val openVoiceSettings: () -> Unit = {})
 
 val LocalReadNav = androidx.compose.runtime.staticCompositionLocalOf { ReadNav() }
 

@@ -63,8 +63,10 @@ private func fixtureScript(_ names: [String] = ["MOLLY", "FIBBER", "DOC"]) -> Pl
                       roles: names.map { n in .init(name: n, lines: lines.filter { $0.role == n }.count, words: 2) }, lines: lines)
 }
 
-private func caster(_ key: String, _ script: PlayScript, _ voices: Voices, _ storage: CastStorage, seed: String? = nil) -> VoiceCast {
-    VoiceCast(key: key, seed: seed, parts: script.castParts.map(\.id), voices: { voices.now }, storage: storage)
+private func caster(_ key: String, _ script: PlayScript, _ voices: Voices, _ storage: CastStorage, seed: String? = nil,
+                    kokoro: [CastVoice] = [], defaults: VoiceDefaults = .empty) -> VoiceCast {
+    VoiceCast(key: key, seed: seed, parts: script.castParts.map(\.id), voices: { voices.now }, downloaded: { kokoro },
+              defaults: { defaults }, storage: storage)
 }
 
 private let molly = PartID.role("MOLLY"), fibber = PartID.role("FIBBER"), doc = PartID.role("DOC")
@@ -209,7 +211,7 @@ struct VoiceCastTests {
         #expect(k.resolve(doc).missing == "Heart", "a Kokoro voice (none until S6) falls back the same way")
     }
 
-    @Test func noVoiceYetMeansNothingIsCastStoredOrSpokenThenAutoCastRunsAndIsKept() throws {
+    @Test func noVoiceYetMeansNothingIsCastStoredOrSpokenThenTheDefaultReadsAndIsNeverKept() throws {
         let script = fixtureScript()
         let storage = CastStorage.memory()
         let voices = Voices([])
@@ -219,8 +221,8 @@ struct VoiceCastTests {
         #expect(storage.read() == nil, "auto-cast waits for a non-empty list")
         #expect(VoiceChipText.title(r) == "No Voice")
         voices.now = ordered
-        #expect(cast.resolve(molly).voice?.name == "Ava (Premium)", "the voices land: auto-cast runs")
-        #expect(storage.read() != nil, "and is kept")
+        #expect(cast.resolve(molly).voice?.name == "Ava (Premium)", "the voices land: the Default reads")
+        #expect(storage.read() == nil, "and is never written into the cast (Decision 086)")
     }
 
     // MARK: Keeping it
@@ -325,4 +327,131 @@ private final class FakeSpeaker: ListenSpeaker {
 private final class FakeTakes: ListenTakePlayer {
     func play(_ url: URL) async {}
     func stop() {}
+}
+
+// MARK: - The device's voice defaults (Decision 086), mirroring js/voice-cast.test.js "The device's voice defaults"
+//
+// Seen to fail, 2026-11-22 (each against a mutated copy of Core/Plays/VoiceCast.swift):
+//   ordered() without the engine rank (Kokoro not first): "Kokoro leads the pool" fails.
+//   pool() without the unticked filter: "unticked voices leave the pool" fails.
+//   ensure-style write-back in resolve (a Default saved as a choice): "a Default is never written" fails.
+//   VoiceCastBook.load ignoring `v`: "an old row reads as no choice" fails.
+
+private nonisolated func kokoroVoice(_ id: String, _ name: String, grade: String, off: Bool = false) -> CastVoice {
+    CastVoice(id: id, name: "\(name) (Kokoro)", language: "en-US", tier: 0, gender: nil, engine: .kokoro, grade: grade, offByDefault: off)
+}
+private nonisolated let heart = kokoroVoice("af_heart", "Heart", grade: "A")
+private nonisolated let bella = kokoroVoice("af_bella", "Bella", grade: "A-")
+private nonisolated let jessica = kokoroVoice("af_jessica", "Jessica", grade: "D", off: true)
+private nonisolated let fakeKokoro = [heart, bella, jessica]
+
+struct VoiceDefaultsTests {
+    @Test func kokoroLeadsThePoolThenThePersonsOrderThenBestFirstAndUntickedLeave() {
+        let all = fakeKokoro + ordered
+        #expect(VoiceCasting.ordered(all, .empty).map(\.name) == ["Heart (Kokoro)", "Bella (Kokoro)", "Jessica (Kokoro)", "Ava (Premium)",
+                                                                  "Karen (Enhanced)", "Samantha", "Daniel"], "Kokoro first, each group as given")
+        #expect(VoiceCasting.pool(all, .empty).map(\.name).first == "Heart (Kokoro)")
+        #expect(!VoiceCasting.pool(all, .empty).contains { $0.id == "af_jessica" }, "a grade under C- starts unticked")
+        var d = VoiceDefaults.empty
+        d.order = [samantha.key, bella.key]
+        #expect(VoiceCasting.ordered(all, d).map(\.id) == ["af_bella", "af_heart", "af_jessica", "com.samantha", "com.ava.premium", "com.karen", "com.daniel"],
+                "the person's order inside each engine, the rest after in the incoming order")
+        d.off = [heart.key: true, jessica.key: false]
+        #expect(VoiceCasting.pool(all, d).prefix(2).map(\.id) == ["af_bella", "af_jessica"], "the person's tick beats the voice's own default")
+        var none = VoiceDefaults.empty
+        none.off = Dictionary(uniqueKeysWithValues: all.map { ($0.key, true) })
+        #expect(VoiceCasting.pool(all, none).count == all.count, "all unticked means all")
+    }
+
+    @Test func movingAVoiceSwapsWithinItsEngineOnly() {
+        let all = fakeKokoro + ordered
+        let d = VoiceCasting.move(all, .empty, samantha, by: -1)
+        #expect(VoiceCasting.ordered(all, d).filter { $0.engine == .system }.map(\.name) == ["Ava (Premium)", "Samantha", "Karen (Enhanced)", "Daniel"])
+        #expect(VoiceCasting.ordered(all, d).prefix(3).allSatisfy { $0.engine == .kokoro }, "Kokoro stays first")
+        #expect(VoiceCasting.move(all, .empty, ava, by: -1) == .empty, "the first cannot move up")
+        let dragged = VoiceCasting.reorder(ordered, .empty, from: IndexSet(integer: 3), to: 0)
+        #expect(VoiceCasting.ordered(ordered, dragged).first?.name == "Daniel", "a drag to the top")
+    }
+
+    @Test func untouchedPartsReadTheDefaultAtTheDefaultSpeedAndADownloadReachesThem() {
+        let script = fixtureScript()
+        let storage = CastStorage.memory()
+        let voices = Voices()
+        var d = VoiceDefaults.empty
+        d.rate = 1.2
+        let before = caster("p:D1", script, voices, storage, defaults: d)
+        #expect(before.resolve(molly).voice?.name == "Ava (Premium)" && before.resolve(molly).isDefault)
+        #expect(before.resolve(molly).rate == 1.2, "the Default speed")
+        before.set(fibber) { $0.voice = daniel.id; $0.name = daniel.displayName }
+        let after = caster("p:D1", script, voices, storage, kokoro: fakeKokoro, defaults: d)
+        #expect(after.resolve(molly).voice?.name == "Heart (Kokoro)", "a download reaches every untouched part")
+        #expect(after.resolve(doc).voice?.name == "Ava (Premium)", "the Default pool runs on into the device's own voices when Kokoro's run out")
+        #expect(after.resolve(fibber).voice?.name == "Daniel" && !after.resolve(fibber).isDefault, "a chosen part keeps its voice")
+        after.reset(fibber)
+        #expect(after.resolve(fibber).isDefault && after.resolve(fibber).voice?.engine == .kokoro, "reset drops the choice")
+        after.set(molly) { $0.rate = 0.8 }
+        #expect(after.choice(molly)?.voice == heart.id && after.choice(molly)?.rate == 0.8, "set merges into the Default entry")
+        after.recast()
+        #expect(after.choice(molly) == nil && after.resolve(molly).isDefault, "Recast all returns every part to Default")
+    }
+
+    @Test func aDefaultIsNeverWrittenIntoTheCast() {
+        let script = fixtureScript()
+        let storage = CastStorage.memory()
+        let cast = caster("p:D2", script, Voices(), storage, kokoro: fakeKokoro)
+        for part in script.castParts.map(\.id) { _ = cast.resolve(part); _ = cast.entry(part) }
+        #expect(storage.read() == nil, "reading a cast writes nothing")
+        cast.reset(molly)
+        #expect(storage.read() == nil, "resetting a Default writes nothing")
+    }
+
+    @Test func anOldUnversionedRowIsNoChoice() throws {
+        let script = fixtureScript()
+        let storage = CastStorage.memory()
+        let old: [String: Any] = ["p:D3": ["parts": ["role:MOLLY": ["engine": "system", "voice": daniel.id, "name": "Daniel", "rate": 1, "pitch": 1]], "at": 1.0]]
+        storage.write(try JSONSerialization.data(withJSONObject: old))
+        let cast = caster("p:D3", script, Voices(), storage)
+        #expect(cast.choice(molly) == nil && cast.resolve(molly).voice?.name == "Ava (Premium)", "a row without v is not a choice")
+        cast.set(molly) { $0.voice = daniel.id; $0.name = daniel.displayName }
+        #expect(caster("p:D3", script, Voices(), storage).choice(molly)?.voice == daniel.id, "a row written now is a choice (v 2)")
+    }
+
+    @Test func theFallbackForAKokoroLineIsTheDefaultAmongTheDevicesOwnVoices() {
+        let script = fixtureScript()
+        let cast = caster("p:D4", script, Voices(), CastStorage.memory(), kokoro: fakeKokoro)
+        #expect(cast.resolve(molly).voice?.engine == .kokoro)
+        #expect(cast.systemFallback(molly).voice?.name == "Ava (Premium)" && cast.systemFallback(molly).voice?.engine == .system)
+    }
+
+    @Test func defaultsPersistNormalizeAndSurviveABrokenRow() throws {
+        let suite = UserDefaults(suiteName: "ed.test.voices.\(UUID().uuidString)")!
+        #expect(VoiceDefaultsStore.load(suite) == .empty)
+        var d = VoiceDefaults.empty
+        d.order = ["kokoro:af_heart"]
+        d.off = ["system:x": true]
+        d.rate = 9
+        VoiceDefaultsStore.save(d, suite)
+        let back = VoiceDefaultsStore.load(suite)
+        #expect(back.order == ["kokoro:af_heart"] && back.off == ["system:x": true] && back.rate == 2, "kept, and the speed clamped")
+        suite.set(Data("not json".utf8), forKey: VoiceDefaultsStore.key)
+        #expect(VoiceDefaultsStore.load(suite) == .empty, "a broken row reads as the defaults")
+        #expect(VoiceDefaults.normalize(["order": [1, "a"], "off": ["k": "no"], "rate": "fast"]) == VoiceDefaults(order: ["a"], off: [:], rate: 1))
+    }
+
+    @Test func kokoroGradesUnderCMinusStartUnticked() {
+        let off = Kokoro.castable(ready: true).filter(\.offByDefault).map(\.name)
+        #expect(Set(off) == Set(["Jessica", "River", "Echo", "Eric", "Liam", "Onyx", "Santa", "Adam", "Alice", "Lily", "Daniel", "Lewis"].map { "\($0) (Kokoro)" }))
+        #expect(Kokoro.castable(ready: true).first?.id == "af_heart", "best grade first")
+        #expect(Kokoro.castable(ready: false).isEmpty)
+    }
+
+    @Test func settingsStatesAndTheBetterVoicesOffer() {
+        #expect(KokoroDownloadState.of(.absent, supported: false) == .unsupported, "unsupported beats every state")
+        #expect(KokoroDownloadState.of(.absent, supported: true) == .absent)
+        #expect(KokoroDownloadState.of(.downloading(done: 1, total: 2), supported: true) == .downloading)
+        #expect(KokoroDownloadState.of(.ready, supported: true) == .ready)
+        #expect(KokoroDownloadState.offersBetterVoices(ready: false, flag: true) && !KokoroDownloadState.offersBetterVoices(ready: true, flag: true)
+                && !KokoroDownloadState.offersBetterVoices(ready: false, flag: false),
+                "offered only while Kokoro could run and is not here")
+    }
 }

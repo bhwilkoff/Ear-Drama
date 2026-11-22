@@ -499,6 +499,8 @@ Not measured: the iPhone 12 (the S6a gate's device for memory) and the iPad; the
 engine keeps two loaded (`APP_KOKORO_BENCH_KEEP` changes it). `KokoroFlag.inRelease` stays false until the iPhone run
 passes.
 
+**2026-11-22 (Decision 086 port):** the gate was not run. The Apple model package is not on the Release, no built copy exists on this Mac, and its Core ML step cannot be redone here (coremltools segfaults on macOS 27), so there was nothing to put on the open iPhone Duo for the bench. Settings > Voices ships with the download and the refusal behind `KokoroFlag.inRelease` (false); when a model is built and published, run `APP_KOKORO_BENCH=1` muted on the Duo (RTF at most 0.7, peak footprint under 600 MB) and flip the flag.
+
 ## Sources
 
 

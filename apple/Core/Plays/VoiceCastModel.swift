@@ -32,6 +32,18 @@ final class VoiceCastModel {
         return cast.downloadedVoices()
     }
 
+    /// What the part's Default reads now, for the picker's first row.
+    func defaultVoiceName(_ part: PartID) -> String? {
+        _ = revision
+        return cast.defaultEntry(part).flatMap { $0.engine == .none ? nil : $0.name }
+    }
+
+    /// Back to the Default: the part's choice is dropped.
+    func reset(_ part: PartID) {
+        cast.reset(part)
+        revision += 1
+    }
+
     func set(_ part: PartID, _ change: (inout VoiceCastEntry) -> Void) {
         cast.set(part, change)
         revision += 1
