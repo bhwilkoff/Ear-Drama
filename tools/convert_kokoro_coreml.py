@@ -646,7 +646,7 @@ def verify(work, precision, wq, units):
             for t in TAPS:
                 ref_t, got_t = c(k, t), r[t]
                 L = ref_t.shape[-1]
-                g = got_t[..., :L]
+                g = got_t[tuple(slice(0, n) for n in ref_t.shape)]
                 print(f"diag {k} {t}: torch {list(ref_t.shape)} coreml {list(got_t.shape)} SNR "
                       f"{snr_db(ref_t.ravel(), g.ravel()):.1f} dB, max diff {np.abs(ref_t - g).max():.4f}", flush=True)
             a = r["audio"].reshape(-1)[:600 * nf]
