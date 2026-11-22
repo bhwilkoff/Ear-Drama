@@ -27,6 +27,12 @@ on:
       version:
         description: 'Model version to publish (kokoro-vN-apple-manifest.json)'
         default: '3'
+      precision:
+        description: 'Compute precision: mixed (fp16, the phase and inverse STFT in fp32) | fp32 | fp16'
+        default: 'mixed'
+      weights:
+        description: 'Weight storage: int8 | none'
+        default: 'int8'
       publish:
         description: 'Upload to the kokoro-model Release after the check passes'
         type: boolean
@@ -43,9 +49,15 @@ jobs:
   convert:
     runs-on: macos-26
     timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:  # TEMPORARY: the push runs compare variants and publish nothing
+        include: ${{ fromJSON(github.event_name == 'push' && '[{"p":"fp32","w":"none"},{"p":"mixed","w":"none"},{"p":"mixed","w":"int8"}]' || format('[{{"p":"{0}","w":"{1}"}}]', inputs.precision, inputs.weights)) }}
     env:
       VERSION: ${{ inputs.version || '3' }}
-      PUBLISH: ${{ format('{0}', inputs.publish) == 'false' && 'false' || 'true' }}
+      PUBLISH: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.publish) != 'false' && 'true' || 'false' }}
+      PRECISION: ${{ matrix.p }}
+      WEIGHTS: ${{ matrix.w }}
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
     steps:
@@ -81,7 +93,7 @@ jobs:
 
       - name: Convert and check against PyTorch
         run: |
-          "$RUNNER_TEMP/venv/bin/python" -u tools/convert_kokoro_coreml.py "$RUNNER_TEMP/work" --units cpu
+          "$RUNNER_TEMP/venv/bin/python" -u tools/convert_kokoro_coreml.py "$RUNNER_TEMP/work" --units cpu --precision "$PRECISION" --weights "$WEIGHTS"
           python3 - "$RUNNER_TEMP/work/kokoro-coreml-report.json" <<'PY'
           import json, sys
           r = json.load(open(sys.argv[1]))
@@ -94,7 +106,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kokoro-coreml
+          name: kokoro-coreml-${{ matrix.p }}-${{ matrix.w }}
           retention-days: 7
           if-no-files-found: ignore
           path: |
