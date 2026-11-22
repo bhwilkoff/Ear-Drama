@@ -221,7 +221,7 @@ class VoiceCastTest {
         assertEquals("a Kokoro voice (none until S6) falls back the same way", "Heart", k.resolve(PartID.role("DOC")).missing)
     }
 
-    @Test fun `with no voice nothing is cast, stored or spoken, and when voices arrive auto-cast runs and is kept`() {
+    @Test fun `with no voice nothing is cast, stored or spoken, and when voices arrive the Default reads and is never kept`() {
         val store = MemoryCastStore()
         var list = emptyList<RawVoice>()
         val cast = caster(store = store, source = { voices(list) })
@@ -232,7 +232,7 @@ class VoiceCastTest {
         assertNull("nothing reaches the engine", who(cast, molly))
         list = device
         assertEquals(voices()[0].id, cast.resolve(molly).voice?.id)
-        assertNotNull(VoiceCasting.load("p:P1", store))
+        assertNull("a Default is never written into the cast (Decision 086)", store.text)
     }
 
     @Test fun `a production starts from its play's cast, changing it leaves the play's alone, 80 casts are kept, storage failures are survived, and sync never names the cast`() {
@@ -324,5 +324,108 @@ class VoiceCastTest {
             2,
             setOf(chipVoiceName("English (United States) 1"), chipVoiceName("English (United States) 2")).size,
         )
+    }
+
+    // The device's voice defaults (Decision 086), the mirror of js/voice-cast.test.js "The device's voice defaults".
+    // Seen to fail, 2026-11-22, against a mutated VoiceCast.kt: ordered() without the engine rank (Kokoro not first);
+    // pool() without the unticked filter; the Default written back as a choice; load() ignoring `v`.
+
+    private fun kv(id: String, name: String, grade: String, off: Boolean = false) =
+        CastVoice(id, "$name (Kokoro)", "en-US", 0, null, false, VoiceCastEntry.KOKORO, grade, off)
+
+    private val heart = kv("af_heart", "Heart", "A")
+    private val bella = kv("af_bella", "Bella", "A-")
+    private val jessica = kv("af_jessica", "Jessica", "D", off = true)
+    private val kokoro = listOf(heart, bella, jessica)
+
+    private fun defaulted(
+        key: String = "p:D1",
+        store: CastStore = MemoryCastStore(),
+        kokoroNow: () -> List<CastVoice> = { emptyList() },
+        d: VoiceDefaults = VoiceDefaults(),
+    ) = VoiceCast(key, parts(), { voices() }, store, downloaded = kokoroNow, defaults = { d })
+
+    @Test fun `Kokoro leads the pool, then the person's order, unticked voices leave it, and all unticked means all`() {
+        val all = kokoro + voices()
+        assertEquals(kokoro.map { it.id } + voices().map { it.id }, VoiceCasting.ordered(all, VoiceDefaults()).map { it.id })
+        assertFalse("a grade under C- starts unticked", VoiceCasting.pool(all, VoiceDefaults()).any { it.id == "af_jessica" })
+        val sys = voices()
+        val d = VoiceDefaults(order = listOf(sys[2].key, bella.key))
+        assertEquals(listOf("af_bella", "af_heart", "af_jessica", sys[2].id), VoiceCasting.ordered(all, d).map { it.id }.take(4))
+        val ticks = d.copy(off = mapOf(heart.key to true, jessica.key to false))
+        assertEquals(listOf("af_bella", "af_jessica"), VoiceCasting.pool(all, ticks).map { it.id }.take(2))
+        val none = VoiceDefaults(off = all.associate { it.key to true })
+        assertEquals(all.size, VoiceCasting.pool(all, none).size)
+    }
+
+    @Test fun `moving a voice swaps it within its own engine only`() {
+        val all = kokoro + voices()
+        val sys = voices()
+        val d = VoiceCasting.move(all, VoiceDefaults(), sys[1], -1)
+        assertEquals(listOf(sys[1].id, sys[0].id), VoiceCasting.ordered(all, d).filter { it.engine == "system" }.map { it.id }.take(2))
+        assertTrue("Kokoro stays first", VoiceCasting.ordered(all, d).take(3).all { it.engine == "kokoro" })
+        assertEquals("the first cannot move up", VoiceDefaults(), VoiceCasting.move(all, VoiceDefaults(), sys[0], -1))
+    }
+
+    @Test fun `untouched parts read the Default at the Default speed, a download reaches them, a chosen part keeps its voice, reset and Recast all return to Default`() {
+        val store = MemoryCastStore()
+        val d = VoiceDefaults(rate = 1.2)
+        val molly = PartID.role("MOLLY")
+        val fibber = PartID.role("FIBBER")
+        val before = defaulted(store = store, d = d)
+        assertEquals(listOf(voices()[0].id, 1.2, true), before.resolve(molly).let { listOf(it.voice?.id, it.rate, it.isDefault) })
+        before.set(fibber) { copy(engine = "system", voice = "en-gb-x-rjs-local", name = "English (United Kingdom)") }
+        val after = defaulted(store = store, kokoroNow = { kokoro }, d = d)
+        assertEquals("a download reaches every untouched part", "af_heart", after.resolve(molly).voice?.id)
+        val r = after.resolve(fibber)
+        assertEquals(listOf("en-gb-x-rjs-local", false), listOf(r.voice?.id, r.isDefault))
+        after.reset(fibber)
+        assertEquals("af_bella", after.resolve(fibber).voice?.id)
+        after.set(molly) { copy(rate = 0.8) }
+        assertEquals(listOf("af_heart", 0.8), after.choice(molly).let { listOf(it?.voice, it?.rate) })
+        after.recast()
+        assertTrue(after.choice(molly) == null && after.resolve(molly).isDefault)
+    }
+
+    @Test fun `a Default is never written into the cast`() {
+        val store = MemoryCastStore()
+        val cast = defaulted(store = store, kokoroNow = { kokoro })
+        for (p in parts()) { cast.resolve(p); cast.entry(p) }
+        assertNull("reading writes nothing", store.text)
+        cast.reset(PartID.role("MOLLY"))
+        assertNull("resetting a Default writes nothing", store.text)
+    }
+
+    @Test fun `an old unversioned row is no choice, and a row written now is`() {
+        val molly = PartID.role("MOLLY")
+        val store = MemoryCastStore("""{"p:D3":{"parts":{"role:MOLLY":{"engine":"system","voice":"en-gb-x-rjs-local","name":"x"}},"at":1}}""")
+        val cast = defaulted(key = "p:D3", store = store)
+        assertNull(cast.choice(molly))
+        assertEquals(voices()[0].id, cast.resolve(molly).voice?.id)
+        cast.set(molly) { copy(voice = "en-gb-x-rjs-local") }
+        assertEquals("en-gb-x-rjs-local", defaulted(key = "p:D3", store = store).choice(molly)?.voice)
+    }
+
+    @Test fun `the fallback for a Kokoro line is the Default among the device's own voices`() {
+        val cast = defaulted(kokoroNow = { kokoro })
+        val molly = PartID.role("MOLLY")
+        assertEquals(VoiceCastEntry.KOKORO, cast.resolve(molly).voice?.engine)
+        assertEquals(voices()[0].id, cast.systemFallback(molly)?.voice?.id)
+    }
+
+    @Test fun `defaults persist, are clamped, and a broken row reads as the defaults`() {
+        val store = MemoryCastStore()
+        assertEquals(VoiceDefaults(), VoiceDefaultsStore.load(store))
+        VoiceDefaultsStore.save(store, VoiceDefaults(order = listOf("kokoro:af_heart"), off = mapOf("system:x" to true), rate = 9.0))
+        val back = VoiceDefaultsStore.load(store)
+        assertEquals(listOf(listOf("kokoro:af_heart"), mapOf("system:x" to true), 2.0), listOf(back.order, back.off, back.rate))
+        store.write("not json")
+        assertEquals(VoiceDefaults(), VoiceDefaultsStore.load(store))
+    }
+
+    @Test fun `Kokoro grades under C minus start unticked and the best grade leads`() {
+        val off = com.example.appname.kokoro.Kokoro.castable(true).filter { it.offByDefault }.map { it.name }.toSet()
+        assertEquals(setOf("Jessica", "River", "Echo", "Eric", "Liam", "Onyx", "Santa", "Adam", "Alice", "Lily", "Daniel", "Lewis").map { "$it (Kokoro)" }.toSet(), off)
+        assertEquals("af_heart", com.example.appname.kokoro.Kokoro.castable(true).first().id)
     }
 }

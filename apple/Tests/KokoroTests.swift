@@ -406,14 +406,20 @@ struct KokoroCastTests {
     private func cast(downloaded: [CastVoice]) -> VoiceCast {
         let box = DownloadedBox(downloaded)
         return VoiceCast(key: "p:k-\(UUID().uuidString)", playID: "gut-0", parts: script().castParts.map(\.id),
-                         voices: { systemVoices }, downloaded: { box.now }, storage: .memory())
+                         voices: { systemVoices }, downloaded: { box.now }, defaults: { .empty }, storage: .memory())
     }
 
-    @Test func autoCastNeverCastsAKokoroVoice() {
-        let c = cast(downloaded: Kokoro.castable(ready: true))
-        #expect(c.ensure().values.allSatisfy { $0.engine != .kokoro }, "downloading recasts nothing")
-        c.recast()
-        #expect(c.ensure().values.allSatisfy { $0.engine != .kokoro })
+    @Test func theDefaultCastsKokoroFirstWhereItIsDownloadedAndNothingIsStored() {
+        let without = cast(downloaded: [])
+        #expect(script().castParts.map(\.id).filter(\.isSpeaking).allSatisfy { without.resolve($0).voice?.engine == .system },
+                "no download: the device's own voices")
+        let storage = CastStorage.memory()
+        let c = VoiceCast(key: "p:k-default", playID: "gut-0", parts: script().castParts.map(\.id), voices: { systemVoices },
+                          downloaded: { Kokoro.castable(ready: true) }, defaults: { .empty }, storage: storage)
+        let speaking = script().castParts.map(\.id).filter(\.isSpeaking)
+        #expect(speaking.allSatisfy { c.resolve($0).voice?.engine == .kokoro && c.resolve($0).isDefault }, "downloaded: Kokoro leads every Default")
+        #expect(storage.read() == nil, "and a download is never written into the cast")
+        #expect(c.resolve(speaking[0]).voice?.id == "af_heart", "the best grade reads the largest part")
     }
 
     @Test func aPartCastToAKokoroVoiceReadsItAndItsSystemFallbackIsTheAutoCastVoice() throws {
@@ -425,6 +431,7 @@ struct KokoroCastTests {
         let fb = c.systemFallback(molly)
         #expect(fb.voice?.engine == .system && fb.voice?.id == VoiceCasting.autoCast(c.parts, systemVoices)[molly]?.voice,
                 "MOLLY's auto-cast system voice")
+        c.set(fibber) { $0 = VoiceCastEntry(engine: .system, voice: "com.tom", name: "Tom") }
         #expect(c.systemFallback(fibber) == c.resolve(fibber), "a system part reads as resolved")
     }
 

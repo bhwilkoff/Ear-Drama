@@ -189,6 +189,13 @@ class CastSpeaker(
     private fun said(text: String) = text.replace("_", "").trim()
 }
 
+/** The voice defaults beside the cast, in the same preferences file under `ed.voices`; this device only (Decision 086). */
+class PrefsDefaultsStore(context: Context) : CastStore {
+    private val prefs = context.applicationContext.getSharedPreferences(VoiceCasting.KEY, Context.MODE_PRIVATE)
+    override fun read(): String? = prefs.getString(VoiceDefaultsStore.KEY, null)
+    override fun write(text: String) { prefs.edit { putString(VoiceDefaultsStore.KEY, text) } }
+}
+
 /** The cast kept in this device's SharedPreferences, never synced (PLAYS-DESIGN §2.8 rule 3). */
 class PrefsCastStore(context: Context) : CastStore {
     private val prefs = context.applicationContext.getSharedPreferences(VoiceCasting.KEY, Context.MODE_PRIVATE)

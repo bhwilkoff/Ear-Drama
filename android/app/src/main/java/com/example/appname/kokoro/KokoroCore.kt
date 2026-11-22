@@ -37,7 +37,10 @@ object Kokoro {
         "bm_daniel" to "Daniel" to "D", "bm_fable" to "Fable" to "C", "bm_george" to "George" to "C", "bm_lewis" to "Lewis" to "D+",
     ).mapIndexed { i, (idName, grade) -> Voice(idName.first, idName.second, grade, i) }
 
-    private val TIER = mapOf("A" to 2, "A-" to 2, "B-" to 1)
+    /** Kokoro's grades, best first (VOICES.md); the ones under C- start unticked in the defaults. */
+    val GRADES = listOf("A", "A-", "B-", "C+", "C", "C-", "D+", "D", "D-", "F+")
+
+    fun offByDefault(grade: String): Boolean = (GRADES.indexOf(grade).takeIf { it >= 0 } ?: GRADES.size) > GRADES.indexOf("C-")
 
     /** Symbols per render: Kokoro rushes past ~400 (VOICES.md) and stops at 510. */
     const val MAX_TOKENS = 400
@@ -55,8 +58,8 @@ object Kokoro {
     /** The castable Kokoro voices: none until the model is downloaded; best grade first, then the table's order. */
     fun castable(ready: Boolean): List<CastVoice> {
         if (!ready) return emptyList()
-        return VOICES.sortedWith(compareByDescending<Voice> { TIER[it.grade] ?: 0 }.thenBy { it.index })
-            .map { CastVoice(it.id, "${it.name} (Kokoro)", it.localeTag, 0, it.gender, false, VoiceCastEntry.KOKORO) }
+        return VOICES.sortedWith(compareBy<Voice>({ GRADES.indexOf(it.grade).takeIf { g -> g >= 0 } ?: GRADES.size }, { it.index }))
+            .map { CastVoice(it.id, "${it.name} (Kokoro)", it.localeTag, 0, it.gender, false, VoiceCastEntry.KOKORO, it.grade, offByDefault(it.grade)) }
     }
 
     /**

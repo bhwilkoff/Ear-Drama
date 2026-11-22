@@ -97,6 +97,8 @@ enum PageIdentity {
 @Observable
 final class AppStore {
     var selectedTab: AppTab = .home
+    /// Moves each time something asks Library to show its Voices section (Better Voices).
+    var libraryVoicesRequest = 0
     /// One NavigationPath per tab.
     var paths: [AppTab: NavigationPath] = [:]
     /// The full player is showing (iPhone sheet, TV full screen).
@@ -173,6 +175,15 @@ final class AppStore {
     }
 
     func post(_ request: InboxRequest) { inbox.append(request) }
+
+    /// Better Voices: Library, at its Voices section (the reader and the player step aside).
+    func openLibraryVoices() {
+        reading = nil
+        isPlayerPresented = false
+        paths[.library] = NavigationPath()
+        selectedTab = .library
+        libraryVoicesRequest += 1
+    }
 
     func path(for tab: AppTab) -> Binding<NavigationPath> {
         Binding(get: { self.paths[tab] ?? NavigationPath() }, set: { self.paths[tab] = $0 })

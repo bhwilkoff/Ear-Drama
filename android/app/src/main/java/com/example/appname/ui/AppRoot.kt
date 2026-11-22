@@ -90,6 +90,7 @@ fun AppRoot(
     forceOffline: Boolean = false,
 ) {
     var selected by rememberSaveable { mutableStateOf(Tab.Home) }
+    var voicesRequest by remember { mutableStateOf(0) }
     var playerOpen by rememberSaveable { mutableStateOf(false) }
     var incomingSearch by remember { mutableStateOf<String?>(null) }
     var browseGenre by remember { mutableStateOf<String?>(null) }
@@ -214,6 +215,7 @@ fun AppRoot(
             openRoom = { code -> stack.navigateTo(Route.ReadRoom(code)) },
             showReading = { stack.navigateTo(Route.ReadPair) },
             openParts = { stack.navigateTo(Route.Parts) },
+            openVoiceSettings = { voicesRequest += 1; selected = Tab.Library },
         ),
     ) {
         HapticEvents()
@@ -312,6 +314,7 @@ fun AppRoot(
                                     onOpenProduction = openProduction,
                                     onListenTogether = { roomSheet = true },
                                     onOpenDownloads = { stack.navigateTo(Route.Downloads) },
+                                    voicesRequest = voicesRequest,
                                     onBrowse = { haptics(Haptic.Selection); selected = Tab.Browse },
                                 )
                             }

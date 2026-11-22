@@ -20,6 +20,12 @@ nonisolated final class PlaysRenderTests: XCTestCase {
         try rig.playPageAndCastSheet()
     }
 
+    @MainActor func testSettingsVoicesAndTheDefaultChip() throws {
+        let rig = try RenderRig()
+        defer { rig.cleanup() }
+        try rig.settingsVoices()
+    }
+
     @MainActor func testShowTileOnTheDramaBoard() throws {
         let rig = try RenderRig()
         defer { rig.cleanup() }
@@ -153,7 +159,7 @@ private final class RenderRig {
                     CastVoice(id: "tom", name: "Tom", language: "en-US", tier: 1, gender: .male),
                     CastVoice(id: "kate", name: "Kate (Enhanced)", language: "en-GB", tier: 1, gender: .female)]
         let voices = VoiceCastModel(cast: VoiceCast(key: "p:render", parts: script.castParts.map(\.id), voices: { fake },
-                                                    storage: .memory()))
+                                                    defaults: { .empty }, storage: .memory()))
         voices.cast.set(script.castParts[2].id) { $0 = VoiceCastEntry(engine: .system, voice: "zoe", name: "Zoe (Premium)", rate: 1.2) }
         try both("cast-sheet", widths: [(390, 1560), (900, 1200)]) {
             VStack(alignment: .leading, spacing: Spacing.s4) {
@@ -171,6 +177,58 @@ private final class RenderRig {
             }
             .padding(Spacing.s4)
             .modifier(ReadableColumn())
+        }
+    }
+
+    // MARK: Settings > Voices and the cast sheet's Default (Decision 086)
+
+    /// ImageRenderer cannot draw a List or a Form, so each state is the same rows (`KokoroControls`, `VoiceDefaultRow`,
+    /// `DefaultChoiceRow`) stacked on the page ground.
+    private func settingsFrame(_ state: KokoroDownloadState, voices: [CastVoice]) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.s3) {
+            Text("High-Fidelity Voices").font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
+            VStack(alignment: .leading, spacing: Spacing.s2) {
+                KokoroControls(state: state, done: 62_000_000, total: 151_355_119, bytes: 151_355_119)
+                if state == .ready { Text(VoicePickerForm.attribution).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted) }
+            }
+            LabeledContent("Speed", value: VoiceChipText.rate(1.0))
+            ForEach(voices) { v in
+                VoiceDefaultRow(voice: v, used: .constant(VoiceCasting.uses(v, .empty)), playing: v.id == "af_heart")
+            }
+        }
+        .padding(Spacing.s4)
+    }
+
+    func settingsVoices() throws {
+        let device = [CastVoice(id: "ava", name: "Ava (Premium)", language: "en-US", tier: 2, gender: .female),
+                      CastVoice(id: "tom", name: "Tom", language: "en-US", tier: 1, gender: .male),
+                      CastVoice(id: "kate", name: "Kate", language: "en-GB", tier: 0, gender: .female)]
+        let kokoro = Array(Kokoro.castable(ready: true).prefix(4)) + Kokoro.castable(ready: true).filter(\.offByDefault).prefix(1)
+        for (name, state, voices) in [("absent", KokoroDownloadState.absent, device),
+                                      ("downloading", .downloading, device),
+                                      ("ready", .ready, kokoro + device),
+                                      ("unsupported", .unsupported, device)] {
+            try both("settings-voices-\(name)", widths: [phone]) { settingsFrame(state, voices: voices) }
+        }
+        let script = self.script
+        let parts = script.castParts.map(\.id)
+        let model = VoiceCastModel(cast: VoiceCast(key: "p:render-default", parts: parts, voices: { device },
+                                                    downloaded: { kokoro }, defaults: { .empty }, storage: .memory()))
+        model.cast.set(script.castParts[1].id) { $0 = VoiceCastEntry(engine: .system, voice: "tom", name: "Tom", rate: 1.2) }
+        try both("cast-defaults", widths: [phone]) {
+            VStack(alignment: .leading, spacing: Spacing.s2) {
+                ForEach(script.castParts.prefix(3)) { part in
+                    HStack {
+                        Text(verbatim: part.title).font(TypeRamp.bodyStrong)
+                        Spacer()
+                        VoiceChipLabel(model: model, part: part.id)
+                    }
+                }
+                Divider()
+                DefaultChoiceRow(name: model.defaultVoiceName(parts[0]), selected: true)
+                DefaultChoiceRow(name: model.defaultVoiceName(parts[1]), selected: false)
+            }
+            .padding(Spacing.s4)
         }
     }
 

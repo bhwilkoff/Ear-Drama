@@ -197,4 +197,26 @@ nonisolated enum KokoroInstall {
         Kokoro.castable(ready: KokoroFlag.enabled && manifest(at: root) != nil)
     }
 }
+
+/// The states Settings shows of the Kokoro download.
+nonisolated enum KokoroDownloadState: Equatable, Sendable {
+    case unsupported
+    case absent
+    case downloading
+    case failed
+    case ready
+
+    /// "Better voices" is offered while Kokoro could run here and is not downloaded.
+    static func offersBetterVoices(ready: Bool, flag: Bool) -> Bool { flag && !ready }
+
+    static func of(_ s: KokoroModelStore.State, supported: Bool) -> KokoroDownloadState {
+        guard supported else { return .unsupported }
+        switch s {
+        case .absent: return .absent
+        case .downloading: return .downloading
+        case .failed: return .failed
+        case .ready: return .ready
+        }
+    }
+}
 #endif

@@ -29,6 +29,7 @@ struct VoiceChipLabel: View {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Color.semanticWarning)
             }
             Text(verbatim: VoiceChipText.title(r)).lineLimit(1)
+            if r.isDefault, r.read { Text("Default").foregroundStyle(Color.brandTextMuted).lineLimit(1) }
             if let tuning = VoiceChipText.tuning(r) {
                 Text(verbatim: tuning).foregroundStyle(Color.brandTextMuted).lineLimit(1)
             }
@@ -67,14 +68,18 @@ struct VoiceChip: View {
     var body: some View {
         let current = model.resolve(part)
         Menu {
+            Button { model.reset(part) } label: {
+                let name = model.defaultVoiceName(part).map { "Default (\($0))" } ?? "Default"
+                if current.isDefault { Label(name, systemImage: "checkmark") } else { Text(verbatim: name) }
+            }
             if !part.isSpeaking {
                 Button { model.chooseNotRead(part) } label: {
-                    if !current.read { Label("Not Read", systemImage: "checkmark") } else { Text("Not Read") }
+                    if current.entry.engine == .none, !current.isDefault { Label("Not Read", systemImage: "checkmark") } else { Text("Not Read") }
                 }
             }
-            ForEach(model.voices + model.downloaded) { voice in
+            ForEach(model.downloaded + model.voices) { voice in
                 Button { model.choose(part, voice) } label: {
-                    if current.read, current.voice?.id == voice.id {
+                    if current.read, !current.isDefault, current.voice?.id == voice.id {
                         Label(voice.displayName, systemImage: "checkmark")
                     } else {
                         Text(verbatim: voice.displayName)
@@ -83,6 +88,7 @@ struct VoiceChip: View {
             }
             Divider()
             Button("Voice Settings\u{2026}") { settings = true }
+            BetterVoicesLink()
         } label: {
             VoiceChipLabel(model: model, part: part)
         }
@@ -100,6 +106,24 @@ struct VoiceChip: View {
 
 // MARK: - The picker
 
+/// The picker's first row: Default, naming the voice it reads now (PLAYS-DESIGN §2.8 rule 4).
+struct DefaultChoiceRow: View {
+    let name: String?
+    let selected: Bool
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Default").foregroundStyle(Color.brandText)
+                if let name { Text(verbatim: name).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted) }
+            }
+            Spacer()
+            if selected { Image(systemName: "checkmark").foregroundStyle(Color.brandSecondary) }
+        }
+        .contentShape(Rectangle())
+    }
+}
+
 /// Speed, pitch, and the voices on this device, each with a preview of the part's own first line.
 struct VoicePickerForm: View {
     let model: VoiceCastModel
@@ -114,7 +138,7 @@ struct VoicePickerForm: View {
 
     var body: some View {
         let r = model.resolve(part)
-        let notRead = r.entry.engine == .none
+        let notRead = r.entry.engine == .none && !r.isDefault
         let line = script.lines(for: part).first?.spokenText ?? ""
         Form {
             if let missing = r.missing {
@@ -136,6 +160,10 @@ struct VoicePickerForm: View {
             }
             .disabled(notRead)
             Section {
+                Button { model.reset(part) } label: {
+                    DefaultChoiceRow(name: model.defaultVoiceName(part), selected: r.isDefault)
+                }
+                .buttonStyle(.plain)
                 if !part.isSpeaking {
                     Button { model.chooseNotRead(part) } label: {
                         HStack {
@@ -147,8 +175,23 @@ struct VoicePickerForm: View {
                     }
                     .buttonStyle(.plain)
                 }
+            }
+            if KokoroFlag.enabled, kokoro.ready, !model.downloaded.isEmpty {
+                Section {
+                    if phonemes == false {
+                        Text("Not available for this play.").foregroundStyle(Color.brandTextMuted)
+                    } else {
+                        ForEach(model.downloaded) { voice in
+                            row(voice, current: r.read && !r.isDefault && r.voice?.id == voice.id, line: line, rate: r.entry.rate, pitch: r.entry.pitch)
+                        }
+                    }
+                } header: {
+                    Text("Downloaded")
+                }
+            }
+            Section {
                 ForEach(model.voices) { voice in
-                    row(voice, current: r.read && r.voice?.id == voice.id, line: line, rate: r.entry.rate, pitch: r.entry.pitch)
+                    row(voice, current: r.read && !r.isDefault && r.voice?.id == voice.id, line: line, rate: r.entry.rate, pitch: r.entry.pitch)
                 }
             } header: {
                 Text("On This Device")
@@ -164,9 +207,9 @@ struct VoicePickerForm: View {
                         if let url = URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension") { openURL(url) }
                     }
                     #endif
+                    BetterVoicesLink()
                 }
             }
-            if KokoroFlag.enabled { downloaded(r, line: line) }
         }
         .formStyle(.grouped)
         .navigationTitle(part.title)
@@ -175,7 +218,10 @@ struct VoicePickerForm: View {
         .sensoryFeedback(Haptic.selection.feedback, trigger: r.entry.voice)
         #endif
         .repaintsOnVoiceChange(model)
-        .onAppear { preview.onChange = { playing = $0 } }
+        .onAppear {
+            model.refresh()
+            preview.onChange = { playing = $0 }
+        }
         .onDisappear { preview.stop() }
         .task(id: kokoro.ready) {
             model.refresh()
@@ -184,50 +230,6 @@ struct VoicePickerForm: View {
     }
 
     static let attribution = "Kokoro-82M by hexgrad, Apache-2.0. Trained in part on Koniwa (CC BY 3.0) and SIWIS (CC BY 4.0)."
-
-    /// The Downloaded group (PLAYS-DESIGN §2.8 rule 10): one button until the model is here, its progress while it
-    /// downloads, then the 28 voices, Delete, and the attribution the licenses ask for.
-    @ViewBuilder private func downloaded(_ r: ResolvedVoice, line: String) -> some View {
-        Section {
-            switch kokoro.state {
-            case .absent:
-                Button("Download Voices (\(Kokoro.megabytes(kokoro.downloadBytes)))") { kokoro.download() }
-            case let .downloading(done, total):
-                VStack(alignment: .leading, spacing: Spacing.s1) {
-                    ProgressView(value: Double(min(done, total)), total: Double(max(total, 1)))
-                    Text(verbatim: "\(Kokoro.megabytes(done)) of \(Kokoro.megabytes(total))")
-                        .font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
-                }
-                Button("Cancel", role: .cancel) { kokoro.cancel() }
-            case .failed:
-                Label("The download failed.", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(Color.semanticWarning)
-                Button("Try Again") {
-                    kokoro.clearFailure()
-                    kokoro.download()
-                }
-            case .ready:
-                if phonemes == false {
-                    Text("Not available for this play.").foregroundStyle(Color.brandTextMuted)
-                } else {
-                    ForEach(model.downloaded) { voice in
-                        row(voice, current: r.read && r.voice?.id == voice.id, line: line, rate: r.entry.rate, pitch: r.entry.pitch)
-                    }
-                }
-                Button("Delete Downloaded Voices (\(Kokoro.megabytes(kokoro.downloadBytes)))", role: .destructive) {
-                    Task {
-                        preview.stop()
-                        await kokoro.delete()
-                        model.refresh()
-                    }
-                }
-            }
-        } header: {
-            Text("Downloaded")
-        } footer: {
-            if kokoro.ready { Text(Self.attribution) }
-        }
-    }
 
     static var addVoices: String {
         #if os(iOS)
@@ -310,6 +312,7 @@ struct ReaderVoices: View {
                 }
                 Section {
                     Button("Recast All") { model.recast() }
+                    BetterVoicesLink()
                 }
             }
             .navigationTitle("Voices")
@@ -323,6 +326,7 @@ struct ReaderVoices: View {
             }
             #endif
             .repaintsOnVoiceChange(model)
+            .onAppear { model.refresh() }
         }
     }
 

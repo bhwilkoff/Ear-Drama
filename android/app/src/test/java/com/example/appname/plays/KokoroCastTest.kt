@@ -49,9 +49,14 @@ class KokoroCastTest {
         assertEquals("the choice is kept and returns with the download", "af_heart", cast(true, store).resolve(molly).voice?.id)
     }
 
-    @Test fun `auto-cast never casts a Kokoro voice, so downloading recasts nothing`() {
-        assertEquals(cast(false).resolve(fibber).voice, cast(true).resolve(fibber).voice)
-        assertTrue(fixtureScript().castParts.map { cast(true).resolve(it.id).voice?.engine }.all { it == null || it == VoiceCastEntry.SYSTEM })
+    @Test fun `the Default casts Kokoro first where it is downloaded, and nothing is stored`() {
+        val store = MemoryCastStore()
+        val speaking = fixtureScript().castParts.map { it.id }.filter { it.isSpeaking }
+        assertTrue(speaking.all { cast(false).resolve(it).voice?.engine == VoiceCastEntry.SYSTEM })
+        val c = cast(true, store)
+        assertTrue(speaking.all { c.resolve(it).voice?.engine == VoiceCastEntry.KOKORO && c.resolve(it).isDefault })
+        assertEquals("af_heart", c.resolve(speaking[0]).voice?.id)
+        assertNull(store.text)
     }
 
     @Test fun `the system engine is handed the part's auto-cast system voice, never a Kokoro id`() {
@@ -71,6 +76,7 @@ class KokoroCastTest {
             override suspend fun render(text: String, part: PartID, rate: Float): StandInAudio { asked += part.raw; return StandInAudio(FloatArray(10) { 0.1f }, 48_000.0) }
         }
         var kokoroLine: String? = null
+        c.set(fibber) { copy(engine = VoiceCastEntry.SYSTEM, voice = system[0].id, name = system[0].name) }
         val v = KokoroStandIn(c, systemVoice) { text, id, _ -> kokoroLine = "$id:$text"; FloatArray(2_400) { 0.2f } }
         val a = v.render("Come in.", molly, 1f)!!
         assertEquals("af_heart:Come in.", kokoroLine)
