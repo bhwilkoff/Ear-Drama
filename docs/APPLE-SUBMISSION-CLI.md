@@ -91,7 +91,7 @@ review without it, but only after the versions are created and the builds attach
 leave half-made versions on every platform.
 
 Configuration (the environment wins over `tools/app_config.py`): `ASC_KEY_ID` and `ASC_ISSUER_ID`
-(the `.p8` in `~/.appstoreconnect/private_keys` or at `ASC_KEY_PATH`), `APP_BUNDLE` (default
+(the `.p8` from the Keychain via `tools/with_asc.sh`, or at `ASC_KEY_PATH`), `APP_BUNDLE` (default
 `APPLE_BUNDLE_ID`), and `APP_STORE_PLATFORMS`.
 
 ---
@@ -212,8 +212,12 @@ starve each other of it. Ship the product-carrying platform first
 
 The submission runs in CI because the credentials live in GitHub secrets and belong in one place:
 `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (**base64**, not raw PEM; raw fails with `Unable to
-load PEM file ... MalformedFraming`). Running locally works too, with the `.p8` in
-`~/.appstoreconnect/private_keys/` and the two ids in the gitignored `tools/asc-credentials.env`.
+load PEM file ... MalformedFraming`). Running locally works too, from the login
+Keychain and no file: `tools/with_asc.sh COMMAND` (and every `tools/asc*.py` and `pulse_collect.py`, through `tools/asc_key.py`)
+reads the environment / `ASC_KEY_PATH` first, then this app's items (`eardrama:ASC_KEY_P8`, `:ASC_KEY_ID`, `:ASC_ISSUER_ID`,
+from `tools/secrets.sh keychain-import-asc`), then the one shared Apple-team key: account `archivewatch`, services
+`archivewatch:ASC_KEY_P8`, `archivewatch:ASC_KEY_ID`, `archivewatch:ASC_ISSUER_ID` (a chunk count, then base64 pieces
+`.0`, `.1`, ...). CI never touches the Keychain.
 
 ---
 

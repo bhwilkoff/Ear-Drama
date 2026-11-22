@@ -19,12 +19,15 @@ TYPE = {"distribution": "DISTRIBUTION", "mac_installer": "MAC_INSTALLER_DISTRIBU
 ORG = os.environ.get("ASC_ORG_NAME", "<ORG_NAME>")
 
 def token():
-    kid = os.environ["ASC_KEY_ID"]; iss = os.environ["ASC_ISSUER_ID"]
-    kp = os.environ.get("ASC_KEY_PATH", os.path.expanduser(f"~/.appstoreconnect/private_keys/AuthKey_{kid}.p8"))
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import asc_key
+    kid = asc_key.value("ASC_KEY_ID") or sys.exit("no ASC_KEY_ID (environment or Keychain)")
+    iss = asc_key.value("ASC_ISSUER_ID") or sys.exit("no ASC_ISSUER_ID (environment or Keychain)")
+    pem = asc_key.key_pem(kid)
     now = int(time.time())
     # ES256 JWT — the ASC API requires an EC P-256 signature (the .p8 is an EC key); PyJWT + cryptography do this.
     return jwt.encode({"iss": iss, "iat": now, "exp": now + 600, "aud": "appstoreconnect-v1"},
-                      open(kp).read(), algorithm="ES256", headers={"kid": kid, "typ": "JWT"})
+                      pem, algorithm="ES256", headers={"kid": kid, "typ": "JWT"})
 
 def api(method, path, body=None):
     data = json.dumps(body).encode() if body else None

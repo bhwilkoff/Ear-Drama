@@ -488,9 +488,11 @@ def main(argv=None):
               file=sys.stderr)
         return 1
 
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import asc_key
     for var in ("ASC_KEY_ID", "ASC_ISSUER_ID"):
-        if not os.environ.get(var):
-            sys.exit(f"set {var} (see tools/asc-credentials.env)")
+        if not asc_key.value(var):
+            sys.exit(f"no {var} in the environment or the Keychain (tools/secrets.sh keychain-import-asc)")
 
     aid = app_id()
     return status(aid, a.build) if a.mode == "status" else ship(aid, a)

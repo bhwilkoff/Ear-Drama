@@ -8,7 +8,7 @@
 # NOTE: needs `chmod +x tools/submit-appstore.sh` once (git preserves the bit thereafter).
 #
 # Setup: a RELEASED Xcode (App Review rejects beta builds), the App Store Connect API key in
-# tools/asc-credentials.env (gitignored) + ~/.appstoreconnect/private_keys/. See docs/CLOUD-SUBMISSION.md.
+# tools/asc-credentials.env (CI) or the login Keychain via tools/with_asc.sh. See docs/CLOUD-SUBMISSION.md.
 #
 # Signing is MANUAL, by design: cloud-managed/automatic signing can fail for a team's ASC API key
 # ("Cloud signing permission error"), but the SAME key can create certs + profiles via the REST API.
@@ -61,7 +61,10 @@ case "$DEV" in *[Bb]eta*) echo "REFUSING beta Xcode ($DEV) — App Review reject
 [ -x "$DEV/usr/bin/xcodebuild" ] || { echo "No released Xcode at $DEV — run: xcodes install <NN>"; exit 1; }
 
 # --- credentials --------------------------------------------------------------------------------
+# CI writes tools/asc-credentials.env on its runner; a person's Mac has none, so the login Keychain answers through
+# tools/with_asc.sh, which re-runs this script with the key in a temporary directory.
 [ -f "tools/asc-credentials.env" ] && { set -a; . "tools/asc-credentials.env"; set +a; }
+[ -n "${ASC_KEY_ID:-}" ] || exec tools/with_asc.sh "$0" "$@"
 : "${ASC_KEY_ID:?set ASC_KEY_ID}"; : "${ASC_ISSUER_ID:?set ASC_ISSUER_ID}"
 KEY="${ASC_KEY_PATH:-$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8}"
 [ -f "$KEY" ] || { echo "Missing API key at $KEY"; exit 1; }

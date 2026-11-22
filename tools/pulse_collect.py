@@ -233,16 +233,15 @@ def total(vals):
 # ─────────────────────────────────────────────────────────────── Apple
 
 def _asc_key():
-    kid, iss = os.environ.get("ASC_KEY_ID", "").strip(), os.environ.get("ASC_ISSUER_ID", "").strip()
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import asc_key
+    kid, iss = (asc_key.value("ASC_KEY_ID") or "").strip(), (asc_key.value("ASC_ISSUER_ID") or "").strip()
     if not (kid and iss):
-        raise RuntimeError("no App Store Connect key in this environment (ASC_KEY_ID / ASC_ISSUER_ID)")
-    # The key is read OFF DISK, which is how every Apple tool here is fed.
-    # Passing the key material as an env var looked right and read zero reviews.
-    path = os.environ.get("ASC_KEY_PATH") or os.path.expanduser(
-        f"~/.appstoreconnect/private_keys/AuthKey_{kid}.p8")
-    if not os.path.exists(path):
-        raise RuntimeError(f"ASC key {kid} is not on disk at {path}")
-    return kid, iss, Path(path).read_text()
+        raise RuntimeError("no App Store Connect key in this environment or the Keychain (ASC_KEY_ID / ASC_ISSUER_ID)")
+    try:
+        return kid, iss, asc_key.key_pem(kid)
+    except OSError:
+        raise RuntimeError(f"ASC key {kid} is not in the environment, the Keychain, or on the runner")
 
 
 def _jwt(kid, iss, key):

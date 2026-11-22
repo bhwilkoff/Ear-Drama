@@ -43,14 +43,11 @@ PLATFORM = "IOS"          # set from --platform in main()
 
 def token():
     import jwt
-    kid = os.environ.get("ASC_KEY_ID") or sys.exit("set ASC_KEY_ID")
-    iss = os.environ.get("ASC_ISSUER_ID") or sys.exit("set ASC_ISSUER_ID")
-    key = os.environ.get("ASC_KEY_P8")
-    if not key:
-        path = os.environ.get(
-            "ASC_KEY_PATH",
-            os.path.expanduser(f"~/.appstoreconnect/private_keys/AuthKey_{kid}.p8"))
-        key = pathlib.Path(path).read_text()
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import asc_key
+    kid = asc_key.value("ASC_KEY_ID") or sys.exit("set ASC_KEY_ID (or import the key into the Keychain)")
+    iss = asc_key.value("ASC_ISSUER_ID") or sys.exit("set ASC_ISSUER_ID (or import the key into the Keychain)")
+    key = asc_key.key_pem(kid)
     now = int(time.time())
     return jwt.encode({"iss": iss, "iat": now, "exp": now + 19 * 60,
                        "aud": "appstoreconnect-v1"},
