@@ -86,7 +86,7 @@ That is the whole release. Nobody opens App Store Connect to press Submit.
 | Select a released Xcode | Picks the newest GA Xcode on the runner, skipping betas (ITMS-90111). |
 | Write `Secrets.xcconfig` | Only when `XCCONFIG_SECRETS` is set. Writes the app's build-time keys from repo secrets and **fails if any listed secret is empty**. Without this a missing key is silent: the setting resolves to the literal `$(KEY)`, the app reads that as absent, and every cloud build ships without the feature. It prints each key's length, never its value. |
 | Import signing certs | The Distribution and Mac Installer `.p12`s go into a temporary keychain, with `set-key-partition-list` so codesign does not hang on a prompt. |
-| Install the API key | Writes the `.p8` and `tools/asc-credentials.env` for the tools that follow. |
+| Install the API key | Writes the `.p8` and `tools/asc-credentials.env` on the runner only, for the tools that follow. A Mac holds neither; it reads the login Keychain (`tools/with_asc.sh`). |
 | Prune throwaway certs | `asc_prune_certs.py --apply --keep 2`, catching what a force-killed earlier run left. `continue-on-error`: a pruning hiccup must never block a build. |
 | Refuse a duplicate build | `asc_build_exists.py <version> <build>` exits 1 in seconds if App Store Connect already has that build number, rather than at the end of a 30-minute archive. The usual cause is a dispatch that went out beside a rejected push. It exits 0 if it cannot reach Apple: a guard that blocks shipping because it could not check is worse than no guard. |
 | Floors have not drifted | `test_ios_floor.py` and `test_tvos_floor.py` (section 6). |
@@ -165,7 +165,8 @@ App Store Connect API*, generate a key (role **App Manager** or Admin). Note the
 
 ```bash
 export ASC_KEY_ID=<KEYID> ASC_ISSUER_ID=<ISSUER-UUID> ASC_ORG_NAME="<ORG_NAME>"
-export ASC_KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+# the key is not kept on disk; on a Mac `tools/with_asc.sh` supplies it from the Keychain
+export ASC_KEY_PATH=<path to a temp copy, deleted after the run>
 PW="$(openssl rand -hex 16)"
 
 # Mint a DEDICATED CI Apple Distribution cert as a .p12 (no keychain import, no GUI prompt).

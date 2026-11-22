@@ -319,7 +319,7 @@ package on a current device before upload (Archive Watch 1.0.78,
 - **App Behavior Analysis must be started by hand.** It does not run on upload; start it, wait, read it.
 - **A failed first App Behavior Analysis can be the lab, not the package.** Archive Watch 1.0.79 failed 3 of 4 because the lab's player never started, then passed 4 of 4 on a re-run of the same `.pkg`. Before changing code, replay the failing deep link cold on a real Roku with the console open on port 8085; if it plays, re-run the analysis.
 - **Ask the device what it installs.** Query the device for its supported package formats before building for it, rather than assuming.
-- **Never automate `genkey`.** The signing key is created once, by a person, and its credentials live where the packaging tool looks (`~/.config/roku/signing.env`). A regenerated key orphans the published channel.
+- **Never automate `genkey`.** The signing key is created once, by a person, and its credentials live in the login Keychain (`tools/secrets.sh`), not a file (updated 2026-11-22: `~/.config/roku/signing.env` is gone). A regenerated key orphans the published channel.
 
 ## In-app purchases (any store) — the launch choreography
 

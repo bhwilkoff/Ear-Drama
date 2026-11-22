@@ -2,6 +2,8 @@
 # One-time: create Ear Drama's Android upload keystore and the repo secrets
 # play-release.yml reads. Run by the owner (`! bash tools/setup_play_upload_key.sh`);
 # the agent's permission check refuses secret-store writes.
+# (2026-11-22: the Play service-account file below is gone from disk, so this
+# script no longer runs as written; the keystore's Keychain import is not built yet.)
 #
 # The keystore lives outside git (~/keystores/eardrama-upload.jks); its password
 # lives only in the macOS Keychain and in GitHub's secret store, never in a file.

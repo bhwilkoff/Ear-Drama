@@ -148,7 +148,6 @@ version sits in `WAITING_FOR_REVIEW`, with no withdrawal. `asc_release.py ship` 
 already in review, so change it on that version with the one-platform tool:
 
 ```bash
-set -a; . tools/asc-credentials.env; set +a
 python3 tools/asc_submit.py --platform ios --release-type MANUAL
 ```
 

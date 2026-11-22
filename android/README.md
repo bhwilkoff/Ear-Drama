@@ -11,8 +11,9 @@ Lives under `/android/` in the same monorepo as web (`/`, `/css/`,
 cd android
 echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
 
-# 2. Drop your secrets into ~/.gradle/gradle.properties (or this dir's
-#    gradle.properties + add it to .gitignore):
+# 2. Public values only go in ~/.gradle/gradle.properties. Signing secrets
+#    (UPLOAD_*) are not kept in a file; they come from the login Keychain
+#    (tools/secrets.sh) or CI secrets:
 #       GOOGLE_WEB_CLIENT_ID=...
 #       UPLOAD_KEYSTORE_PATH=...
 #       UPLOAD_KEYSTORE_PASSWORD=...

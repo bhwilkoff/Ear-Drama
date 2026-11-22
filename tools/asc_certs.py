@@ -4,7 +4,7 @@ its certificate id. Used by tools/submit-appstore.sh for MANUAL signing — clou
 signing can fail for a team's ASC API key, but the same key can create certs directly via REST.
 
 Usage:  asc_certs.py <distribution|mac_installer>
-Env:    ASC_KEY_ID, ASC_ISSUER_ID, ~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8 (or ASC_KEY_PATH)
+Env:    ASC_KEY_ID, ASC_ISSUER_ID, the login Keychain via tools/with_asc.sh (or ASC_KEY_PATH on a CI runner)
         ASC_ORG_NAME (optional) — the org name for the CSR subject (default "<ORG_NAME>").
 
 If a usable cert of the requested type already exists in App Store Connect it is reused (its id is

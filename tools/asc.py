@@ -6,7 +6,7 @@ the console UI. This asks the API instead, so "is the IAP submitted" has an answ
 with a timestamp on it.
 
 Auth uses the same ES256 key the cloud build already uses
-(`~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8`).
+(the login Keychain via `tools/asc_key.py`; a temp file on a CI runner).
 
     export ASC_KEY_ID=G5549XF8RV ASC_ISSUER_ID=<uuid>
     python3 tools/asc.py apps

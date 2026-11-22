@@ -18,9 +18,10 @@ does the data come in".**
 
 ## App Store Connect
 
-Auth is a JWT from a `.p8` key. The client reads the key **off disk** at
-`~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8` — passing the key material
-as an env var looks right and reads nothing.
+Auth is a JWT from a `.p8` key. On a Mac the key lives in the login Keychain
+(`tools/secrets.sh`; `tools/asc_key.py` reads it at use time, no env needed);
+on a CI runner it is a temp file written from the repo secret. Nothing sits in
+`~/.appstoreconnect` any more (updated 2026-11-22).
 
 | Want | Endpoint | Note |
 |---|---|---|

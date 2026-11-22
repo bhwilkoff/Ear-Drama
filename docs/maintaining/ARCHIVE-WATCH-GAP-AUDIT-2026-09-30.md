@@ -313,7 +313,7 @@ Format below: AW source → lesson → generic or app-specific → home in T.
   - Generic. Home: roku skill plus a "floor device" concept in smart-tv-platform-expansion.
 - **E28. Signing and packaging.**
   - AW source: `tools/roku_package.py`, `roku_design_lint.py`, memory `roku_signing_key`.
-  - Lesson: never automate `genkey`. Keep credentials where the tool looks (`~/.config/roku/signing.env`).
+  - Lesson: never automate `genkey`. Keep credentials where the tool looks (now the login Keychain via `tools/secrets.sh`; the old `~/.config/roku/signing.env` is gone, 2026-11-22).
   - Generic. Home: roku skill and store-submission-playbook.
 - **E29. Roku store lessons since 09-11.**
   - AW source: the Roku commits since 09-11.

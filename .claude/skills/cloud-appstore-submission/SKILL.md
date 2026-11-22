@@ -37,7 +37,7 @@ Upload is not shipping, and finishing the job is not the owner's job. Never tell
 1. Select a released Xcode (skips betas).
 2. **Write `Secrets.xcconfig`** from repo secrets when `XCCONFIG_SECRETS` is set; **fail if any listed secret is empty**. Otherwise a missing key resolves to the literal `$(KEY)` and every cloud build silently ships without the feature. Prints lengths, never values.
 3. Import the `.p12`s into a temp keychain (`set-key-partition-list`, or codesign hangs).
-4. Install the ASC key + `tools/asc-credentials.env`.
+4. Install the ASC key from the repo secrets onto the runner (a temp file there is fine). On a Mac the key lives in the login Keychain; use `tools/with_asc.sh`, never a file in `~/.appstoreconnect`.
 5. **Prune** throwaway dev certs: `asc_prune_certs.py --apply --keep 2` (`continue-on-error`).
 6. **Refuse a duplicate build number**: `asc_build_exists.py <ver> <build>` exits 1 in seconds instead of after a 30-minute archive (usual cause: dispatched beside a rejected push). Exits 0 when Apple is unreachable.
 7. **Floors have not drifted**: `test_ios_floor.py`, `test_tvos_floor.py` (Rule 7).

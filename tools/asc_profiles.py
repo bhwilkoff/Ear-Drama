@@ -5,7 +5,7 @@ because cloud-managed signing fails for this team's API key ("Cloud signing perm
 though the key can create certs/profiles directly via the REST API.
 
 Usage:  asc_profiles.py <ios|tvos|mac> <distCertId> <bundleId> [bundleId ...]
-Env:    ASC_KEY_ID, ASC_ISSUER_ID, and the .p8 at ~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8
+Env:    ASC_KEY_ID, ASC_ISSUER_ID, and the .p8 from the login Keychain via tools/with_asc.sh (or ASC_KEY_PATH on a CI runner)
         (or ASC_KEY_PATH). No secrets are written to the repo; profiles install to
         ~/Library/MobileDevice/Provisioning Profiles/.
 """
