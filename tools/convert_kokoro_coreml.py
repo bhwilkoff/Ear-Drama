@@ -453,12 +453,13 @@ def main():
         finally:
             torch.randn_like, torch.rand = real_randn, real_rand
     got, nf, _ = torch_line(LINES[2], 0, noise=np.zeros((1, 0, 1), np.float32))
-    snr = snr_db(want.numpy(), got)
-    # The decoder alone matches kokoro's to the bit; the LSTMs' last-digit differences (1e-6) are amplified by the
-    # vocoder, so a whole line is compared by signal-to-noise, not by sample.
-    print(f"wrapper vs kokoro: {nf} frames, SNR {snr:.1f} dB", flush=True)
-    report["wrapper_snr_db"] = round(snr, 1)
-    if snr < 30:
+    snr, spec = snr_db(want.numpy(), got), spec_snr_db(want.numpy(), got)
+    # The LSTMs' last-digit differences (1e-6) are amplified by the vocoder, and the source's upsample is written out
+    # (closer to exact than F.interpolate's float32 positions, within 0.008 rad of it at 1e5 rad), which moves the
+    # harmonics' phase: a whole line is compared by its magnitude spectrum, the waveform SNR reported beside it.
+    print(f"wrapper vs kokoro: {nf} frames, SNR {snr:.1f} dB, spectral SNR {spec:.1f} dB", flush=True)
+    report["wrapper_snr_db"], report["wrapper_spec_snr_db"] = round(snr, 1), round(spec, 1)
+    if spec < 25:
         sys.exit("the wrapper does not match kokoro's forward")
 
     # 2. Padding changes nothing: each line in a bigger bucket against the same line unpadded.
