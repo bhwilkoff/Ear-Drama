@@ -548,6 +548,24 @@ class PlaybackEngine(
     fun skipForward() { playerOrNull?.seekForward(); publish() }
     fun seekTo(positionMs: Long) { playerOrNull?.seekTo(positionMs); publish() }
 
+    /** Moves [by] items along a queue of line files (the read-along's previous and next line) and starts that item over; false past either end. */
+    fun seekItem(by: Int): Boolean {
+        val p = playerOrNull ?: return false
+        val to = p.currentMediaItemIndex + by
+        if (to !in 0 until p.mediaItemCount) return false
+        p.seekTo(to, 0L)
+        publish()
+        return true
+    }
+
+    /** Plays the item now loaded again from its beginning (Play after Pause holds the line, rule 6). */
+    fun restartItem() {
+        val p = playerOrNull ?: return
+        p.seekTo(p.currentMediaItemIndex, 0L)
+        p.play()
+        publish()
+    }
+
     fun setSpeed(speed: Float) {
         playerOrNull?.setPlaybackSpeed(speed)
         publish()
@@ -693,7 +711,7 @@ class PlaybackEngine(
     /**
      * Plays a finished drama's line files one after another, nothing queued after the last (Decision 073: one file per
      * line). [rows] and [urls] are parallel; the row playing is [NowPlaying.episode], which is how a read-along names the
-     * line heard (PLAYS-DESIGN 2.11 rule 6).
+     * line heard (PLAYS-DESIGN 2.11 rule 11).
      */
     fun playFiles(rows: List<EpisodeRow>, urls: List<String>) {
         if (rows.isEmpty() || rows.size != urls.size) return

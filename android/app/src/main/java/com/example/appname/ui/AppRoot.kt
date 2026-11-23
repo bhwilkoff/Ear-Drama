@@ -164,6 +164,10 @@ fun AppRoot(
                     com.example.appname.navigation.AlongDoor.autoplay = request.pid
                     stacks.getValue(selected).navigateTo(Route.Drama(request.pid))
                 }
+                is InboxRequest.ReadAlong -> if (!container.isTelevision) {
+                    container.plays.store.production(request.pid)?.let { stacks.getValue(Tab.Record).navigateTo(Route.Reader(it.scriptID, null, request.pid, null, along = true)) }
+                    selected = Tab.Record
+                }
                 is InboxRequest.Read -> if (!container.isTelevision) {
                     // The studio door presses the reader's Record for the part (PLAYS-DESIGN §2.9 rule 1), off this loop:
                     // a suspension here would be cancelled by the next inbox change.

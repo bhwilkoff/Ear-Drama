@@ -108,11 +108,23 @@ class CastSpeaker(
     @Volatile private var speakingId: String? = null
     /** The test door's mute (appname_mute): lines pass in time but nothing is voiced. */
     @Volatile var muted: Boolean = false
+
+    /** The read-along's speed (PLAYS-DESIGN 2.11 rule 7): a multiplier on each part's own speed, read at each line. */
+    @Volatile var speed: Double = 1.0
+
+    /**
+     * The device voice's own word callback (UtteranceProgressListener.onRangeStart): the range of the string the voice
+     * was given, set by the read-along before a line and cleared after. A voice that sends none leaves the line lit only.
+     */
+    @Volatile var onRange: ((start: Int, end: Int) -> Unit)? = null
     private val setter = TtsSetter(source.tts)
 
     init {
         source.tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {}
+            override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
+                if (utteranceId == speakingId) onRange?.invoke(start, end)
+            }
             override fun onDone(utteranceId: String?) { finish(utteranceId) }
             @Deprecated("Superseded by onError(String, Int)")
             override fun onError(utteranceId: String?) { finish(utteranceId) }
@@ -132,10 +144,10 @@ class CastSpeaker(
         val r = cast.resolve(part)
         val v = r.voice
         if (r.read && v != null && v.engine == VoiceCastEntry.KOKORO && kokoro != null && playId != null) {
-            if (kokoro.speak(playId, text, v.id, r.rate, r.pitch, muted)) return true
+            if (kokoro.speak(playId, text, v.id, r.rate * speed, r.pitch, muted)) return true
         }
         if (!source.awaitReady()) return false
-        if (!cast.prepare(part, setter)) return false
+        if (!cast.prepare(part, setter, speed.toFloat())) return false
         return say(words)
     }
 
@@ -143,12 +155,14 @@ class CastSpeaker(
     suspend fun speakAs(text: String, voice: CastVoice, rate: Double, pitch: Double): Boolean {
         val words = said(text)
         if (words.isEmpty()) return false
+        cancel()
         if (voice.engine == VoiceCastEntry.KOKORO) {
-            cancel()
-            return kokoro != null && playId != null && kokoro.speak(playId, text, voice.id, rate, pitch, muted)
+            if (kokoro != null && playId != null && kokoro.speak(playId, text, voice.id, rate, pitch, muted)) return true
+            // A line Kokoro cannot read falls to a device voice, never to silence (PLAYS-DESIGN 2.8 rule 10).
+            val device = source.voices().let { all -> all.firstOrNull { it.gender == voice.gender } ?: all.firstOrNull() } ?: return false
+            return speakAs(text, device, rate, pitch)
         }
         if (!source.awaitReady()) return false
-        cancel()
         if (!setter.setVoice(voice.id)) return false
         setter.setPitch(pitch.toFloat())
         setter.setSpeechRate(rate.toFloat().coerceIn(0.1f, 10f))
@@ -156,16 +170,17 @@ class CastSpeaker(
     }
 
     private suspend fun say(words: String): Boolean {
-        if (muted) {
-            kotlinx.coroutines.delay(300L)
-            return true
-        }
         val id = UUID.randomUUID().toString()
         val done = CompletableDeferred<Unit>()
         speaking = done
         speakingId = id
         try {
-            if (source.tts.speak(words, TextToSpeech.QUEUE_FLUSH, Bundle(), id) != TextToSpeech.SUCCESS) return false
+            // Muted (the test door) speaks at volume 0: the engine runs in real time and still sends its word callbacks.
+            val params = Bundle().apply { if (muted) putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 0f) }
+            if (source.tts.speak(words, TextToSpeech.QUEUE_FLUSH, params, id) != TextToSpeech.SUCCESS) {
+                if (muted) kotlinx.coroutines.delay(300L)
+                return muted
+            }
             done.await()
             return true
         } catch (e: CancellationException) {

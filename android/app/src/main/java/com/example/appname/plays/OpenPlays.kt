@@ -222,7 +222,7 @@ object ArchivePick {
 sealed interface DramaAudio {
     data object Checking : DramaAudio
     data class Ready(val url: String) : DramaAudio
-    /** One MP3 for each line of the item, in script order; a Read along follows the file playing (PLAYS-DESIGN 2.11 rule 6). */
+    /** One MP3 for each line of the item, in script order; a Read along follows the file playing (PLAYS-DESIGN 2.11 rule 11). */
     data class Lines(val files: List<ReadAlong.DramaFile>) : DramaAudio
     /** archive.org holds no MP3 yet (derivatives are made later). */
     data object Deriving : DramaAudio

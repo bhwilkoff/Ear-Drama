@@ -103,8 +103,15 @@ object Kokoro {
         return vocab.mapValues { it.value.jsonPrimitive.long }
     }
 
-    /** The words as the phoneme file keys them: printed italic marks dropped, whitespace folded. */
-    fun keyOf(text: String): String = text.replace("_", "").replace(Regex("\\s+"), " ").trim()
+    private val LEADING_STOP = Regex("^[.,:;—-]+\\s*")
+
+    /**
+     * The words as the phoneme file keys them: printed italic marks dropped, whitespace folded, two hyphens read as a
+     * dash and leading punctuation dropped, so a line shown through `PlayScript.cleanSaid` (Hear in Library > Voices,
+     * Today's Scene) finds the same row as the script's own words. Unfolded, a downloaded voice's Hear there was silent.
+     */
+    fun keyOf(text: String): String =
+        text.replace("_", "").replace(Regex("\\s+"), " ").trim().replace("--", "—").replace(LEADING_STOP, "")
 
     /** Where a voice's style row for [tokenCount] padded tokens starts in the voice table (the row is the unpadded length). */
     fun styleOffset(voiceIndex: Int, tokenCount: Int): Int {

@@ -597,6 +597,7 @@ fun DramaScreen(id: String, onBack: () -> Unit, onReadAlong: (FinishedPlay, List
                 }
                 val plan = remember(audio, script) { script?.let { s -> (audio as? DramaAudio.Lines)?.let { ReadAlong.dramaPlan(it.files, s, play.scriptRevision) } } }
                 val now by container.playback.state.collectAsState()
+                val dramaPrefs = androidx.compose.ui.platform.LocalContext.current.getSharedPreferences("ed.reader", android.content.Context.MODE_PRIVATE)
                 LaunchedEffect(plan) {
                     val files = (audio as? DramaAudio.Lines)?.files
                     if (plan != null && files != null && AlongDoor.autoplay == play.id) {
@@ -622,6 +623,7 @@ fun DramaScreen(id: String, onBack: () -> Unit, onReadAlong: (FinishedPlay, List
                     },
                     onPlayLines = { files ->
                         container.playback.playFiles(files.map { dramaRow(play, dramaRowId(play.id, it.seq)) }, files.map { it.url })
+                        container.playback.setSpeed(com.example.appname.plays.AlongModel.savedSpeed(dramaPrefs).toFloat())
                     },
                     onReadAlong = plan?.let { { onReadAlong(play, it) } },
                     panel = if (LocalIsTelevision.current && heard != null) script?.let { s -> { ReadAlongPanel(s, heard, false) } } else null,

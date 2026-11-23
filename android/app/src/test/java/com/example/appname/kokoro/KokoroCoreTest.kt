@@ -76,6 +76,9 @@ class KokoroCoreTest {
         assertEquals("tˈi?", Kokoro.phonemesFor(row, Kokoro.voice("af_heart")!!))
         assertEquals("tˈi?", Kokoro.phonemesFor(row.copy(gb = null), Kokoro.voice("bm_lewis")!!))
         assertEquals("Well, Molly.", Kokoro.keyOf("  Well,\n _Molly_. "))
+        // A line shown through PlayScript.cleanSaid (Library > Voices' Hear) finds the script's own row (2026-11-23).
+        assertEquals(Kokoro.keyOf("-- Well\u2014I mean, no."), Kokoro.keyOf("Well--I mean, no."))
+        assertEquals("Well \u2014 no.", Kokoro.keyOf("... Well -- no."))
     }
 
     @Test fun `the manifest is accepted only with three permissive files, the app's voices and never fp16`() {
