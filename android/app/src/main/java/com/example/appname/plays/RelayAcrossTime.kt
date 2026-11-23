@@ -19,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
@@ -281,6 +282,7 @@ class RelaySender(
     private val scope: CoroutineScope,
     private val pause: suspend (Long) -> Unit = { delay(it) },
     private val online: () -> Boolean = { true },
+    private val foreground: StateFlow<Boolean> = MutableStateFlow(true),
 ) {
     private val _state = MutableStateFlow(RelayState())
     val state: StateFlow<RelayState> = _state
@@ -295,7 +297,9 @@ class RelaySender(
         timer?.cancel()
         if (stopped) { timer = null; return }
         val ms = RelayCore.delay(_state.value.failures - 1)
-        timer = scope.launch { pause(ms); timer = null; run() }
+        // A backgrounded app asks nothing (each ask is a Worker request on the free account every app shares): the ask that came
+        // due waits for the app to come forward. An empty ask sets no timer at all.
+        timer = scope.launch { pause(ms); foreground.first { it }; timer = null; run() }
     }
 
     /** A take was saved, the network came back, or the app came to the front: ask now. */
@@ -445,6 +449,7 @@ class RelayHub(
     private val online: () -> Boolean = { true },
 ) {
     private val senders = HashMap<String, RelaySender>()
+    private val foreground = MutableStateFlow(true)
     private val _revision = MutableStateFlow(0)
     /** Bumped on every change so a screen reading the hub redraws. */
     val revision: StateFlow<Int> = _revision
@@ -455,7 +460,7 @@ class RelayHub(
         val local = store.production(localId) ?: return null
         val script = store.script(local) ?: return null
         val source: RelaySource = if (link.seat != null) SeatRelaySource(store, localId, script, seatWire, vault) else MemberRelaySource(store, localId, script, transport, receiver, me)
-        val s = RelaySender(source, scope, pause, online)
+        val s = RelaySender(source, scope, pause, online, foreground)
         senders[localId] = s
         scope.launch { s.state.collect { _revision.value += 1 } }
         return s
@@ -471,6 +476,9 @@ class RelayHub(
     }
 
     fun stop() { senders.values.forEach { it.stop() }; senders.clear() }
+
+    /** The app came forward (started) or went to the background: a backgrounded one asks nothing until it is back. */
+    fun setForeground(now: Boolean) { foreground.value = now }
 
     /** One take's state for a screen. */
     fun state(localId: String, takeId: String, remote: Set<String> = emptySet()): Pair<RelayCore.State, String?> {
@@ -488,7 +496,64 @@ class RelayHub(
 }
 
 /**
- * While the teacher's class page is open, one long poll per class production keeps the teacher's app "there" for the Worker
+ * The receiver's pickup (mirror of RelayCore.receive in js/relay-core.js): long polls [inbox] one after another, but only while
+ * [active] (the screen is started), and stops after [idleMs] with no take, calling [onIdle] so the page can offer Keep receiving
+ * takes. A held pickup keeps a Durable Object awake and every app shares one free Worker account (2026-11-23), so a
+ * backgrounded or forgotten page holds nothing. [inbox] returns whether a take arrived; [stopOn] ends the loop on a refusal.
+ */
+class PickupLoop(
+    private val scope: CoroutineScope,
+    private val active: StateFlow<Boolean>,
+    private val now: () -> Long,
+    private val inbox: suspend () -> Boolean,
+    private val stopOn: (Throwable) -> Boolean = { false },
+    private val onIdle: () -> Unit = {},
+    private val idleMs: Long = IDLE_MS,
+    private val pause: suspend (Long) -> Unit = { delay(it) },
+) {
+    @Volatile var stopped = false
+        private set
+    private var job: Job? = null
+
+    fun start(): Job {
+        job?.let { return it }
+        return scope.launch {
+            var lastTake = now()
+            var wait = 0L
+            while (isActive && !stopped) {
+                if (!active.value) {
+                    active.first { it }
+                    lastTake = now()
+                    continue
+                }
+                if (now() - lastTake >= idleMs) { stop(); onIdle(); return@launch }
+                try {
+                    val got = inbox()
+                    wait = 0
+                    if (stopped) break
+                    if (got) lastTake = now()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    if (stopped || stopOn(e)) break
+                    wait = minOf(30_000, if (wait == 0L) 2_000 else wait * 2)
+                    pause(wait)
+                }
+            }
+            stop()
+        }.also { job = it }
+    }
+
+    fun stop() { stopped = true; job?.cancel() }
+
+    companion object {
+        /** A receiver stops holding its pickup after this long with no take (PLAYS-DESIGN §12.11 item 4). */
+        const val IDLE_MS = 30L * 60 * 1000
+    }
+}
+
+/**
+ * While the teacher's class page is open and started, one long poll per class production keeps the teacher's app "there" for the Worker
  * (`GET /productions/:pid/takes/inbox`); each take that passes through is kept in a production on this device and nowhere
  * else (Decision 082). [arrived] counts them so the progress list can refresh.
  */
@@ -498,31 +563,51 @@ class ClassInbox(
     private val scope: CoroutineScope,
     private val script: suspend (String, String) -> PlayScript?,
     private val onArrival: () -> Unit = {},
+    private val now: () -> Long = { System.currentTimeMillis() },
+    private val idleMs: Long = PickupLoop.IDLE_MS,
+    private val pause: suspend (Long) -> Unit = { delay(it) },
 ) {
-    private val jobs = HashMap<String, Job>()
+    private val loops = HashMap<String, PickupLoop>()
+    private val known = HashMap<String, Pair<String, String>>()
+    private val shown = MutableStateFlow(true)
     private val _arrived = MutableStateFlow(0)
     val arrived: StateFlow<Int> = _arrived
+    private val _idle = MutableStateFlow(false)
+    /** Thirty minutes passed with no take: the pickups are let go and the page offers Keep receiving takes. */
+    val idle: StateFlow<Boolean> = _idle
 
     @Synchronized fun hold(pid: String, scriptId: String, revision: String) {
-        if (jobs.containsKey(pid)) return
-        jobs[pid] = scope.launch {
-            var wait = 0L
-            while (isActive) {
-                try {
-                    val picked = transport.nextTake(pid)
-                    val s = if (picked != null) script(scriptId, revision) else null
-                    if (picked != null && s != null) accept(picked, pid, s)
-                    wait = 0
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    val code = RelayCore.codeOf(e)
-                    if (code in setOf("director_only", "not_found", "pass_through_unavailable", "unauthorized", "not_configured")) return@launch
-                    wait = minOf(30_000, if (wait == 0L) 2_000 else wait * 2)
-                    delay(wait)
-                }
-            }
-        }
+        known[pid] = scriptId to revision
+        if (loops.containsKey(pid) || _idle.value) return
+        val loop = PickupLoop(
+            scope, shown, now,
+            inbox = {
+                val picked = transport.nextTake(pid)
+                val s = if (picked != null) script(scriptId, revision) else null
+                if (picked != null && s != null) { accept(picked, pid, s); true } else false
+            },
+            stopOn = { e -> RelayCore.codeOf(e) in setOf("director_only", "not_found", "pass_through_unavailable", "unauthorized", "not_configured") },
+            onIdle = { letGo() },
+            idleMs = idleMs, pause = pause,
+        )
+        loops[pid] = loop
+        loop.start()
+    }
+
+    /** The screen is started (lifecycle STARTED or RESUMED) or not: a hidden page holds no pickup. */
+    fun setActive(now: Boolean) { shown.value = now }
+
+    /** Keep receiving takes: the pickups start again for every production this page holds. */
+    fun keepReceiving() {
+        _idle.value = false
+        val all = synchronized(this) { known.toMap() }
+        all.forEach { (pid, k) -> hold(pid, k.first, k.second) }
+    }
+
+    @Synchronized private fun letGo() {
+        loops.values.forEach { it.stop() }
+        loops.clear()
+        _idle.value = true
     }
 
     private fun accept(picked: PickedTake, pid: String, script: PlayScript) {
@@ -538,5 +623,5 @@ class ClassInbox(
         onArrival()
     }
 
-    @Synchronized fun release() { jobs.values.forEach { it.cancel() }; jobs.clear() }
+    @Synchronized fun release() { loops.values.forEach { it.stop() }; loops.clear(); known.clear() }
 }

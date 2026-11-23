@@ -124,11 +124,13 @@ class MainActivity : ComponentActivity() {
     /** A signed-in app syncs when it comes forward and when it leaves (DECISIONS 063); signed out, nothing runs. */
     override fun onStart() {
         super.onStart()
+        container.relay.setForeground(true)
         if (container.accounts.account.value != null) container.accounts.syncNow()
     }
 
     override fun onStop() {
         super.onStop()
+        container.relay.setForeground(false)
         if (container.accounts.account.value != null) container.accounts.syncNow()
     }
 }

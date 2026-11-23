@@ -490,6 +490,14 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
             { sid, rev -> container.plays.script(sid)?.takeIf { it.revision == rev } }, onArrival = { scope.launch { try { progress = wire.progress(id); loadReviews() } catch (e: CancellationException) { throw e } catch (_: Exception) {} } })
     }
     DisposableEffect(inbox) { onDispose { inbox.release() } }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(inbox, lifecycle) {
+        val watch = androidx.lifecycle.LifecycleEventObserver { _, _ -> inbox.setActive(lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) }
+        inbox.setActive(lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED))
+        lifecycle.addObserver(watch)
+        onDispose { lifecycle.removeObserver(watch) }
+    }
+    val receivingIdle by inbox.idle.collectAsState()
 
     LaunchedEffect(id, attempt) {
         try {
@@ -505,6 +513,7 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
     Scaffold(topBar = { BackBar(onBack, detail?.name ?: "Class") }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
             failure?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (receivingIdle) Button(onClick = { inbox.keepReceiving() }) { Text("Keep receiving takes") }
             detail?.takeIf { it.under13 && !it.schoolConsent }?.let {
                 SchoolApproval(busy, null, onRecord = { reference -> guard { wire.schoolConsent(id, reference); attempt += 1 } })
             }
