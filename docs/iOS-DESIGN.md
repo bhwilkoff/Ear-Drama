@@ -519,22 +519,7 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   last either way. Each credit on Detail (§4.4) is a `NavigationLink` to
   its person. No bio is written (R13). The Mac uses the same screen in
   its detail column.
-- **§4.6 Library** (D3-5, one grammar) is **Continue**, **Queue**, **Following**, **History**,
-  Downloads, and **Ear dramas**, then the account row and the site pages. Every section keeps its
-  header, so a section with rows and one without read as one set. Continue, Queue and History are
-  grammar rows (`EpisodeRowLabel`, the series' window leading); **Following is show tiles** in one
-  horizontal shelf (`FollowingShelf`, `ShowTile`, names sharing a height), newest follow first as
-  Home's, with Unfollow on a long press; an Ear dramas row leads with its title's tile
-  (`ArtTile`, as a play's row) over the production's progress line. Queue reorders (Edit,
-  `onMove`), swipes to remove, and keeps its long-press menu; a Continue or History row swipes or
-  long-presses to Remove from History. Downloads is one row, "Downloads" with the episode count and
-  the storage held, that pushes the Downloads place (§4.8): a bulk download is hundreds of rows,
-  which would bury the rest of Library. The four states: loading is the skeleton rows; an
-  unreadable catalog is `CatalogUnavailableView` heading the list; offline is the app-wide
-  "You are offline." line (what is on the device keeps listing); an empty section is a header and
-  one caption (`SectionCaption`) that says what it would hold, never an invitation: "Episodes you stop partway through wait here." (Continue), "Episodes you add play in this order, after the one that is playing." (Queue), "Series you follow appear here." (Following), "Episodes you finish appear here, newest first." (History), "Downloaded episodes play with no network." (Downloads), "Ear dramas you record or join appear here." (Ear dramas). A
-  Library with nothing in any section also heads with "Nothing played yet" and Browse (§7.4). Not
-  yet seen on a device.
+- **§4.6 Library** (direction B, owner 2026-11-23: *"Most people we exclusively use this app for listening, so let's do option B to make it easier for them to use the app that way."*; replaces D3-5's flat list and its rule that every section keeps its header and caption) is a `List` headed by a `Picker(.segmented)`, **Listening | Making**, remembered per device (`@AppStorage("ed.library.side")`, default Listening), then one foot under either side. **Listening**: **Up next** is the started episodes (the history store's in-progress ids, with their progress) then the queue in the person's order, each episode once, shown five rows deep and then "All N", which pushes `UpNextScreen` (`LibraryModel.upNext`; display only, the history and queue stores are unchanged; the queued rows keep `onMove` and swipe to remove, a started row swipes to Remove from History); **Shows you follow** is `FollowingShelf`'s show tiles (Following is not merged into Up next; Unfollow on a long press); **History** and **Downloads** are one line each with a count (Downloads adds the storage held), pushing `HistoryScreen` and the Downloads place (§4.8), never rows inline. **Making**: **Your Parts** (one line, only when this device holds a class seat), **Productions** grouped by play (`LibraryPlayGroup`: one row per play with its production count and the newest one's progress line, never nine identical rows; a play with one production opens it, a play with several pushes `PlayProductionsScreen`), and **Classes** one line per class (signed in). Make a Class and Join a Class are Record's (`ClassDoors`, signed in), not Library's. **An empty part is absent**: no header and no caption (`SectionCaption` is not drawn in Library). A side with nothing at all is one sentence and one button ("Nothing played yet" with Browse; "Nothing recorded yet" with Record a Play). **The foot**, headed "Account and preferences", in this order: **Account** (§4.10), **Voices** (one row stating its state, "Kokoro · 1.0×", whose tap discloses the full Voices controls in place under it, `VoicesSection`; there is no Settings page, owner 2026-11-22; `AppStore.openLibraryVoices` still lands here with Voices disclosed), **Export my data** (`ExportSection`), **About Ear Drama** (pushes `AboutScreen`: Credits, Privacy, Take-down requests, §4.10a). Listen together is a player verb on Apple (SharePlay) and has no foot row. Marks ("In 3 scripts") has no place to open on Apple yet and is not drawn. The four states: loading is the skeleton rows; an unreadable catalog is `CatalogUnavailableView` heading the list; offline is the app-wide "You are offline." line (what is on the device keeps listing). Not yet seen on every device (SCRATCHPAD lists the frames).
 - **§4.7 The transcript** is a sheet (`TranscriptSheet_iOS`,
   `apple/Shared/TranscriptViews.swift`) from Detail or the player, with
   Done. Plain, selectable text at the body size in a 680 pt measure,
@@ -612,8 +597,7 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   in one tap. The draw is the platform's own random: nothing needs to
   match another device. No copy is written; a pick with no data is
   absent.
-- **§4.10a The site pages are Library's last section**, under the
-  account: "Credits", "Privacy", "Take-down requests", each a `Link` to
+- **§4.10a The site pages are About Ear Drama**, the foot's last row (§4.6), a pushed list: "Credits", "Privacy", "Take-down requests", each a `Link` to
   the website's page (`SiteLinks`), opened in the system browser. An
   empty Library keeps them (§7.4). Names only; the pages carry the words.
 - **§4.10 The account lives at the foot of Library**, never a tab, a

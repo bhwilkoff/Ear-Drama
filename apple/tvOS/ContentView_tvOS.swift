@@ -1035,50 +1035,51 @@ private struct LibraryScreen_tvOS: View {
             if let inProgress {
                 ScrollView(.vertical) {
                     LazyVStack(alignment: .leading, spacing: TV.rowGap) {
-                        // The empty state heads the page and takes the focus; the account and the
-                        // site pages stay under it (tvOS-DESIGN §7.3a).
-                        if inProgress.isEmpty && queued.isEmpty && following.isEmpty {
+                        // Listening only on a TV (direction B, owner 2026-11-23): Up next, the shows followed, then the
+                        // foot. An empty part is absent; a Library with nothing heads with Browse and takes the focus
+                        // (tvOS-DESIGN §7.3a).
+                        let upNext = LibraryModel.upNext(started: inProgress.map(\.id), queued: queued.map(\.id))
+                        if upNext.isEmpty && following.isEmpty {
                             EmptyState("Nothing played yet", systemImage: "books.vertical",
                                        action: .init(title: "Browse") { app.selectResettingPrevious(.browse) },
                                        focus: $emptyFocused)
                                 .frame(height: 360)
                                 .frame(maxWidth: .infinity)
                         }
-                        section("Continue", caption: "Episodes you stop partway through wait here.", empty: inProgress.isEmpty) {
-                            ForEach(inProgress) { episode in
-                                TVEpisodeLink(episode: episode) {
-                                    Button(role: .destructive) { history.remove(episode.id) } label: {
-                                        Label("Remove from History", systemImage: "trash")
+                        if !upNext.isEmpty {
+                            let startedIDs = Set(inProgress.map(\.id))
+                            TVShelf(title: "Up next", lazy: true) {
+                                ForEach(inProgress) { episode in
+                                    TVEpisodeLink(episode: episode) {
+                                        Button(role: .destructive) { history.remove(episode.id) } label: {
+                                            Label("Remove from History", systemImage: "trash")
+                                        }
                                     }
+                                }
+                                ForEach(queued.filter { !startedIDs.contains($0.id) }) { episode in
+                                    TVEpisodeLink(episode: episode) { QueueRowMenu(episodeID: episode.id) }
                                 }
                             }
                         }
-                        section("Queue", caption: "Episodes you add play in this order, after the one that is playing.", empty: queued.isEmpty) {
-                            ForEach(queued) { episode in
-                                TVEpisodeLink(episode: episode) { QueueRowMenu(episodeID: episode.id) }
-                            }
-                        }
-                        if following.isEmpty {
-                            section("Following", caption: "Series you follow appear here.", empty: true) { EmptyView() }
-                        } else {
-                            TVShelf(title: "Following") {
+                        if !following.isEmpty {
+                            TVShelf(title: "Shows you follow") {
                                 ForEach(following) { TileLink(value: Route.series($0.key), series: $0) }
                             }
                         }
-                        SharedEarDramasSection_tvOS()
-                        NavigationLink { ReadPairHost() } label: {
-                            Label("Show a Reading", systemImage: "tv")
-                        }
-                        .frame(maxWidth: 640)
-                        .focusSection()
                         VStack(alignment: .leading, spacing: Spacing.s4) {
+                            SectionHead(title: "Account and preferences") { EmptyView() }
                             AccountRow()
                                 .frame(maxWidth: 640)
-                                .focusSection()
-                            HStack(spacing: 64) { SiteLinkRows() }
-                                .font(TypeRamp.caption)
-                                .foregroundStyle(Color.brandTextMuted)
+                            NavigationLink { ReadPairHost() } label: {
+                                Label("Show a Reading", systemImage: "tv")
+                            }
+                            .frame(maxWidth: 640)
+                            NavigationLink { TVAboutScreen() } label: {
+                                Label("About Ear Drama", systemImage: "info.circle")
+                            }
+                            .frame(maxWidth: 640)
                         }
+                        .focusSection()
                     }
                     .padding(.top, TV.rootClearance)
                     .padding(.bottom, 60)
@@ -1097,18 +1098,18 @@ private struct LibraryScreen_tvOS: View {
             following = await catalog.series(follows.followedKeys)
         }
     }
+}
 
-    /// §4.6: an empty section keeps its header and its one caption.
-    @ViewBuilder private func section<Content: View>(_ title: String, caption: String, empty: Bool,
-                                                     @ViewBuilder content: @escaping () -> Content) -> some View {
-        if empty {
-            VStack(alignment: .leading, spacing: Spacing.s2) {
-                SectionHead(title: title) { EmptyView() }
-                SectionCaption(caption)
-            }
-        } else {
-            TVShelf(title: title, lazy: true, content: content)
+/// About Ear Drama on a TV: the site's pages as addresses (a TV has no browser).
+private struct TVAboutScreen: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s6) {
+            Text("About Ear Drama").font(TypeRamp.sectionHeader)
+            SiteLinkRows()
         }
+        .padding(.top, TV.rootClearance)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 80)
     }
 }
 

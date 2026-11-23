@@ -26,6 +26,14 @@ struct RouteDestinations: ViewModifier {
             }
         }
         .navigationDestination(for: DownloadsRoute.self) { _ in DownloadsScreen() }
+        .navigationDestination(for: LibraryRoute.self) { route in
+            switch route {
+            case .upNext: UpNextScreen()
+            case .history: HistoryScreen()
+            case .about: AboutScreen()
+            case let .play(key): PlayProductionsScreen(key: key)
+            }
+        }
         .navigationDestination(for: PlayRoute.self) { route in
             switch route {
             case let .script(id): PlayScriptScreen(id: id)
@@ -1296,102 +1304,45 @@ struct LibraryScreen: View {
     @Environment(AccountStore.self) private var account
     @Environment(AppStore.self) private var app
     @Environment(FollowedSeries.self) private var follows
+    @AppStorage(LibrarySide.storageKey) private var sideName = LibrarySide.listening.rawValue
     @State private var inProgress: [EpisodeRow]?
-    @State private var played: [EpisodeRow] = []
     @State private var queued: [EpisodeRow] = []
     @State private var following: [SeriesRow] = []
+    @State private var voicesOpen = false
+
+    private var side: LibrarySide { LibrarySide(rawValue: sideName) ?? .listening }
 
     var body: some View {
         Group {
             if let inProgress {
-                // The empty state heads the list; the account and the site
-                // pages stay under it, signed in or out (iOS-DESIGN §7.4).
-                let empty = Self.emptied || (inProgress.isEmpty && played.isEmpty && queued.isEmpty && following.isEmpty
-                    && downloads.records.isEmpty && plays.store.productions.isEmpty
-                    && (!account.isSignedIn || shared.remote.isEmpty))
                 ScrollViewReader { proxy in
                 List {
                     if catalog.state == .unavailable {
                         CatalogUnavailableView()
                     }
-                    if empty {
-                        Section {
-                            EmptyState("Nothing played yet", systemImage: "books.vertical",
-                                       action: .init(title: "Browse") { app.selectedTab = .browse })
-                                .frame(maxWidth: .infinity)
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
+                    Section {
+                        Picker("Library", selection: $sideName) {
+                            ForEach(LibrarySide.allCases) { Text($0.rawValue).tag($0.rawValue) }
                         }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
                     }
-                    Section("Continue") {
-                        if inProgress.isEmpty {
-                            SectionCaption("Episodes you stop partway through wait here.")
-                        }
-                        ForEach(inProgress) { episode in
-                            NavigationLink(value: Route.episode(episode.id)) {
-                                EpisodeRowLabel(episode: episode, showSeries: true)
-                            }
-                            .playRowLink()
-                            .swipeActions { removeButton(episode.id) }
-                            .contextMenu { removeButton(episode.id) }
-                        }
+                    switch side {
+                    case .listening: listening(inProgress)
+                    case .making: making
                     }
-                    Section("Queue") {
-                        if queued.isEmpty {
-                            SectionCaption("Episodes you add play in this order, after the one that is playing.")
-                        }
-                        ForEach(queued) { episode in
-                            NavigationLink(value: Route.episode(episode.id)) {
-                                EpisodeRowLabel(episode: episode, showSeries: true)
-                            }
-                            .playRowLink()
-                            .swipeActions {
-                                Button(role: .destructive) { queue.remove(episode.id) } label: {
-                                    Label("Remove from queue", systemImage: "trash")
-                                }
-                            }
-                            .contextMenu { QueueRowMenu(episodeID: episode.id) }
-                        }
-                        .onMove { source, destination in
-                            var ids = queued.map(\.id)
-                            ids.move(fromOffsets: source, toOffset: destination)
-                            queue.reorder(ids)
-                        }
-                    }
-                    Section("Following") {
-                        if following.isEmpty || Self.emptied {
-                            SectionCaption("Series you follow appear here.")
-                        } else {
-                            FollowingShelf(series: following)
-                        }
-                    }
-                    Section("History") {
-                        if played.isEmpty {
-                            SectionCaption("Episodes you finish appear here, newest first.")
-                        }
-                        ForEach(played) { episode in
-                            NavigationLink(value: Route.episode(episode.id)) {
-                                EpisodeRowLabel(episode: episode, showSeries: true)
-                            }
-                            .playRowLink()
-                            .swipeActions { removeButton(episode.id) }
-                            .contextMenu { removeButton(episode.id) }
-                        }
-                    }
-                    if !Self.emptied {
-                        DownloadsSection()
-                        EarDramasSection()
-                    }
-                    Section { AccountRow() }
-                    #if os(iOS) || os(macOS)
-                    VoicesSection()
-                    #endif
-                    #if os(iOS)
-                    Section { SiteLinkRows() }
-                    #endif
+                    foot
                 }
                 .pageMargins()
-                .onChange(of: app.libraryVoicesRequest) { withAnimation { proxy.scrollTo("voices", anchor: .top) } }
+                .onChange(of: app.libraryVoicesRequest) {
+                    voicesOpen = true
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(200))
+                        withAnimation { proxy.scrollTo("voices", anchor: .top) }
+                    }
+                }
                 }
             } else {
                 List { SkeletonRows() }.pageMargins()
@@ -1399,30 +1350,95 @@ struct LibraryScreen: View {
         }
         .navigationTitle("Library")
         #if os(iOS)
-        .toolbar { ToolbarItem(placement: .primaryAction) { EditButton() } }
+        .toolbar { if side == .listening { ToolbarItem(placement: .primaryAction) { EditButton() } } }
         #endif
         .task(id: account.isSignedIn) { if account.isSignedIn { await shared.loadRemote() } }
         .task(id: LibraryKey(entries: history.entries, queue: queue.items, load: catalog.loadKey)) {
             guard !Self.emptied else { inProgress = []; return }
-            let ids = history.inProgressIDs
-            let playedIDs = history.entries.filter(\.value.finished)
-                .sorted { $0.value.updatedAt > $1.value.updatedAt }.map(\.key).prefix(100)
             queued = await catalog.episodes(queue.items)
-            inProgress = await catalog.episodes(ids)
-            played = await catalog.episodes(Array(playedIDs))
+            inProgress = await catalog.episodes(history.inProgressIDs)
         }
         .task(id: follows.followedKeys.joined(separator: "\n") + "#\(catalog.loadKey)") {
             following = await catalog.series(follows.followedKeys)
         }
     }
 
-    /// The APP_EMPTY_LIBRARY door (DEBUG only): Library drawn as a new listener's.
-    static let emptied = LaunchDoors.current.emptyLibrary
+    // MARK: Listening
 
-    private func removeButton(_ id: String) -> some View {
-        Button(role: .destructive) { history.remove(id) } label: {
-            Label("Remove from History", systemImage: "trash")
+    /// Up next (started, then the queue), the shows followed, then History and Downloads as one line each. A part with
+    /// nothing in it is absent; a side with nothing says one sentence and Browse.
+    @ViewBuilder private func listening(_ started: [EpisodeRow]) -> some View {
+        let upNext = LibraryModel.upNext(started: started.map(\.id), queued: queued.map(\.id))
+        let finished = Self.emptied ? 0 : history.entries.values.filter(\.finished).count
+        let held = Self.emptied ? 0 : downloads.records.count
+        let shows = Self.emptied ? [] : following
+        if upNext.isEmpty && shows.isEmpty && finished == 0 && held == 0 {
+            Section {
+                EmptyState("Nothing played yet", systemImage: "books.vertical",
+                           action: .init(title: "Browse") { app.selectedTab = .browse })
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+        }
+        if !upNext.isEmpty {
+            Section("Up next") { UpNextRows(started: started, queued: queued, limit: LibraryModel.shownRows) }
+        }
+        if !shows.isEmpty {
+            Section("Shows you follow") { FollowingShelf(series: shows) }
+        }
+        if finished > 0 || held > 0 {
+            Section {
+                if finished > 0 {
+                    LibraryCountLink(title: "History", systemImage: "clock.arrow.circlepath",
+                                     count: finished.formatted(), route: .history)
+                }
+                if held > 0 { DownloadsRow() }
+            }
         }
     }
+
+    // MARK: Making
+
+    /// Your Parts, the productions grouped by play, then one line per class. With none of them: one sentence and
+    /// Record a Play.
+    @ViewBuilder private var making: some View {
+        let groups = LibraryPlayGroup.groups(PlaysShare.libraryRows(plays.store, remote: account.isSignedIn ? shared.remote : []))
+        let seats = !HomeSeats.load().isEmpty
+        let classes = (shared.classes?.teaching.count ?? 0) + (shared.classes?.memberOf.count ?? 0)
+        if groups.isEmpty && !seats && classes == 0 {
+            Section {
+                EmptyState("Nothing recorded yet", systemImage: "mic",
+                           action: .init(title: "Record a Play") { app.selectedTab = .record })
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+        }
+        if seats {
+            Section { PushLink(value: Route.parts) { Label("Your Parts", systemImage: "person.wave.2") } }
+        }
+        if !groups.isEmpty { ProductionsByPlay(groups: groups) }
+        if account.isSignedIn { ClassesSection() }
+    }
+
+    // MARK: The foot
+
+    /// Under either side, in this order everywhere: Account, Voices (disclosed in place, no Settings page, owner
+    /// 2026-11-22), Export, About.
+    @ViewBuilder private var foot: some View {
+        Section("Account and preferences") {
+            AccountRow()
+            VoicesFootRow(open: $voicesOpen)
+        }
+        if voicesOpen { VoicesSection() }
+        ExportSection()
+        Section {
+            NavigationLink(value: LibraryRoute.about) { Label("About Ear Drama", systemImage: "info.circle") }
+        }
+    }
+
+    /// The APP_EMPTY_LIBRARY door (DEBUG only): Library drawn as a new listener's.
+    static let emptied = LaunchDoors.current.emptyLibrary
 }
 #endif

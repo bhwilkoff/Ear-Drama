@@ -112,10 +112,10 @@ def secondary_action_is_ink(files):
 
 def library_empty_keeps_navigation(text, struct):
     """iOS-DESIGN §7.4, tvOS-DESIGN §7.3a: an empty Library is the empty state
-    at the head of the list, with Account and the site pages still under it."""
+    at the head of the list, with Account and About (the site pages) still under it (direction B)."""
     m = re.search(r"struct " + struct + r": View \{.*?\n}\n", text, re.S)
     body = m.group(0) if m else ""
-    empty, account, links = body.find("EmptyState("), body.find("AccountRow()"), body.find("SiteLinkRows()")
+    empty, account, links = body.find("EmptyState("), body.find("AccountRow()"), body.find("About Ear Drama")
     # tvOS draws no List (§3.0): the page is a scroll view of the same things in the same order.
     lst = max(body.rfind("List {", 0, empty), body.rfind("ScrollView(.vertical) {", 0, empty))
     return (-1 < lst < empty < account < links) and "} else {" not in body[empty:empty + 200]
@@ -174,10 +174,10 @@ def main():
           swift["apple/Shared/RecordingScreen.swift"].replace("controls.keep() } label: {\n                    Label(\"Keep\", systemImage: \"checkmark\").frame(maxWidth: .infinity)\n                }\n                .buttonStyle(.play(.ink))", "controls.keep() } label: {\n                    Label(\"Keep\", systemImage: \"checkmark\").frame(maxWidth: .infinity)\n                }\n                .buttonStyle(.play(.way))", 1)}),
         ("an empty Library keeps Account and the site pages",
          lambda t: library_empty_keeps_navigation(t, "LibraryScreen"), detail,
-         detail.replace("                    Section { AccountRow() }\n", "", 1)),
+         detail.replace("            AccountRow()\n", "", 1)),
         ("an empty TV Library keeps Account and the site pages",
          lambda t: library_empty_keeps_navigation(t, "LibraryScreen_tvOS"), tv,
-         tv.replace("                            HStack(spacing: 64) { SiteLinkRows() }\n", "", 1)),
+         tv.replace("                            AccountRow()\n                                .frame(maxWidth: 640)\n", "", 1)),
     ]
     for name, check, real, broken in cases:
         ok(check(real), name)
