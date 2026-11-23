@@ -263,6 +263,8 @@ final class RelaySender {
     @ObservationIgnored private let source: any RelaySource
     @ObservationIgnored private let sleep: @Sendable (Int) async -> Void
     @ObservationIgnored private let online: () -> Bool
+    @ObservationIgnored private let active: () -> Bool
+    @ObservationIgnored private var deferred = false
     @ObservationIgnored private var timer: Task<Void, Never>?
     @ObservationIgnored private var running = false
     @ObservationIgnored private var again = false
@@ -270,10 +272,11 @@ final class RelaySender {
     @ObservationIgnored var onChange: (() -> Void)?
 
     init(source: any RelaySource, sleep: @escaping @Sendable (Int) async -> Void = { try? await Task.sleep(for: .milliseconds($0)) },
-         online: @escaping () -> Bool = { true }) {
+         online: @escaping () -> Bool = { true }, active: @escaping () -> Bool = { true }) {
         self.source = source
         self.sleep = sleep
         self.online = online
+        self.active = active
     }
 
     private func changed() { revision += 1; onChange?() }
@@ -289,7 +292,20 @@ final class RelaySender {
         }
     }
 
-    private func fire() async { timer = nil; await run() }
+    /// A backgrounded app asks nothing (each ask is a Worker request on the free account every app shares): the ask that
+    /// came due waits, and coming forward runs it at once (PLAYS-DESIGN §12.11). An empty ask sets no timer at all.
+    private func fire() async {
+        timer = nil
+        guard active() else { deferred = true; return }
+        await run()
+    }
+
+    /// The app came to the front or went away.
+    func setActive(_ now: Bool) {
+        guard now, deferred else { return }
+        deferred = false
+        Task { await kick() }
+    }
 
     /// A take was saved, the network came back, or the app came to the front: ask now.
     func kick() async {
@@ -442,44 +458,145 @@ final class MemberRelaySource: RelaySource {
     func refused(_ take: Take, code: String) { patch { $0.refused = ($0.refused ?? [:]).merging([take.id: code]) { $1 } } }
 }
 
+// MARK: - The receiver's pickup loop
+
+/// The receiver's pickup (mirror of RelayCore.receive in js/relay-core.js): long polls `inbox` one after another, but only while
+/// the page is in the foreground, and stops after `idleMs` with no take, calling `onIdle` so the page can offer Keep receiving
+/// takes. A held pickup keeps a Durable Object awake and every app shares one free Worker account (2026-11-23), so a
+/// backgrounded or forgotten page holds nothing. `inbox` returns whether a take arrived; `stopOn(error)` ends the loop on a refusal.
+@MainActor
+final class PickupLoop {
+    /// A receiver stops holding its pickup after this long with no take (PLAYS-DESIGN §12.11 item 4).
+    nonisolated static let idleMs = 30 * 60 * 1000
+    nonisolated static let wallClock: @Sendable () -> Int = { Int(Date().timeIntervalSince1970 * 1000) }
+
+    private(set) var stopped = false
+    private var active: Bool
+    private var wake: CheckedContinuation<Void, Never>?
+    private var task: Task<Void, Never>?
+    private let now: @Sendable () -> Int
+    private let sleep: @Sendable (Int) async -> Void
+    private let idleMs: Int
+    private let inbox: @MainActor () async throws -> Bool
+    private let stopOn: (any Error) -> Bool
+    private let onIdle: @MainActor () -> Void
+
+    init(active: Bool = true, now: @escaping @Sendable () -> Int = PickupLoop.wallClock,
+         sleep: @escaping @Sendable (Int) async -> Void = { try? await Task.sleep(for: .milliseconds($0)) }, idleMs: Int = PickupLoop.idleMs,
+         inbox: @escaping @MainActor () async throws -> Bool, stopOn: @escaping (any Error) -> Bool = { _ in false },
+         onIdle: @escaping @MainActor () -> Void = {}) {
+        self.active = active; self.now = now; self.sleep = sleep; self.idleMs = idleMs
+        self.inbox = inbox; self.stopOn = stopOn; self.onIdle = onIdle
+    }
+
+    func start() {
+        guard task == nil else { return }
+        task = Task { [weak self] in await self?.run() }
+    }
+
+    func setActive(_ value: Bool) {
+        active = value
+        if value { rouse() }
+    }
+
+    func stop() {
+        guard !stopped else { return }
+        stopped = true
+        rouse()
+        task?.cancel()
+    }
+
+    /// Returns when the loop has ended (a test's way to wait).
+    func finished() async { await task?.value }
+
+    private func rouse() { if let w = wake { wake = nil; w.resume() } }
+
+    private func run() async {
+        var lastTake = now()
+        var wait = 0
+        while !stopped {
+            if !active {
+                await withCheckedContinuation { wake = $0 }
+                lastTake = now()
+                continue
+            }
+            if now() - lastTake >= idleMs { stop(); onIdle(); return }
+            do {
+                let got = try await inbox()
+                wait = 0
+                if stopped { break }
+                if got { lastTake = now() }
+            } catch {
+                if stopped || stopOn(error) { break }
+                wait = min(30_000, wait == 0 ? 2_000 : wait * 2)
+                await sleep(wait)
+            }
+        }
+        stop()
+    }
+}
+
 // MARK: - The receiving end: the teacher's class page holds the pickup
 
-/// While the teacher's class page is open, one long poll per class production keeps the teacher's app "there" for the Worker
+/// While the teacher's class page is open and in the foreground, one long poll per class production keeps the teacher's app "there" for the Worker
 /// (`GET /productions/:pid/takes/inbox`); each take that passes through is kept in a production on this device and nowhere
 /// else (Decision 082). `arrived` counts them so the progress list can refresh.
 @MainActor @Observable
 final class ClassInbox {
     private(set) var arrived = 0
+    /// Thirty minutes passed with no take: the pickups are let go and the page offers Keep receiving takes.
+    private(set) var idle = false
     @ObservationIgnored let store: ProductionStore
     @ObservationIgnored let transport: any PlaysTransport
     @ObservationIgnored let script: (String, String) async -> PlayScript?
-    @ObservationIgnored private var tasks: [String: Task<Void, Never>] = [:]
+    @ObservationIgnored private var loops: [String: PickupLoop] = [:]
+    @ObservationIgnored private var known: [String: (scriptID: String, revision: String)] = [:]
+    @ObservationIgnored private var shown = true
+    @ObservationIgnored private let clock: @Sendable () -> Int
+    @ObservationIgnored private let sleep: @Sendable (Int) async -> Void
+    @ObservationIgnored private let idleMs: Int
     @ObservationIgnored var onArrival: (() -> Void)?
 
-    init(store: ProductionStore, transport: any PlaysTransport = WorkerPlays(api: .shared), script: @escaping (String, String) async -> PlayScript?) {
+    init(store: ProductionStore, transport: any PlaysTransport = WorkerPlays(api: .shared), script: @escaping (String, String) async -> PlayScript?,
+         clock: @escaping @Sendable () -> Int = PickupLoop.wallClock, sleep: @escaping @Sendable (Int) async -> Void = { try? await Task.sleep(for: .milliseconds($0)) },
+         idleMs: Int = PickupLoop.idleMs) {
         self.store = store; self.transport = transport; self.script = script
+        self.clock = clock; self.sleep = sleep; self.idleMs = idleMs
     }
 
-    var holding: Set<String> { Set(tasks.keys) }
+    var holding: Set<String> { Set(loops.keys) }
 
     func hold(_ pid: String, scriptID: String, revision: String) {
-        guard tasks[pid] == nil else { return }
-        tasks[pid] = Task { [weak self] in
-            var wait = 0
-            while let self, !Task.isCancelled {
-                do {
-                    if let picked = try await self.transport.nextTake(pid), let s = await self.script(scriptID, revision) {
-                        try self.accept(picked, pid: pid, script: s)
-                    }
-                    wait = 0
-                } catch {
-                    let code = RelayCore.code(of: error)
-                    if ["director_only", "not_found", "pass_through_unavailable", "unauthorized", "not_configured"].contains(code) { return }
-                    wait = min(30_000, wait == 0 ? 2_000 : wait * 2)
-                    try? await Task.sleep(for: .milliseconds(wait))
-                }
-            }
-        }
+        known[pid] = (scriptID, revision)
+        guard loops[pid] == nil, !idle else { return }
+        let loop = PickupLoop(active: shown, now: clock, sleep: sleep, idleMs: idleMs,
+            inbox: { [weak self] in
+                guard let self, let picked = try await self.transport.nextTake(pid), let s = await self.script(scriptID, revision) else { return false }
+                try self.accept(picked, pid: pid, script: s)
+                return true
+            },
+            stopOn: { ["director_only", "not_found", "pass_through_unavailable", "unauthorized", "not_configured"].contains(RelayCore.code(of: $0)) },
+            onIdle: { [weak self] in self?.letGo() })
+        loops[pid] = loop
+        loop.start()
+    }
+
+    /// The page is in the foreground (scenePhase active) or not: a hidden page holds no pickup.
+    func setActive(_ now: Bool) {
+        shown = now
+        loops.values.forEach { $0.setActive(now) }
+    }
+
+    /// Keep receiving takes: the pickups start again for every production this page holds.
+    func keepReceiving() {
+        idle = false
+        for (pid, k) in known { hold(pid, scriptID: k.scriptID, revision: k.revision) }
+    }
+
+    private func letGo() {
+        loops.values.forEach { $0.stop() }
+        loops.removeAll()
+        idle = true
     }
 
     private func accept(_ picked: PickedTake, pid: String, script: PlayScript) throws {
@@ -496,7 +613,7 @@ final class ClassInbox {
         onArrival?()
     }
 
-    func release() { tasks.values.forEach { $0.cancel() }; tasks.removeAll() }
+    func release() { loops.values.forEach { $0.stop() }; loops.removeAll(); known.removeAll() }
 }
 
 // MARK: - The one sender per device
@@ -515,6 +632,7 @@ final class RelayHub {
     @ObservationIgnored private let sleep: @Sendable (Int) async -> Void
     @ObservationIgnored private let online: () -> Bool
     @ObservationIgnored private var senders: [String: RelaySender] = [:]
+    @ObservationIgnored private var foreground = true
 
     init(store: ProductionStore, seatWire: any SeatWire = WorkerSeat(api: .shared), transport: any PlaysTransport = WorkerPlays(api: .shared),
          receiver: any MemberReceiverWire = WorkerMemberReceiver(api: .shared), vault: any SeatKeyVault = KeychainSeatVault(),
@@ -533,7 +651,7 @@ final class RelayHub {
         } else {
             source = MemberRelaySource(store: store, localID: localID, script: script, transport: transport, receiver: receiverWire, me: me)
         }
-        let s = RelaySender(source: source, sleep: sleep, online: online)
+        let s = RelaySender(source: source, sleep: sleep, online: online, active: { [weak self] in self?.foreground ?? true })
         s.onChange = { [weak self] in self?.revision += 1 }
         senders[localID] = s
         return s
@@ -546,6 +664,12 @@ final class RelayHub {
     }
 
     func stop() { senders.values.forEach { $0.stop() }; senders.removeAll() }
+
+    /// The app came to the front or went to the background: a backgrounded one asks nothing until it is back.
+    func setActive(_ now: Bool) {
+        foreground = now
+        senders.values.forEach { $0.setActive(now) }
+    }
 
     /// One take's state for a screen.
     func state(_ localID: String, _ takeID: String, remote: Set<String> = []) -> (RelayCore.State, name: String?) {

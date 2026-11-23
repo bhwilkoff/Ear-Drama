@@ -225,7 +225,8 @@ struct RootView: View {
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await catalog.refresh() } }
                 #if os(iOS) || os(macOS)
-                // Relay across time: takes waiting for a receiver are tried again when the app comes forward.
+                // Relay across time: takes waiting for a receiver are tried again when the app comes forward; a backgrounded app asks nothing.
+                plays.relay.setActive(phase == .active)
                 if phase == .active { Task { await plays.relay.kick() } }
                 #endif
                 // Signed in, the app syncs when it comes to the front and when

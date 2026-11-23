@@ -283,6 +283,7 @@ struct ClassPageScreen: View {
     @State private var exported: ClassExportFile?
     @State private var exporting = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(SharedPlays.self) private var shared
 
     private let wire = WorkerReadClass(api: .shared)
@@ -290,6 +291,9 @@ struct ClassPageScreen: View {
     var body: some View {
         List {
             if let failure { Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError) }
+            if inbox?.idle == true {
+                Section { Button("Keep receiving takes") { inbox?.keepReceiving() } }
+            }
             if detail?.under13 == true, detail?.schoolConsent != true {
                 Section("School approval") {
                     SchoolApprovalRows(failure: approvalFailure, busy: working) { reference in recordApproval(reference) }
@@ -361,6 +365,7 @@ struct ClassPageScreen: View {
         .task { await load() }
         .refreshable { await load() }
         .onDisappear { inbox?.release() }
+        .onChange(of: scenePhase) { _, phase in inbox?.setActive(phase == .active) }
         .sheet(isPresented: $choosing) { playPicker }
     }
 
@@ -424,6 +429,7 @@ struct ClassPageScreen: View {
         let box = inbox ?? ClassInbox(store: plays.store, script: { id, rev in await plays.script(id: id, revision: rev) })
         if inbox == nil {
             box.onArrival = { Task { @MainActor in progress = try? await wire.progress(id); await loadReviews() } }
+            box.setActive(scenePhase == .active)
             inbox = box
         }
         for p in progress?.productions ?? [] {
