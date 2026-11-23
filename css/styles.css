@@ -1291,8 +1291,48 @@ html.tv .np-together { display: none; }
 .g-faces-rail > li { scroll-snap-align: start; min-width: 0; }
 .g-face-count { color: var(--color-text-muted); white-space: nowrap; }
 
-.library-account { margin-top: var(--space-6); padding-top: var(--space-3); border-top: 1px solid var(--color-border); }
-.library-account .account-row { margin: 0 0 var(--space-1); }
+/* ---- Library (WEB-DESIGN §4.7, Decision 087): Listening | Making over one foot ---- */
+.lib-sides { display: grid; grid-template-columns: 1fr 1fr; max-width: 420px; margin-bottom: var(--space-4); }
+.lib-sides button { min-height: 40px; font-size: var(--type-body-size); font-weight: var(--type-body-strong-weight); }
+.lib-sides[hidden], .lib-foot[hidden] { display: none; }
+.lib-lines { margin-bottom: var(--space-6); border-top: 1px solid var(--color-border); }
+.lib-section .lib-lines { margin-bottom: 0; }
+.lib-line { display: flex; align-items: center; gap: var(--space-3); min-height: var(--tap); padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border); color: var(--color-text); text-decoration: none; }
+.lib-line .lib-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-line .lib-value { color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+.lib-line svg { width: 18px; height: 18px; fill: var(--color-text-muted); flex: none; }
+.lib-line:hover .lib-label { text-decoration: underline; }
+.lib-back { margin-left: calc(-1 * var(--space-3)); padding: 0 var(--space-2); }
+.lib-page-h { margin: var(--space-2) 0 var(--space-3); }
+.lib-foot { margin-top: var(--space-6); }
+.lib-foot > .section-header { margin-bottom: var(--space-2); }
+.lib-group { padding: 0 var(--space-3); border-radius: var(--radius-card); background: var(--color-surface); }
+.lib-row { border-bottom: 1px solid var(--color-border); }
+.lib-group > .lib-row:last-child { border-bottom: 0; }
+.lib-group .account-row { margin: 0; min-height: var(--tap); }
+.lib-group .account-row .btn { white-space: nowrap; }
+.lib-group #export-row { flex-wrap: wrap; }
+.lib-more > summary { display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); cursor: pointer; list-style: none;
+  color: var(--color-link); font-weight: var(--type-body-strong-weight); }
+.lib-more > summary::-webkit-details-marker { display: none; }
+.lib-more > summary svg { width: 20px; height: 20px; fill: currentColor; flex: none; }
+.lib-more > summary .lib-label { flex: 1; min-width: 0; }
+.lib-more > summary .lib-value { color: var(--color-text-muted); font-weight: var(--type-body-weight); white-space: nowrap; }
+.lib-more > summary::after { content: ""; flex: none; width: 7px; height: 7px; margin: 0 4px 4px 2px;
+  border-right: 2px solid var(--color-text-muted); border-bottom: 2px solid var(--color-text-muted); transform: rotate(45deg); }
+.lib-more[open] > summary::after { margin-bottom: 0; margin-top: 4px; transform: rotate(-135deg); }
+.lib-voices > .vs-voices { margin: 0; padding-bottom: var(--space-3); }
+.lib-voices .vs-head { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.lib-about-links { display: flex; flex-direction: column; margin: 0; padding: 0 0 var(--space-2) calc(20px + var(--space-2)); list-style: none; }
+.lib-about-links a { display: inline-flex; align-items: center; min-height: var(--tap); text-decoration: none; }
+.lib-about-links a:hover { text-decoration: underline; }
+#main-content:has(#view-library:not([hidden])) .site-footer { display: none; }
+html.tv .lib-voices { display: none; }
+@media (min-width: 1024px) {
+  .lib-cols { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); gap: var(--space-8); align-items: start; }
+  .lib-foot { margin-top: 0; }
+}
 
 /* A show's About: four lines until opened; the attribution under it is the license's price. */
 .about { margin: var(--space-4) 0; max-width: 68ch; }

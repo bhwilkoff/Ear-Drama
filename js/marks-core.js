@@ -298,6 +298,22 @@ const MarksCore = (() => {
     try { storage.setItem(PREFS_KEY, JSON.stringify({ show: !!p.show, hue: p.hue })); return true; } catch { return false; }
   }
 
+  /** The scripts with marks on this device, A to Z: { script, title, count } (Library's Marks line, Decision 087). */
+  function scripts(storage) {
+    const out = [];
+    try {
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i);
+        if (!k || !k.startsWith(KEY) || k === PREFS_KEY) continue;
+        let d = null;
+        try { d = JSON.parse(storage.getItem(k)); } catch { d = null; }
+        const n = d && Array.isArray(d.marks) ? d.marks.filter(valid).length : 0;
+        if (n) out.push({ script: d.script || k.slice(KEY.length), title: d.title || null, count: n });
+      }
+    } catch { return []; }
+    return out.sort((a, b) => String(a.title || a.script).localeCompare(String(b.title || b.script), 'en', { sensitivity: 'base' }));
+  }
+
   /** Every play's marks on this device, for the person's own export (docs/EXPORT.md `marks[]`). */
   function exportRows(storage) {
     const rows = [];
@@ -323,7 +339,7 @@ const MarksCore = (() => {
     return rows;
   }
 
-  return { KINDS, SPAN, HUES, CONTEXT, EVIDENCE, LABEL_MAX, KEY, PREFS_KEY, isWord, snapWords, pointAfter, make, fromSelection, add,
+  return { KINDS, SPAN, HUES, CONTEXT, EVIDENCE, LABEL_MAX, KEY, PREFS_KEY, scripts, isWord, snapWords, pointAfter, make, fromSelection, add,
            remove, update, bestIn, place, order, at, load, save, prefs, savePrefs, exportRows };
 })();
 if (typeof module !== 'undefined') module.exports = MarksCore;

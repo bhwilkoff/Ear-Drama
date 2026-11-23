@@ -113,11 +113,11 @@ def sign_in(run, b, site, q, lw, sub, test):
 
 
 def make_class(run, b, site, q, name, under13, test):
-    b.goto(f"{site}/?view=library&tab=dramas{q}", settle=3)
+    b.goto(f"{site}/?view=record{q}", settle=3)
     ready = wait(b, "!!document.querySelector('input[aria-label=\"Class name\"]')", 40)
     if not ready:  # a cold profile can drop a navigation: once more, and say so
-        run.step(test, "note: the library page did not draw in 40 s; navigated once more", True)
-        b.goto(f"{site}/?view=library&tab=dramas{q}", settle=3)
+        run.step(test, "note: Record did not draw in 40 s; navigated once more", True)
+        b.goto(f"{site}/?view=record{q}", settle=3)
         ready = wait(b, "!!document.querySelector('input[aria-label=\"Class name\"]')", 40)
     if not run.step(test, "the Classes box shows for a signed-in teacher", ready):
         return None

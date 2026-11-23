@@ -428,21 +428,34 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   transcript** (`Transcript.LABEL`): each row the episode row with the
   line where the words are said as an italic second supporting line,
   verbatim (`Transcript.snippet`), read from the transcript's own URL.
-- **§4.6 Library** (D3-5) is the account row (§4.11), then **Continue** ("position of length"),
-  **Queue** (swipe to remove, long-press for Move up, Move down, Remove), **Following** (a shelf of
-  the grammar's show tiles, `ShowShelf`, newest follow first; a long press offers Unfollow, which
-  asks; a follow the open catalog does not serve is kept for sync and not listed), **History**
-  (what was played to the end), Downloads (one row, "Downloads" with the episode count and the
-  storage held, opening `Route.Downloads`: downloads grouped by series, by name, each in the order
-  asked for, a row's Remove or Cancel, a series' Remove that asks first, the storage held and
-  Remove All Downloads, which asks first, at the foot; "No downloads" when empty; iOS-DESIGN §4.8),
-  and **Ear dramas** (Decision 068): this device's productions, each with "n of m lines recorded"
-  or "Finished" and a Delete that asks first, opening its cast sheet. Continue, Queue and History
-  are grammar rows; every section keeps its header. The four states: loading and the retry
-  message are `LoadableContent`'s; offline is the app-wide "You are offline." line; an empty
-  section is its header and one `SectionCaption` that says what it would hold: "Episodes you stop partway through wait here." (Continue), "Episodes you add play in this order, after the one that is playing." (Queue), "Series you follow appear here." (Following), "Episodes you finish appear here, newest first." (History), "Downloaded episodes play with no network." (Downloads), "Ear dramas you record or join appear here." (Ear dramas). A TV
-  records nothing, so its Library has no Ear dramas header. `GrammarRenderTest` draws the sections
-  empty and full, light and dark. Not seen on a device.
+- **§4.6 Library** (direction B, owner 2026-11-23: "Most people we exclusively use this app for listening, so
+  let's do option B to make it easier for them to use the app that way.") is a two-way `SingleChoiceSegmentedButtonRow`,
+  **Listening** | **Making**, over one `LazyColumn`, and the foot. Listening is the default for a new person; the last
+  side is remembered per device (`ed.library.side` in the `ed.library` prefs). A TV has no Making side and no control.
+  *Replaced* (2026-11-23): "every section keeps its header and caption", and the separate Continue, Queue and
+  Following sections. **An empty section is absent: no header, no caption.** A side with nothing at all shows one
+  sentence and one button (Listening: "Nothing played yet." with Browse; Making: "No ear dramas yet." with Record a
+  play, which selects the Record tab).
+  - **Listening**: **Up next** merges the episodes started (with "position of length") and then the queue in the
+    person's order (a queued row swipes away and long-presses for Move up, Move down, Remove: `QueueRow`); an episode
+    in both shows once. Five rows, then "All N" opens `Route.LibraryList("upnext")`, the whole list. **Shows you
+    follow** is the shelf of the grammar's show tiles (`ShowShelf`, newest follow first; a long press offers Unfollow,
+    which asks; a follow the open catalog does not serve is kept for sync and not listed). **History** is one line with
+    its count, opening `Route.LibraryList("history")`. **Downloads** is one line with the count and storage held,
+    opening `Route.Downloads`: downloads grouped by series, each removable, a series' Remove and Remove All asking first, the storage held at the foot.
+  - **Making** (not on a TV): **Waiting on you** (shared productions someone else directs with a speaking part open, as
+    Home's Open parts), **Productions** grouped by play (`LibraryModel.groups`: one row per play, "9 productions ·
+    newest finished", opening `Route.PlayProductions(scriptId)`; a play with one production is that production's row,
+    with its Delete that asks first), **Marks** as one line ("In 3 scripts"), **Classes** one line per class opening its
+    class page. Make a class and Join a class left Library: they are two buttons under Record's top (`ClassDoors`,
+    signed in).
+  - **The foot**, under either side, headed "Account and preferences", in this order: **Account** (§4.11),
+    **Voices** (a disclosure row whose state reads "Kokoro · 1.0x"; tapping opens the full controls in place, no Settings
+    screen; Better voices opens it and scrolls to it), **Listen together**, **Export my data**, and **About Ear Drama**
+    (a disclosure row that opens the site pages, §4.11a). A TV's foot is Account, Show a reading and About.
+  The four states: loading and the retry message are `LoadableContent`'s; offline is the app-wide "You are offline."
+  line; empty is the absent section above. `LibraryModelTest` pins the side default, the Up next merge and the
+  grouping.
 - **§4.7 The transcript is a route** (`ui/screens/TranscriptScreen.kt`):
   the episode title, then plain selectable text in `bodyMedium`, a
   sentence a line, at most 680 dp wide, fetched from archive.org when
@@ -558,7 +571,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **§4.11a The site pages** close Library: three `ListItem`s, "Credits",
   "Privacy", "Take-down requests", each opened in a Custom Tab
   (`SiteLinks.CREDITS`, `PRIVACY`, `TAKEDOWN`). An empty Library keeps
-  them (§7.1a). A TV shows the address as supporting text
+  them in the foot (§4.6, §7.1a). A TV shows the address as supporting text
   and opens nothing.
 - **§4.11 The account is Library's first row** (`ui/AccountRow.kt`).
   Android has no Settings screen and gets none for this: an account is a
@@ -1016,9 +1029,9 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   person cannot discover by looking." `EmptyMessage(text, action =
   EmptyAction(label) { })` (`ui/Components.kt`) is every empty state: the
   sentence and, when one helps, one tonal button. It never replaces
-  navigation: an empty Library keeps Account and Listen together above
-  "Nothing played yet." with Browse (it selects the Browse tab, with the
-  `selection` haptic), and the site pages and Ear dramas below, signed
+  navigation: an empty Library side shows "Nothing played yet." with Browse
+  (it selects the Browse tab, with the `selection` haptic) under the side
+  control, and the foot (Account and preferences) below, signed
   in or out. Browse with nothing matching offers "Clear filters". No
   results echo the query, "No matches for “{query}”.". On a TV the
   action takes the D-pad focus (`ClaimTvFocus`), except Browse's, which
@@ -1165,7 +1178,7 @@ file (`StandInNeverStoredTest`). No analytics.
   down (`QueueEdit`, written through `UserStore.enqueue` and the like).
   Detail carries an "Add to queue" / "In queue" button under Play; a
   long-press on any episode row opens a menu with "Add to queue" or
-  "Remove from queue"; Library's first section, "Queue", swipes away to
+  "Remove from queue"; Library's Up next swipes a queued row away to
   remove and its long-press menu adds Move up and Move down.
   `PlaybackEngine.queueChanged()` rebuilds what follows the playing
   episode by the same `PlaybackQueue.after`, so "Up next" matches. The

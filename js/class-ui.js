@@ -198,7 +198,7 @@ const ClassUI = (() => {
     del.addEventListener('click', async () => {
       if (!confirm(`Delete ${cls.name}? Its names, casting and notes are deleted. Published plays stay.`)) return;
       del.disabled = true; line.textContent = '';
-      try { await API.plays.deleteClass(cls.id); h.navigate('?view=library&tab=dramas', true); }
+      try { await API.plays.deleteClass(cls.id); h.navigate('?view=record', true); }
       catch (err) { console.error(err); line.textContent = say(err); del.disabled = false; }
     });
     return h.el('section', { class: 'block', id: 'cl-class', 'aria-labelledby': 'cl-class-h' },

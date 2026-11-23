@@ -102,6 +102,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md` and 046-065 in `doc
 - 084: Student privacy: who recorded what is deleted on a schedule, the ear drama is kept, and the school decides (owner 2026-11-21)
 - 085: The owner's routes take a GitHub OIDC token, not a stored one (owner 2026-11-22)
 - 086: Voice defaults live in Library > Voices (no Settings page); Kokoro leads them where it can run; a play's cast only overrides (owner 2026-11-22)
+- 087: Library is two sides, Listening and Making, over one foot; an empty section is absent (owner 2026-11-23)
 
 ---
 
@@ -911,3 +912,30 @@ for the room. New client states or words for a take are changed in §12.11 first
 **Who was in the room, who gains, who pays:** the owner asked; people listening to or rehearsing a play gain voices worth hearing without hunting a flag or recasting each play; the cost is the download (340 MB on the web, more than three times the apps') and the casts a person made on the web before this, whose auto-cast entries are dropped (their explicit choices could not be told apart from auto-cast, so a part chosen by hand before 2026-11-22 returns to its Default once).
 
 **Amendment 2026-11-22 (no Settings page):** the owner, on seeing a Settings row and sheet: *"I was talking about the fact that the "library" page shows the "settings" of the app, even without calling it a settings page. I don't think we need a settings page, but we should continue to iterate upon the library page to make it serve all of the given purposes we need."* The rule above moves, not the behavior: the defaults live in a **Voices section of Library** (web: `?view=library&section=voices`, the last part of the page, WEB-DESIGN §4.11a), not in a Settings page, row, sheet, or scene, on every platform (§2.8 rule 11). Library is the settings home: an app-wide preference is a rare job and sits at its foot, below the person's collections. The iOS, macOS and Android design docs' "no Settings" rules stand; their ports add a Voices section to Library, not a Settings surface. "Better voices" opens Library at Voices. Where this entry says Settings > Voices, read Library > Voices.
+
+---
+
+## 087: Library is two sides, Listening and Making, over one foot; an empty section is absent (owner 2026-11-23)
+
+**Rule**: Library on every platform is a two-way segmented control, **Listening** | **Making**, over the person's things, then one foot. Listening is the default for a new person; the last side chosen is remembered on the device (`ed.library.side`). A section with nothing in it is **absent**: no header, no caption. A side with nothing at all shows one sentence and one button (Listening: Browse; Making: Record a play). This rule is the cross-platform Library rule; each platform design doc carries its own idiom of it.
+
+1. **Listening**, in order: **Up next** (the started episodes with their progress, then the person's queue in their order, reorder and remove as before; Continue and Queue are no longer separate sections; five rows, then "All N" opens the whole list), **Shows you follow** (the followed shows' shelf; Following is not merged into Up next), then **History** and **Downloads** as one line each with a count, opening their full lists (never 100 rows inline). The stores stay three (in progress, queue, follows): Up next merges started and queued for display only.
+2. **Making**, in order: **Waiting on you** (parts someone's production needs from the person), **Productions** grouped by play (one row per play, its count and newest state; a play with several productions opens that play's productions; never nine identical rows), **Marks** as one line ("In 3 scripts"), **Classes** one line per class. Make a class and Join a class leave Library for Record's class door and the class page.
+3. **The foot**, under either side, headed "Account and preferences", in this order everywhere: **Account** (Sign in, or Synced), **Voices** (one row showing its state, "Kokoro · 1.0×"; choosing it discloses the full Voices controls in place on Library), **Listen together**, **Export my data**, **About Ear Drama** (credits, privacy, take-down, delete an account: the site pages).
+4. **TVs**: Listening only, as focus shelves, with Account, Show a Reading and About in the foot; no Making side, no Voices, no Export.
+5. Home's Continue is unchanged; Record is unchanged except that it gains the class door (make and join a class).
+
+**Why**: the owner, 2026-11-23, after the R3f audit (`docs/research/design/R3f-library.md`): *"the library tab on all of the apps has become a kichen sink aproach to putting everything into an undesigned list of items. Let's do some serious design work on the library page to make sure it is well organized and easy to understand. Multiple of the fields at the top can be collapsed (Continue, Queue, and Following all seem to be the same thing and empty fields don't do anything for a user except to make them scroll through more material before they get to what they want to use)."* Then, choosing direction B: *"Most people we exclusively use this app for listening, so let's do option B to make it easier for them to use the app that way."* The audit measured the cost: a new web listener scrolled 3,297 px, about 80% of it Voices; a new iOS listener scrolled past six empty headers with six captions; the Pixel drew Voices above Continue and nine identical "The Albany Depot" rows. A listener who never makes anything should never scroll past making; a maker gets a side of their own.
+
+**Supersedes**: the empty-section rule in iOS-DESIGN §4.6, tvOS-DESIGN §4.6, ANDROID-DESIGN §4.6 and WEB-DESIGN §4.7 ("every section keeps its header" and "an empty section is one caption that says what it would hold"); and Decision 086's amendment to the extent it placed Voices as a whole section drawn at Library's foot (web) or at its top (Android): Voices is now one foot row that discloses its controls in place. 086's rule itself (no Settings page; the defaults live in Library) stands, and `?view=library&section=voices` still lands on Library with Voices open.
+
+**How to apply**:
+- Never draw an empty section's header or caption in Library. A fit check asserts that an empty section draws nothing and that an entirely empty side draws exactly one sentence and one button (`tools/web_fit_library.py` on the web; `GrammarRenderTest` on Android).
+- Up next is a view over the in-progress list and the queue, never a new store: a write still goes to the queue (move, remove) or to history (resume), and sync is unchanged.
+- Productions group by the play's script id; a play with one production opens that production directly.
+- A new app-wide preference becomes one more foot row with its state, disclosed in place, never a Settings page and never a section drawn in full.
+- A new kind of thing the person keeps goes on the side it serves (listening or making); if it serves both, it goes on Listening, where most people are.
+- Same verbs, native idiom: web one scroll (two columns when wide), iOS and Mac a `List` with `Picker(.segmented)` and an inset-grouped foot, Android a segmented button over a `LazyColumn`.
+
+**Who was in the room, who gains, who pays:** the owner chose, from three directions with frames; listeners gain a Library that opens on what they listen to and fits a phone screen when they are new; makers gain a side where their productions are grouped and the parts waiting on them lead; the cost is one tap to switch sides, and the class make and join forms moving to Record.
+

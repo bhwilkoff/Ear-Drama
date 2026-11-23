@@ -208,11 +208,11 @@ fun rememberVoicesState(): Pair<VoiceSettingsUi, VoiceSettingsActions> {
 }
 
 /** The Voices section's rows, stateless: the header, the Kokoro controls, Speed, then the voices in the Default order. */
-fun androidx.compose.foundation.lazy.LazyListScope.voicesItems(ui: VoiceSettingsUi, actions: VoiceSettingsActions) {
+fun androidx.compose.foundation.lazy.LazyListScope.voicesItems(ui: VoiceSettingsUi, actions: VoiceSettingsActions, header: Boolean = true) {
     val hifi = ui.ordered.filter { it.engine == VoiceCastEntry.KOKORO }
     val device = ui.ordered.filter { it.engine == VoiceCastEntry.SYSTEM }
     run {
-        item(key = VOICES_KEY) { SectionHeader("Voices") }
+        if (header) item(key = VOICES_KEY) { SectionHeader("Voices") }
         item(key = "kokoro") { KokoroSection(ui.kokoro, actions) }
         item(key = "speed") {
             Column(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {

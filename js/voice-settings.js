@@ -1,8 +1,8 @@
 /**
  * Library > Voices (Decision 086, amended 2026-11-22; WEB-DESIGN §4.11a; PLAYS-DESIGN §2.8 rule 11): the
- * device's voice defaults, which every part nobody cast reads. A section of the Library view (no
- * Settings page, no sheet), reached by ?view=library&section=voices, which the "Better voices" offer
- * on a cast opens (`open()`).
+ * device's voice defaults, which every part nobody cast reads. A row of Library's foot that discloses
+ * these controls in place (Decision 087; no Settings page, no sheet), opened by
+ * ?view=library&section=voices, which the "Better voices" offer on a cast opens (`open()`).
  *
  *   1. The high-fidelity (Kokoro) voices: Download (the size from the manifest), progress and Cancel,
  *      Delete, the attribution; where this browser cannot run them, one refusal.
@@ -40,6 +40,17 @@ const VoiceSettings = (() => {
     if (v.engine === 'kokoro') return `Grade ${(v.grade || '').replace('-', '−')}`;
     const word = ['Standard', 'Enhanced', 'Premium'][v.tier || 0];
     return new RegExp(`\\b${word}\\b`, 'i').test(v.name) ? v.lang : `${word} · ${v.lang}`;
+  }
+
+  /** The foot row's state (WEB-DESIGN §4.11a): which engine leads the Default order, and the Default speed. */
+  function summary() {
+    const d = V.loadDefaults();
+    let lead = null;
+    try {
+      const all = [...Voices.shared().voices(), ...StandInVoice.voices()];
+      lead = V.ordered(all, d).find(v => V.usesVoice(v, d)) || null;
+    } catch { lead = null; }
+    return `${lead && lead.engine === 'kokoro' ? 'Kokoro' : 'Device'} · ${speedText(d.rate)}`;
   }
 
   let mounted = null;
@@ -197,5 +208,5 @@ const VoiceSettings = (() => {
     return host;
   }
 
-  return { configure, open, mount, leave, quality, ATTRIBUTION };
+  return { configure, open, mount, leave, summary, quality, ATTRIBUTION };
 })();

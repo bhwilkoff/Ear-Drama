@@ -320,7 +320,17 @@ fun AppRoot(
                                     onOpenDownloads = { stack.navigateTo(Route.Downloads) },
                                     voicesRequest = voicesRequest,
                                     onBrowse = { haptics(Haptic.Selection); selected = Tab.Browse },
+                                    onRecord = { haptics(Haptic.Selection); selected = Tab.Record },
+                                    onOpenList = { stack.navigateTo(Route.LibraryList(it)) },
+                                    onOpenPlay = { stack.navigateTo(Route.PlayProductions(it)) },
+                                    onOpenClass = { stack.navigateTo(Route.ClassPage(it)) },
                                 )
+                            }
+                            entry<Route.LibraryList> { route ->
+                                com.example.appname.ui.screens.LibraryListScreen(route.kind, onBack = back, onOpenEpisode = openEpisode)
+                            }
+                            entry<Route.PlayProductions> { route ->
+                                com.example.appname.ui.screens.PlayProductionsScreen(route.scriptId, onBack = back, onOpenProduction = openProduction)
                             }
                             entry<Route.Downloads> { DownloadsScreen(onBack = back, onOpenEpisode = openEpisode) }
                             entry<Route.Series> { route ->

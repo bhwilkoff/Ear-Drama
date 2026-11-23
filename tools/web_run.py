@@ -128,7 +128,7 @@ def _launch(profile, deadline_s=LAUNCH_DEADLINE_S):
     Ready is Chrome's own announcement on stderr ("DevTools listening on ws://..."), then a page target
     from /json/list; a failure says which stage it reached and when."""
     proc = subprocess.Popen(
-        [CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--mute-audio",
+        [CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--mute-audio", "--autoplay-policy=user-gesture-required",
          "--no-first-run", "--no-default-browser-check", *QUIET,
          "--disable-features=Translate,MediaRouter,OptimizationHints",
          "--remote-debugging-port=0", f"--user-data-dir={profile}", "about:blank"],

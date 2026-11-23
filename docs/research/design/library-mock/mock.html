@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library mock</title>
+<!-- R3f Library directions: a design mock, not product code. Tokens and fonts come from the app's own stylesheet. -->
+<link rel="stylesheet" href="../../../../css/styles.css">
+<style>
+  body { height: auto; overflow: visible; display: block; background: var(--color-background); }
+  .m-shell { display: flex; min-height: 100vh; }
+  .m-side { width: 220px; flex: none; background: var(--color-surface); border-right: 1px solid var(--color-border); padding: 20px 12px; }
+  .m-side .m-brand { font: 700 1.35rem var(--font-display); margin: 0 8px 20px; }
+  .m-side a { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 6px; text-decoration: none; font-weight: 600; }
+  .m-side a.on { background: var(--color-secondary); color: var(--color-on-secondary); }
+  .m-main { flex: 1; min-width: 0; padding: 20px 16px 24px; }
+  .m-wide .m-main { padding: 28px 40px; max-width: 1180px; }
+  h1.m-h1 { font: var(--type-page-title-weight) var(--type-page-title-size) var(--type-page-title-family); margin-bottom: 14px; }
+  .m-wide h1.m-h1 { font-size: 2.25rem; }
+  h2.m-h2 { font: 700 var(--type-section-header-size) var(--font-display); display: flex; align-items: baseline; justify-content: space-between; margin: 22px 0 6px; }
+  h2.m-h2 a { font: 600 0.875rem var(--font-body); color: var(--color-link); text-decoration: none; }
+  .m-cap { font-size: var(--type-caption-size); color: var(--color-text-muted); }
+  .m-rows > li { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--color-border); }
+  .m-rows > li:last-child { border-bottom: 0; }
+  .m-win { width: 48px; height: 48px; flex: none; border-radius: 4px; overflow: hidden; position: relative; display: flex; align-items: flex-end;
+           background: var(--b, var(--color-surface-alt)); color: #fff; box-shadow: inset 0 0 0 1px var(--color-print-edge); }
+  .m-win span { font: 700 64px/0.72 var(--font-display); margin: 0 0 -6px -3px; }
+  .m-win.m-face { background: var(--color-print-ground); }
+  .m-win.m-face::before { content: ""; position: absolute; left: 50%; top: 22%; width: 42%; height: 42%; transform: translateX(-50%); border-radius: 50%; background: #9a9aa2; }
+  .m-win.m-face::after { content: ""; position: absolute; left: 50%; bottom: -18%; width: 80%; height: 46%; transform: translateX(-50%); border-radius: 50% 50% 0 0; background: #9a9aa2; }
+  .m-txt { flex: 1; min-width: 0; }
+  .m-t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m-s { font-size: var(--type-caption-size); color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m-bar { height: 3px; background: var(--color-border); border-radius: 2px; margin-top: 5px; }
+  .m-bar i { display: block; height: 100%; background: var(--color-text); border-radius: 2px; }
+  .m-len { font: var(--type-tabular-weight) var(--type-tabular-size) var(--font-body); font-variant-numeric: tabular-nums; color: var(--color-text-muted); white-space: nowrap; }
+  .m-ico { width: 22px; height: 22px; flex: none; fill: currentColor; }
+  .m-play { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .m-tag { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-muted); }
+  .m-shelf { display: grid; grid-auto-flow: column; grid-auto-columns: 112px; gap: 12px; overflow: hidden; padding: 4px 0; }
+  .m-wide .m-shelf { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  .m-tile .m-win { width: 100%; height: auto; aspect-ratio: 1; }
+  .m-tile .m-win span { font-size: 150px; }
+  .m-tile b { display: block; font: 700 1rem/1.1 var(--font-display); text-transform: uppercase; margin-top: 6px; }
+  .m-strip { display: flex; align-items: flex-end; gap: 1px; height: 12px; margin: 4px 0 2px; }
+  .m-strip i { flex: 1; background: var(--b); min-height: 1px; }
+  .m-line { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--color-border); text-decoration: none; }
+  .m-line .m-txt { font-weight: 600; }
+  .m-line .m-v { color: var(--color-text-muted); font-size: 0.9rem; white-space: nowrap; }
+  .m-chev { width: 18px; height: 18px; fill: var(--color-text-muted); flex: none; }
+  .m-group { background: var(--color-surface); border-radius: 10px; padding: 0 14px; margin-top: 8px; }
+  .m-group .m-line:last-child { border-bottom: 0; }
+  .m-empty { padding: 26px 0 10px; }
+  .m-empty p { margin-bottom: 14px; color: var(--color-text-muted); }
+  .m-btn { vertical-align: middle; display: inline-flex; gap: 8px; align-items: center; padding: 9px 16px; border-radius: 999px; font-weight: 600; border: 1px solid var(--color-border); text-decoration: none; background: var(--color-background); }
+  .m-btn.ink { background: var(--color-primary); color: var(--color-on-primary); border-color: var(--color-primary); }
+  .m-btn svg { width: 20px; height: 20px; }
+  .m-btn + .m-btn { margin-left: 8px; }
+  .m-seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--color-surface); border-radius: 999px; padding: 3px; margin-bottom: 4px; }
+  .m-seg span { text-align: center; padding: 7px 0; border-radius: 999px; font-weight: 600; }
+  .m-seg span.on { background: var(--color-primary); color: var(--color-on-primary); }
+  .m-day { font: 600 0.8rem var(--font-body); color: var(--color-text-muted); margin: 16px 0 0; text-transform: uppercase; letter-spacing: 0.05em; }
+  .m-now { display: flex; gap: 14px; align-items: center; background: var(--color-surface); border-radius: 10px; padding: 12px; }
+  .m-now .m-win { width: 72px; height: 72px; }
+  .m-now .m-win span { font-size: 96px; }
+  .m-tabbar { position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--color-border); background: var(--color-surface); margin-top: 24px; }
+  .m-tabbar span { display: flex; flex-direction: column; align-items: center; font-size: 0.75rem; padding: 6px 0 10px; gap: 2px; }
+  .m-tabbar span.on { color: var(--color-secondary); font-weight: 600; }
+  .m-cols { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+  .m-sub { font: 600 0.8rem var(--font-body); color: var(--color-text-muted); margin: 10px 0 0; }
+  .m-label { position: fixed; top: 6px; right: 8px; font: 600 11px var(--font-body); color: var(--color-text-muted); opacity: .8; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const P = new URLSearchParams(location.search);
+const D = P.get('d') || 'A', U = P.get('u') || 'heavy', WIDE = P.get('wide') === '1';
+if (P.get('theme')) document.documentElement.dataset.theme = P.get('theme');
+const ICON = {
+  chev: '<svg class="m-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6-1.4-1.4 4.6-4.6-4.6-4.6z"/></svg>',
+  play: '<svg class="m-ico" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
+  drag: '<svg class="m-ico" viewBox="0 0 24 24" style="opacity:.55"><path d="M4 9h16v2H4zm0 4h16v2H4z"/></svg>',
+  person: '<svg class="m-ico" viewBox="0 0 24 24"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z"/></svg>',
+  voice: '<svg class="m-ico" viewBox="0 0 24 24"><path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.9V21h2v-3.1A7 7 0 0019 11z"/></svg>',
+  group: '<svg class="m-ico" viewBox="0 0 24 24"><path d="M16 11a3 3 0 100-6 3 3 0 000 6zm-8 0a3 3 0 100-6 3 3 0 000 6zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4zm8 0c-.3 0-.7 0-1.1.1 1.2.8 2.1 2 2.1 3.9v2h7v-2c0-2.7-5.3-4-8-4z"/></svg>',
+  out: '<svg class="m-ico" viewBox="0 0 24 24"><path d="M5 20h14v-2H5zm7-16l-5 5h3v6h4V9h3z"/></svg>',
+  info: '<svg class="m-ico" viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 100 20 10 10 0 000-20z"/></svg>',
+  down: '<svg class="m-ico" viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>',
+  hist: '<svg class="m-ico" viewBox="0 0 24 24"><path d="M13 3a9 9 0 00-9 9H1l4 4 4-4H6a7 7 0 112 4.9l-1.4 1.4A9 9 0 1013 3zm-1 5v5l4.3 2.5.7-1.2-3.5-2.1V8z"/></svg>',
+  mic: '<svg class="m-ico" viewBox="0 0 24 24"><path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.9V21h2v-3.1A7 7 0 0019 11z"/></svg>',
+};
+const B = { mystery: 'var(--color-board-mystery)', western: 'var(--color-board-western)', scifi: 'var(--color-board-scifi)', drama: 'var(--color-board-drama)', serial: 'var(--color-board-serial)', comedy: 'var(--color-board-comedy)', news: 'var(--color-board-news)' };
+const win = (name, g, face) => face ? '<span class="m-win m-face"></span>' : `<span class="m-win" style="--b:${B[g] || 'var(--color-surface-alt)'}"><span>${name.replace(/^The /, '')[0]}</span></span>`;
+const ep = (t, s, g, sub, len, o = {}) => `<li>${win(s, g, o.face)}<div class="m-txt"><div class="m-t">${t}</div><div class="m-s">${o.why ? `<span class="m-tag">${o.why}</span> · ` : ''}${sub}</div>${o.p ? `<div class="m-bar"><i style="width:${o.p}%"></i></div>` : ''}</div><span class="m-len">${len}</span>${o.drag ? ICON.drag : `<span class="m-play">${ICON.play}</span>`}</li>`;
+const play = (t, sub, o = {}) => `<li>${win(t, o.g || 'drama')}<div class="m-txt"><div class="m-t">${t}</div><div class="m-s">${sub}</div></div>${ICON.chev}</li>`;
+const line = (ico, t, v) => `<a class="m-line">${ico}<span class="m-txt">${t}</span><span class="m-v">${v || ''}</span>${ICON.chev}</a>`;
+const strip = (g, a) => `<div class="m-strip" style="--b:${B[g]}">${a.map(h => `<i style="height:${h}px"></i>`).join('')}</div>`;
+const tile = (n, g, a, f) => `<li class="m-tile">${win(n, g)}<b>${n}</b>${strip(g, a)}<div class="m-s">${f}</div></li>`;
+const SHELF = `<ul class="m-shelf">${tile('Suspense', 'mystery', [3, 8, 12, 9, 6, 7, 5, 4, 6, 3], '1942–1962 · 900')}${tile('Gunsmoke', 'western', [2, 10, 12, 11, 9, 8, 3], '1952–1961 · 480')}${tile('X Minus One', 'scifi', [12, 9, 4], '1955–1958 · 126')}${tile('Lux Radio Theater', 'drama', [6, 9, 11, 12, 10, 8, 7], '1935–1955 · 690')}${tile('The Shadow', 'serial', [5, 8, 10, 7, 4], '1937–1954 · 260')}</ul>`;
+
+const FOOT = (h = 'Account and preferences') => `<h2 class="m-h2">${h}</h2><div class="m-group">
+  ${line(ICON.person, 'Account', U === 'heavy' ? 'Synced 3:42 PM' : 'Sign in')}
+  ${line(ICON.voice, 'Voices', U === 'heavy' ? 'Kokoro · 1.0×' : 'Device · 1.0×')}
+  ${line(ICON.group, 'Listen together', '')}
+  ${line(ICON.out, 'Export my data', '')}
+  ${line(ICON.info, 'About Ear Drama', '')}</div>`;
+
+const UPNEXT_A = `<h2 class="m-h2">Up next <a>All 14</a></h2><ul class="m-rows">
+  ${ep('The House in Cypress Canyon', 'Suspense', 'mystery', 'Suspense · 18 min left', '30 min', { p: 40 })}
+  ${ep('Sorry, Wrong Number', 'Suspense', 'mystery', 'Suspense · 6 min left', '30 min', { p: 80 })}
+  ${ep('Billy the Kid', 'Gunsmoke', 'western', 'Gunsmoke', '30 min', { why: 'Queued', drag: true })}
+  ${ep('Universe', 'X Minus One', 'scifi', 'X Minus One', '29 min', { why: 'Queued', drag: true })}
+  ${ep('Rebecca', 'Lux Radio Theater', 'drama', 'Next in Lux Radio Theater', '59 min')}</ul>`;
+
+const MADE_A = `<h2 class="m-h2">Made by you <a>Record</a></h2><ul class="m-rows">
+  ${play('The Albany Depot', '8 productions · newest 18 of 166 lines')}
+  ${play('Caesar Rodney’s Ride', '1 of 350 lines recorded')}
+  ${play('The Monkey’s Paw', 'Finished · shared Nov 19')}
+  </ul>
+  ${line(ICON.mic, 'Your parts', '2 waiting on you')}
+  ${line(ICON.group, 'Room 12 Readers', '3 takes to hear')}`;
+
+const LINES_A = `${line(ICON.hist, 'History', '42 episodes')}${line(ICON.down, 'Downloads', '12 · 340 MB')}`;
+
+function A() {
+  if (U === 'new') return `<h1 class="m-h1">Library</h1><div class="m-empty"><p>What you play, queue, follow or record gathers here.</p><a class="m-btn">Browse</a><a class="m-btn rec">${ICON.mic} Record a play</a></div>${FOOT()}`;
+  if (WIDE) return `<h1 class="m-h1">Library</h1><div class="m-cols"><div>${UPNEXT_A}${MADE_A}</div><div><h2 class="m-h2">Shows you follow <a>All 5</a></h2>${SHELF}<div style="margin-top:10px">${LINES_A}</div>${FOOT()}</div></div>`;
+  return `<h1 class="m-h1">Library</h1>${UPNEXT_A}${MADE_A}<h2 class="m-h2">Shows you follow <a>All 5</a></h2>${SHELF}<div style="margin-top:14px">${LINES_A}</div>${FOOT()}`;
+}
+
+function Bdir() {
+  const scope = P.get('scope') || 'listen';
+  const seg = `<div class="m-seg"><span class="${scope === 'listen' ? 'on' : ''}">Listening</span><span class="${scope === 'make' ? 'on' : ''}">Making</span></div>`;
+  if (U === 'new') {
+    const body = scope === 'listen'
+      ? `<div class="m-empty"><p>Episodes you start, queue or follow wait here.</p><a class="m-btn">Browse</a></div>`
+      : `<div class="m-empty"><p>Plays you record, parts you take and classes you join wait here.</p><a class="m-btn rec">${ICON.mic} Record a play</a></div>`;
+    return `<h1 class="m-h1">Library</h1>${seg}${body}${FOOT('Preferences')}`;
+  }
+  if (scope === 'make') return `<h1 class="m-h1">Library</h1>${seg}
+    <h2 class="m-h2">Waiting on you</h2><ul class="m-rows">${play('The Albany Depot', 'Mr. Pringle · 4 lines · Maya’s production', { g: 'serial' })}${play('A Christmas Carol', 'Scrooge · 31 lines · Room 12', { g: 'serial' })}</ul>
+    <h2 class="m-h2">Productions</h2><ul class="m-rows">${play('The Albany Depot', '8 productions · newest 18 of 166 lines')}${play('Caesar Rodney’s Ride', '1 of 350 lines recorded')}${play('The Monkey’s Paw', 'Finished · shared Nov 19')}</ul>
+    ${line(ICON.info, 'Marks', 'In 3 scripts')}
+    <h2 class="m-h2">Classes</h2>${line(ICON.group, 'Room 12 Readers', '3 takes to hear')}${FOOT('Preferences')}`;
+  return `<h1 class="m-h1">Library</h1>${seg}
+    <h2 class="m-h2">Up next <a>All 12</a></h2><ul class="m-rows">
+    ${ep('The House in Cypress Canyon', 'Suspense', 'mystery', 'Suspense · 18 min left', '30 min', { p: 40 })}
+    ${ep('Sorry, Wrong Number', 'Suspense', 'mystery', 'Suspense · 6 min left', '30 min', { p: 80 })}
+    ${ep('Billy the Kid', 'Gunsmoke', 'western', 'Gunsmoke · Jul 12, 1952', '30 min', { drag: true })}
+    ${ep('Universe', 'X Minus One', 'scifi', 'X Minus One · Mar 15, 1955', '29 min', { drag: true })}</ul>
+    <h2 class="m-h2">Shows you follow <a>All 5</a></h2>${SHELF}
+    <div style="margin-top:14px">${LINES_A}</div>${FOOT('Preferences')}`;
+}
+
+function C() {
+  if (U === 'new') return `<h1 class="m-h1">Library</h1><div class="m-empty"><p>Everything you hear, follow and record, newest first.</p><a class="m-btn">Browse</a><a class="m-btn rec">${ICON.mic} Record a play</a></div>${FOOT()}`;
+  return `<h1 class="m-h1">Library</h1>
+    <div class="m-now">${win('Suspense', 'mystery')}<div class="m-txt"><div class="m-tag">Resume</div><div class="m-t">The House in Cypress Canyon</div><div class="m-s">Suspense · 18 min left</div><div class="m-bar"><i style="width:40%"></i></div></div><span class="m-play">${ICON.play}</span></div>
+    <h2 class="m-h2">Queued <a>Edit</a></h2><ul class="m-rows">
+    ${ep('Billy the Kid', 'Gunsmoke', 'western', 'Gunsmoke · Jul 12, 1952', '30 min', { drag: true })}
+    ${ep('Universe', 'X Minus One', 'scifi', 'X Minus One · Mar 15, 1955', '29 min', { drag: true })}</ul>
+    <h2 class="m-h2">Recent <a>Filter</a></h2>
+    <div class="m-day">Today</div><ul class="m-rows">
+    ${ep('Sorry, Wrong Number', 'Suspense', 'mystery', '24 of 30 min', '30 min', { why: 'Heard', p: 80 })}
+    ${play('The Albany Depot', '<span class="m-tag">Recorded</span> · 6 lines · 18 of 166')}</ul>
+    <div class="m-day">Yesterday</div><ul class="m-rows">
+    ${ep('Gunsmoke', 'Gunsmoke', 'western', '1952–1961 · 480 episodes', '', { why: 'Followed' })}
+    ${ep('The Hitchhiker', 'Suspense', 'mystery', 'Sep 2, 1942', '30 min', { why: 'Finished' })}</ul>
+    <div class="m-day">Nov 19</div><ul class="m-rows">
+    ${play('The Monkey’s Paw', '<span class="m-tag">Finished</span> · shared with Room 12')}
+    ${ep('Three Skeleton Key', 'Escape', 'drama', 'Nov 15, 1949', '30 min', { why: 'Queued' })}</ul>
+    ${FOOT()}`;
+}
+
+const body = D === 'A' ? A() : D === 'B' ? Bdir() : C();
+const TABS = '<div class="m-tabbar"><span>Home</span><span>Browse</span><span>Record</span><span>Search</span><span class="on">Library</span></div>';
+document.getElementById('root').innerHTML = WIDE
+  ? `<div class="m-shell m-wide"><nav class="m-side"><div class="m-brand">Ear Drama</div><a>Home</a><a>Browse</a><a>Record</a><a>Search</a><a class="on">Library</a></nav><main class="m-main">${body}</main></div>`
+  : `<main class="m-main">${body}</main>${TABS}`;
+</script>
+</body>
+</html>

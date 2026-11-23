@@ -4,8 +4,18 @@ import XCTest
 /// §4.10a). The first test asserts they exist and taps none; the second taps
 /// Credits and follows it to Safari and back.
 final class SiteLinksUITests: DeviceTestCase {
+    /// The three pages sit behind the foot's About Ear Drama row (direction B).
+    private func openAbout(_ app: XCUIApplication) {
+        let about = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "About Ear Drama")).firstMatch
+        var n = 0
+        while !about.waitForExistence(timeout: n == 0 ? 25 : 1) && n < 6 { app.scrollUp(); n += 1 }
+        XCTAssertTrue(about.exists, "About row in Library")
+        about.tap()
+    }
+
     func testLibraryCarriesTheThreePages() throws {
         let app = launch(["APP_START_TAB": "library", "APP_DOOR_SECONDS": "60"])
+        openAbout(app)
         for name in ["Credits", "Privacy", "Take-down requests"] {
             let link = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", name)).firstMatch
             var n = 0
@@ -20,6 +30,7 @@ final class SiteLinksUITests: DeviceTestCase {
     /// Safari comes forward and the app leaves the foreground.
     func testCreditsOpensTheSiteAndComesBack() throws {
         let app = launch(["APP_START_TAB": "library", "APP_DOOR_SECONDS": "120"])
+        openAbout(app)
         let link = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Credits")).firstMatch
         var n = 0
         while !link.waitForExistence(timeout: n == 0 ? 25 : 1) && n < 6 { app.scrollUp(); n += 1 }

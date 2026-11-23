@@ -179,5 +179,5 @@ const PartsUI = (() => {
     return sec;
   }
 
-  return { render, excerpt };
+  return { render, excerpt, seatKeys };
 })();
