@@ -37,6 +37,8 @@ const ReaderCore = (() => {
 
   /** A column's page, from its left edge's offset into the flow and one page's width plus the gap. */
   const pageAt = (offset, unit) => Math.max(0, Math.round(offset / unit));
+  /** The page whose column holds a point `offset` px along the flow (a word's left edge anywhere in the column, unlike `pageAt`'s line starts). */
+  const pageContaining = (offset, unit) => Math.max(0, Math.floor((offset + 2) / unit));
 
   /** Pages in a flow `width` wide (the flow's scroll width), each `unit` apart with `gap` between. */
   const pageCount = (width, unit, gap) => Math.max(1, Math.round((width + gap) / unit));
@@ -365,7 +367,7 @@ const ReaderCore = (() => {
 
 
   /**
-   * A finished drama's listen plan (PLAYS-DESIGN §2.11 rule 6): the archive.org item holds one file per
+   * A finished drama's listen plan (PLAYS-DESIGN §2.11 rule 11): the archive.org item holds one file per
    * line, `0042-PART.wav`, the number being the line's 1-based place in the script, so the line a file
    * speaks needs no timing. `picked` is the item's `{ lines, seqs }`; the plan is `[{ lineID, url }]` in
    * file order, or null when the numbering cannot be vouched for: one whole recording, no `revision`
@@ -422,6 +424,129 @@ const ReaderCore = (() => {
     return s;
   }
 
+  /* ---- The word heard (PLAYS-DESIGN §2.11 rule 3): mirrors of apple/Core/Plays/ReadAlong.swift, golden-checked ---- */
+
+  /**
+   * The string a device voice is given for `line` (`said`: the said parts joined by a space, printed italic marks
+   * dropped, the ends trimmed, exactly `StandInVoice`'s `said(spokenText(line))`) and, for each UTF-16 unit of it,
+   * the offset in the line's printed words (`PlaysCore.lineText`) it came from.
+   */
+  function spoken(line) {
+    const chars = [];
+    if (line.kind === 'speech' && Array.isArray(line.parts)) {
+      let at = 0;
+      let first = true;
+      for (const part of line.parts) {
+        const k = Object.keys(part)[0];
+        const text = part[k] || '';
+        if (k === 'say') {
+          if (!first) chars.push([' ', Math.max(0, at - 1)]);
+          first = false;
+          for (let i = 0; i < text.length; i++) chars.push([text[i], at + i]);
+        }
+        at += text.length + 1;
+      }
+    } else {
+      const src = line.source || '';
+      for (let i = 0; i < src.length; i++) chars.push([src[i], i]);
+    }
+    const kept = chars.filter(c => c[0] !== '_');
+    while (kept.length && /\s/.test(kept[0][0])) kept.shift();
+    while (kept.length && /\s/.test(kept[kept.length - 1][0])) kept.pop();
+    return { said: kept.map(c => c[0]).join(''), toLine: kept.map(c => c[1]) };
+  }
+
+  /** The printed word `{ start, end }` a voice's range of `sp.said` (UTF-16 location and length) is; null outside it. */
+  function word(sp, location, length) {
+    if (!(location >= 0) || !(length > 0) || location + length > sp.toLine.length) return null;
+    return { start: sp.toLine[location], end: sp.toLine[location + length - 1] + 1 };
+  }
+
+  /** The printed words of a spoken string as `[start, end]` ranges of it: runs split at white space and dashes (an em or
+   *  en dash, or two hyphens), each holding a letter or a digit, trimmed to its first and last letter or digit. */
+  function textWords(said) {
+    const chars = Array.from(said);
+    const offsets = [];
+    let o = 0;
+    for (const ch of chars) { offsets.push(o); o += ch.length; }
+    const separates = (i) => {
+      const c = chars[i];
+      if (/\s/.test(c) || c === '—' || c === '–') return true;
+      if (c === '-') return chars[i + 1] === '-' || chars[i - 1] === '-';
+      return false;
+    };
+    const out = [];
+    let first = null, last = null;
+    const close = () => { if (first !== null) out.push([offsets[first], offsets[last] + chars[last].length]); first = last = null; };
+    for (let i = 0; i < chars.length; i++) {
+      if (separates(i)) { close(); continue; }
+      if (/[\p{L}\p{N}]/u.test(chars[i])) { if (first === null) first = i; last = i; }
+    }
+    close();
+    return out;
+  }
+
+  const PHONEME_PUNCT = new Set([';', ':', ',', '.', '!', '?', '—', '…', '"', '(', ')', '“', '”', '«', '»', '¡', '¿', '-', '–', "'", '’']);
+  const SAMPLES_PER_FRAME = 600;
+
+  /**
+   * The first sample of each phoneme word of the rendered pieces, in order: a word starts at the frames of every token
+   * before its first sounding symbol. A piece is `{ symbols, frames }`, `frames` holding one value per token with the
+   * padding token at both ends (`symbols.length + 2`). Null when a piece's frames do not fit its symbols.
+   */
+  function phonemeWordStarts(pieces, samplesPerFrame = SAMPLES_PER_FRAME) {
+    const starts = [];
+    let base = 0;
+    for (const piece of pieces) {
+      const symbols = Array.from(piece.symbols);
+      if (piece.frames.length !== symbols.length + 2) return null;
+      let frame = piece.frames[0];
+      let run = false;
+      symbols.forEach((s, i) => {
+        if (/\s/.test(s)) run = false;
+        else if (!run && !PHONEME_PUNCT.has(s)) { run = true; starts.push(base + frame * samplesPerFrame); }
+        frame += piece.frames[i + 1];
+      });
+      base += piece.frames.reduce((a, b) => a + b, 0) * samplesPerFrame;
+    }
+    return starts;
+  }
+
+  /** Each printed word of a Kokoro line with its first sample, `[sample, start, end]`; null unless the phoneme words and the
+   *  printed words agree in count (the line then stays lit with no word marked: never a stretch by character counts). */
+  function kokoroWords(said, pieces, samplesPerFrame = SAMPLES_PER_FRAME) {
+    const starts = phonemeWordStarts(pieces, samplesPerFrame);
+    const words = textWords(said);
+    if (!starts || !words.length || words.length !== starts.length) return null;
+    return words.map((w, i) => [starts[i], w[0], w[1]]);
+  }
+
+  /** How many phoneme words a line's whole phoneme string holds. */
+  function phonemeWordCount(symbols) {
+    const n = Array.from(symbols).length;
+    const starts = phonemeWordStarts([{ symbols, frames: new Array(n + 2).fill(0) }]);
+    return starts ? starts.length : 0;
+  }
+
+  /* ---- Speed (rule 7): 0.5x to 2x in quarter steps, a multiplier on each part's own speed ---- */
+
+  const ALONG_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+  const SPEED_KEY = 'ed.along.speed';
+  /** The nearest step to `x` (a stored value from another version, or none). */
+  function alongSpeed(x) {
+    const n = typeof x === 'string' ? parseFloat(x) : x;
+    if (typeof n !== 'number' || !Number.isFinite(n)) return 1;
+    return ALONG_SPEEDS.reduce((best, v) => (Math.abs(v - n) < Math.abs(best - n) ? v : best), 1);
+  }
+  /** "1.25×": the speed as the transport names it. */
+  const speedLabel = (x) => `${String(alongSpeed(x))}×`;
+  function savedSpeed(storage) {
+    try { return alongSpeed((storage || localStorage).getItem(SPEED_KEY)); } catch { return 1; }
+  }
+  function saveSpeed(x, storage) {
+    try { (storage || localStorage).setItem(SPEED_KEY, String(alongSpeed(x))); } catch { /* private window: this visit only */ }
+  }
+
   /** The TV panel's three lines: the one before, the one heard, the one after (null at an end). */
   function alongPanel(script, lineID) {
     const i = script.lines.findIndex(l => l.id === lineID);
@@ -429,6 +554,6 @@ const ReaderCore = (() => {
     return [script.lines[i - 1] || null, script.lines[i], script.lines[i + 1] || null];
   }
 
-  return { alongLine, alongLineAt, dramaPlan, dramaListen, alongFollow, alongPanel, closeTo, myLineStep, SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageCount, lineAtPage,
+  return { spoken, word, textWords, phonemeWordStarts, kokoroWords, phonemeWordCount, ALONG_SPEEDS, alongSpeed, speedLabel, savedSpeed, saveSpeed, alongLine, alongLineAt, dramaPlan, dramaListen, alongFollow, alongPanel, closeTo, myLineStep, SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageContaining, pageCount, lineAtPage,
            spreadStart, turn, swipeTurn, tapZone, keyTurn, pageLabel, remember, runsOf, spaceBetween, isVerse, layoutOf, cueTail };
 })();

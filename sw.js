@@ -49,6 +49,7 @@ const SHELL = [
   'js/plays-ui.js',
   'js/plays-worklet.js',
   'js/reader-core.js',
+  'js/along.js',
   'js/reader.js',
   'js/read-core.js',
   'js/read-session.js',

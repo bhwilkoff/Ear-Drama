@@ -72,7 +72,11 @@ const StandInVoice = (() => {
       return (auto && sysOnly.find(v => v.id === auto.voice)) || sysOnly[0];
     }
 
-    function utter(words, v, rate, pitch) {
+    /**
+     * Speaks `words` in system voice `v`. `onWord(location, length)` is called for each word the voice reports (its
+     * `boundary` events: the range is in `words`, exactly the string given); a voice that sends none sends none.
+     */
+    function utter(words, v, rate, pitch, onWord) {
       const u = new Utterance(words);
       u.voice = v.raw || v;
       u.lang = v.lang;
@@ -86,8 +90,29 @@ const StandInVoice = (() => {
         const guard = setTimeout(() => { synth.cancel(); done(true); }, 4000 + (words.length * 120) / u.rate);
         u.onend = () => done(true);
         u.onerror = () => done(false);
+        if (onWord) {
+          u.onboundary = (e) => {
+            if (e.name && e.name !== 'word') return;
+            const at = e.charIndex;
+            if (!(at >= 0)) return;
+            // Chrome and Safari send the word's length; where one does not, the word is the one the text holds at that start.
+            let len = e.charLength;
+            if (!(len > 0) && typeof ReaderCore !== 'undefined') {
+              const w = ReaderCore.textWords(words).find(x => at >= x[0] && at < x[1]);
+              len = w ? w[1] - at : 0;
+            }
+            if (len > 0) onWord(at, len);
+          };
+        }
         synth.speak(u);
       });
+    }
+
+    /** The picker's device voice for a Kokoro voice's preview that Kokoro cannot read: the best device voice there is. */
+    function fallbackPreview(words, rate, pitch) {
+      refresh();
+      const v = list.find(x => x.engine === 'system');
+      return v && synth && Utterance ? utter(words, v, rate, pitch) : Promise.resolve(false);
     }
 
     return {
@@ -101,7 +126,7 @@ const StandInVoice = (() => {
       },
 
       /** Reads one line aloud, live, in the part's cast voice. Resolves true when it was read, false when no local voice can read it. */
-      speak(text, part, rate = 1) {
+      speak(text, part, rate = 1, { onWord } = {}) {
         const words = said(text);
         refresh();
         if (!words || !synth || !Utterance || !list.length) return Promise.resolve(false);
@@ -110,13 +135,13 @@ const StandInVoice = (() => {
         if (r.voice.engine === 'kokoro') {
           const fallback = () => {
             const v = systemFallback(part);
-            return v ? utter(words, v, r.rate * rate, r.pitch) : false;
+            return v ? utter(words, v, r.rate * rate, r.pitch, onWord) : false;
           };
           const k = engine();
           if (!k) return Promise.resolve(fallback());
           return k.speak(words, r.voice.id, { rate: r.rate * rate, pitch: r.pitch }).then(read => (read ? true : fallback()));
         }
-        return utter(words, r.voice, r.rate * rate, r.pitch);
+        return utter(words, r.voice, r.rate * rate, r.pitch, onWord);
       },
 
       /** The picker's preview: `text` (the part's own first line) in a voice not yet chosen. Live, never kept. */
@@ -126,7 +151,9 @@ const StandInVoice = (() => {
         if (voice.engine === 'kokoro') {
           if (synth) synth.cancel();
           const k = engine();
-          return k ? k.speak(words, voice.id, { rate, pitch }) : Promise.resolve(false);
+          if (!k) return fallbackPreview(words, rate, pitch);
+          // A line Kokoro cannot read (no published phonemes) is read by a device voice, never left silent (§2.8 rule 10).
+          return k.speak(words, voice.id, { rate, pitch }).then(read => (read ? true : fallbackPreview(words, rate, pitch)));
         }
         if (!synth || !Utterance) return Promise.resolve(false);
         synth.cancel();

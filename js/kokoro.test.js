@@ -303,6 +303,15 @@ test('tokenize maps phonemes through the vocabulary and pads both ends', () => {
   eq(KokoroVoice.tokenize('a❓b', { a: 43, b: 44 }), [0, 43, 44, 0], 'unknown symbols dropped');
 });
 
+test('keyOf: two hyphens read as a dash, leading punctuation dropped on both sides (the opening\'s clean finds the script\'s row)', () => {
+  const k = KokoroVoice.keyOf;
+  eq(k('-- Well, _Molly_--I mean it.'), k('Well, Molly—I mean it.'), 'the script and the cleaned opening share a key');
+  eq(k('. Go on.'), 'Go on.', 'leading punctuation dropped');
+  eq(k('— No.'), 'No.', 'a leading dash dropped');
+  eq(k('  two   spaces '), 'two spaces', 'whitespace folded');
+  eq(k('Hello--there'), 'Hello—there', 'two hyphens inside read as a dash');
+});
+
 (async () => {
   for (const [name, fn] of results) {
     try { await fn(); } catch (e) { failures++; console.log(`FAIL ${name}: ${e.stack}`); }

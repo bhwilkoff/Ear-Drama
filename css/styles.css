@@ -1559,6 +1559,36 @@ body.reading #main-content { overflow: hidden; }
 .rd-dock { flex-shrink: 0; }
 .rd-back-line { align-self: center; margin: var(--space-2) 0; flex-shrink: 0; }
 .rd-back-line[hidden] { display: none; }
+
+/* ---- Read along (PLAYS-DESIGN §2.11, WEB-DESIGN §4.16a): the transport takes the bottom bar; the word heard is a fill and a 2 px rule in the speaker's hue ---- */
+.rd-bottom.rd-alonging > :not(.rd-transport):not(.rd-page) { display: none; }
+.rd-alonging .rd-page { display: none; }
+@media (min-width: 860px) { .rd-alonging .rd-page { display: block; } }
+.rd-transport { flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; }
+.rd-transport[hidden] { display: none; }
+.rd-speaker { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--hue, var(--color-text-muted)); letter-spacing: 0.02em; }
+.rd-t-play { display: flex; align-items: center; gap: 6px; }
+.rd-t-ico { display: flex; }
+.rd-t-ico svg { width: 22px; height: 22px; fill: currentColor; }
+.rd-speed { flex: none; min-height: 40px; padding: 0 var(--space-1); border: 1px solid var(--color-border); border-radius: var(--radius-control);
+  background: var(--color-background); color: var(--color-text); }
+@media (max-width: 399px) { .rd-transport .icon-btn { width: 36px; min-width: 36px; } .rd-t-play { padding: 0 6px; } }
+::highlight(rd-w-ink) { background-color: var(--color-surface-alt); text-decoration: underline 2px var(--color-text); text-underline-offset: 0.2em; text-decoration-skip-ink: none; }
+@supports (color: color-mix(in srgb, red 50%, blue)) { ::highlight(rd-w-ink) { background-color: color-mix(in srgb, var(--color-text) 22%, transparent); } }
+::highlight(rd-w-mystery) { background-color: var(--color-surface-alt); text-decoration: underline 2px var(--color-genre-mystery); text-underline-offset: 0.2em; text-decoration-skip-ink: none; }
+@supports (color: color-mix(in srgb, red 50%, blue)) { ::highlight(rd-w-mystery) { background-color: color-mix(in srgb, var(--color-genre-mystery) 30%, transparent); } }
+::highlight(rd-w-scifi) { background-color: var(--color-surface-alt); text-decoration: underline 2px var(--color-genre-scifi); text-underline-offset: 0.2em; text-decoration-skip-ink: none; }
+@supports (color: color-mix(in srgb, red 50%, blue)) { ::highlight(rd-w-scifi) { background-color: color-mix(in srgb, var(--color-genre-scifi) 30%, transparent); } }
+::highlight(rd-w-western) { background-color: var(--color-surface-alt); text-decoration: underline 2px var(--color-genre-western); text-underline-offset: 0.2em; text-decoration-skip-ink: none; }
+@supports (color: color-mix(in srgb, red 50%, blue)) { ::highlight(rd-w-western) { background-color: color-mix(in srgb, var(--color-genre-western) 30%, transparent); } }
+::highlight(rd-w-serial) { background-color: var(--color-surface-alt); text-decoration: underline 2px var(--color-genre-serial); text-underline-offset: 0.2em; text-decoration-skip-ink: none; }
+@supports (color: color-mix(in srgb, red 50%, blue)) { ::highlight(rd-w-serial) { background-color: color-mix(in srgb, var(--color-genre-serial) 30%, transparent); } }
+::highlight(rd-w-documentary) { background-color: var(--color-surface-alt); text-decoration: underline 2px var(--color-genre-documentary); text-underline-offset: 0.2em; text-decoration-skip-ink: none; }
+@supports (color: color-mix(in srgb, red 50%, blue)) { ::highlight(rd-w-documentary) { background-color: color-mix(in srgb, var(--color-genre-documentary) 30%, transparent); } }
+::highlight(rd-w-comedy) { background-color: var(--color-surface-alt); text-decoration: underline 2px var(--color-genre-comedy); text-underline-offset: 0.2em; text-decoration-skip-ink: none; }
+@supports (color: color-mix(in srgb, red 50%, blue)) { ::highlight(rd-w-comedy) { background-color: color-mix(in srgb, var(--color-genre-comedy) 30%, transparent); } }
+::highlight(rd-w-news) { background-color: var(--color-surface-alt); text-decoration: underline 2px var(--color-genre-news); text-underline-offset: 0.2em; text-decoration-skip-ink: none; }
+@supports (color: color-mix(in srgb, red 50%, blue)) { ::highlight(rd-w-news) { background-color: color-mix(in srgb, var(--color-genre-news) 30%, transparent); } }
 .rd-main { flex: 1; min-height: 0; display: flex; }
 .rd-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .rd-rec-btn { color: var(--color-record); border-color: var(--color-record); }

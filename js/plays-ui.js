@@ -1117,8 +1117,20 @@ const PlaysUI = (() => {
       slot.replaceChildren();
       if (!line) return;
       if (entry.source === 'voice') slot.append(h.el('p', { class: 'caption device-voice' }, svg('wave', 'i-inline'), 'Device voice'));
+      // On a TV the line heard comes with one before and one after, the speaker in the part's hue (PLAYS-DESIGN §2.11 rule 10).
+      if (document.documentElement.classList.contains('tv')) {
+        for (const x of ReaderCore.alongPanel(script, line.id)) {
+          if (!x) continue;
+          const v = lineView(x, x === line ? 'panel-now' : 'panel-near');
+          v.dataset.hue = C.partHue(script, C.linePart(x)) || 'none';
+          slot.append(v);
+        }
+        return;
+      }
       slot.append(lineView(line));
     }
+    // Every listen plays at the device's remembered speed (rule 7): a voice takes it from its next line.
+    l.rate = ReaderCore.savedSpeed();
     paint();
     if (!l.plan.length) control.disabled = true;
     box.append(control, slot);
@@ -1208,6 +1220,9 @@ const PlaysUI = (() => {
           if (typeof got === 'string') audio = new Audio(got);
           else { url = URL.createObjectURL(new Blob([got], { type: 'audio/wav' })); audio = new Audio(url); }
           audio.muted = muted;
+          audio.defaultPlaybackRate = ReaderCore.savedSpeed();
+          audio.playbackRate = audio.defaultPlaybackRate;
+          audio.preservesPitch = true;
           await new Promise((done) => { audio.onended = done; audio.onerror = done; audio.play().catch(done); });
           clear();
           if (mine !== run) return;
@@ -1342,7 +1357,7 @@ const PlaysUI = (() => {
     return got;
   }
 
-  /** A finished drama's read-along plan (PLAYS-DESIGN §2.11 rule 6) for `script`, or null when its audio has no
+  /** A finished drama's read-along plan (PLAYS-DESIGN §2.11 rule 11) for `script`, or null when its audio has no
       line timeline: a whole recording, files still being made, or another revision of the script. */
   async function dramaAlong(d, script) {
     if (!script || d.script_id !== script.id) return null;

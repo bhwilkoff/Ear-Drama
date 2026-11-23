@@ -27,6 +27,9 @@ const Reader = (() => {
     cue: 'M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05A4.5 4.5 0 0 0 16.5 12z',
     voices: 'M9 13c2.67 0 8 1.34 8 4v3H1v-3c0-2.66 5.33-4 8-4zm0-2a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm7.76-7.64C18.78 5.12 18.78 9 16.76 11l-1.68-1.69a3 3 0 0 0 0-3.27zM20.07 1C24 5.05 23.97 11.11 20.07 15l-1.63-1.63c2.77-3.18 2.77-7.72 0-10.74z',
     play: 'M8 5v14l11-7z',
+    pause: 'M6 19h4V5H6v14zm8-14v14h4V5h-4z',
+    skipPrev: 'M6 6h2v12H6zm3.5 6 8.5 6V6z',
+    skipNext: 'M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z',
     stop: 'M7 7h10v10H7z',
     wave: 'M3 10h2v4H3zm4-3h2v10H7zm4-4h2v18h-2zm4 4h2v10h-2zm4 3h2v4h-2z',
     mic: 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1A7 7 0 0 0 19 11z',
@@ -514,17 +517,151 @@ const Reader = (() => {
     return d;
   }
 
-  /** Reads from the first line on the page to the end; the reader follows each line, the dock labels it. */
-  function hearCast(st) {
-    if (st.table && st.table.playing) { st.table.stop(); return; }
+  /* ---- Read along (PLAYS-DESIGN §2.11, WEB-DESIGN §4.16a): the script follows the voice ---- */
+
+  /** The entries read: a finished drama's files, a production's listen plan, or the cast over the whole script. */
+  function alongEntries(st) {
+    const a = st.along;
+    if (a && a.dramaPlan) return Along.dramaEntries(a.dramaPlan);
+    if (a && a.store) return Along.productionEntries(a.store.production(a.production), st.script, st.voice);
+    return Along.tableEntries(st.script, st.voice);
+  }
+
+  /** Starts reading at the reader's place (a production's Read along at once, Hear the cast on its press); the transport takes the bar. */
+  function alongStart(st) {
+    if (st.ctl && (st.ctl.playing || st.ctl.held)) return;
     if (typeof Player !== 'undefined' && Player.pause) Player.pause();
     st.fol.back();
-    st.table = TableRead.create({
-      script: st.script, voice: st.voice,
-      onLine: (line) => { st.handle.follow(line ? line.id : null); paintDock(st, line); },
-      onChange: () => paintHear(st),
+    paintBack(st, false);
+    const a = st.along;
+    const read = a && a.store ? (e) => a.store.readTake(a.production, e.take.file) : null;
+    const ctl = Along.create({
+      script: st.script, entries: alongEntries(st), voice: st.voice, media: Along.mediaFor(read), muted,
+      onLine: (id, entry) => alongLine(st, id, entry),
+      onWord: (id, w) => alongWord(st, id, w),
+      onChange: () => paintTransport(st),
     });
-    st.table.play(Math.max(0, st.pos));
+    if (!ctl.entries.length) return;
+    st.ctl = ctl;
+    ctl.from(Math.max(0, st.pos));
+    ctl.play();
+  }
+
+  /** The line heard changed (null when the reading ended): light it, turn to it, name a device voice. */
+  function alongLine(st, id, entry) {
+    if (cur !== st) return;
+    clearWord(st);
+    st.word = null;
+    st.handle.follow(id);
+    paintDock(st, id && entry && entry.source === 'voice' ? st.script.lines.find(x => x.id === id) : null);
+  }
+
+  /** Whether this browser can draw a word mark on the printed words (the CSS Custom Highlight API). */
+  const canMark = () => typeof CSS !== 'undefined' && CSS.highlights && typeof Highlight !== 'undefined';
+
+  /** The printed words `w` ({ start, end } in the line's words) as Ranges over the line's printed runs, never over a speaker's name. */
+  function wordRanges(lineNode, w) {
+    const out = [];
+    for (const n of lineNode.querySelectorAll('[data-at]')) {
+      if (n.closest('.rd-who') || n.childNodes.length !== 1 || n.firstChild.nodeType !== 3) continue;
+      const t = n.firstChild;
+      const at = Number(n.dataset.at);
+      const lo = Math.max(w.start, at), hi = Math.min(w.end, at + t.data.length);
+      if (lo < hi) { const r = document.createRange(); r.setStart(t, lo - at); r.setEnd(t, hi - at); out.push(r); }
+    }
+    return out;
+  }
+
+  function clearWord(st) {
+    if (st.wordMark) { if (canMark()) CSS.highlights.delete(st.wordMark); st.wordMark = null; }
+  }
+
+  /** The word heard (null clears it): a fill and a rule in the speaker's hue, and the page turns to it when it is not in view. */
+  function alongWord(st, id, w) {
+    if (cur !== st) return;
+    clearWord(st);
+    st.word = w && id ? { id, w } : null;
+    if (!st.word || !canMark()) return;
+    const index = st.script.lines.findIndex(x => x.id === id);
+    const line = st.lines[index];
+    if (!line) return;
+    const ranges = wordRanges(line, w);
+    if (!ranges.length) return;
+    const host = ranges[0].startContainer.parentElement;
+    const hue = ((host && host.closest('[data-hue]')) || line).dataset.hue;
+    st.wordMark = `rd-w-${hue && hue !== 'none' ? hue : 'ink'}`;
+    CSS.highlights.set(st.wordMark, new Highlight(...ranges));
+    if (st.fol.following) bringWord(st, index, ranges[0]);
+  }
+
+  /** Turns to the page (Scroll: scrolls to the place) where the word sits, when it is not in view. */
+  function bringWord(st, index, range) {
+    const rect = range.getClientRects()[0];
+    if (!rect) return;
+    if (st.prefs.layout === 'pages') {
+      const p = R.pageContaining(rect.left - st.flow.getBoundingClientRect().left, st.unit);
+      if (p < st.page || p >= st.page + st.per) setPage(st, p, true, index);
+      return;
+    }
+    const box = st.stage.getBoundingClientRect();
+    if (rect.top < box.top + 24 || rect.bottom > box.bottom - 24) {
+      st.stage.scrollBy({ top: rect.top - box.top - box.height / 3, behavior: reduceMotion() ? 'auto' : 'smooth' });
+    }
+  }
+
+  /** Turns to line `index` when it starts on a page not in view (either page of a spread counts); Scroll brings it to the top. */
+  function followTo(st, index) {
+    if (st.prefs.layout === 'pages') {
+      const p = st.starts[index];
+      if (p >= st.page && p < st.page + st.per) { st.pos = index; paintWhere(st); save(st); return; }
+      setPage(st, p, true, index);
+      return;
+    }
+    const n = st.lines[index];
+    st.pos = index;
+    st.stage.scrollTo({ top: n.offsetTop - st.flow.offsetTop - 8, behavior: reduceMotion() ? 'auto' : 'smooth' });
+    paintWhere(st);
+  }
+
+  /** The transport's bar (rule 6): speaker, previous line, play or pause, next line, speed, stop. */
+  function transportEl(st) {
+    const tool = (cls, name, label, onclick) => el('button', { type: 'button', class: `icon-btn rd-t ${cls}`, 'aria-label': label, title: label, onclick }, svg(name));
+    const speaker = el('span', { class: 'body-strong rd-speaker' });
+    const prev = tool('rd-t-prev', 'skipPrev', 'Previous line', () => st.ctl && st.ctl.prev());
+    const playLab = el('span', { class: 'rd-tool-lab' });
+    const play = el('button', { type: 'button', class: 'btn rd-tool rd-t-play', onclick: () => st.ctl && st.ctl.toggle() }, el('span', { class: 'rd-t-ico' }), playLab);
+    const next = tool('rd-t-next', 'skipNext', 'Next line', () => st.ctl && st.ctl.next());
+    const speed = el('select', { class: 'rd-speed', 'aria-label': 'Speed' },
+      ...R.ALONG_SPEEDS.map(v => el('option', { value: String(v) }, R.speedLabel(v))));
+    speed.addEventListener('change', () => { if (st.ctl) st.ctl.setSpeed(speed.value); else R.saveSpeed(speed.value); });
+    const stop = tool('rd-t-stop', 'stop', 'Stop', () => st.ctl && st.ctl.stop());
+    const bar = el('div', { class: 'rd-transport', role: 'group', 'aria-label': 'Read along', hidden: true }, speaker, prev, play, next, speed, stop);
+    return { bar, speaker, prev, play, playLab, next, speed };
+  }
+
+  function paintTransport(st) {
+    if (cur !== st) return;
+    const c = st.ctl;
+    const on = !!(c && (c.playing || c.held));
+    st.footer.classList.toggle('rd-alonging', on);
+    const t = st.tr;
+    t.bar.hidden = !on;
+    st.hearBtn.replaceChildren(svg('play'), el('span', { class: 'rd-tool-lab' }, st.along ? 'Read along' : 'Hear the cast'));
+    st.hearBtn.setAttribute('aria-label', st.along ? 'Read along' : 'Hear the cast');
+    // No voice in this browser (or not yet: Chrome fills the list late): nothing to hear.
+    st.hearBtn.disabled = !st.along && !st.voice.available();
+    t.speed.value = String(c ? c.speed : R.savedSpeed());
+    if (!on) { paintDock(st, null); return; }
+    const line = st.script.lines.find(x => x.id === c.line());
+    t.speaker.textContent = line ? C.partTitle(C.linePart(line)) : '';
+    const node = line && st.lines[st.script.lines.indexOf(line)];
+    if (node) t.speaker.dataset.hue = node.dataset.hue || 'none';
+    const word = c.playing ? 'Pause' : 'Play';
+    t.play.firstChild.replaceChildren(svg(c.playing ? 'pause' : 'play'));
+    t.playLab.textContent = word;
+    t.play.setAttribute('aria-label', word);
+    t.prev.disabled = !c.canPrev();
+    t.next.disabled = !c.canNext();
   }
   /** "12 of 140": the "of" is its own span so a phone's bar can draw a slash instead (css .rd-of). */
   function paintPageLab(st, label) {
@@ -532,55 +669,14 @@ const Reader = (() => {
     if (i < 0) { st.pageLab.textContent = label; return; }
     st.pageLab.replaceChildren(label.slice(0, i), el('span', { class: 'rd-of' }, ' of '), label.slice(i + 4));
   }
-  function paintHear(st) {
-    const on = !!(st.table && st.table.playing);
-    st.hearBtn.replaceChildren(svg(on ? 'stop' : 'play'), el('span', { class: 'rd-tool-lab' }, on ? 'Stop' : 'Hear the cast'));
-    st.hearBtn.setAttribute('aria-label', on ? 'Stop' : 'Hear the cast');
-    // No voice in this browser (or not yet: Chrome fills the list late): nothing to hear.
-    st.hearBtn.disabled = !on && !st.voice.available();
-    if (!on) paintDock(st, null);
-  }
   /** A touch on the text stops the read-along turning the page. */
   function away(st) { paintBack(st, st.fol.away().back); }
   function paintBack(st, on) { if (st.backBtn) st.backBtn.hidden = !on; }
 
-  /** "Read along" (PLAYS-DESIGN §2.11): the production's listen-through, the reader following each line heard. */
-  function alongToggle(st) {
-    const a = st.along;
-    if (a.listen && a.listen.playing) { a.listen.stop(); return; }
-    if (typeof Player !== 'undefined' && Player.pause) Player.pause();
-    st.fol.back();
-    if (!a.listen) {
-      // A finished drama (a published item) follows its own files; a production follows its listen plan.
-      a.listen = a.dramaPlan
-        ? R.dramaListen(a.dramaPlan, {
-          audio: (url) => { const x = new Audio(url); return { get muted() { return x.muted; }, set muted(v) { x.muted = v; }, pause: () => { x.pause(); x.dispatchEvent(new Event('ended')); },
-            play: () => new Promise((done) => { x.addEventListener('ended', done, { once: true }); x.addEventListener('error', done, { once: true }); x.play().catch(done); }) }; },
-          muted, onChange: () => paintAlong(st),
-        })
-        : ListenThrough.create({
-          production: a.store.production(a.production), script: st.script, store: a.store, audio: LiveAudio.create({ muted: muted() }), voice: st.voice,
-          onChange: () => paintAlong(st),
-        });
-    }
-    if (a.listen.plan.length) a.listen.play();
-  }
-  function paintAlong(st) {
-    const a = st.along;
-    if (!a || cur !== st) return;
-    const l = a.listen;
-    const on = !!(l && l.playing);
-    st.hearBtn.replaceChildren(svg(on ? 'stop' : 'play'), el('span', { class: 'rd-tool-lab' }, on ? 'Stop' : 'Listen through'));
-    st.hearBtn.setAttribute('aria-label', on ? 'Stop' : 'Listen through');
-    const entry = on ? l.current() : null;
-    const line = entry && st.script.lines.find(x => x.id === entry.lineID);
-    st.handle.follow(line ? line.id : null);
-    st.dock.hidden = !(line && entry.source === 'voice');
-    st.dock.replaceChildren(...(line && entry.source === 'voice'
-      ? [el('p', { class: 'caption device-voice rd-voice-now' }, svg('wave'), 'Device voice · ', C.partTitle(C.linePart(line)))] : []));
-  }
-
+  /** The "Device voice · PART" strip over the transport; the dock is the studio's too, so only a strip drawn here is cleared here. */
   function paintDock(st, line) {
+    if (!line && !st.dockMine) return;
+    st.dockMine = !!line;
     st.dock.hidden = !line;
     st.dock.replaceChildren(...(line ? [el('p', { class: 'caption device-voice rd-voice-now' }, svg('wave'), 'Device voice · ', C.partTitle(C.linePart(line)))] : []));
   }
@@ -594,6 +690,10 @@ const Reader = (() => {
     if (st.root.querySelector('dialog[open]') || document.querySelector('dialog[open]')) return;
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    // Space plays and pauses a read-along where the reader holds the keyboard (PLAYS-DESIGN §2.11 rule 6).
+    if ((e.key === ' ' || e.key === 'Spacebar') && st.ctl && (st.ctl.playing || st.ctl.held) && !(t && t.tagName === 'BUTTON')) {
+      e.preventDefault(); st.ctl.toggle(); return;
+    }
     if (st.hiding && t && t.classList && t.classList.contains('rd-mine') && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault(); peek(st, t); return;
     }
@@ -712,7 +812,7 @@ const Reader = (() => {
     close();
     const saved = (readJSON(POS_KEY) || {})[script.id] || {};
     const at = Math.max(0, script.lines.findIndex(l => l.id === (opts.line || saved.line)));
-    const { frag, lines } = buildFlow(script);
+    const { frag, lines, hues } = buildFlow(script);
     const flow = el('div', { class: 'rd-flow' });
     flow.append(frag);
     const clip = el('div', { class: 'rd-clip' }, flow);
@@ -740,7 +840,7 @@ const Reader = (() => {
     const cast = opts.studio || (opts.along && opts.along.production) ? CastUI.castFor({ script, production: (opts.studio || opts.along).production }) : CastUI.castFor({ script });
     const st = { root, script, flow, clip, stage, heads, where, pageLab, nextBtn, hideBtn, hearBtn, recBtn, footer, side, lines, dock, prefs: prefsNow(),
                  onRecord: opts.onRecord || null, studio: null, partSel: null,
-                 cast, voice: StandInVoice.create({ muted: muted(), cast }), table: null,
+                 cast, voice: StandInVoice.create({ muted: muted(), cast }), ctl: null, tr: null, hues, word: null, wordMark: null,
                  pos: at, page: 0, per: 1, unit: 1, count: 1, starts: [], ends: [], part: null, hiding: false, peeked: null, fol: R.alongFollow(), along: null, backBtn: null, marks: null };
     st.contents = contentsSheet(st);
     st.search = searchSheet(st);
@@ -762,14 +862,12 @@ const Reader = (() => {
     recBtn.addEventListener('click', () => { if (st.part && st.onRecord) st.onRecord(st.part); });
     st.backBtn = el('button', { type: 'button', class: 'btn rd-back-line', hidden: true, onclick: () => st.handle.refollow() }, 'Back to the line');
     dock.after(st.backBtn);
-    if (opts.along) {
-      st.along = { production: opts.along.production, store: opts.along.store, dramaPlan: opts.along.dramaPlan || null, listen: null };
-      hearBtn.addEventListener('click', () => alongToggle(st));
-    } else {
-      hearBtn.addEventListener('click', () => hearCast(st));
-      paintHear(st);
-    }
-    st.voicesOff = StandInVoice.onVoices(() => { if (cur === st) { if (st.along) paintAlong(st); else paintHear(st); } });
+    st.tr = transportEl(st);
+    footer.append(st.tr.bar);
+    if (opts.along) st.along = { production: opts.along.production, store: opts.along.store, dramaPlan: opts.along.dramaPlan || null };
+    hearBtn.addEventListener('click', () => alongStart(st));
+    paintTransport(st);
+    st.voicesOff = StandInVoice.onVoices(() => { if (cur === st) paintTransport(st); });
     partSel.addEventListener('change', () => setPart(st, partSel.value));
     nextBtn.addEventListener('click', () => myLine(st, 1));
     hideBtn.addEventListener('click', () => setHiding(st, !st.hiding));
@@ -794,7 +892,8 @@ const Reader = (() => {
     }
     stage.focus({ preventScroll: true });
     st.handle = handle(st);
-    if (st.along) paintAlong(st);
+    paintTransport(st);
+    if (st.along) alongStart(st);
     if (opts.room) st.room = opts.room.attach(roomApi(st));
     st.key = opts.room ? `${script.id} room ${opts.room.code}` : opts.studio ? `${script.id} ${opts.studio.production} ${opts.studio.part}` : script.id;
     return st.handle;
@@ -813,10 +912,17 @@ const Reader = (() => {
         paintBack(st, o.back);
         if (i < 0) return;
         st.lines[i].classList.add('rd-now');
-        if (o.turn) goIndex(st, i);
+        if (o.turn) followTo(st, i);
       },
-      /** Back to following after a touch stopped it. */
-      refollow: () => { const id = st.fol.back(); paintBack(st, false); const i = index(id); if (i >= 0) goIndex(st, i); },
+      /** Back to following after a touch stopped it: to the line heard, and to the word. */
+      refollow: () => {
+        const id = st.fol.back();
+        paintBack(st, false);
+        const i = index(id);
+        if (i < 0) return;
+        followTo(st, i);
+        if (st.word) alongWord(st, st.word.id, st.word.w);
+      },
     };
   }
 
@@ -827,8 +933,8 @@ const Reader = (() => {
     if (cur.studio) cur.studio.detach();
     if (cur.room) cur.room.detach();
     if (cur.marks) cur.marks.detach();
-    if (cur.table) cur.table.stop();
-    if (cur.along && cur.along.listen) cur.along.listen.end();
+    if (cur.ctl) cur.ctl.end();
+    clearWord(cur);
     if (cur.voicesOff) cur.voicesOff();
     if (cur.resize) cur.resize.disconnect();
     if (document.fonts && cur.fontsDone) document.fonts.removeEventListener('loadingdone', cur.fontsDone);
@@ -881,7 +987,7 @@ const Reader = (() => {
         st.hearBtn.hidden = on;
         st.recBtn.hidden = on || !st.part || !st.onRecord;
         st.nextBtn.hidden = on || !st.part;
-        if (on && st.table && st.table.playing) st.table.stop();
+        if (on && st.ctl) st.ctl.stop();
       },
     };
   }
