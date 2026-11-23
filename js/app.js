@@ -11,7 +11,7 @@
  *   ?series={key}&season={1948-49|undated}       a series page
  *   ?item={episode id}                episode Detail
  *   ?view=search&q=                   Search
- *   ?view=library&tab=continue|queue|following|history|dramas&section=voices    Library (this device; Voices is its last section)
+ *   ?view=library&side=listen|make&list=upnext|history|marks&productions=&section=voices    Library (this device; Decision 087; the old &tab= still opens)
  *   ?play={script id}, ?production={id}, ?production={id}&part={part id}
  *                                     an ear drama (js/plays-ui.js; this browser only)
  * Older names are rewritten in place: listen, series, radio; plays and browse&kind=plays open Record.
@@ -74,6 +74,9 @@
 
   const ICONS = {
     play: 'M8 5v14l11-7z',
+    chev: 'M9 6l6 6-6 6-1.4-1.4 4.6-4.6-4.6-4.6z',
+    back: 'M15.4 7.4 14 6l-6 6 6 6 1.4-1.4-4.6-4.6z',
+    download: 'M5 20h14v-2H5zm7-16-5 5h3v6h4V9h3z',
     live: 'M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7.8 7.8 6.4 6.4a8 8 0 0 0 0 11.2l1.4-1.4a6 6 0 0 1 0-8.4zm8.4 0a6 6 0 0 1 0 8.4l1.4 1.4a8 8 0 0 0 0-11.2z',
     queue: 'M4 6h12v2H4zm0 5h12v2H4zm0 5h8v2H4zm14-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2z',
     queued: 'M4 6h12v2H4zm0 5h12v2H4zm0 5h8v2H4zm11.6 1.4 1.4-1.4 2 2 4-4 1.4 1.4-5.4 5.4z',
@@ -580,7 +583,7 @@
     if (r.view !== 'reader' && r.view !== 'readroom') Reader.close();
     if (r.view !== 'readroom') ReadUI.pause();
     if (r.view !== 'class') ClassUI.leave();
-    if (r.view !== 'library') VoiceSettings.leave();
+    if (r.view !== 'library') { VoiceSettings.leave(); libraryShown = false; }
     VIEWS.forEach(v => { $(`view-${v}`).hidden = v !== r.view; });
     const tab = TAB_OF[r.view];
     document.querySelectorAll('[data-nav]').forEach(a => {
@@ -1099,8 +1102,10 @@
     const todayBox = el('div');
     const playsBox = el('div');
     const madeBox = el('div');
-    body.replaceChildren(yours, todayBox, playsBox, madeBox);
+    const classBox = el('div');
+    body.replaceChildren(yours, todayBox, playsBox, classBox, madeBox);
     PlaysUI.renderMine(yoursList, playsHelpers, { classes: false, onEmpty: () => yours.remove() });
+    PlaysUI.classDoor(classBox, playsHelpers).catch(e => console.error('class door', e));
 
     const f = { voices: r.p.get('voices') || '', length: r.p.get('length') || '', kind: r.p.get('kind') || '',
                 sort: PLAY_SORT[r.p.get('sort')] ? r.p.get('sort') : 'voices' };
@@ -2479,14 +2484,17 @@
   ================================================================ */
 
   const BROWSE = { label: 'Browse', href: '?view=browse' };
-  const LIBRARY_TABS = ['continue', 'queue', 'following', 'history', 'dramas'];
-  /** An empty section says what it would hold (WEB-DESIGN §4.7); a fact, not an invitation. */
-  const LIBRARY_EMPTY = {
-    continue: 'Episodes you stop partway through wait here.',
-    queue: 'Episodes you add play in this order, after the one that is playing.',
-    following: 'Series you follow appear here.',
-    history: 'Episodes you play appear here, newest first.',
-  };
+  /* Library (WEB-DESIGN §4.7, Decision 087): Listening | Making over one foot; an empty section is absent. */
+  const SIDE_KEY = 'ed.library.side';
+  const UP_NEXT_ROWS = 5;
+  /** The tabs before Decision 087, read as the side or list each became. */
+  const OLD_TAB = { continue: { side: 'listen', list: 'upnext' }, queue: { side: 'listen', list: 'upnext' },
+                    following: { side: 'listen' }, history: { side: 'listen', list: 'history' }, dramas: { side: 'make' } };
+  function storedSide() { try { return localStorage.getItem(SIDE_KEY) === 'make' ? 'make' : 'listen'; } catch { return 'listen'; } }
+  function keepSide(side) { try { localStorage.setItem(SIDE_KEY, side); } catch { /* a blocked store: Listening next time */ } }
+  let libraryShown = false;
+  let libToken = 0;
+
   /** Export (Human-Shaped principle 11): the person's own data as files they keep; nothing is sent. */
   function paintExportRow(row) {
     const stamp = new Date().toISOString().slice(0, 10);
@@ -2499,69 +2507,207 @@
     row.replaceChildren(
       el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {
         DataExport.save(`ear-drama-${stamp}.json`, 'application/json', JSON.stringify(await gather(), null, 2));
-      } }, 'Export my data'),
+      } }, icon('download'), 'Export my data'),
       el('button', { type: 'button', class: 'btn btn-ghost', 'aria-label': 'Export history as CSV', onclick: async () => {
         DataExport.save(`ear-drama-history-${stamp}.csv`, 'text/csv', DataExport.historyCsv(await gather()));
       } }, 'History (CSV)'));
   }
 
-  function renderLibrary(r) {
-    setTitle('Library');
-    AccountUI.paintRow($('account-row'));
-    TogetherUI.paintRow($('together-row'));
-    paintExportRow($('export-row'));
-    // Voices (Decision 086; WEB-DESIGN §4.11a): a section of Library, below the account rows.
-    VoiceSettings.mount($('voices'));
-    if (r.p.get('section') === 'voices') requestAnimationFrame(() => {
-      $('voices').scrollIntoView();
-      $('voices-h').focus({ preventScroll: true });
-    });
-    const tab = LIBRARY_TABS.includes(r.p.get('tab')) ? r.p.get('tab') : 'continue';
-    document.querySelectorAll('#library-tabs [data-lib]').forEach(b =>
-      b.setAttribute('aria-pressed', String(b.dataset.lib === tab)));
-    const body = $('library-body');
-    body.replaceChildren();
-    if (tab === 'continue') {
-      const c = Store.inProgress(100);
-      if (!c.length) { body.append(stateBox('empty', { text: LIBRARY_EMPTY.continue, action: BROWSE })); return; }
-      body.append(episodeList(c, { showSeries: true }));
-    } else if (tab === 'queue') {
-      const q = Store.queue();
-      if (!q.length) { body.append(stateBox('empty', { text: LIBRARY_EMPTY.queue, action: BROWSE })); return; }
-      const ul = el('ul', { class: 'ep-list' });
-      q.forEach((ep, i) => {
-        const row = episodeRow(ep, { showSeries: true });
-        const tools = el('div', { class: 'row-tools' },
+  /** A section of a side: its heading, an optional "All N" link, its contents. */
+  function libSection(id, title, more, ...kids) {
+    return el('section', { class: 'block lib-section', 'aria-labelledby': `${id}-h` },
+      el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: `${id}-h` }, title),
+        more ? el('a', { class: 'btn btn-ghost', href: more.href }, more.label) : null),
+      ...kids);
+  }
+  /** One line that opens a place: its name, its count or state, a chevron. */
+  function libLine(label, value, href) {
+    return el('a', { class: 'lib-line', href },
+      el('span', { class: 'body-strong lib-label' }, label),
+      value ? el('span', { class: 'caption lib-value tabular' }, value) : null,
+      icon('chev'));
+  }
+  /** A whole list's page inside Library: the way back, its heading, then its rows. */
+  function libPage(body, side, title, ...kids) {
+    body.replaceChildren(
+      el('a', { class: 'btn btn-ghost lib-back', href: `?view=library&side=${side}` }, icon('back'), 'Library'),
+      el('h2', { class: 'section-header lib-page-h', id: 'lib-page-h', tabindex: '-1' }, title),
+      ...kids);
+  }
+
+  /** Up next: the started episodes, then the queue in the person's order (an episode already started shown once). */
+  function upNextList(limit) {
+    const started = Store.inProgress(100);
+    const seen = new Set(started.map(e => e.id));
+    const q = Store.queue();
+    const all = [...started.map(ep => ({ ep })), ...q.filter(e => !seen.has(e.id)).map(ep => ({ ep, queued: true }))];
+    const ul = el('ul', { class: 'ep-list' });
+    for (const x of all.slice(0, limit)) {
+      const row = episodeRow(x.ep, { showSeries: true });
+      if (x.queued) {
+        const ep = x.ep;
+        const i = q.findIndex(e => e.id === ep.id);
+        row.classList.add('ep-row-queue');
+        row.append(el('div', { class: 'row-tools' },
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': `Move ${epTitle(ep)} up`, disabled: i === 0,
                          onclick: () => { Store.moveInQueue(ep.id, -1); route(); } }, icon('up')),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': `Move ${epTitle(ep)} down`,
                          disabled: i === q.length - 1, onclick: () => { Store.moveInQueue(ep.id, 1); route(); } }, icon('down')),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': `Remove ${epTitle(ep)} from queue`,
-                         onclick: () => { Store.dequeue(ep.id); announce('Removed from queue'); route(); } }, icon('remove')));
-        row.classList.add('ep-row-queue');
-        row.append(tools);
-        ul.append(row);
+                         onclick: () => { Store.dequeue(ep.id); announce('Removed from queue'); route(); } }, icon('remove'))));
+      }
+      ul.append(row);
+    }
+    paintProgress(ul);
+    return { ul, total: all.length };
+  }
+
+  function renderListening(body) {
+    const up = upNextList(UP_NEXT_ROWS);
+    const follows = Store.follows();
+    const hist = Store.history();
+    const out = [];
+    if (up.total) {
+      out.push(libSection('lib-upnext', 'Up next',
+        up.total > UP_NEXT_ROWS ? { label: `All ${num.format(up.total)}`, href: '?view=library&side=listen&list=upnext' } : null, up.ul));
+    }
+    if (follows.length) out.push(shelf('Shows you follow', follows, 'lib-follow'));
+    if (hist.length) {
+      out.push(el('div', { class: 'lib-lines' },
+        libLine('History', plural(hist.length, 'episode', 'episodes'), '?view=library&side=listen&list=history')));
+    }
+    if (!out.length) out.push(stateBox('empty', { text: 'Episodes you start, queue or follow wait here.', action: BROWSE }));
+    body.replaceChildren(...out);
+  }
+
+  async function renderMaking(body, my) {
+    body.replaceChildren(stateBox('loading'));
+    let d;
+    try {
+      d = await PlaysUI.making(playsHelpers);
+    } catch (err) {
+      if (my !== libToken) return;
+      body.replaceChildren(stateBox(problem(err), { retry: () => renderMaking(body, my) }));
+      console.error(err);
+      return;
+    }
+    if (my !== libToken) return;
+    const out = [];
+    if (d.seats.length) {
+      out.push(libSection('lib-waiting', 'Waiting on you', null,
+        el('div', { class: 'lib-lines' }, ...d.seats.map(s => libLine('Your parts', s.label || null, '?read-room=parts')))));
+    }
+    if (d.plays.length) {
+      const ul = el('ul', { class: 'play-list' });
+      for (const p of d.plays) {
+        const text = [el('span', { class: 'body-strong' }, p.title), el('span', { class: 'caption' }, p.state)];
+        if (p.href) { ul.append(el('li', { class: 'play-row' }, el('a', { class: 'play-link', href: p.href }, ...text))); continue; }
+        const status = el('span', { class: 'caption refusal', role: 'alert' });
+        ul.append(el('li', { class: 'play-row' },
+          el('button', { type: 'button', class: 'play-link play-remote', onclick: () => PlaysUI.openShared(p.remote, status) }, ...text), status));
+      }
+      out.push(libSection('lib-productions', 'Productions', null, ul));
+    }
+    const marked = typeof MarksCore !== 'undefined' ? MarksCore.scripts(localStorage) : [];
+    if (marked.length) {
+      out.push(el('div', { class: 'lib-lines' },
+        libLine('Marks', `In ${plural(marked.length, 'script', 'scripts')}`, '?view=library&side=make&list=marks')));
+    }
+    const cls = d.classes ? [...(d.classes.teaching || []).map(c => ({ c, teach: true })), ...(d.classes.member_of || []).map(c => ({ c }))] : [];
+    if (cls.length) {
+      out.push(libSection('lib-classes', 'Classes', null, el('div', { class: 'lib-lines' }, ...cls.map(({ c, teach }) =>
+        libLine(c.name, teach && c.under13 && !c.school_consent ? 'Waits for the school’s consent' : null,
+          teach ? `?class=${encodeURIComponent(c.id)}` : '?read-room=parts')))));
+    }
+    if (!out.length) {
+      out.push(stateBox('empty', { text: 'Plays you record, parts you take and classes you join wait here.',
+                                   action: { label: 'Record a play', href: '?view=record' } }));
+    }
+    body.replaceChildren(...out);
+  }
+
+  /** The foot (§4.7): Account, Voices (disclosed in place, §4.11a), Listen together, Export, About. */
+  const voicesMore = $('voices-more');
+  voicesMore.addEventListener('toggle', () => {
+    if (voicesMore.open) { if (!$('voices').firstChild) VoiceSettings.mount($('voices')); return; }
+    VoiceSettings.leave();
+    $('voices').replaceChildren();
+    $('voices-state').textContent = VoiceSettings.summary();
+  });
+  function paintFoot(r, arriving) {
+    AccountUI.paintRow($('account-row'));
+    TogetherUI.paintRow($('together-row'));
+    paintExportRow($('export-row'));
+    $('voices-state').textContent = VoiceSettings.summary();
+    const ask = r.p.get('section') === 'voices';
+    if (ask || (voicesMore.open && !arriving)) {
+      voicesMore.open = true;
+      VoiceSettings.mount($('voices'));
+    } else if (voicesMore.open) {
+      voicesMore.open = false;
+    }
+    if (ask) requestAnimationFrame(() => {
+      voicesMore.scrollIntoView();
+      const h = $('voices-h');
+      if (h) h.focus({ preventScroll: true });
+    });
+  }
+
+  function renderLibrary(r) {
+    setTitle('Library');
+    const my = ++libToken;
+    const arriving = !libraryShown;
+    libraryShown = true;
+    const old = OLD_TAB[r.p.get('tab')] || {};
+    const asked = r.p.get('side');
+    const list = r.p.get('list') || old.list || null;
+    const play = r.p.get('productions');
+    if (asked === 'listen' || asked === 'make') keepSide(asked);
+    const side = onTV() ? 'listen'
+      : asked === 'listen' || asked === 'make' ? asked
+      : old.side || (play || list === 'marks' ? 'make' : storedSide());
+    document.querySelectorAll('#library-sides [data-side]').forEach(b =>
+      b.setAttribute('aria-pressed', String(b.dataset.side === side)));
+    const whole = !!(list || play);
+    $('library-sides').hidden = whole;
+    $('library-foot').hidden = whole;
+    if (!whole) paintFoot(r, arriving);
+    const body = $('library-body');
+    body.replaceChildren();
+    if (play) {
+      const rows = el('div');
+      libPage(body, 'make', 'Productions', rows);
+      PlaysUI.renderMine(rows, playsHelpers, { play, classes: false }).then(() => {
+        const t = rows.querySelector('.play-link .body-strong');
+        if (my === libToken && t) $('lib-page-h').textContent = t.textContent;
       });
-      paintProgress(ul);
-      body.append(ul);
-    } else if (tab === 'history') {
+    } else if (list === 'upnext') {
+      const up = upNextList(Infinity);
+      libPage(body, 'listen', 'Up next', up.total ? up.ul : stateBox('empty', { text: 'Nothing started or queued.', action: BROWSE }));
+    } else if (list === 'history') {
       const h = Store.history();
-      if (!h.length) { body.append(stateBox('empty', { text: LIBRARY_EMPTY.history, action: BROWSE })); return; }
-      body.append(episodeList(h, { showSeries: true }),
+      libPage(body, 'listen', 'History', ...(h.length ? [episodeList(h, { showSeries: true }),
         el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => {
           if (confirm('Clear your listening history and resume points on this device?')) { Store.clearHistory(); route(); }
-        } }, 'Clear history'));
-    } else if (tab === 'dramas') {
-      PlaysUI.renderMine(body, playsHelpers);
+        } }, 'Clear history')] : [stateBox('empty', { text: 'Nothing played yet.', action: BROWSE })]));
+    } else if (list === 'marks') {
+      const marked = typeof MarksCore !== 'undefined' ? MarksCore.scripts(localStorage) : [];
+      libPage(body, 'make', 'Marks', marked.length ? el('ul', { class: 'play-list' }, ...marked.map(m =>
+        el('li', { class: 'play-row' }, el('a', { class: 'play-link', href: `?read=${encodeURIComponent(m.script)}` },
+          el('span', { class: 'body-strong' }, m.title || 'Untitled'),
+          el('span', { class: 'caption' }, plural(m.count, 'mark', 'marks'))))))
+        : stateBox('empty', { text: 'No marks yet.' }));
+    } else if (side === 'make') {
+      renderMaking(body, my);
     } else {
-      const f = Store.follows();
-      if (!f.length) { body.append(stateBox('empty', { text: LIBRARY_EMPTY.following, action: BROWSE })); return; }
-      body.append(el('ul', { class: 'g-grid' }, f.map(showTile)));
+      renderListening(body);
     }
   }
-  $('library-tabs').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-lib]');
-    if (b) navigate(`?view=library&tab=${b.dataset.lib}`, true);
+  $('library-sides').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-side]');
+    if (!b) return;
+    keepSide(b.dataset.side);
+    navigate(`?view=library&side=${b.dataset.side}`, true);
   });
 
   /* ================================================================

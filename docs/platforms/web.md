@@ -49,7 +49,7 @@ the meta tag's `content` to that base URL.
 
 **Routes**: `?view=home|browse|stations|surprise|search|library` (the pre-068 `listen|series|radio|plays` are rewritten to them), `?series={key}`
 (`&season=1948-49|undated`), `?item={episode id}`, `?view=search&q=`,
-`?view=library&tab=queue|history|following`. `404.html` forwards the
+`?view=library&side=listen|make&list=upnext|history|marks&section=voices` (Decision 087; the older `&tab=` still opens). `404.html` forwards the
 path twins `/series/{key}`, `/episode/{id}`, `/search?q=`, `/library`.
 
 **Conventions** (the load-bearing ones; see skills for the rest):

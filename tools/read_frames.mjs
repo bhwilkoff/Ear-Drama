@@ -348,7 +348,7 @@ async function main() {
     if (process.env.T5) { await recordFrames(device); done(); console.log(`${frames.length} frames`); process.exit(0); }
     if (process.env.PRIVACY) { await privacyFrames(device); done(); console.log(`${frames.length} frames`); process.exit(0); }
     const teacher = await device("teacher");
-    await teacher.open("?view=library&tab=dramas");
+    await teacher.open("?view=record");
     await teacher.eval("await win.eval(\"API.account.signIn('google', 'id-token', 'nonce')\"); return true;");
     for (const [w, dark] of process.env.ROOM_ONLY ? [] : [[375, false], [1440, false], [375, true], [1440, true]]) {
       await teacher.open("?class=C1", w, dark, w < 600 ? 1500 : 1100);
@@ -419,7 +419,7 @@ async function main() {
 /** T5: Record in the room, the Takes sheet, names, the refusals, and pairing a TV (PLAYS-DESIGN §12.10). */
 async function recordFrames(device) {
   const teacher = await device("teacher");
-  await teacher.open("?view=library&tab=dramas");
+  await teacher.open("?view=record");
   await teacher.eval("await win.eval(\"API.account.signIn('google', 'id-token', 'nonce')\"); return true;");
   await teacher.open("?class=C1", 1440, false, 900);
   await teacher.click("button", "Start a reading");
@@ -496,7 +496,7 @@ async function recordFrames(device) {
 
   // An adult room: the join page's name; an ended room and an unknown code.
   const host = await device("host");
-  await host.open("?view=library&tab=dramas");
+  await host.open("?view=record");
   const adult = await host.eval(`return await win.eval("API.read.create({ script_id: '${script.id}', script_revision: '${script.revision}', cast: [] }).then((s) => s.code)");`);
   const ann = await device("ann");
   await ann.open(`?read-room=${adult}`, 375, false, 700);
@@ -515,7 +515,7 @@ async function recordFrames(device) {
 /** The student-privacy controls (PLAYS-DESIGN §12.12): what a teacher sees, and the age question. */
 async function privacyFrames(device) {
   const t = await device("teacher");
-  await t.open("?view=library&tab=dramas");
+  await t.open("?view=record");
   await t.eval("await win.eval(\"API.account.signIn('google', 'id-token', 'nonce')\"); return true;");
   const waitFor = async (sel) => {
     for (let i = 0; i < 60; i++) { if (await t.eval(`return !!doc.querySelector(${JSON.stringify(sel)});`)) return; await sleep(250); }
@@ -535,7 +535,7 @@ async function privacyFrames(device) {
     await t.eval("doc.getElementById('cl-auth-ok').checked = true; doc.getElementById('cl-auth-ref').value = 'Lakeview School District, NDPA 2026'; doc.querySelector('.cl-auth').requestSubmit(); return true;");
     await sleep(1200);
     await t.shot("privacy-school-approval-refused");
-    await t.open("?view=library&tab=dramas", w, dark, 1100);
+    await t.open("?view=record", w, dark, 1100);
     await sleep(2000);
     await scrollTo("#classes-h");
     await t.shot("privacy-class-list");

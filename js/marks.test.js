@@ -308,5 +308,15 @@ test('export rows: every play\'s marks with the script and its title, never the 
   eq(M.exportRows({ get length() { throw new Error('blocked'); } }), [], 'blocked storage exports nothing');
 });
 
+test('Library\'s Marks line: the scripts with marks, A to Z, with their counts; never the prefs or an emptied play', () => {
+  const st = fakeStorage();
+  M.save(st, { ...play, id: 'gut-2', title: 'Zed' }, [M.make({ ...play, id: 'gut-2' }, 'L0003', 0, 2, 'note', { note: 'cold' })]);
+  M.save(st, play, [M.make(play, 'L0001', 9, 20, 'highlight'), M.make(play, 'L0003', 0, 2, 'note', { note: 'x' })]);
+  M.save(st, { ...play, id: 'gut-3', title: 'Gone' }, []);
+  M.savePrefs(st, { show: true, hue: 'yellow' });
+  eq(M.scripts(st), [{ script: 'gut-test', title: 'Test', count: 2 }, { script: 'gut-2', title: 'Zed', count: 1 }], 'two scripts, by title');
+  eq(M.scripts({ get length() { throw new Error('blocked'); } }), [], 'blocked storage lists nothing');
+});
+
 console.log(`\n${failures ? 'FAIL' : 'PASS'}: ${passes} passed, ${failures} failed`);
 process.exit(failures ? 1 : 0);
