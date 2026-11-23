@@ -35,6 +35,8 @@ Mechanics:
 - `uptime; memory_pressure | tail -1` first; wait if the 1-minute load is over 8 or free memory under
   20%. One build-heavy agent at a time; `nice -n 15`; gradle `--max-workers=2` then `./gradlew --stop`;
   xcodebuild `-jobs 4`. Prefer CI for lint. Kill only our own leftovers.
+- NEVER run the tap tier or any APP_RESET_* door on the owner's devices unless the build carries b377a936
+  (lists set aside and restored); on 2026-11-23 it erased the owner's lists on the iPhone 12 and Duo.
 - Real devices only, never simulators. Muted; ask before anything audible. Never sleep a device, never
   kill the owner's running app. Check the device lease.
 - Store cadence: after a verified Apple or Android merge, bump, then dispatch
@@ -53,7 +55,7 @@ Mechanics:
   Apple `ClassInbox`/`RelayHub` and Android `RelayAcrossTime.kt`; tests that count asks; PARITY row.
 - [x] **B4 Web voice labels** (e1e27720; real Chrome on the Pixel still to confirm the voiceURI carries the engine id: B5). Browsers that name voices only by locale get measured labels like
   Android's (PLAYS-DESIGN 2.8 rule 12); PARITY ⏳ cleared.
-- [ ] **B5 Library and read-along on devices.** New-user Library on the Pixel (without wiping the
+- [ ] **B5 Library and read-along on devices** (device pass done 2026-11-23; Android door + web fixture running). New-user Library on the Pixel (without wiping the
   owner's data: a second user profile or a DEBUG door) and the Duo; Apple TV frames; run the Library
   UI tests; press read-along pause, step and speed on an Apple device (muted).
 - [ ] **B6 Round 3 leftovers.** Class-room takes end on silence (adult rooms do); Duo Record "Plays"
@@ -90,3 +92,11 @@ store words; radio-script rights rule; GRW request.
   LibrarySides.kt:107 compiler warning (5a8afec7). Next: CI green -> bump + TestFlight + Play; then B5 devices.
 - 2026-11-23 15:48, tick 5: CI green; 1.0.166 (167) bumped (35121322), TestFlight run 45282662411 and Play
   internal run 45282668426 dispatched. B5 device pass running in one agent (muted, leases, no wipes).
+- 2026-11-23 16:20, tick 6: B5 device pass. PASS: new-user Library iPhone 12 + Duo (inner-display frame),
+  Export menu items, Apple TV Library (shared shelf not seen: none shared), 4/4 Library UI tests, read along
+  pause/step/7 speeds/2x pages on iPhone 12 and Duo. Found: tap tier's APP_RESET_USER_STATE ERASED the owner's
+  history/queue/follows on iPhone 12 + Duo (local; server copy if signed in) -> fixed b377a936 (set aside +
+  restore on next launch, test); Export row dead zone, empty-Library Edit button, Apple TV foot centering ->
+  fixed b377a936 (not yet seen on device). Real Chrome on the Pixel has no engine ids: web voices read "US voice"
+  etc. (one per locale). Gaps: Android empty-library door (agent running); Homebrew python3 Pillow broken for
+  tools/ios_uitest.py (use /usr/bin/python3).
