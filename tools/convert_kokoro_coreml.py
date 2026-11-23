@@ -470,10 +470,15 @@ def main():
     if "--check-only" not in sys.argv:
         # 3. One converted function per bucket, merged into one package each (weights stored once).
         common = dict(convert_to="mlprogram", minimum_deployment_target=ct.target.iOS18, compute_precision=cp)
-        if wq == "int8":
-            from coremltools.optimize.coreml import OpLinearQuantizerConfig, OptimizationConfig, linear_quantize_weights
-            qc = OptimizationConfig(global_config=OpLinearQuantizerConfig(mode="linear_symmetric", dtype="int8",
-                                                                           granularity="per_channel", weight_threshold=2048))
+        from coremltools.optimize import coreml as cto
+        if wq == "int8":  # per output channel
+            qc = cto.OptimizationConfig(global_config=cto.OpLinearQuantizerConfig(
+                mode="linear_symmetric", dtype="int8", granularity="per_channel", weight_threshold=2048))
+        elif wq == "int8b":  # per block of 32 input weights (iOS 18): a scale per block, not per channel
+            qc = cto.OptimizationConfig(global_config=cto.OpLinearQuantizerConfig(
+                mode="linear_symmetric", dtype="int8", granularity="per_block", block_size=32, weight_threshold=2048))
+        elif wq == "pal8":  # a 256-entry k-means table per tensor
+            qc = cto.OptimizationConfig(global_config=cto.OpPalettizerConfig(mode="kmeans", nbits=8, weight_threshold=2048))
         meta = {"source": f"https://huggingface.co/{HF}/tree/{REV}", "license": "Apache-2.0",
                 "converter": "tools/convert_kokoro_coreml.py", "precision": precision, "weights": wq}
         parts = os.path.join(work, "parts")
@@ -504,8 +509,10 @@ def main():
                                ct.TensorType("length", shape=(1,), dtype=np.float32)]
                         outs = [ct.TensorType("audio")] + [ct.TensorType(t) for t in TAPS]
                 m = ct.convert(tr, inputs=ins, outputs=outs, **common)
-                if wq == "int8":
-                    m = linear_quantize_weights(m, qc)
+                if wq in ("int8", "int8b"):
+                    m = cto.linear_quantize_weights(m, qc)
+                elif wq == "pal8":
+                    m = cto.palettize_weights(m, qc)
                 p = os.path.join(parts, f"{name}-{key}{b}.mlpackage")
                 m.save(p)
                 desc.add_function(p, src_function_name="main", target_function_name=f"{key}{b}")
