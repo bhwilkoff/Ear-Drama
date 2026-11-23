@@ -16,11 +16,12 @@ class StallWatchdogTest {
         wantsData: (Long) -> Boolean = { true },
         buffered: (Long) -> Long,
         position: (Long) -> Long = { 0 },
+        seeking: (Long) -> Boolean = { false },
     ): Long? {
         val watch = StallWatchdog()
         var t = 0L
         while (t <= endMs) {
-            if (watch.stalled(t, wantsData(t), buffered(t), position(t))) return t
+            if (watch.stalled(t, wantsData(t), buffered(t), position(t), seeking(t))) return t
             t += 500
         }
         return null
@@ -52,5 +53,21 @@ class StallWatchdogTest {
         watch.reset()
         assertEquals(false, watch.stalled(40_000, true, 0, 0))
         assertEquals(true, watch.stalled(70_000, true, 0, 0))
+    }
+
+    @Test fun `a slow seek is never a stall while it is in flight`() {
+        assertNull(firstStall(600_000, buffered = { 0 }, position = { 90_000 }, seeking = { true }))
+    }
+
+    @Test fun `a seek that settles then stalls counts from the settle`() {
+        assertEquals(100_000L, firstStall(200_000, buffered = { 0 }, position = { 90_000 }, seeking = { it < 70_000 }))
+    }
+
+    @Test fun `a seek that never settles in a dead load is still caught after it ends`() {
+        val watch = StallWatchdog()
+        assertEquals(false, watch.stalled(0, true, 0, 0, seeking = true))
+        assertEquals(false, watch.stalled(100_000, true, 0, 0, seeking = true))
+        assertEquals(false, watch.stalled(100_500, true, 0, 0))
+        assertEquals(true, watch.stalled(130_500, true, 0, 0))
     }
 }

@@ -337,8 +337,11 @@ the main thread reads the frames before anything merges. Left: N5, N7 to N10, N1
 - [ ] **N7 Three intermittent checks** (a harness defect, never rerun until green):
   `LayoutSweepUITests/testMiniHome`, `DownloadsPlaceUITests`, and `web_fit_library` (failed 3 of 4 under
   load on 10-31). No fix is in the log for any of them.
-- [ ] **N8 Android's stall watchdog can count a slow seek as a stall.** Fixed on Apple and web
-  2026-10-31; Android has no in-flight seek signal. It was promised a note and got none until now.
+- [x] **N8 Android's stall watchdog can count a slow seek as a stall.** Fixed on Apple and web
+  2026-10-31. Fixed on Android 2026-11-23: `StallWatchdog.stalled(..., seeking)` restarts the count while a
+  seek is in flight; `PlaybackEngine` sets it from Media3's `onPositionDiscontinuity(DISCONTINUITY_REASON_SEEK)`
+  while BUFFERING and clears it on the next state change out of BUFFERING; three `StallWatchdogTest` cases
+  seen failing first.
 - [ ] **N12 The tap tier tests the same two shows.** Owner, 2026-11-04: "It seems to me that it is running
   the same things over and over." `Fixture` pins X Minus One and Hopalong Cassidy, so every run walks the
   same pages (the vary-test-content rule). Pick shows from the live catalog per run: rich, bare, no

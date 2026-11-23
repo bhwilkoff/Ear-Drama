@@ -14,12 +14,15 @@ class StallWatchdog {
 
     /**
      * One look at the player. [wantsData]: play-when-ready and buffering from the network.
-     * [bufferedMs] is Media3's buffered position; [positionMs] the playhead.
+     * [bufferedMs] is Media3's buffered position; [positionMs] the playhead. [seeking]: a seek is
+     * in flight (from the seek until the player is READY again). The position is parked on its
+     * target while a new range loads, so a slow seek is not a stall; the count starts over when
+     * it settles.
      */
-    fun stalled(nowMs: Long, wantsData: Boolean, bufferedMs: Long, positionMs: Long): Boolean {
+    fun stalled(nowMs: Long, wantsData: Boolean, bufferedMs: Long, positionMs: Long, seeking: Boolean = false): Boolean {
         val seen = Mark(bufferedMs, positionMs)
-        if (!wantsData || seen != mark) {
-            mark = if (wantsData) seen else null
+        if (!wantsData || seeking || seen != mark) {
+            mark = if (wantsData && !seeking) seen else null
             since = nowMs
             return false
         }

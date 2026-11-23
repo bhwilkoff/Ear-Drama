@@ -216,6 +216,7 @@ class PlaybackEngine(
         override fun onIsLoadingChanged(isLoading: Boolean) = watchForStall()
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState != Player.STATE_BUFFERING) seeking = false
             watchForStall()
             if (playbackState == Player.STATE_READY) recovery?.second?.loaded()
             if (playbackState == Player.STATE_ENDED) {
@@ -246,7 +247,12 @@ class PlaybackEngine(
             newPosition: Player.PositionInfo,
             reason: Int,
         ) {
-            if (reason == Player.DISCONTINUITY_REASON_SEEK) onRoomChange?.invoke()
+            if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+                // Every seek, ours or the session's, lands here; one inside the buffer stays READY
+                // and sends no state change, so only a seek that left READY is in flight.
+                seeking = playerOrNull?.playbackState == Player.STATE_BUFFERING
+                onRoomChange?.invoke()
+            }
         }
 
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
@@ -292,6 +298,7 @@ class PlaybackEngine(
     }
 
     private val stallWatch = StallWatchdog()
+    private var seeking = false
     private var watcher: Job? = null
 
     /**
@@ -308,7 +315,7 @@ class PlaybackEngine(
                 val p = playerOrNull ?: break
                 val network = p.currentMediaItem?.localConfiguration?.uri?.scheme?.startsWith("http") == true
                 val wants = p.playWhenReady && p.playbackState == Player.STATE_BUFFERING && network
-                if (stallWatch.stalled(SystemClock.elapsedRealtime(), wants, p.bufferedPosition, p.currentPosition)) {
+                if (stallWatch.stalled(SystemClock.elapsedRealtime(), wants, p.bufferedPosition, p.currentPosition, seeking)) {
                     if (Log.isLoggable(DIAG_TAG, Log.DEBUG)) {
                         Log.d(DIAG_TAG, "watchdog: stalled ${StallWatchdog.LIMIT_MS / 1000} s, no bytes, no movement; recovering " +
                             "(state ${p.playbackState}, loading ${p.isLoading}, buffered ${p.bufferedPosition}, at ${p.currentPosition})")
