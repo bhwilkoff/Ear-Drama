@@ -60,7 +60,7 @@ Mechanics:
   UI tests; press read-along pause, step and speed on an Apple device (muted).
 - [ ] **B6 Round 3 leftovers** (class-room silence: no product bug, bench mic never spoke, fixed ad9aeabd; left: Duo Record indent and Apple class review on a device). Class-room takes end on silence (adult rooms do); Duo Record "Plays"
   indent; Apple class review screen seen on a device.
-- [ ] **B7 Harness.** N7 three intermittent checks (instrument, never rerun until green); N12 the tap
+- [x] **B7 Harness** (54150de1). N7 three intermittent checks (instrument, never rerun until green); N12 the tap
   tier draws its shows from the data, not the same two.
 - [ ] **B8 Catalog.** N13 remaining raw titles: `tools/catalog_dryrun.sh` on real data first.
 - [ ] **B9 PARITY gaps.** Apple TV share as a QR code; Android Auto library tree beyond the stub.
@@ -108,3 +108,8 @@ store words; radio-script rights rule; GRW request.
   line and fails if Stop is needed (46/46 against a local Worker); 3 web tests (adult, class, never-speaks) with a
   planted class-only mutant caught. Stopped the finished B5 agent's leftover background work (no leases held).
   B7 (N7 + N12) running in one agent; iPhone only with b377a936 in the build.
+- 2026-11-23 17:00, tick 9: B7 merged (54150de1): testMiniHome waits on predicates and pauses the mini (playback
+  past 30 s inserted Continue mid-sweep); DownloadsPlace clears leftover downloads and reveals rows above the tab
+  bar; both 3/3 identical on iPhone 12 (build 167, lists set aside). N12: tools/uitest_fixture.py picks shows by
+  shape per run, seeded and logged. iPhone 12 Library empty after restore: expected, its lists were erased before
+  b377a936. B8 (N13 titles) running; dry run before any publish.

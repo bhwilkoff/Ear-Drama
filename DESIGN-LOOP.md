@@ -362,7 +362,7 @@ the main thread reads the frames before anything merges. Left: N5, N7 to N10, N1
 ### E. Records
 - [ ] **N9 Parity audit.** PARITY shows 7 iPhone ✅ against a 50-test tap tier, and row "Background
   play" still says not seen on a device. Promote what the tap tier proves, nothing more.
-- [ ] **N10 Housekeeping.** Add `.wrangler/` to `.gitignore`. Prune 100 `worktree-agent-*` branches and
+- [x] **N10 Housekeeping** (2026-11-23: .wrangler/ ignored; 187 merged agent branches and 11 clean merged worktrees removed). Add `.wrangler/` to `.gitignore`. Prune 100 `worktree-agent-*` branches and
   10 worktrees (2.6 GB; one is locked), reading each first: two show commits off main, but D3-3 landed
   by another route (90611e6). Confirm the two transcript failures (11-01, 11-02, "nothing came back",
   green since) were archive.org and not ours.
