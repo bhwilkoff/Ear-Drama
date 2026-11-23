@@ -42,11 +42,11 @@ Mechanics:
 
 ## Batches (in order)
 
-- [ ] **B1 Quick fixes** (a, c, d done 2026-11-23; b running). (a) Apple Library foot shows two Export rows: one. (b) N8 Android's stall
+- [x] **B1 Quick fixes** (done 2026-11-23). (a) Apple Library foot shows two Export rows: one. (b) N8 Android's stall
   watchdog counts a slow seek as a stall (fixed on Apple and web; mirror). (c) N10 housekeeping:
   `.wrangler/` in `.gitignore`; prune merged `worktree-agent-*` branches under the worktree rule above.
   (d) SCRATCHPAD Current State brought up to date.
-- [ ] **B2 Worker deploy.** The $0.00 stack Worker changes (SCRATCHPAD "The Worker needs a deploy"),
+- [x] **B2 Worker deploy** (a8982b67, 2026-11-23). The $0.00 stack Worker changes (SCRATCHPAD "The Worker needs a deploy"),
   under the deploy rule above; then watch `wrangler tail` for a minute for errors.
 - [ ] **B3 Relay rules on Apple and Android.** Mirror the web's receiver and sender rules (hidden or idle
   holds no pickup, 30 idle minutes stops, Keep receiving takes, RelayWatch 5-minute empty wait) in
@@ -77,3 +77,6 @@ store words; radio-script rights rule; GRW request.
   read, menu not opened by hand). B1c: .wrangler/ already ignored; 187 merged idle agent branches and 11
   clean merged worktrees removed (locked, dirty and unmerged kept). B1d SCRATCHPAD (47656289). B1b N8
   running in an agent (Sonnet, worktree). B2 waits for load (17.7 during the agent's Gradle run). Disk 94%.
+- 2026-11-23 15:16, tick 2: B1b merged (a491f751: Media3 seek discontinuity while BUFFERING marks a seek in
+  flight; StallWatchdog restarts its count; 3 tests seen failing first; lintRelease clean). B2: Worker suite
+  489/489, no D1 migrations pending, deployed a8982b67, /v1/health 200, a minute of tail with 0 exceptions.
