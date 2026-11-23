@@ -36,6 +36,13 @@ nonisolated struct ExportHistoryFile: Transferable {
 }
 
 struct ExportSection: View {
+    var body: some View {
+        Section { ExportRow() }
+    }
+}
+
+/// The one Export row, for a section of its own (Account) or the Library foot's last group.
+struct ExportRow: View {
     @Environment(ListeningHistory.self) private var history
     @Environment(ListeningQueue.self) private var queue
     @Environment(FollowedSeries.self) private var follows
@@ -44,16 +51,24 @@ struct ExportSection: View {
     @State private var export: DataExport?
 
     var body: some View {
-        Section {
+        Group {
+            // One row, as on Android and the web (R3f shared foot); the two formats are its choices.
             if let export {
-                ShareLink(item: ExportJSONFile(export: export), preview: SharePreview("Ear Drama data")) {
+                Menu {
+                    ShareLink(item: ExportJSONFile(export: export), preview: SharePreview("Ear Drama data")) {
+                        Label("Everything (JSON)", systemImage: "square.and.arrow.up")
+                    }
+                    .accessibilityIdentifier("export-json")
+                    ShareLink(item: ExportHistoryFile(export: export), preview: SharePreview("Ear Drama history")) {
+                        Label("History (CSV)", systemImage: "tablecells")
+                    }
+                    .accessibilityIdentifier("export-csv")
+                } label: {
                     Label("Export my data", systemImage: "square.and.arrow.up")
                 }
-                .accessibilityIdentifier("export-json")
-                ShareLink(item: ExportHistoryFile(export: export), preview: SharePreview("Ear Drama history")) {
-                    Label("Export history (CSV)", systemImage: "tablecells")
-                }
-                .accessibilityIdentifier("export-csv")
+                .menuIndicator(.hidden)
+                .buttonStyle(.borderless)
+                .accessibilityIdentifier("export-menu")
             } else {
                 ProgressView()
             }

@@ -1432,8 +1432,8 @@ struct LibraryScreen: View {
             VoicesFootRow(open: $voicesOpen)
         }
         if voicesOpen { VoicesSection() }
-        ExportSection()
         Section {
+            ExportRow()
             NavigationLink(value: LibraryRoute.about) { Label("About Ear Drama", systemImage: "info.circle") }
         }
     }
