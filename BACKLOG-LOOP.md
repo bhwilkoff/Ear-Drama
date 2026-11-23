@@ -58,7 +58,7 @@ Mechanics:
 - [x] **B5 Library and read-along on devices** (2026-11-23; follow-ups on a device: Pixel empty door, iPhone Export tap area, TV foot alignment). New-user Library on the Pixel (without wiping the
   owner's data: a second user profile or a DEBUG door) and the Duo; Apple TV frames; run the Library
   UI tests; press read-along pause, step and speed on an Apple device (muted).
-- [ ] **B6 Round 3 leftovers.** Class-room takes end on silence (adult rooms do); Duo Record "Plays"
+- [ ] **B6 Round 3 leftovers** (class-room silence: no product bug, bench mic never spoke, fixed ad9aeabd; left: Duo Record indent and Apple class review on a device). Class-room takes end on silence (adult rooms do); Duo Record "Plays"
   indent; Apple class review screen seen on a device.
 - [ ] **B7 Harness.** N7 three intermittent checks (instrument, never rerun until green); N12 the tap
   tier draws its shows from the data, not the same two.
@@ -103,3 +103,8 @@ store words; radio-script rights rule; GRW request.
 - 2026-11-23 16:40, tick 7: Android empty-library door (draws only) + real Chrome 157 voices test merged
   (80a52f91; 78/78 web, lintRelease 0 warnings; also fixed own-locale sort for Chrome's en_US tags). B6 class
   takes end-on-silence running in an agent. Duo is out with the owner: Duo Record indent BLIND today.
+- 2026-11-23 16:55, tick 8: B6 merged (ad9aeabd): class-room takes do end on silence on every stack; the class
+  bench's fake mic (gain 0.0005, under the 0.003 floor) never spoke, so takes stayed open. Bench now speaks per
+  line and fails if Stop is needed (46/46 against a local Worker); 3 web tests (adult, class, never-speaks) with a
+  planted class-only mutant caught. Stopped the finished B5 agent's leftover background work (no leases held).
+  B7 (N7 + N12) running in one agent; iPhone only with b377a936 in the build.
