@@ -2,7 +2,6 @@ package com.example.appname.plays
 
 import android.content.Context
 import android.media.AudioFormat
-import android.os.Build
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
@@ -29,8 +28,7 @@ object VoiceTraitStore {
     private val tried = HashSet<String>()
 
     private fun version(context: Context, engine: String): Long = runCatching {
-        val info = context.packageManager.getPackageInfo(engine, 0)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode.toLong()
+        context.packageManager.getPackageInfo(engine, 0).longVersionCode
     }.getOrDefault(0L)
 
     private fun key(engine: String, version: Long, name: String) = "$engine|$version|$name"
