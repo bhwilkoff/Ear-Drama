@@ -50,6 +50,10 @@ on:
       - '.github/workflows/android-build.yml'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write   # only the -share release step writes (a GitHub Release)
 
@@ -67,7 +71,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # The repository's Actions cache sat at 9.96 of 10 GB (2026-11-23): only main writes it, and
+      # entries this build did not use are cleaned up after a green run.
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-cleanup: on-success
 
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4

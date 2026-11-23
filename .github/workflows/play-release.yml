@@ -66,7 +66,12 @@ jobs:
       # No android-actions/setup-android: on the 2026-10-28 runner image its sdkmanager
       # upgrade stops at "7 of 8 SDK package licenses not accepted" and fails the job
       # (run 40805256910). The preinstalled SDK builds android-build.yml every push.
+      # The repository's Actions cache sat at 9.96 of 10 GB (2026-11-23): only main writes it, and
+      # entries this build did not use are cleaned up after a green run.
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-cleanup: on-success
 
       - uses: actions/setup-python@v5
         with:
