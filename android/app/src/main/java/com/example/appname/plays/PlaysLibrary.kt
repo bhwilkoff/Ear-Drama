@@ -110,6 +110,13 @@ class MixPlayback {
     /** The test door's mute (appname_mute): the file plays in time at zero volume. */
     var muted = false
 
+    /** The read-along's speed (PLAYS-DESIGN 2.11 rule 7); the pitch is kept. Applied as playback starts. */
+    var speed = 1f
+        set(x) {
+            field = x
+            player?.let { p -> if (p.isPlaying) runCatching { p.playbackParams = p.playbackParams.setSpeed(x).setPitch(1f) } }
+        }
+
     val isPlaying: Boolean get() = player?.isPlaying == true
     val durationMs: Int get() = player?.duration ?: 0
     val positionMs: Int get() = player?.currentPosition ?: 0
@@ -132,7 +139,12 @@ class MixPlayback {
 
     fun toggle() {
         val p = player ?: return
-        if (p.isPlaying) p.pause() else p.start()
+        if (p.isPlaying) {
+            p.pause()
+        } else {
+            p.start()
+            if (speed != 1f) runCatching { p.playbackParams = p.playbackParams.setSpeed(speed).setPitch(1f) }
+        }
     }
 
     fun seek(ms: Int) {

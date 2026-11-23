@@ -22,6 +22,9 @@ class LiveListen(private val takesFolder: File, private val speaker: CastSpeaker
     /** The test door's mute (appname_mute): takes play at zero volume (the cast speaker has its own). */
     @Volatile var muted = false
 
+    /** The device's remembered read-along speed (PLAYS-DESIGN 2.11 rules 7 and 10): the TV has no control but plays at it. */
+    @Volatile var speed = 1.0
+
     private val _current = MutableStateFlow<Relay.ListenEntry?>(null)
 
     /** The entry being heard now, for the speaker and words on screen. */
@@ -29,6 +32,7 @@ class LiveListen(private val takesFolder: File, private val speaker: CastSpeaker
 
     /** Runs the plan to its end, or until [stop]; a voice line is skipped when its part has no voice here. */
     suspend fun run(plan: List<Relay.ListenEntry>) {
+        speaker.speed = speed
         try {
             for (entry in plan) {
                 _current.value = entry
@@ -38,12 +42,13 @@ class LiveListen(private val takesFolder: File, private val speaker: CastSpeaker
                 }
             }
         } finally {
+            speaker.speed = 1.0
             _current.value = null
         }
     }
 
     private suspend fun playTake(file: File) {
-        val player = MixPlayback().also { it.muted = muted }
+        val player = MixPlayback().also { it.muted = muted; it.speed = speed.toFloat() }
         playback = player
         try {
             withContext(Dispatchers.Main.immediate) {

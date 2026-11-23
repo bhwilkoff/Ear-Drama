@@ -809,7 +809,10 @@ internal fun ListenThrough(production: Production, script: PlayScript, shared: S
             else -> Button(onClick = {
                 if (container.playback.state.value.isPlaying) container.playback.togglePlay()
                 val cast = voices ?: return@Button
-                val listen = LiveListen(plays.store.takesFolder(production.id), cast.speaker).also { it.muted = muted }
+                val listen = LiveListen(plays.store.takesFolder(production.id), cast.speaker).also {
+                    it.muted = muted
+                    it.speed = com.example.appname.plays.AlongModel.savedSpeed(context.getSharedPreferences("ed.reader", android.content.Context.MODE_PRIVATE))
+                }
                 live = listen
                 liveJob = scope.launch {
                     try {
@@ -895,7 +898,7 @@ private fun LiveListenPanel(listen: LiveListen, script: PlayScript, onStop: () -
 }
 
 /**
- * The read-along panel on a TV (PLAYS-DESIGN §2.11 rule 5, ANDROID-DESIGN §4.17): the line heard with one before and
+ * The read-along panel on a TV (PLAYS-DESIGN §2.11 rule 10, ANDROID-DESIGN §4.17): the line heard with one before and
  * one after, the speaker in the part's hue, "Device voice" on a line the device reads. 28 sp body (the tvOS 29 pt
  * floor), no marks, no recording, never focusable: focus stays on Stop.
  */

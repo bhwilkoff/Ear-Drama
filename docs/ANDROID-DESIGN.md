@@ -824,15 +824,17 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     one **Leave** button holds focus. Fire TV the same (no Play services needed: the room is the Worker's). Not rendered on a real TV yet (Roborazzi at 1920x1080 only).
   - **Read along** (PLAYS-DESIGN §2.11, rewritten 2026-11-23; port from iOS-DESIGN §4.15a): a production's
     Read along opens the reader and starts reading at once; the listen plan's line id drives `follow`; a touch
-    stops the turning and **Back to the line** returns. ⏳ To port: the word heard from
-    `UtteranceProgressListener.onRangeStart` and from Kokoro's per-token durations (`ReadAlong.kt` mirrors
-    `spoken`/`word`/`textWords`/`kokoroWords`/`phonemeWordStarts` against
-    `catalog/tests/golden/read_along_words.json`), drawn on the TextMeasurer page as a hue fill with a 2 dp rule;
-    pages turning when the word reaches a page off screen (the `HorizontalPager`'s `animateScrollToPage`, a cut
-    under Remove animations); Hear the cast as the same read-along; the transport as a bottom `Row` of
-    IconButtons (speaker in hue, previous, play or pause, next, a speed `DropdownMenu` of 0.5x to 2x, stop);
-    Media3 `PlaybackParameters(speed)` for takes and dramas; `ed.along.speed` in the reader's prefs. Also
-    renumber the code comments that cite §2.11 rule 5 (now 10) and rule 6 (now 11). A **finished ear drama's** page
+    stops the turning and **Back to the line** returns. Built 2026-11-23: `AlongModel` plays the plan (takes from
+    file, other lines live in the part's cast voice) and holds the line heard; the word comes from
+    `UtteranceProgressListener.onRangeStart` through `CastSpeaker.onRange` and `ReadAlong.spoken`/`word`
+    (a hue fill and a 2 dp rule on the TextMeasurer page, drawn over the layout so a word never re-measures);
+    a **Kokoro** line lights the line only, because the ONNX export has no duration output (never estimated);
+    the pager turns on the word when a speech runs onto a page not in view (`animateScrollToPage`, a cut under
+    Remove animations; Scroll scrolls the block into view); Hear the cast is the same model; the transport
+    replaces the reader's bottom bar (speaker in hue, previous, play or pause, next, a speed `DropdownMenu` of
+    0.5x to 2x, stop; the page count from 600 dp); `ed.along.speed` in the `ed.reader` prefs; takes at
+    `MediaPlayer` speed with the pitch kept, a finished drama's files at `PlaybackEngine.setSpeed`. A muted
+    door speaks at volume 0 so the engine's callbacks still run. Code comments cite rules 10 and 11. A **finished ear drama's** page
     plays the item's per-line MP3s as one playlist (`PlaybackEngine.playFiles`, rows
     `drama:{id}:{n}`) and offers **Read along** beside Listen when the files map onto the
     script (PLAYS-DESIGN §2.11 rule 11): `Route.Reader(along, drama)`, the row playing being

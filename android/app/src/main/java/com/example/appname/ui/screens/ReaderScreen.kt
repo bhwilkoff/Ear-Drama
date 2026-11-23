@@ -194,13 +194,15 @@ import com.example.appname.plays.chipVoiceName
 import com.example.appname.plays.StudioOpen
 import com.example.appname.plays.ScriptLine
 import com.example.appname.plays.ScriptReading
-import com.example.appname.plays.LiveListen
+import com.example.appname.plays.AlongModel
 import com.example.appname.plays.FinishedList
 import com.example.appname.data.EpisodeRow
 import com.example.appname.ui.PLAY_BOARD
 import com.example.appname.plays.ReadAlong
 import com.example.appname.plays.ReadCore
-import com.example.appname.plays.TableRead
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import com.example.appname.ui.VoicePickerSheet
 import com.example.appname.ui.VoicesSheet
 import com.example.appname.ui.rememberCast
@@ -1138,6 +1140,7 @@ private fun DrawScope.drawSlice(
     lit: Boolean = false,
     studio: StudioPaint? = null,
     marks: MarkLayer? = null,
+    heard: Heard? = null,
 ) {
     val layout = m.text
     val tone = blk.hue ?: ink.accent
@@ -1147,6 +1150,11 @@ private fun DrawScope.drawSlice(
         val up = if (from == 0 && blk.gapEm < GAP_EM) blk.gapEm * ink.bodyPx else ink.pad
         val down = if (blk.speechEnd) ink.pad else 0f
         drawRect(tone.copy(alpha = 0.2f), Offset(0f, top - up), Size(size.width, bottom - top + up + down))
+    }
+    if (heard != null) {
+        val up = if (from == 0 && blk.gapEm < GAP_EM) blk.gapEm * ink.bodyPx else ink.pad
+        val down = if (blk.speechEnd) ink.pad else 0f
+        drawRect(ink.text.copy(alpha = 0.08f), Offset(0f, top - up), Size(size.width, bottom - top + up + down))
     }
     if (tint) {
         val up = if (from == 0 && blk.gapEm < GAP_EM) blk.gapEm * ink.bodyPx else ink.pad
@@ -1185,6 +1193,16 @@ private fun DrawScope.drawSlice(
                 }
             }
         }
+        val wordRange = heard?.word?.let { blk.blkRange(it.start, it.end) }
+        val wordTone = blk.hue ?: ink.text
+        if (wordRange != null) {
+            for (bx in boxesOf(layout, wordRange, from)) {
+                drawRoundRect(
+                    wordTone.copy(alpha = 0.26f), Offset(x0 + bx.left - 1f, shift + layout.getLineTop(bx.line)),
+                    Size(bx.right - bx.left + 2f, layout.getLineBottom(bx.line) - layout.getLineTop(bx.line)), CornerRadius(4f, 4f),
+                )
+            }
+        }
         marks?.sel?.let { r ->
             for (bx in boxesOf(layout, r, from)) {
                 drawRect(
@@ -1194,6 +1212,14 @@ private fun DrawScope.drawSlice(
             }
         }
         drawText(layout, topLeft = Offset(x0, shift))
+        if (wordRange != null) {
+            for (bx in boxesOf(layout, wordRange, from)) {
+                drawRect(
+                    wordTone, Offset(x0 + bx.left, shift + layout.getLineBaseline(bx.line) + ink.bodyPx * 0.14f),
+                    Size(bx.right - bx.left, 2.dp.toPx()),
+                )
+            }
+        }
         m.name?.let { if (from == 0) drawText(it, topLeft = Offset(ink.insetPx, shift)) }
         if (marks != null && !hidden) {
             for (mk in marks.marks) {
@@ -1275,6 +1301,9 @@ private fun DrawScope.drawSlice(
     }
 }
 
+/** The line heard and, inside it, the word heard (PLAYS-DESIGN 2.11 rules 2 and 3): painted over the page, never part of its layout. */
+private class Heard(val line: Int, val word: ReadAlong.Word?)
+
 /** Whose lines are mine: a role (I'm playing), or in a room the exact lines this reader or seat holds (claims, assignment ranges). */
 private class Mine(val role: String?, val lines: Set<Int>?, val lit: Int? = null) {
     fun has(b: Blk) = if (lines != null) b.role != null && b.owner in lines else role != null && b.role == role
@@ -1294,6 +1323,7 @@ private fun PageView(
     hiding: Boolean,
     peeked: Int?,
     flash: Int?,
+    heard: Heard?,
     headPx: Float,
     onPeek: (Int) -> Unit,
     modifier: Modifier,
@@ -1370,6 +1400,7 @@ private fun PageView(
                         hidden = hideable(b, mine, hiding, peeked), flash = b.owner == flash,
                         underline = mine.role != null && b.cueRole == mine.role,
                         lit = mine.lit == b.owner && b.kind != Kind.Heading,
+                        heard = heard?.takeIf { it.line == b.owner },
                         studio = studio,
                         marks = MarkLayer(if (ui.model.show) ui.model.byLine[flow.ids[b.owner]].orEmpty() else emptyList(), selRange(sel, seg.block, b.text.length), selTint),
                     )
@@ -1474,7 +1505,7 @@ private fun rememberInk(pal: Palette, flow: ReaderFlow): Ink {
 /** One block in Scroll: the whole of it, its width the column's. */
 @Composable
 private fun ScrollBlock(
-    blk: Blk, index: Int, flow: ReaderFlow, pal: Palette, mine: Mine, hiding: Boolean, peeked: Int?, flash: Boolean, ui: MarkUi, onPeek: (Int) -> Unit,
+    blk: Blk, index: Int, flow: ReaderFlow, pal: Palette, mine: Mine, hiding: Boolean, peeked: Int?, flash: Boolean, heard: Heard?, ui: MarkUi, onPeek: (Int) -> Unit,
 ) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -1517,6 +1548,7 @@ private fun ScrollBlock(
             tint = mine.has(blk) && blk.kind != Kind.Heading, hidden = hidden, flash = flash,
             underline = mine.role != null && blk.cueRole == mine.role,
             lit = mine.lit == blk.owner && blk.kind != Kind.Heading,
+            heard = heard?.takeIf { it.line == blk.owner },
             marks = MarkLayer(if (ui.model.show) ui.model.byLine[flow.ids[blk.owner]].orEmpty() else emptyList(), selRange(sel, index, blk.text.length), selTint),
         )
         if (sel != null) drawHandles(geos, sel, handleColor, handleR, 2.dp.toPx())
@@ -1611,9 +1643,6 @@ internal fun ReaderBody(
     var composing by remember { mutableStateOf<Composing?>(null) }
     val clipboard = androidx.compose.ui.platform.LocalClipboard.current
     var pickingVoice by remember { mutableStateOf<PartID?>(null) }
-    var hearing by remember { mutableStateOf<ScriptLine?>(null) }
-    var hearingOn by remember { mutableStateOf(false) }
-    var hearJob by remember { mutableStateOf<Job?>(null) }
     var pageLabel by remember { mutableStateOf("") }
     val posIndex = remember(posId, script) { script.lines.indexOfFirst { it.id == posId }.coerceAtLeast(0) }
     val mineRole = part?.let { PartID(it).roleName }
@@ -1704,15 +1733,6 @@ internal fun ReaderBody(
     // The studio's panel stands beside the script once the reader has 860 dp, or below the hinge in tabletop (§2.9 rule 7).
     val paneMode = studio != null && (windowWidth >= 860.dp || tabletop)
 
-    fun stopHearing() {
-        hearJob?.cancel()
-        hearJob = null
-        hearingOn = false
-        hearing = null
-        castHandle?.speaker?.cancel()
-    }
-    DisposableEffect(script.id) { onDispose { hearJob?.cancel() } }
-
     /** Goes to a line: the position is that line wherever it falls, and the stage turns to it. */
     fun goTo(index: Int, outline: Boolean) {
         if (index !in script.lines.indices) return
@@ -1728,29 +1748,41 @@ internal fun ReaderBody(
         if (roomFollow.line(cursor).turn) follow(cursor)
     }
 
-    // Read along (PLAYS-DESIGN §2.11): the production's listen-through, the page following the line heard.
+    // Read along (PLAYS-DESIGN 2.11): the production's listen-through, a finished drama, or Hear the cast; one transport,
+    // the page following the line heard and, inside it, the word heard (device voices only).
     val alongMode = alongProduction != null || alongDrama != null
+    val alongPrefs = remember { context.getSharedPreferences("ed.reader", android.content.Context.MODE_PRIVATE) }
+    var alongSpeed by remember { mutableStateOf(AlongModel.savedSpeed(alongPrefs)) }
     var dramaOn by remember { mutableStateOf(false) }
     val alongFollow = remember(script.id) { ReadAlong.Follow() }
+    var alongFollowing by remember { mutableStateOf(true) }
     var alongLine by remember { mutableStateOf<String?>(null) }
-    var backShown by remember { mutableStateOf(false) }
-    var alongListen by remember { mutableStateOf<LiveListen?>(null) }
-    var alongJob by remember { mutableStateOf<Job?>(null) }
+    var alongWord by remember { mutableStateOf<ReadAlong.Word?>(null) }
+    var alongModel by remember { mutableStateOf<AlongModel?>(null) }
+    val alongState = alongModel?.state?.collectAsState()?.value
+    val playbackNow = container.playback.state.collectAsState().value
+    val alongActive = alongModel != null || dramaOn
+    val alongPlaying = if (dramaOn) playbackNow.isPlaying else alongState?.playing == true
+    val backShown = alongActive && alongPlaying && !alongFollowing
+    val hearing: ScriptLine? = if (alongState?.device == true) alongLine?.let { id -> script.lines.firstOrNull { it.id == id } } else null
     fun alongAway() {
-        if (alongMode && alongFollow.following) alongFollow.away()
+        if (alongMode || alongActive) { alongFollow.away(); alongFollowing = false }
         if (room != null && roomFollow.following) { roomFollow.away(); roomAway = true }
+    }
+    fun alongBack() {
+        alongFollowing = true
+        alongFollow.back()?.let { follow(it) }
     }
     fun stopAlong() {
         if (dramaOn) { dramaOn = false; container.playback.stop() }
-        alongJob?.cancel()
-        alongJob = null
-        alongListen?.close()
-        alongListen = null
+        alongModel?.stop()
+        alongModel = null
         alongLine = null
-        backShown = false
-        hearing = null
+        alongWord = null
+        alongFollow.back()
+        alongFollowing = true
     }
-    DisposableEffect(script.id) { onDispose { alongJob?.cancel(); alongListen?.close(); if (dramaOn) container.playback.stop() } }
+    DisposableEffect(script.id) { onDispose { alongModel?.stop(); if (dramaOn) container.playback.stop() } }
     // A finished drama: the file playing is the line heard, the page following it at file boundaries.
     LaunchedEffect(dramaOn) {
         val d = alongDrama ?: return@LaunchedEffect
@@ -1763,26 +1795,28 @@ internal fun ReaderBody(
                 return@collect
             }
             val id = script.lines[seq - 1].id
+            if (id == alongLine) return@collect
             val step = alongFollow.line(id)
             alongLine = id
-            backShown = step.back
+            alongWord = null
             if (step.turn) follow(id)
         }
     }
-    LaunchedEffect(alongListen) {
-        val l = alongListen ?: return@LaunchedEffect
-        l.current.collect { entry ->
-            val step = alongFollow.line(entry?.lineID)
-            alongLine = entry?.lineID
-            backShown = step.back
-            hearing = if (entry is Relay.ListenEntry.Voice) script.lines.firstOrNull { it.id == entry.lineID } else null
-            if (step.turn && entry != null) follow(entry.lineID)
+    LaunchedEffect(alongModel) {
+        val m = alongModel ?: return@LaunchedEffect
+        m.state.collect { s ->
+            alongWord = s.word
+            if (s.line != alongLine) {
+                val step = alongFollow.line(s.line)
+                alongLine = s.line
+                if (step.turn && s.line != null) follow(s.line)
+            }
         }
     }
     fun startDramaAlong(d: DramaAlong) {
         if (container.playback.state.value.isPlaying) container.playback.togglePlay()
         alongFollow.back()
-        backShown = false
+        alongFollowing = true
         val files = d.plan.filter { it.seq > posIndex }.ifEmpty { d.plan }
         dramaOn = true
         haptics(Haptic.Selection)
@@ -1790,6 +1824,20 @@ internal fun ReaderBody(
             files.map { f -> dramaRowId(d.pid, f.seq).let { EpisodeRow(it, it, script.title, null, null, null, script.title, null, PLAY_BOARD) } },
             files.map { it.url },
         )
+        container.playback.setSpeed(alongSpeed.toFloat())
+    }
+
+    fun startModel(plan: List<Relay.ListenEntry>) {
+        val h = castHandle ?: return
+        if (container.playback.state.value.isPlaying) container.playback.togglePlay()
+        alongFollow.back()
+        alongFollowing = true
+        alongModel?.stop()
+        val production = alongProduction?.let { container.plays.store.takesFolder(it) }
+        val model = AlongModel(scope, script, plan, production, h.speaker, muted, alongSpeed, onEnd = { stopAlong() })
+        alongModel = model
+        haptics(Haptic.Selection)
+        model.play(0)
     }
 
     fun startAlong() {
@@ -1797,41 +1845,44 @@ internal fun ReaderBody(
         val h = castHandle ?: return
         val id = alongProduction ?: return
         val production = container.plays.store.production(id) ?: return
-        if (container.playback.state.value.isPlaying) container.playback.togglePlay()
-        alongFollow.back()
-        backShown = false
         val ids = script.lines.drop(posIndex).map { it.id }.toSet()
-        val plan = Relay.listenPlan(production, script) { !it.isSpeaking && h.cast.resolve(it).read }.filter { it.lineID in ids }
-        val listen = LiveListen(container.plays.store.takesFolder(id), h.speaker).also { it.muted = muted }
-        alongListen = listen
-        haptics(Haptic.Selection)
-        alongJob = scope.launch {
-            try {
-                listen.run(plan)
-            } finally {
-                if (alongListen === listen) stopAlong()
-            }
+        startModel(Relay.listenPlan(production, script) { !it.isSpeaking && h.cast.resolve(it).read }.filter { it.lineID in ids })
+    }
+
+    /** Hear the cast: the same read-along over the play's own cast, from the reader's place (rule 1). */
+    fun startHearing() {
+        val h = castHandle ?: return
+        startModel(AlongModel.tablePlan(script, posIndex) { h.cast.resolve(it).read })
+    }
+
+    // Read along starts reading at once, from the reader's place (rule 1).
+    var autoStarted by rememberSaveable(script.id) { mutableStateOf(false) }
+    LaunchedEffect(alongMode, castHandle != null) {
+        if (alongMode && !autoStarted && (alongDrama != null || castHandle != null)) {
+            autoStarted = true
+            startAlong()
         }
     }
 
-    /** Hear the cast: from the first line on the page to the end, each part in its voice, the page following. */
-    fun startHearing() {
-        val h = castHandle ?: return
-        if (container.playback.state.value.isPlaying) container.playback.togglePlay()
-        hearingOn = true
-        haptics(Haptic.Selection)
-        hearJob = scope.launch {
-            try {
-                TableRead(script, h.speaker) { line ->
-                    hearing = line
-                    if (line != null) goTo(script.lines.indexOfFirst { it.id == line.id }, outline = false)
-                }.play(posIndex)
-            } finally {
-                hearingOn = false
-                hearing = null
-                hearJob = null
-            }
+    fun alongPlayPause() {
+        if (dramaOn) {
+            if (container.playback.state.value.isPlaying) container.playback.pause() else container.playback.restartItem()
+        } else {
+            val m = alongModel ?: return
+            if (alongState?.playing == true) m.pause() else m.play()
         }
+        haptics(Haptic.Selection)
+    }
+    fun alongStep(by: Int) {
+        if (dramaOn) container.playback.seekItem(by) else alongModel?.step(by)
+        haptics(Haptic.Selection)
+    }
+    fun alongSetSpeed(x: Double) {
+        alongSpeed = ReadAlong.speed(x)
+        AlongModel.saveSpeed(alongPrefs, alongSpeed)
+        alongModel?.speed = alongSpeed
+        if (dramaOn) container.playback.setSpeed(alongSpeed.toFloat())
+        haptics(Haptic.Selection)
     }
 
     fun myLine(direction: Int) {
@@ -1999,19 +2050,11 @@ internal fun ReaderBody(
                         }
                     }
                 }
-                if ((castHandle != null || alongDrama != null) && alongMode) {
-                    val on = alongListen != null || dramaOn
-                    TextButton(onClick = { if (on) stopAlong() else startAlong() }) {
-                        Icon(if (on) Icons.Filled.Stop else Icons.Filled.PlayArrow, contentDescription = if (on) "Stop" else "Listen through")
-                        if (wide) Text(if (on) "Stop" else "Listen through", Modifier.padding(start = Spacing.S1.dp))
-                    }
-                } else if (castHandle != null) {
-                    TextButton(onClick = { if (hearingOn) stopHearing() else startHearing() }) {
-                        Icon(
-                            if (hearingOn) Icons.Filled.Stop else Icons.Filled.PlayArrow,
-                            contentDescription = if (hearingOn) "Stop" else "Hear the cast",
-                        )
-                        if (wide) Text(if (hearingOn) "Stop" else "Hear the cast", Modifier.padding(start = Spacing.S1.dp))
+                if (castHandle != null || alongDrama != null) {
+                    val label = if (alongMode) "Read along" else "Hear the cast"
+                    TextButton(onClick = { if (alongMode) startAlong() else startHearing() }) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = label)
+                        if (wide) Text(label, Modifier.padding(start = Spacing.S1.dp))
                     }
                 }
                 if (part != null) {
@@ -2041,8 +2084,46 @@ internal fun ReaderBody(
         }
     }
 
+    /** The read-along's transport (rule 6): the speaker, previous line, play or pause, next line, speed, stop. */
+    val transport: @Composable () -> Unit = {
+        val speakerPart = alongLine?.let { id -> script.lines.firstOrNull { it.id == id }?.part }
+        val hue = speakerPart?.let { genreColor(script.partHue(it), dark) } ?: onSurface
+        var speedMenu by remember { mutableStateOf(false) }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = Spacing.S2.dp, vertical = Spacing.S1.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                speakerPart?.title.orEmpty(), Modifier.weight(1f).padding(horizontal = Spacing.S2.dp),
+                style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = hue,
+            )
+            IconButton(onClick = { alongStep(-1) }) { Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous line") }
+            IconButton(onClick = { alongPlayPause() }) {
+                Icon(if (alongPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, contentDescription = if (alongPlaying) "Pause" else "Play")
+            }
+            IconButton(onClick = { alongStep(1) }) { Icon(Icons.Filled.SkipNext, contentDescription = "Next line") }
+            Box {
+                TextButton(onClick = { speedMenu = true }, Modifier.semantics { contentDescription = "Speed ${ReadAlong.speedLabel(alongSpeed)}" }) {
+                    Text(ReadAlong.speedLabel(alongSpeed))
+                }
+                DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
+                    ReadAlong.SPEEDS.forEach { x ->
+                        DropdownMenuItem(
+                            text = { Text(ReadAlong.speedLabel(x)) },
+                            leadingIcon = if (x == alongSpeed) ({ Icon(Icons.Filled.Check, contentDescription = null) }) else null,
+                            onClick = { speedMenu = false; alongSetSpeed(x) },
+                        )
+                    }
+                }
+            }
+            IconButton(onClick = { stopAlong() }) { Icon(Icons.Filled.Stop, contentDescription = "Stop") }
+            if (wide) Text(pageLabel, style = MaterialTheme.typography.bodySmall, color = mutedInk, modifier = Modifier.padding(horizontal = Spacing.S2.dp))
+        }
+    }
+
     val pickVoice: (PartID) -> Unit = { pickingVoice = it }
     val heardIdx = alongLine?.let { id -> script.lines.indexOfFirst { it.id == id }.takeIf { it >= 0 } }
+    val heard = heardIdx?.let { Heard(it, alongWord) }
 
     /** The page: pages (the studio always reads in pages, so a line is whole), or Scroll when no studio is attached. */
     val stage: @Composable () -> Unit = {
@@ -2074,8 +2155,8 @@ internal fun ReaderBody(
                 }
                 f.paged != null -> key(f) {
                     PagesStage(
-                        f, f.paged, posIndex = posIndex, jump = jump, mine = mine, hiding = if (room != null) roomHiding else hiding, peeked = if (roomHiding) peeked ?: roomIdx else peeked, flash = heardIdx ?: flash,
-                        pal = pal, headPx = headPx, animationsOff = animationsOff, turner = turner, haptics = { haptics(Haptic.Selection) },
+                        f, f.paged, posIndex = posIndex, jump = jump, mine = mine, hiding = if (room != null) roomHiding else hiding, peeked = if (roomHiding) peeked ?: roomIdx else peeked, flash = flash,
+                        heard = heard, following = alongFollowing, pal = pal, headPx = headPx, animationsOff = animationsOff, turner = turner, haptics = { haptics(Haptic.Selection) },
                         vertical = vertical, gap = gapPx, ui = ui,
                         onPos = { posId = script.lines[it].id },
                         onPeek = { peeked = it }, onClearPeek = { peeked = null }, onLabel = { pageLabel = it },
@@ -2091,7 +2172,7 @@ internal fun ReaderBody(
                 }
                 else -> key(f) {
                     ScrollStage(
-                        f, posIndex = posIndex, jump = jump, mine = mine, hiding = if (room != null) roomHiding else hiding, peeked = if (roomHiding) peeked ?: roomIdx else peeked, flash = heardIdx ?: flash, pal = pal,
+                        f, posIndex = posIndex, jump = jump, mine = mine, hiding = if (room != null) roomHiding else hiding, peeked = if (roomHiding) peeked ?: roomIdx else peeked, flash = flash, heard = heard, following = alongFollowing, animationsOff = animationsOff, pal = pal,
                         turner = turner, margin = marginPx, vertical = vertical, ui = ui,
                         onPos = { posId = script.lines[it].id }, onPeek = { peeked = it }, onLabel = { pageLabel = it },
                     )
@@ -2121,7 +2202,7 @@ internal fun ReaderBody(
                         }
                     }
                 },
-                navigationIcon = { IconButton(onClick = { stopHearing(); stopAlong(); onBack() }) { Icon(Icons.Filled.Close, contentDescription = "Close") } },
+                navigationIcon = { IconButton(onClick = { stopAlong(); onBack() }) { Icon(Icons.Filled.Close, contentDescription = "Close") } },
                 actions = {
                     if (castHandle != null && room == null) IconButton(onClick = { sheet = "voices" }) { Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Voices") }
                     IconButton(onClick = { sheet = "marks" }) { Icon(Icons.Filled.Bookmark, contentDescription = "Marks") }
@@ -2155,10 +2236,7 @@ internal fun ReaderBody(
                         }
                         if (backShown) {
                             TextButton(
-                                onClick = {
-                                    backShown = false
-                                    alongFollow.back()?.let { follow(it) }
-                                },
+                                onClick = { alongBack() },
                                 Modifier.align(Alignment.CenterHorizontally),
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
@@ -2168,7 +2246,7 @@ internal fun ReaderBody(
                         if (studio != null) {
                             StudioDock(studio, onTakes = { id -> studio.studio.select(id); studio.sheet = true }, onListen = rememberListenAction(studio, castHandle, muted) { follow(it) })
                         }
-                        bar()
+                        if (alongActive) transport() else bar()
                     }
                 }
             }
@@ -2185,7 +2263,7 @@ internal fun ReaderBody(
                         AnimatedPane {
                             Column(Modifier.fillMaxSize()) {
                                 Box(Modifier.weight(1f)) { stage() }
-                                Surface(color = MaterialTheme.colorScheme.surfaceContainer) { Column(Modifier.navigationBarsPadding()) { bar() } }
+                                Surface(color = MaterialTheme.colorScheme.surfaceContainer) { Column(Modifier.navigationBarsPadding()) { if (alongActive) transport() else bar() } }
                             }
                         }
                     },
@@ -2249,6 +2327,20 @@ internal fun ReaderBody(
 /** A beat or a note being written: the selection it is for, or the mark being edited. */
 private class Composing(val kind: String, val pieces: List<Piece>, val editing: Mark?)
 
+/** The spread holding the word heard, when its line runs over more than one page; null when the line sits on one page or the word is not drawn. */
+private fun spreadOfWord(flow: ReaderFlow, paged: ReaderPagination.Paged, h: Heard, measurer: androidx.compose.ui.text.TextMeasurer): Int? {
+    val w = h.word ?: return null
+    if (paged.starts[h.line] == paged.ends[h.line]) return null
+    for ((bi, b) in flow.blocks.withIndex()) {
+        if (b.owner != h.line) continue
+        val r = b.blkRange(w.start, w.end) ?: continue
+        val ln = measureBlk(measurer, flow, b, false).text.getLineForOffset(r.first)
+        val page = paged.pages.indexOfFirst { p -> p.segs.any { it.block == bi && ln >= it.from && ln < it.to } }
+        return if (page < 0) null else page / flow.per
+    }
+    return null
+}
+
 @Composable
 private fun PagesStage(
     flow: ReaderFlow,
@@ -2259,6 +2351,8 @@ private fun PagesStage(
     hiding: Boolean,
     peeked: Int?,
     flash: Int?,
+    heard: Heard?,
+    following: Boolean,
     pal: Palette,
     headPx: Float,
     animationsOff: Boolean,
@@ -2282,6 +2376,17 @@ private fun PagesStage(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val latestPos by rememberUpdatedState(posIndex)
+    val measurer = rememberTextMeasurer()
+
+    // Rule 4: within a long speech the word heard turns the page itself when it reaches one not in view (either page of a spread is in view).
+    LaunchedEffect(heard?.line, heard?.word, following) {
+        val h = heard ?: return@LaunchedEffect
+        if (!following) return@LaunchedEffect
+        val target = spreadOfWord(flow, paged, h, measurer)?.coerceIn(0, spreads - 1) ?: return@LaunchedEffect
+        if (target != pager.currentPage) {
+            if (animationsOff) pager.scrollToPage(target) else pager.animateScrollToPage(target)
+        }
+    }
 
     LaunchedEffect(Unit) {
         var first = true
@@ -2352,7 +2457,7 @@ private fun PagesStage(
             ) {
                 for (k in 0 until per) {
                     PageView(
-                        spread * per + k, paged.pages.getOrNull(spread * per + k), flow, pal, mine, hiding, peeked, flash, headPx, onPeek,
+                        spread * per + k, paged.pages.getOrNull(spread * per + k), flow, pal, mine, hiding, peeked, flash, heard, headPx, onPeek,
                         Modifier.width(with(density) { flow.colPx.toDp() }).fillMaxSize(),
                         ui = ui, studio = studio, onTakes = onTakes, onRing = onRing,
                     )
@@ -2371,6 +2476,9 @@ private fun ScrollStage(
     hiding: Boolean,
     peeked: Int?,
     flash: Int?,
+    heard: Heard?,
+    following: Boolean,
+    animationsOff: Boolean,
     pal: Palette,
     turner: Turner,
     margin: Float,
@@ -2384,6 +2492,14 @@ private fun ScrollStage(
     val scope = rememberCoroutineScope()
     val list = rememberLazyListState(initialFirstVisibleItemIndex = flow.firstBlock.getOrElse(posIndex) { 0 })
     val latestPos by rememberUpdatedState(posIndex)
+    LaunchedEffect(heard?.line, heard?.word, following) {
+        val h = heard ?: return@LaunchedEffect
+        val w = h.word ?: return@LaunchedEffect
+        if (!following) return@LaunchedEffect
+        val at = flow.blocks.indexOfFirst { it.owner == h.line && it.blkRange(w.start, w.end) != null }
+        if (at < 0 || list.layoutInfo.visibleItemsInfo.any { it.index == at }) return@LaunchedEffect
+        if (animationsOff) list.scrollToItem(at) else list.animateScrollToItem(at)
+    }
     LaunchedEffect(jump) {
         if (jump > 0) list.scrollToItem(flow.firstBlock.getOrElse(latestPos) { 0 })
     }
@@ -2417,7 +2533,7 @@ private fun ScrollStage(
         items(flow.blocks.size, key = { it }) { b ->
             val blk = flow.blocks[b]
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                ScrollBlock(blk, b, flow, pal, mine, hiding, peeked, blk.owner == flash, ui, onPeek)
+                ScrollBlock(blk, b, flow, pal, mine, hiding, peeked, blk.owner == flash, heard, ui, onPeek)
             }
         }
     }

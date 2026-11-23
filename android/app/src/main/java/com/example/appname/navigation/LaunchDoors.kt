@@ -26,6 +26,9 @@ sealed interface InboxRequest {
     /** DEBUG door `appname_start_read`: the reader on a play, at [line] when given. */
     data class Read(val id: String, val line: String? = null, val studioPart: String? = null) : InboxRequest
 
+    /** DEBUG door `appname_start_read_along`: a production's reader with its Read along started (PLAYS-DESIGN 2.11 rule 1). */
+    data class ReadAlong(val pid: String) : InboxRequest
+
     /** DEBUG door `appname_start_along`: a finished drama's page with Listen pressed, so its read-along follows the files (a TV too). */
     data class Along(val pid: String) : InboxRequest
 
@@ -73,6 +76,8 @@ data class LaunchDoors(
      * script and the panel steps through its lines on a timer, playing nothing.
      */
     val startAlong: String? = null,
+    /** `appname_start_read_along`: a production's id; its reader opens and reads along at once (muted with the mute door). */
+    val startReadAlong: String? = null,
     /** `appname_start_read_room`: a read room's code. `appname_start_seat` is `<class code>:<seat id or label>`; `appname_start_screen` opens it as the shared screen. */
     val startReadRoom: String? = null,
     val startSeat: String? = null,
@@ -91,6 +96,7 @@ data class LaunchDoors(
             startReadRoom?.let { ReadCore.normalizeCode(it) }?.let { InboxRequest.ReadRoom(it, startScreen, startSeat) },
             if (startReadPair) InboxRequest.ReadPair else null,
             startAlong?.takeIf { it.isNotBlank() }?.let { InboxRequest.Along(alongPid(it)) },
+            startReadAlong?.takeIf { it.isNotBlank() }?.let { InboxRequest.ReadAlong(it) },
             startRead?.let {
                 InboxRequest.Read(
                     it.substringBefore('@'), it.substringAfter('@', "").ifEmpty { null },
@@ -116,6 +122,7 @@ data class LaunchDoors(
         const val EXTRA_STUDIO_STUB = "appname_studio_stub"
         const val EXTRA_STUDIO_PHASE = "appname_studio_phase"
         const val EXTRA_START_ALONG = "appname_start_along"
+        const val EXTRA_START_READ_ALONG = "appname_start_read_along"
         const val EXTRA_START_READ_ROOM = "appname_start_read_room"
         const val EXTRA_START_SEAT = "appname_start_seat"
         const val EXTRA_START_SCREEN = "appname_start_screen"
@@ -152,6 +159,7 @@ data class LaunchDoors(
                 studioStub = extras[EXTRA_STUDIO_STUB].let { it == true || it == "1" || it == "true" },
                 studioPhase = extras[EXTRA_STUDIO_PHASE]?.toString(),
                 startAlong = extras[EXTRA_START_ALONG]?.toString(),
+                startReadAlong = extras[EXTRA_START_READ_ALONG]?.toString(),
                 startReadRoom = extras[EXTRA_START_READ_ROOM]?.toString()?.takeIf { it.isNotBlank() },
                 startSeat = extras[EXTRA_START_SEAT]?.toString()?.takeIf { it.isNotBlank() },
                 startScreen = extras[EXTRA_START_SCREEN].let { it == true || it == "1" || it == "true" },
