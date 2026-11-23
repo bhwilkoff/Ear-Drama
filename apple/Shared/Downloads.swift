@@ -80,25 +80,18 @@ struct DownloadControl: View {
 /// The Downloads place, pushed from Library's one row (iOS-DESIGN §4.8).
 enum DownloadsRoute: Hashable { case place }
 
-/// Library's Downloads row: the count and the storage held, pushing the place.
+/// Library's Downloads row: the count and the storage held, pushing the place. Absent with none.
 /// A bulk download is hundreds of rows, which would bury the rest of Library.
-struct DownloadsSection: View {
+struct DownloadsRow: View {
     @Environment(DownloadStore.self) private var downloads
 
     var body: some View {
-        let records = downloads.records
-        if records.isEmpty {
-            Section("Downloads") { SectionCaption("Downloaded episodes play with no network.") }
-        } else {
-            Section {
-                NavigationLink(value: DownloadsRoute.place) {
-                    LabeledContent {
-                        Text(verbatim: summary(records.count))
-                            .monospacedDigit()
-                    } label: {
-                        Label("Downloads", systemImage: "arrow.down.circle")
-                    }
-                }
+        NavigationLink(value: DownloadsRoute.place) {
+            LabeledContent {
+                Text(verbatim: summary(downloads.records.count))
+                    .monospacedDigit()
+            } label: {
+                Label("Downloads", systemImage: "arrow.down.circle")
             }
         }
     }
