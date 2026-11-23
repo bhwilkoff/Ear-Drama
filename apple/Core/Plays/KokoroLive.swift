@@ -4,8 +4,10 @@ import Foundation
 
 /// A Kokoro line read aloud once, live (PLAYS-DESIGN §5: a scene partner, never a performer): each render is scheduled
 /// on an `AVAudioPlayerNode` as it is made, so the next piece renders while one plays, and dropped once played. Pitch is
-/// the playback rate and the model's speed carries the tempo (`Kokoro.speedFor`), as on Android and the web. Muted (the
-/// test door), nothing reaches an output: the line is rendered and passes in a moment. Writes nothing.
+/// the playback rate and the model's speed carries the tempo (`Kokoro.speedFor`), as on Android and the web. Each piece
+/// is scheduled at a known sample of the node's timeline, so the word heard (`onWord`, PLAYS-DESIGN §2.11 rule 3) is
+/// read from the node's own clock against the duration model's word starts. Muted (the test door), nothing reaches an
+/// output: each piece takes its real length on a wall clock, so the words still move. Writes nothing.
 @MainActor
 final class KokoroLive {
     static let shared = KokoroLive()
@@ -16,27 +18,106 @@ final class KokoroLive {
     private var run = 0
     private var pending = 0
     private var drained: CheckedContinuation<Void, Never>?
+    /// Where the next piece goes on the node's timeline; each scheduled piece's place and timing.
+    private var cursor: AVAudioFramePosition = 0
+    private var placed: [AVAudioFramePosition] = []
+    private var timings: [ReadAlong.KokoroPiece?] = []
+    /// The line's printed words, paired with the phoneme words only when the whole line's counts agree.
+    private var printed: [ReadAlong.Word] = []
+    private var pairs = false
+    private var words: [(at: AVAudioFramePosition, word: ReadAlong.Word)] = []
+    private var mutedEpoch: Date?
+    private var clock: Task<Void, Never>?
 
     init() { engine.attach(node) }
 
     /// True when Kokoro read the line; false when it cannot (the caller then reads it with the system voice).
-    func speak(_ playID: String, _ text: String, voice: String, rate: Double, pitch: Double, muted: Bool) async -> Bool {
+    /// `onWord` hears each word of `DeviceVoices.said(text)` as it is heard (a range of that string), nil at the end.
+    func speak(_ playID: String, _ text: String, voice: String, rate: Double, pitch: Double, muted: Bool,
+               onWord: ((ReadAlong.Word?) -> Void)? = nil) async -> Bool {
         stop()
         run += 1
         let mine = run
         let speed = Kokoro.speedFor(rate: rate, pitch: pitch)
         let playRate = Kokoro.sampleRate * pitch
-        let read = await KokoroReader.shared.renderPieces(playID, text, voice: voice, speed: speed) { [weak self] piece in
+        printed = ReadAlong.textWords(DeviceVoices.said(text))
+        if let onWord { startClock(run: mine, rate: playRate, muted: muted, onWord: onWord) }
+        let read = await KokoroReader.shared.renderPieces(playID, text, voice: voice, speed: speed, onTiming: { [weak self] t, line in
+            await self?.timed(t, line: line, run: mine)
+        }) { [weak self] piece in
             await self?.schedule(piece, rate: playRate, muted: muted, run: mine)
         }
         if read, mine == run { await drain() }
+        if mine == run {
+            clock?.cancel()
+            clock = nil
+            onWord?(nil)
+        }
         return read
+    }
+
+    private func timed(_ t: ReadAlong.KokoroPiece?, line: String, run mine: Int) {
+        guard mine == run else { return }
+        if timings.isEmpty { pairs = !printed.isEmpty && ReadAlong.phonemeWordCount(line) == printed.count }
+        timings.append(t)
+    }
+
+    /// The words of the pieces scheduled so far, on the node's timeline (rule 3: none when a piece has no timing or
+    /// the line's words do not pair).
+    private func layOut() {
+        guard pairs, placed.count <= timings.count else { return }
+        var out: [(AVAudioFramePosition, ReadAlong.Word)] = []
+        for (k, at) in placed.enumerated() {
+            guard let t = timings[k], let starts = ReadAlong.phonemeWordStarts([t]) else {
+                words = []
+                pairs = false
+                return
+            }
+            for s in starts where out.count < printed.count { out.append((at + AVAudioFramePosition(s), printed[out.count])) }
+        }
+        words = out.map { (at: $0.0, word: $0.1) }
+    }
+
+    private func startClock(run mine: Int, rate: Double, muted: Bool, onWord: @escaping (ReadAlong.Word?) -> Void) {
+        clock = Task { [weak self] in
+            var last: ReadAlong.Word?
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(40))
+                guard let self, mine == self.run else { return }
+                guard let now = self.nowSample(rate: rate, muted: muted) else { continue }
+                let heard = self.words.last { $0.at <= now }?.word
+                if heard != last {
+                    last = heard
+                    onWord(heard)
+                }
+            }
+        }
+    }
+
+    private func nowSample(rate: Double, muted: Bool) -> AVAudioFramePosition? {
+        if muted {
+            guard let e = mutedEpoch else { return nil }
+            return AVAudioFramePosition(Date().timeIntervalSince(e) * rate)
+        }
+        guard node.isPlaying, let t = node.lastRenderTime, let p = node.playerTime(forNodeTime: t) else { return nil }
+        return p.sampleTime
     }
 
     private func schedule(_ samples: [Float], rate: Double, muted: Bool, run mine: Int) async {
         guard mine == run else { return }
         if muted {
-            try? await Task.sleep(for: .milliseconds(300))
+            if mutedEpoch == nil { mutedEpoch = Date() }
+            let now = nowSample(rate: rate, muted: true) ?? 0
+            let at = max(cursor, now)
+            cursor = at + AVAudioFramePosition(samples.count)
+            placed.append(at)
+            layOut()
+            pending += 1
+            let wait = Double(cursor - now) / rate
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(wait))
+                self?.played(mine)
+            }
             return
         }
         if format?.sampleRate != rate {
@@ -49,11 +130,18 @@ final class KokoroLive {
         }
         guard let format, let buffer = TakeAudio.buffer(samples, format: format) else { return }
         if !engine.isRunning { try? engine.start() }
+        if !node.isPlaying { node.play() }
+        // A little ahead of the node's clock, so a piece that renders late starts cleanly and its words stay true.
+        let now = nowSample(rate: rate, muted: false) ?? 0
+        let at = max(cursor, now + AVAudioFramePosition(rate * 0.05))
+        cursor = at + AVAudioFramePosition(samples.count)
+        placed.append(at)
+        layOut()
         pending += 1
-        node.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
+        node.scheduleBuffer(buffer, at: AVAudioTime(sampleTime: at, atRate: rate), options: [],
+                            completionCallbackType: .dataPlayedBack) { [weak self] _ in
             Task { @MainActor in self?.played(mine) }
         }
-        if !node.isPlaying { node.play() }
     }
 
     private func played(_ mine: Int) {
@@ -78,6 +166,14 @@ final class KokoroLive {
         run += 1
         pending = 0
         node.stop()
+        clock?.cancel()
+        clock = nil
+        cursor = 0
+        placed = []
+        timings = []
+        words = []
+        pairs = false
+        mutedEpoch = nil
         finish()
     }
 }

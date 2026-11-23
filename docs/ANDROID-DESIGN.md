@@ -813,7 +813,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     inside a speech; the cue before each of my speeches underlined in my hue.
     TalkBack reads each speech as one node: the name, then the words.
   - Not on a TV: Android TV and Fire TV get the read-along panel of
-    tvOS-DESIGN §4.13 (PLAYS-DESIGN §2.11 rule 5), a listen-through panel of
+    tvOS-DESIGN §4.13 (PLAYS-DESIGN §2.11 rule 10), a listen-through panel of
     the line heard with one before and one after, 28 sp body, no focus.
     **A read room's shared screen** (Decision 082, PLAYS-DESIGN §12.2 and §12.10 item 9; built 2026-11-19, Round 3 T5): **Show a reading** is a row in the
     TV's Library (`Route.ReadPair`; also `eardrama://read/pair` and the DEBUG door `appname_start_read_pair`). `ReadPairScreen` asks `POST /v1/read/pair` and shows the
@@ -822,12 +822,20 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     screen: the same panel follows the **room's cursor** (the current line, one before and one after, part names, the room code and how many are here in a corner). The TV never
     asks for typing. It speaks an unheld line only while the leader's Read open parts is on, never during a take; it records nothing, holds no part, never leads;
     one **Leave** button holds focus. Fire TV the same (no Play services needed: the room is the Worker's). Not rendered on a real TV yet (Roborazzi at 1920x1080 only).
-  - **Read along** (PLAYS-DESIGN §2.11): a production's Read along opens the
-    reader in follow mode; the listen plan's line id drives `follow`; a touch
-    stops the turning and **Back to the line** returns. A **finished ear drama's** page
+  - **Read along** (PLAYS-DESIGN §2.11, rewritten 2026-11-23; port from iOS-DESIGN §4.15a): a production's
+    Read along opens the reader and starts reading at once; the listen plan's line id drives `follow`; a touch
+    stops the turning and **Back to the line** returns. ⏳ To port: the word heard from
+    `UtteranceProgressListener.onRangeStart` and from Kokoro's per-token durations (`ReadAlong.kt` mirrors
+    `spoken`/`word`/`textWords`/`kokoroWords`/`phonemeWordStarts` against
+    `catalog/tests/golden/read_along_words.json`), drawn on the TextMeasurer page as a hue fill with a 2 dp rule;
+    pages turning when the word reaches a page off screen (the `HorizontalPager`'s `animateScrollToPage`, a cut
+    under Remove animations); Hear the cast as the same read-along; the transport as a bottom `Row` of
+    IconButtons (speaker in hue, previous, play or pause, next, a speed `DropdownMenu` of 0.5x to 2x, stop);
+    Media3 `PlaybackParameters(speed)` for takes and dramas; `ed.along.speed` in the reader's prefs. Also
+    renumber the code comments that cite §2.11 rule 5 (now 10) and rule 6 (now 11). A **finished ear drama's** page
     plays the item's per-line MP3s as one playlist (`PlaybackEngine.playFiles`, rows
     `drama:{id}:{n}`) and offers **Read along** beside Listen when the files map onto the
-    script (PLAYS-DESIGN §2.11 rule 6): `Route.Reader(along, drama)`, the row playing being
+    script (PLAYS-DESIGN §2.11 rule 11): `Route.Reader(along, drama)`, the row playing being
     the line heard. On a TV the drama page shows `ReadAlongPanel` under Listen.
   - **The studio** (Decision 076 S3; PLAYS-DESIGN §2.9 binding; web sibling
     WEB-DESIGN §4.16 item 14; port spec `docs/research/design/R2-studio-port-brief.md`).

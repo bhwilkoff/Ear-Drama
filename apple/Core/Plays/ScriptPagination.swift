@@ -705,6 +705,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         var outline: Outline = .ink
         /// The read-along's line heard (a script line index), lit for any speaker (PLAYS-DESIGN §2.11).
         var along: Int? = nil
+        /// The word of it heard now, offsets into its `lineText` (rule 2); nil when the voice gives no word timing.
+        var alongWord: ReadAlong.Word? = nil
         /// The take state of each of my lines on the page (the studio).
         var takes: [Int: StudioCore.LineState] = [:]
         /// The device-voice ring on each other part's line the studio marks: its voice's short name.
@@ -963,6 +965,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         }
 
         drawMarkFills(page: page, in: cg, theme: theme, marks: marks)
+        drawWord(page: page, in: cg, theme: theme, marks: marks, hue: hueColor)
 
         var glyph: CGImage?
         for (i, line) in lines.enumerated() {

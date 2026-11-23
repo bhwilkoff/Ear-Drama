@@ -274,7 +274,8 @@ struct FinishedDramaScreen: View {
         }
         #endif
         #if os(tvOS)
-        // The TV's panel follows the files; the phone and Mac follow in the reader.
+        // The TV's panel follows the files at the read-along's speed; the phone and Mac follow in the reader.
+        listen.speed = ReadAlong.savedSpeed()
         await listen.start(archiveURL: play.archiveURL, script: canFollow ? FinishedTiles.script(for: play) : nil, revision: play.scriptRevision)
         #else
         await listen.start(archiveURL: play.archiveURL)
@@ -333,8 +334,15 @@ final class FinishedListen {
 
     private(set) var state: State = .idle
     var muted = false
+    /// The read-along's speed (PLAYS-DESIGN §2.11 rule 7): applied at once, the pitch kept.
+    var speed: Double = 1 {
+        didSet {
+            queue?.defaultRate = Float(speed)
+            if let q = queue, q.rate > 0 { q.rate = Float(speed) }
+        }
+    }
     var isActive: Bool { state == .preparing || state == .playing }
-    /// The script line the file playing speaks (PLAYS-DESIGN 2.11 rule 6); nil while stopped or without a line timeline.
+    /// The script line the file playing speaks (PLAYS-DESIGN 2.11 rule 11); nil while stopped or without a line timeline.
     private(set) var lineID: String?
 
     @ObservationIgnored private var queue: AVQueuePlayer?
@@ -384,9 +392,14 @@ final class FinishedListen {
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
         try? AVAudioSession.sharedInstance().setActive(true)
         #endif
-        let items = files.map { AVPlayerItem(url: $0) }
+        let items = files.map { url in
+            let item = AVPlayerItem(url: url)
+            item.audioTimePitchAlgorithm = .timeDomain
+            return item
+        }
         let q = AVQueuePlayer(items: items)
         q.isMuted = muted
+        q.defaultRate = Float(speed)
         queue = q
         state = .playing
         q.play()

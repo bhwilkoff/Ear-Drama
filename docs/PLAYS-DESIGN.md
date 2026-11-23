@@ -608,60 +608,99 @@ and shows it back; it never proposes a mark, a reading or a note.
 14. **Nothing written by the app**: no suggested mark, no generated note, no "AI coach" (§2.7
     rule 9). Every word in a mark is the person's or the script's.
 
-### §2.11 Read along (Decision 076, "TVs get a read-along panel only"; binding on every platform that listens through)
+### §2.11 Read along (Decision 076, "TVs get a read-along panel only"; rewritten 2026-11-23; binding on every platform that listens through)
 
-The script follows the voice: while a production's Listen through plays, the reader (§2.7)
-lights the line heard. One seam, one clock: the line comes from the **listen plan**
-(`listenPlan`: take or device voice, each entry names its line id), never from a guess at the
-audio; a rendered mix, which has no plan, finds its line by the timeline's placements
-(`ReaderCore.alongLineAt`). The same line id feeds `follow(lineID)` on every platform.
+The owner, 2026-11-23, after TestFlight 1.0.159: *"when you press the read along button, it should highlight
+the words or underline them as they are read. It should also advance the pages as the read along happens.
+Overall we need to update the read along interface. You should be able to control speed and it should be a
+first-rate play reading experience."* Research: `docs/research/design/R3e-read-along.md` (Apple Books Media
+Overlays, Kindle Immersion Reading, Speechify, Voice Dream, time-synced lyrics).
 
-1. **The door**: **Read along** on a production's page (and Made here), beside Listen through.
-   It opens the reader on the production's own copy of the script in follow mode and the
-   listen-through transport takes the place of Hear the cast in the bottom bar. A finished ear
-   drama (DEEP_LINKS "Finished ear drama") offers Read along beside Listen when its audio has
-   a line timeline (rule 6); a single recording with no timings gets the Read door, never a
-   guessed sync.
-2. **Following**: the current line is highlighted with the play typography (the line's speaker
-   in the part's hue); pages turn themselves to the line; the page holds the line in view in
-   Scroll. Takes and cast voices follow alike; a line read by a device voice keeps the
-   "Device voice · PART" strip (§5).
-3. **Turning away**: a swipe, tap, key or scroll on the text stops the turning (the audio goes
-   on) and shows **Back to the line**; that returns to the line now heard and follows again.
-   Nothing is offered while nothing plays. Stop ends the listen-through and the highlight.
-4. **Nothing is written**: no marks are made by the follow, no take, no position other than
-   the reader's usual place. Recording stays out (§2.9): Read along is listening.
-5. **On a TV** (tvOS, Android TV, Fire TV; no reader): a **read-along panel** under the
-   transport while a production's listen-through plays: the line heard with one before and one
-   after (`ReaderCore.alongPanel`), the body at 29 pt or larger (the tvOS floor; Android TV
-   `bodyLarge` at 28 sp is the same size), the speaker's name in the part's hue, "Device voice"
-   beside a line the device reads, inside the title-safe area (5%). No marks, no recording, no
-   Read door, no pages. The panel never takes focus; focus stays on the transport.
+The script follows the voice. Two clocks, both measured: the **line** comes from the listen plan (`listenPlan`:
+take or device voice, each entry names its line id), a finished drama's file playing (rule 11), or a rendered
+mix's timeline (`ReaderCore.alongLineAt`); the **word** comes from the voice's own timing (rule 3). The same line
+id feeds `follow(lineID)` on every platform. Nothing is guessed.
 
-6. **A finished ear drama** (Decision 073: one archive.org item per production, one file per
-   line, named so a retry can only overwrite): the file's name is `NNNN-PART.ext` and `NNNN`
-   is the line's **1-based place in the script** (`fileName` in `worker/src/plays-archive.js`;
-   the cast sheet is the script's lines in order). The clients play the item's line files in
-   order, and the file playing is the line heard, so the timing is exact at file boundaries
-   and needs no durations or guess: web `ReaderCore.dramaPlan` / `dramaListen`, Apple
-   `FinishedDramas.linePlan` + `ReadAlong.line(files:)`, Android `ReadAlong.dramaPlan`
-   (`ArchivePick.lines`). A silent or removed line has no file, so the highlight skips it,
-   never shifts. The numbering holds only for the script revision the lines were recorded
-   against, so the Worker's finished record carries `script_revision` and a client offers
-   Read along only when its own copy of the script has that revision; a Worker that sends
-   none, another revision, a number past the script, one whole recording, or lines still
-   waiting for their MP3 offers no Read along. The door is **Read along** beside Listen on
-   the finished drama's page (web `?read={script id}&finished={production id}&along=1`; iOS,
-   iPadOS and Mac as a reader over the library's script with the item's files as the
-   transport; Android `Route.Reader(along, drama)`); the reader's Listen through plays the
-   files and nothing is written. On a TV (tvOS, Android TV) the drama page's Listen shows the
-   rule 5 panel under it while the files play.
+1. **The doors.** **Read along** on a production's page (and Made here), beside Listen through; **Read along**
+   on a finished ear drama's page when its files map onto the script (rule 11); and the reader's **Hear the
+   cast**, which is the same read-along over the play's own cast (§2.8 rule 2: every line in its part's voice,
+   directions and sound only when given one). Read along opens the reader on the production's own copy of the
+   script (or the library's, for a drama) **and starts reading at once** from the reader's place; Hear the cast
+   starts on its press. One transport (rule 6), one follow, one word mark for all three.
+2. **Two levels lit.** The line heard keeps the soft ink tint across the whole line, whoever speaks. Inside it
+   the **word heard** is marked: a fill in the speaker's part hue at about a quarter strength with a 2 pt rule
+   under the word in the full hue (ink for a direction or a cue). The mark sits on the printed run through the
+   line's `lineText` offsets (§2.7 rules 8 and 10), so a speaker's name, a parenthesis the page adds, a
+   "(cont'd)" head or a hidden line is never marked. It moves without animation (a state, not a transition).
+   Pages and Scroll draw the same mark.
+3. **Word timing is measured, never estimated.** A device voice gives its own word callbacks: Apple
+   `speechSynthesizer(_:willSpeakRangeOfSpeechString:utterance:)`, Android `UtteranceProgressListener.onRangeStart`,
+   the web `SpeechSynthesisUtterance` `boundary` event. The range is in the exact string the voice was given
+   (`said`: the line's said words, italic marks dropped, the ends trimmed) and maps back to `lineText` with
+   `spoken(line)` / `word(spoken, location, length)`. A **Kokoro** line's words come from the duration model's
+   frames per token, which the render already computes: each phoneme word starts at the frames of every token
+   before its first sounding symbol (600 samples a frame at 24 kHz, played at the pitch's rate), and the
+   phoneme words pair with the printed words (`textWords`: runs split at white space and dashes, trimmed to
+   letters and digits) **only when the whole line's counts agree** (`kokoroWords`, `phonemeWordStarts`,
+   `phonemeWordCount`); the playback clock is the audio node's own sample time. Golden cases every stack runs:
+   `catalog/tests/golden/read_along_words.json`. **Human takes and finished dramas have no word timing**, and
+   neither does a line whose counts disagree or a voice that sends no boundaries: the line stays lit and no
+   word is marked. A word is never placed by character counts, durations or an aligner's guess.
+4. **Pages turn themselves.** When the line heard, or within a long speech the word heard, reaches a page not
+   in view (either page of a two-page spread counts as in view), the reader turns to it with the same slide a
+   person's turn makes; Reduce Motion cuts instead. Scroll brings the line heard to the top. A turn the reader
+   makes never counts as a touch.
+5. **Turning away.** A swipe, tap, key or scroll on the text stops the turning (the voice goes on) and shows
+   **Back to the line**, which returns to the line now heard and follows again. Nothing is offered while
+   nothing plays. VoiceOver: the marks never take focus or announce words (the voice is already speaking);
+   the line heard is the element VoiceOver lands on when the person moves into the page.
+6. **The transport** takes the bottom bar while reading along: the **speaker** (the line's printed name in its
+   part's hue), **Previous line**, **Play / Pause**, **Next line**, **Speed** (rule 7), **Stop**, and the page
+   count where the bar has room (regular width, the Mac, the web from 860 px). Icons on a phone, each labeled
+   for accessibility; Play / Pause carries its word from regular width. **Pause holds the line** (still lit);
+   **Play starts that line again from its beginning** (no device voice resumes mid-word on every platform).
+   Previous and Next go to the nearest line the read-along reads (a speech, or a part with a voice) and play
+   from there; paused, they move the held line. Stop ends the reading and the light; Hear the cast's Stop gives
+   the bar back to the reader's own controls. A line a device voice reads keeps the "Device voice · PART" strip
+   above the transport (§5). Keys: Space plays and pauses where the reader holds the keyboard (Mac, web, iPad
+   with a keyboard), Option-Left and Option-Right step a line on the Mac. No other words on screen.
+7. **Speed**: one control, **0.5×, 0.75×, 1×, 1.25×, 1.5×, 1.75×, 2×**, shown as "1.25×". It multiplies each
+   part's own speed, so 1× is the cast as set and a Default part starts from the Library's default Speed
+   (Decision 086). Device voices and Kokoro take a change from their next line; takes and finished dramas take
+   it at once, the pitch kept (Apple AVAudioPlayer `rate` and AVPlayer `defaultRate` with the time-domain pitch
+   algorithm, Android `PlaybackParameters`, the web `playbackRate` with `preservesPitch`). Remembered per
+   device (`ed.along.speed`), never synced; every read-along door and the TV panel's listen use it.
+8. **Not on the lock screen.** The read-along is reading on a screen: closing the reader stops it, and it
+   writes no Now Playing entry (the app's player owns Now Playing).
+9. **Nothing is written**: no marks are made by the follow, no take, no position other than the reader's usual
+   place, and no synthetic sound is kept (§5). Recording stays out (§2.9): Read along is listening.
+10. **On a TV** (tvOS, Android TV, Fire TV; no reader): a **read-along panel** under the transport while a
+   production's listen-through or a finished drama plays: the line heard with one before and one after
+   (`ReaderCore.alongPanel`), the body at 29 pt or larger (the tvOS floor; Android TV `bodyLarge` at 28 sp is
+   the same size), the speaker's name in the part's hue, "Device voice" beside a line the device reads, inside
+   the title-safe area (5%). No word mark (ten feet away the line is the unit), no marks, no recording, no Read
+   door, no pages, no speed control; it plays at the device's remembered speed (rule 7). The panel never takes
+   focus; focus stays on the transport.
+11. **A finished ear drama** (Decision 073: one archive.org item per production, one file per line, named so a
+   retry can only overwrite): the file's name is `NNNN-PART.ext` and `NNNN` is the line's **1-based place in
+   the script** (`fileName` in `worker/src/plays-archive.js`). The clients play the item's line files in order,
+   and the file playing is the line heard, so the timing is exact at file boundaries and needs no durations or
+   guess: web `ReaderCore.dramaPlan` / `dramaListen`, Apple `FinishedDramas.linePlan` + `ReadAlong.line(files:)`,
+   Android `ReadAlong.dramaPlan` (`ArchivePick.lines`). A silent or removed line has no file, so the highlight
+   skips it, never shifts. The numbering holds only for the script revision the lines were recorded against, so
+   the Worker's finished record carries `script_revision` and a client offers Read along only when its own copy
+   of the script has that revision; a Worker that sends none, another revision, a number past the script, one
+   whole recording, or lines still waiting for their MP3 offers no Read along. The door is **Read along** beside
+   Listen on the finished drama's page (web `?read={script id}&finished={production id}&along=1`; iOS, iPadOS
+   and Mac as a reader over the library's script with the item's files as the transport; Android
+   `Route.Reader(along, drama)`). On a TV the drama page's Listen shows the rule 10 panel under it.
 
-The follow logic is tested on each platform against the same cases: the plan's line by index,
-a mix's line by time, turning while following, holding still after a turn-away, and returning
-(`js/reader.test.js`, `ReadAlongTests`, `ReadAlongTest`); a finished drama's file-to-line
-mapping against the same fixtures (`reader.test.js`, `FinishedDramasTests`, `OpenPlaysViewTest`)
-and the Worker's file-number contract (`worker/test/archive.test.js`).
+The follow logic is tested on each platform against the same cases: the plan's line by index, a mix's line by
+time, turning while following, holding still after a turn-away, and returning (`js/reader.test.js`,
+`ReadAlongTests`, `ReadAlongTest`); the word heard against `catalog/tests/golden/read_along_words.json` (a voice
+range onto the printed word, the printed words, Kokoro's word starts and the refusal when counts disagree) and the
+speed steps; a finished drama's file-to-line mapping against the same fixtures (`reader.test.js`,
+`FinishedDramasTests`, `OpenPlaysViewTest`) and the Worker's file-number contract (`worker/test/archive.test.js`).
 
 ### The platform idioms
 

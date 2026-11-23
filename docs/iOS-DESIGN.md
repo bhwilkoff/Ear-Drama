@@ -654,15 +654,26 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   then **Made Here**. The author line is each author's `display` name.
   Pushes `PlayRoute.script` and the cast sheet as before.
 
-- **§4.15a Read along** (PLAYS-DESIGN §2.11 binding; web sibling WEB-DESIGN §4.16a).
-  A production's **Read along** opens the reader in follow mode with Listen through as
-  the bottom bar's transport; `ReadAlong` (Core) maps the listen plan's line id to
-  `ReaderController.follow`; a drag or tap stops the turning and **Back to the line**
-  returns. iPad and Mac share the view; takes and cast voices follow alike. A **finished
-  ear drama's** page adds **Read Along** beside Listen when the item's line files map onto the
-  library script (PLAYS-DESIGN §2.11 rule 6): `StudioTarget.drama` opens the reader on the
-  library's script with `AlongModel(play:)`, whose transport is `FinishedListen` (an
-  `AVQueuePlayer` of the item's line files); the file playing is the line heard.
+- **§4.15a Read along** (PLAYS-DESIGN §2.11 binding, rewritten 2026-11-23; web sibling WEB-DESIGN §4.16a).
+  **Doors**: a production's **Read Along** (`ReadAlongButton`, `StudioTarget.along`) and a finished drama's
+  **Read Along** (`StudioTarget.drama`) open the reader and start reading at once from the reader's place; the
+  reader's **Hear the Cast** makes the same `AlongModel(table:)` over the play's cast. **One model**:
+  `AlongModel` (`apple/Shared/AlongModel.swift`) with three kinds (production, drama, table) over
+  `LiveListenThrough` or `FinishedListen`; `ReadAlong` (Core) holds the pure parts: the line by plan, the
+  follow, `spoken`/`word` (an `AVSpeechSynthesizer` range onto `lineText`), `textWords`, `kokoroWords`, the speed
+  steps. **The word**: `SystemListenSpeaker` passes `willSpeakRangeOfSpeechString`; `KokoroLive` schedules each
+  piece at a known sample of its `AVAudioPlayerNode` and reads the node's `playerTime` every 40 ms against the
+  duration model's word starts (`KokoroReader.renderPieces(onTiming:)`); the page draws it with
+  `ReaderLayout.drawWord` (a hue fill and a 2 pt rule), Scroll with an `AttributedString` run. **Turning**:
+  `alongHeard` turns to a line, `alongWordHeard` turns when the word reaches a page not in the spread; a drag,
+  tap or key stops it and **Back to the Line** returns. **Transport** (`AlongTransport`, the bottom bar): the
+  speaker in the part's hue, Previous Line, Play or Pause, Next Line, the Speed menu ("1×", a Picker of the seven
+  steps), Stop; icons only at compact width (each with its accessibility label), Play / Pause with its word and
+  the page count at regular width (the open Duo, iPad). Speed is `ed.along.speed`; takes play at
+  `AVAudioPlayer.rate`, a drama at `AVQueuePlayer.defaultRate` with `.timeDomain` items. Reduce Motion cuts the
+  slide (`move(toSpread:)`). Seen on the open iPhone Duo 2026-11-23 (muted, Debug): the word moving in the
+  hue on both pages of the spread, a page turning by itself inside a long speech, Kokoro and system voices. **Not built**: VoiceOver landing on the line heard when it moves into the page (rule 5's second half);
+  Scroll marks the word in speeches only (a direction read aloud keeps its line tint).
 - **§4.15 The script reader** (Decision 076 S1; PLAYS-DESIGN §2.7 is binding
   on the verbs, WEB-DESIGN §4.16 is the sibling; port spec
   `docs/research/design/R2-reader-port-brief.md`). **Read** sits beside

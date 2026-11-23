@@ -768,9 +768,19 @@ web app follows today.
   calls `away`, shows **Back to the line** (`.rd-back-line`, under the dock), and
   Back to the line returns and follows again (`ReaderCore.alongFollow`). Frames and
   gate: `tools/web_fit_along.py`. Not on the TV layer (no reader there).
+  ⏳ **2026-11-23 rewrite to port** (PLAYS-DESIGN §2.11; Apple is the reference, iOS-DESIGN §4.15a): Read along
+  starts reading at once; Hear the cast is the same read-along; the word heard from the utterance's `boundary`
+  events (`charIndex`, `charLength` in the string given) and from Kokoro's per-token durations, mapped through
+  `ReaderCore` mirrors of `spoken`/`word`/`textWords`/`kokoroWords` against
+  `catalog/tests/golden/read_along_words.json`, drawn with the CSS Custom Highlight API as a hue fill and rule;
+  the page turning when the word's range sits on a page not in view; the transport in the bottom bar (speaker
+  in hue, previous, play or pause, next, a speed `<select>` of 0.5x to 2x, stop; Space plays and pauses);
+  `playbackRate` with `preservesPitch` for takes and dramas; `ed.along.speed` in `localStorage`. Kokoro's
+  `keyOf` folds two hyphens to a dash and drops leading punctuation (Apple `Kokoro.keyOf`, 2026-11-23) so a
+  line shown through the opening's clean finds its phonemes. Renumber code comments citing §2.11 rule 6 (now 11).
   A **finished ear drama** (`?drama={id}`) offers **Read along** beside Play when its
   item's numbered line files map onto the library script (`?read={script id}&finished={id}&along=1`,
-  PLAYS-DESIGN §2.11 rule 6): `ReaderCore.dramaPlan` names each file's line, and
+  PLAYS-DESIGN §2.11 rule 11): `ReaderCore.dramaPlan` names each file's line, and
   `ReaderCore.dramaListen` plays the files in order as the reader's transport (the same
   handle as `ListenThrough`), the file playing being the line heard.
 - **§4.16 The script reader** (`?read={script id}`; Decision 076, owner

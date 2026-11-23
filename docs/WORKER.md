@@ -535,7 +535,7 @@ uploading, reporting and blocking need an account.
 - **Finished means** the archive job is `published` and at least one line is
   still on the item. The order is a stated rule: newest `published_at` first, ties
   by id descending, never engagement. The cursor is `published_at:id`.
-- **The item's files and the read-along** (PLAYS-DESIGN §2.11 rule 6): the published item
+- **The item's files and the read-along** (PLAYS-DESIGN §2.11 rule 11): the published item
   holds one file per line, `NNNN-PART.wav|flac` (archive.org adds an MP3 of each), where
   `NNNN` is the line's 1-based place in the script (`fileName(seq, ...)`, `seq` the line's
   index in the cast sheet plus one; a test pins it). That number plus `script_revision` is

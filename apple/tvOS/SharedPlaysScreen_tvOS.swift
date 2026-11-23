@@ -201,6 +201,7 @@ struct SharedPlayScreen_tvOS: View {
         fetching = false
         let plan = SharedListen.plan(rec, script: script, files: files)
         live.setCast(.production(rec.id, script: script))
+        live.speed = ReadAlong.savedSpeed()
         await live.run(plan) { folder.appending(path: $0.file) }
     }
 
@@ -220,7 +221,7 @@ struct SharedPlayScreen_tvOS: View {
     }
 }
 
-/// The read-along panel (PLAYS-DESIGN §2.11 rule 5, tvOS-DESIGN §4.13): the line heard with one before and one after,
+/// The read-along panel (PLAYS-DESIGN §2.11 rule 10, tvOS-DESIGN §4.13): the line heard with one before and one after,
 /// the speaker in the part's hue, "Device voice" when the device reads it. Body 29 pt or larger, no marks, no
 /// recording, never focusable: focus stays on the transport.
 struct ReadAlongPanel_tvOS: View {

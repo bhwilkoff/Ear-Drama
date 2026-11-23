@@ -100,8 +100,9 @@ final class ReaderModel {
     /// The room's lines that are mine (any part or range), and the cursor's line index.
     private(set) var roomMine: Set<Int>?
     private(set) var roomCursor: Int?
-    /// The line heard, lit on the page, and whether Back to the Line is offered.
+    /// The line heard, lit on the page, the word of it heard (rule 3), and whether Back to the Line is offered.
     private(set) var alongLine: Int?
+    private(set) var alongWord: ReadAlong.Word?
     private(set) var backToLine = false
     @ObservationIgnored private var follow = ReadAlong.Follow()
     /// A launch door's sheet and page, each taken once (DEBUG doors only).
@@ -171,10 +172,6 @@ final class ReaderModel {
     @ObservationIgnored let defaults: UserDefaults
     /// The play's own cast (`s:<script>`): the Voices sheet edits it and Hear the Cast reads through it (§2.8).
     @ObservationIgnored let voices: VoiceCastModel
-    /// Hear the Cast: the script read aloud from the first line on the page, the page following each line.
-    @ObservationIgnored private(set) lazy var table = TableRead(
-        script: script, speaker: SystemListenSpeaker(cast: voices.cast),
-        onLine: { [weak self] id in if let id { self?.go(to: id) } })
 
     init(script: PlayScript, startLine: String?, door: ReaderDoor? = nil, defaults: UserDefaults = .standard,
          production: String? = nil, studioPart: PartID? = nil) {
@@ -310,8 +307,18 @@ final class ReaderModel {
     func alongHeard(_ id: String?) {
         let step = follow.line(id)
         alongLine = id.flatMap { structure.indexByID[$0] }
+        alongWord = nil
         backToLine = step.back
         if step.turn, let id { go(to: id) }
+    }
+
+    /// The word heard moved (rule 3): draw it, and turn when it reaches a page not in view (a long speech; rule 4).
+    func alongWordHeard(_ word: ReadAlong.Word?) {
+        alongWord = word
+        guard let word, let line = alongLine, follow.following, prefs.layout == .pages, let layout,
+              let page = layout.page(ofWord: word, line: line), let s = spread else { return }
+        let on = (s * per)..<(s * per + per)
+        if !on.contains(page) { move(toSpread: page / per) }
     }
 
     /// A touch on the page: the read-along, or the room, stops turning it.
@@ -529,17 +536,37 @@ final class ReaderModel {
         }
     }
 
-    func hearTheCast() {
-        if table.isPlaying {
-            table.stop()
-        } else {
-            let from = position
-            Task { await table.play(from: from) }
+    /// Hear the Cast (§2.7, §2.11 rule 1): the read-along over the play's own cast, from the first line on the page;
+    /// its transport takes the bottom bar until Stop.
+    func hearTheCast(player: AudioPlayer, muted: Bool) {
+        if let along, along.kind == .table {
+            along.stop()
+            self.along = nil
+            return
         }
+        let made = AlongModel(table: script, cast: voices.cast)
+        along = made
+        _ = follow.back()
+        backToLine = false
+        made.play(from: position, player: player, muted: muted)
+    }
+
+    /// The transport's Stop: ends the reading; Hear the Cast's transport gives the bar back to the reader.
+    func stopAlong() {
+        along?.stop()
+        if along?.kind == .table { along = nil }
+        alongHeard(nil)
     }
 
     /// The speaking parts, largest first, as the I'm Playing menu offers them (sound and directions never).
     var playable: [CastPart] { script.castParts.filter { $0.id.isSpeaking } }
+
+    /// A line's speaker hue (the part's, as the page draws it); muted for a direction or a cue.
+    func hue(of line: ScriptLine) -> Color {
+        guard line.kind == .speech, let role = line.role,
+              let h = structure.speaking.firstIndex(where: { $0.roleName == role }), h < PlayScript.partHues.count else { return Color.brandTextMuted }
+        return Color.genre(PlayScript.partHues[h]) ?? Color.brandTextMuted
+    }
 }
 
 #if os(iOS)
@@ -588,7 +615,7 @@ struct ScriptReaderView: View {
         .task(id: scriptID) { await load() }
         // The loader, not the reader, ends what plays: the reader is rebuilt when the studio moves between the dock and
         // the pane (a fold, a rotation, a resize), and a take or a cast reading goes on through that (Decision 080).
-        .onDisappear { studioModel?.end(); model?.along?.stop(); model?.table.stop() }
+        .onDisappear { studioModel?.end(); model?.along?.stop() }
     }
 
     private func load() async {
@@ -758,9 +785,7 @@ private struct ReaderScreen: View {
                 }
             }
             .clipped()
-            if model.table.isPlaying, let line = model.table.line { hearing(line) }
-            if let along = model.along, along.deviceVoice,
-               let line = model.script.lines.first(where: { $0.id == along.lineID }) { hearing(line) }
+            if let along = model.along, along.deviceVoice, let line = along.line { hearing(line) }
             if model.backToLine { backToLineButton() }
             if let dock { dock }
             #if os(iOS)
@@ -802,6 +827,7 @@ private struct ReaderScreen: View {
         .onChange(of: body17, initial: true) { _, size in model.base = size }
         .repaintsOnVoiceChange(model.voices)
         .onChange(of: model.along?.lineID) { _, id in model.alongHeard(id) }
+        .onChange(of: model.along?.word) { _, w in model.alongWordHeard(w) }
         .onChange(of: studio?.studio.current) { _, id in if let id { model.go(to: id) } }
         .onChange(of: studio?.listen.current?.lineID) { _, id in if let id { model.go(to: id) } }
         .onChange(of: model.room?.snapshot, initial: true) { _, snap in model.roomChanged(snap) }
@@ -823,7 +849,12 @@ private struct ReaderScreen: View {
             }
             if app.readerDoor?.hear == true {
                 app.readerDoor = nil
-                Task { try? await Task.sleep(for: .seconds(1)); model.hearTheCast() }
+                Task { try? await Task.sleep(for: .seconds(1)); model.hearTheCast(player: player, muted: app.isMuted) }
+            }
+            // Read along starts reading as the reader opens (§2.11 rule 1).
+            if let along = model.along, along.startsOnOpen, !along.isActive {
+                along.startsOnOpen = false
+                Task { try? await Task.sleep(for: .milliseconds(600)); along.play(from: model.position, player: player, muted: app.isMuted) }
             }
             if let door = model.doorSheet {
                 model.doorSheet = nil
@@ -889,27 +920,16 @@ private struct ReaderScreen: View {
         } else if let studio { studioBar(studio) } else if let along = model.along { alongBar(along) } else { readerBar }
     }
 
-    /// Read along (§2.11): Listen Through is the transport; Back to the Line shows after a touch turned the page away.
+    /// The read-along's transport (§2.11 rule 6): the speaker heard, previous line, play or pause, next line, speed,
+    /// stop. Icons on a phone, words from regular width; the page count from regular width.
     private func alongBar(_ along: AlongModel) -> some View {
-        HStack(spacing: Spacing.s3) {
-            Button { model.resumeFollowing(); along.toggle(from: model.position, player: player, muted: app.isMuted) } label: {
-                Label(along.isRunning ? "Stop" : "Listen Through", systemImage: along.isRunning ? "stop.fill" : "play.fill")
-            }
-            .labelStyle(HearTheCastLabelStyle())
-            .accessibilityIdentifier("reader-listen-through")
-            Spacer(minLength: 0)
-            Text(verbatim: model.pageLabel)
-                .lineLimit(1)
-                .fixedSize()
-                .layoutPriority(1)
-                .font(TypeRamp.tabular)
-                .foregroundStyle(Color.brandTextMuted)
-                .accessibilityIdentifier("reader-page-label")
-        }
-        .buttonStyle(.bordered)
-        .padding(.horizontal, Spacing.s4)
-        .padding(.vertical, Spacing.s2)
-        .background(Color.brandSurface)
+        AlongTransport(along: along, pageLabel: model.pageLabel, hue: { model.hue(of: $0) },
+                       playPause: {
+                           model.resumeFollowing()
+                           along.togglePlay(position: model.position, player: player, muted: app.isMuted)
+                       },
+                       step: { along.step($0, position: model.position, player: player, muted: app.isMuted) },
+                       stop: { model.stopAlong() })
     }
 
     private func backToLineButton() -> some View {
@@ -981,9 +1001,8 @@ private struct ReaderScreen: View {
                 .labelStyle(.iconOnly)
                 .disabled(model.part == nil)
                 .accessibilityIdentifier("reader-hide")
-            Button { model.hearTheCast() } label: {
-                Label(model.table.isPlaying ? "Stop" : "Hear the Cast",
-                      systemImage: model.table.isPlaying ? "stop.fill" : "play.fill")
+            Button { model.hearTheCast(player: player, muted: app.isMuted) } label: {
+                Label("Hear the Cast", systemImage: "play.fill")
             }
             .labelStyle(HearTheCastLabelStyle())
             .accessibilityIdentifier("reader-hear-cast")
@@ -1192,6 +1211,7 @@ private struct ReaderPageView: View {
         marks.lineIndex = model.structure.indexByID
         marks.selection = model.selection
         marks.along = model.alongLine
+        marks.alongWord = model.alongWord
         if let mine = model.roomMine, let room = model.room {
             marks.mineLines = mine
             if let lit = model.roomCursor {
@@ -1349,7 +1369,8 @@ private struct ReaderLineView: View {
                 if row.cue {
                     cue(row)
                 } else {
-                    Text(attributed(row, hidden: hidden, color: color, cueFrom: r == sp.rows.count - 1 ? cueFrom : nil))
+                    Text(attributed(row, hidden: hidden, color: color, cueFrom: r == sp.rows.count - 1 ? cueFrom : nil,
+                                    word: model.alongLine == index ? model.alongWord : nil))
                         .lineSpacing(size * (model.prefs.lineHeight - 1.2))
                         .padding(.leading, layout.verse && row.indent ? size * 2.5 : 0)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1417,15 +1438,19 @@ private struct ReaderLineView: View {
         .padding(.vertical, size * 0.15)
     }
 
-    private func attributed(_ row: PageRow, hidden: Bool, color: Color, cueFrom: (at: Int, color: Color)?) -> AttributedString {
+    private func attributed(_ row: PageRow, hidden: Bool, color: Color, cueFrom: (at: Int, color: Color)?,
+                            word: ReadAlong.Word? = nil) -> AttributedString {
         var out = AttributedString()
-        func add(_ text: String, _ font: Font, _ ink: Color, hide: Bool = false, underline: Color? = nil) {
+        func add(_ text: String, _ font: Font, _ ink: Color, hide: Bool = false, underline: Color? = nil, heard: Bool = false) {
             guard !text.isEmpty else { return }
             var run = AttributedString(text)
             run.font = font
             run.foregroundColor = hide ? .clear : ink
             if hide { run.backgroundColor = color.opacity(0.3) }
-            if let underline {
+            if heard {
+                run.backgroundColor = color.opacity(0.26)
+                run.underlineStyle = Text.LineStyle(pattern: .solid, color: color)
+            } else if let underline {
                 run.underlineStyle = Text.LineStyle(pattern: .solid, color: underline)
             }
             out.append(run)
@@ -1438,13 +1463,21 @@ private struct ReaderLineView: View {
             previous = r
             if r.said {
                 let font = r.kind == .em ? serif.italic() : serif
-                if let c = cueFrom, r.at + r.text.utf16.count > c.at {
-                    let k = max(0, c.at - r.at)
-                    let ns = r.text as NSString
-                    add(ns.substring(to: k), font, Color.brandText, hide: hidden)
-                    add(ns.substring(from: k), font, Color.brandText, hide: hidden, underline: c.color)
-                } else {
-                    add(r.text, font, Color.brandText, hide: hidden)
+                // Cut the run where the cue's underline starts and around the word heard (rule 2), in lineText offsets.
+                let len = r.text.utf16.count
+                var cuts: Set<Int> = [0, len]
+                if let c = cueFrom { cuts.insert(min(len, max(0, c.at - r.at))) }
+                if let w = word {
+                    cuts.insert(min(len, max(0, w.start - r.at)))
+                    cuts.insert(min(len, max(0, w.end - r.at)))
+                }
+                let ns = r.text as NSString
+                let edges = cuts.sorted()
+                for (a, b) in zip(edges, edges.dropFirst()) where b > a {
+                    let under = cueFrom.flatMap { r.at + a >= $0.at ? $0.color : nil }
+                    let heard = word.map { r.at + a >= $0.start && r.at + b <= $0.end } ?? false
+                    add(ns.substring(with: NSRange(location: a, length: b - a)), font, Color.brandText, hide: hidden,
+                        underline: under, heard: heard && !hidden)
                 }
                 continue
             }
@@ -1453,7 +1486,7 @@ private struct ReaderLineView: View {
             let close = (n == row.runs.count - 1 || row.runs[n + 1].piece != r.piece)
                 && whole.range(of: "[)\\]][.,;:!?]*\\s*$", options: .regularExpression) == nil
             if open { add("(", serif, Color.brandTextMuted) }
-            direction(r.text, italic: r.kind != .plain, names: names, add: add)
+            direction(r.text, italic: r.kind != .plain, names: names, add: { add($0, $1, $2, hide: $3, underline: $4) })
             if close { add(")", serif, Color.brandTextMuted) }
         }
         return out
@@ -1746,7 +1779,8 @@ struct ReaderCommands_macOS: Commands {
             Button("Page Down") { reader?.turn(1) }.keyboardShortcut(.pageDown, modifiers: []).disabled(reader == nil)
             Button("Page Up") { reader?.turn(-1) }.keyboardShortcut(.pageUp, modifiers: []).disabled(reader == nil)
             // In a studio Space is the record control's (the Recording menu).
-            Button("Turn Page") { reader?.turn(1) }.keyboardShortcut(.space, modifiers: []).disabled(reader == nil || reader?.studio != nil)
+            // Space is the read-along's Play and Pause while its transport shows (PLAYS-DESIGN §2.11 rule 6).
+            Button("Turn Page") { reader?.turn(1) }.keyboardShortcut(.space, modifiers: []).disabled(reader == nil || reader?.studio != nil || reader?.along != nil)
             Button("Turn Page Back") { reader?.turn(-1) }.keyboardShortcut(.space, modifiers: .shift).disabled(reader == nil)
             Button("First Page") { reader?.turnToEdge(last: false) }.keyboardShortcut(.home, modifiers: []).disabled(reader == nil)
             Button("Last Page") { reader?.turnToEdge(last: true) }.keyboardShortcut(.end, modifiers: []).disabled(reader == nil)

@@ -67,7 +67,7 @@ nonisolated struct FinishedLine: Equatable, Sendable {
 }
 
 extension FinishedDramas {
-    /// A published drama's line timeline (PLAYS-DESIGN 2.11 rule 6): the item holds one file per line, `0042-PART.wav`,
+    /// A published drama's line timeline (PLAYS-DESIGN 2.11 rule 11): the item holds one file per line, `0042-PART.wav`,
     /// its number the line's 1-based place in the script, so the file playing names the line heard. Nil when the
     /// numbering cannot be vouched for: no revision from the Worker, a script of another revision, a number the script
     /// does not have, or no line files.
