@@ -42,14 +42,135 @@ const VoiceCast = (() => {
   }
 
   /**
+   * Naming a voice the browser names only by its locale (PLAYS-DESIGN §2.8 rule 12). A browser hands a page no
+   * audio, so nothing is measured here: a voice with a name a person can choose by ("Samantha", "Microsoft Aria
+   * Online (Natural)", "Google UK English Female") keeps it; a voice named only by its locale ("English United
+   * States 2", "en-US") is composed from facts in Android's words (android/.../plays/VoiceLabels.kt): "Low, warm
+   * · US" from the numbers Android measured once for Google's US voices when the voice's id carries their engine
+   * code (Android Chrome's `en-us-x-sfg-local`), else "US voice (sfg)" or just "US voice". Exact duplicates (one
+   * name and language twice) and voices left indistinguishable are listed once.
+   */
+  const TRAIT_WORDS = [['tone', ['warm', 'clear', 'bright']], ['range', ['even', 'varied', 'lively']], ['pace', ['quick', 'steady', 'unhurried']]];
+  const SPLIT = 165;
+  const SEED = {
+    'en-us-x-iob-local': { f0: 193.5, range: 1.725, tone: 1752, pace: 4.40 },
+    'en-us-x-iog-local': { f0: 230.8, range: 1.409, tone: 2067, pace: 4.22 },
+    'en-us-x-iol-local': { f0: 140.4, range: 1.775, tone: 2244, pace: 4.24 },
+    'en-us-x-iom-local': { f0: 136.4, range: 1.777, tone: 1931, pace: 4.46 },
+    'en-us-x-sfg-local': { f0: 212.4, range: 1.381, tone: 1810, pace: 4.31 },
+    'en-us-x-tpc-local': { f0: 157.9, range: 1.619, tone: 1898, pace: 4.66 },
+    'en-us-x-tpd-local': { f0: 130.4, range: 1.570, tone: 1825, pace: 4.42 },
+    'en-us-x-tpf-local': { f0: 210.5, range: 1.614, tone: 1701, pace: 4.69 },
+  };
+
+  const band = (f0) => f0 < 115 ? 'Deep' : f0 < 150 ? 'Low' : f0 < 180 ? 'Middle' : f0 < 220 ? 'High' : 'Very high';
+  const tagOf = (lang) => String(lang || '').replace(/_/g, '-');
+  const squash = (x) => String(x || '').toLowerCase().replace(/[^a-z]+/g, ' ').trim();
+  const NUL = '\u0000';
+
+  function displayName(type, code) {
+    try { return new Intl.DisplayNames(['en-US'], { type }).of(code) || ''; } catch (e) { return ''; }
+  }
+  function partsOfTag(lang) {
+    const [lc, ...rest] = tagOf(lang).split('-');
+    return { lc, cc: (rest.find(x => /^[a-z]{2}$/i.test(x)) || '').toUpperCase() };
+  }
+
+  /** "US", "UK", else the region's English name ("Australia"); the language's name when the tag has no region. */
+  function accentOf(lang) {
+    const { lc, cc } = partsOfTag(lang);
+    if (cc === 'US') return 'US';
+    if (cc === 'GB') return 'UK';
+    return cc ? (displayName('region', cc) || cc) : (displayName('language', lc) || tagOf(lang));
+  }
+
+  /** True when the voice's name says nothing but its locale: "English (United States) 2", "en-US", "United States". */
+  function localeNamed(v) {
+    const n = squash(v.name).replace(/ \d+$/, '');
+    if (!n) return true;
+    const { lc, cc } = partsOfTag(v.lang);
+    const lang = squash(displayName('language', lc)), region = squash(cc && displayName('region', cc));
+    const forms = new Set([squash(tagOf(v.lang)), squash(lc)]);
+    if (lang) { forms.add(lang); if (region) forms.add(`${lang} ${region}`); }
+    if (region) forms.add(region);
+    if (cc === 'GB') { forms.add('english uk'); forms.add('english gb'); }
+    if (cc === 'US') forms.add('english us');
+    return forms.has(n);
+  }
+
+  const engineCode = (v) => { const m = /-x-([a-z0-9]+)/i.exec(`${v.voiceURI || ''} ${v.name || ''}`); return m ? m[1].toLowerCase() : ''; };
+  const seedOf = (v) => { const m = /\ben-[a-z]{2}-x-[a-z0-9]+-local\b/i.exec(`${v.voiceURI || ''} ${v.name || ''}`); return m ? SEED[m[0].toLowerCase()] || null : null; };
+  const push = (map, k, x) => { (map.get(k) || map.set(k, []).get(k)).push(x); };
+
+  const minGap = (vals) => {
+    const s = vals.slice().sort((a, b) => a - b);
+    let m = Infinity;
+    for (let i = 1; i < s.length; i++) m = Math.min(m, (s[i] - s[i - 1]) / s[i - 1]);
+    return m === Infinity ? 0 : m;
+  };
+
+  /** Android's `name`: the trait that tells these voices apart best, then the next within each third. */
+  function nameApart(items, left, words) {
+    if (items.length < 2) return;
+    let pick = null, gap = -1;
+    for (const tr of left) { const g = minGap(items.map(x => x.t[tr[0]])); if (g > gap) { gap = g; pick = tr; } }
+    const tied = items.every(x => ['f0', 'range', 'tone', 'pace'].every(k => x.t[k] === items[0].t[k]));
+    if (!pick || tied) { items.forEach(x => push(words, x.id, `(${x.code})`)); return; }
+    const sorted = items.slice().sort((a, b) => (a.t[pick[0]] - b.t[pick[0]]) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    const n = sorted.length, buckets = new Map();
+    sorted.forEach((x, i) => push(buckets, n === 2 ? i * 2 : Math.floor(i * 3 / n), x));
+    for (const [b, members] of buckets) {
+      members.forEach(x => push(words, x.id, pick[1][b]));
+      nameApart(members, left.filter(t => t !== pick), words);
+    }
+  }
+
+  /**
+   * The labels of the browser's voices (SpeechSynthesisVoice objects): { labels: Map(voiceURI-or-name to label),
+   * voices: the ones kept, duplicates left out }. Pure: reads only each voice's name, lang and voiceURI.
+   */
+  function label(voices) {
+    const seen = new Set(), kept = [];
+    for (const v of voices) {
+      const k = `${v.name}${NUL}${tagOf(v.lang).toLowerCase()}`;
+      if (localeNamed(v) || !seen.has(k)) { seen.add(k); kept.push(v); }
+    }
+    const out = new Map(), idOf = (v) => v.voiceURI || v.name;
+    const measured = [];
+    for (const v of kept) {
+      if (!localeNamed(v)) { out.set(idOf(v), v.name); continue; }
+      const t = seedOf(v), code = engineCode(v), acc = accentOf(v.lang);
+      if (t) measured.push({ id: idOf(v), acc, t, code: code || idOf(v) });
+      else out.set(idOf(v), code ? `${acc} voice (${code})` : `${acc} voice`);
+    }
+    const groups = new Map();
+    for (const m of measured) push(groups, `${m.acc}${NUL}${band(m.t.f0)}`, m);
+    for (const [k, group] of groups) {
+      const [acc, reg] = k.split(NUL), words = new Map();
+      nameApart(group, TRAIT_WORDS, words);
+      for (const m of group) {
+        const w = words.get(m.id) || [];
+        out.set(m.id, `${[reg, ...w.filter(x => x[0] !== '(')].join(', ')} · ${acc}${w.filter(x => x[0] === '(').map(x => ' ' + x).join('')}`);
+      }
+    }
+    const taken = new Set();
+    const keep = kept.filter(v => { const l = out.get(idOf(v)); if (taken.has(l)) return false; taken.add(l); return true; });
+    return { labels: out, voices: keep };
+  }
+
+  /** Lower or higher where the voice's own numbers are known (the seed), else null: a fact, never a guess. */
+  const registerOf = (v) => { const t = seedOf(v); return t ? (t.f0 < SPLIT ? 'lower' : 'higher') : null; };
+
+  /**
    * The browser's castable voices, best first: local only (§5 rule 5), English, then by tier,
    * the person's own language, the system default, the name. Each as { engine, id, name, lang, tier, gender }.
    */
   function systemVoices(all, language) {
     const lang = (language || 'en-US').toLowerCase();
-    return (all || []).filter(v => v && v.localService && /^en([-_]|$)/i.test(v.lang || ''))
-      .map(v => ({ engine: 'system', id: v.voiceURI || v.name, name: v.name, lang: v.lang, tier: tierOf(v.name),
-                   gender: genderOf(v), isDefault: !!v.default, raw: v }))
+    const named = label((all || []).filter(v => v && v.localService && /^en([-_]|$)/i.test(v.lang || '')));
+    return named.voices
+      .map(v => ({ engine: 'system', id: v.voiceURI || v.name, name: named.labels.get(v.voiceURI || v.name), lang: v.lang, tier: tierOf(v.name),
+                   gender: genderOf(v), register: registerOf(v), isDefault: !!v.default, raw: v }))
       .sort((a, b) => {
         if (a.tier !== b.tier) return b.tier - a.tier;
         const al = a.lang.toLowerCase() === lang, bl = b.lang.toLowerCase() === lang;
@@ -80,11 +201,11 @@ const VoiceCast = (() => {
       if (!pool.length) { pool = voices.slice(); round += 1; }
       let k = 0;
       if (last) {
-        const j = pool.findIndex(v => v.gender && v.gender !== last);
+        const j = pool.findIndex(v => (v.gender || v.register) && (v.gender || v.register) !== last);
         if (j >= 0) k = j;
       }
       const v = pool.splice(k, 1)[0];
-      if (v.gender) last = v.gender;
+      if (v.gender || v.register) last = v.gender || v.register;
       out[id] = entryOf(v, PITCHES[round % PITCHES.length], rate);
     }
     return out;
@@ -258,7 +379,7 @@ const VoiceCast = (() => {
     return api;
   }
 
-  return { KEY, DEFAULTS_KEY, PITCHES, RATE, PITCH, NOT_READ, tierOf, genderOf, systemVoices, autoCast, resolve, normalize,
+  return { label, accentOf, localeNamed, KEY, DEFAULTS_KEY, PITCHES, RATE, PITCH, NOT_READ, tierOf, genderOf, systemVoices, autoCast, resolve, normalize,
            load, save, forget, productionKey, scriptKey, caster,
            voiceKey, loadDefaults, saveDefaults, normalizeDefaults, usesVoice, ordered, poolOf, move };
 })();
