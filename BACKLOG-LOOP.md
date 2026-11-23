@@ -42,7 +42,7 @@ Mechanics:
 
 ## Batches (in order)
 
-- [ ] **B1 Quick fixes.** (a) Apple Library foot shows two Export rows: one. (b) N8 Android's stall
+- [ ] **B1 Quick fixes** (a, c, d done 2026-11-23; b running). (a) Apple Library foot shows two Export rows: one. (b) N8 Android's stall
   watchdog counts a slow seek as a stall (fixed on Apple and web; mirror). (c) N10 housekeeping:
   `.wrangler/` in `.gitignore`; prune merged `worktree-agent-*` branches under the worktree rule above.
   (d) SCRATCHPAD Current State brought up to date.
@@ -73,3 +73,7 @@ store words; radio-script rights rule; GRW request.
 ## State
 
 - 2026-11-23 14:20: loop started. main at origin/main after 17d31ad7.
+- 2026-11-23 15:10, tick 1: B1a Apple foot one Export row (92006763; built macOS/iOS/tvOS, Mac frame
+  read, menu not opened by hand). B1c: .wrangler/ already ignored; 187 merged idle agent branches and 11
+  clean merged worktrees removed (locked, dirty and unmerged kept). B1d SCRATCHPAD (47656289). B1b N8
+  running in an agent (Sonnet, worktree). B2 waits for load (17.7 during the agent's Gradle run). Disk 94%.
