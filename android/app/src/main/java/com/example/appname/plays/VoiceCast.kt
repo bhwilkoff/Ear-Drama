@@ -18,7 +18,7 @@ import kotlinx.serialization.json.Json
  * Default, worked out at each read (never written) by auto-cast over the device's voice defaults (Settings > Voices,
  * Decision 086): downloaded Kokoro voices first, then the device's own, best first.
  * Auto-cast reads only the voices (quality, the person's language, a gender only where the
- * platform reports one for the VOICE, which Android never does); it never reads a part's name or
+ * platform reports one for the VOICE, which Android never does, else the voice's measured register); it never reads a part's name or
  * the script (§2.8 rule 4). No speech API here: plays/DeviceVoices.kt is the only file that
  * touches TextToSpeech for casting.
  */
@@ -46,6 +46,8 @@ data class RawVoice(
     val networkRequired: Boolean,
     val notInstalled: Boolean,
     val isDefault: Boolean = false,
+    /** A stand-in for the locale's default voice (Android's `en-US-language`), not a speaker of its own (§2.8 rule 12). */
+    val alias: Boolean = false,
 )
 
 /** A castable voice: [id] is the engine's stable name, [name] the label a person reads (never the raw name). */
@@ -61,6 +63,8 @@ data class CastVoice(
     val grade: String? = null,
     /** Kokoro's grades under C- start unticked in the defaults. */
     val offByDefault: Boolean = false,
+    /** Lower or higher, measured from the voice's own pitch where the platform reports no gender (§2.8 rule 12). */
+    val register: String? = null,
 ) {
     /** "engine:id", the key the voice defaults use. */
     val key: String get() = "$engine:$id"
@@ -149,27 +153,25 @@ object VoiceCasting {
     fun scriptKey(id: String) = "s:$id"
 
     /**
-     * The castable voices, best first: English, local only, installed; then quality (500 down to
-     * 100), the person's own locale exactly, the system default, the name. A voice is labelled by
-     * its locale ("English (United States)"), numbered in this order when two share one.
+     * The castable voices, best first: English, local only, installed, no locale alias beside a voice of its own locale;
+     * then quality (500 down to 100), the person's own locale exactly, the system default, the name. A voice is
+     * labeled by what it sounds like, from [traits] (§2.8 rule 12: "Low, warm · US"), never by a number.
      */
-    fun castable(raw: List<RawVoice>, here: Locale = Locale.getDefault()): List<CastVoice> {
+    fun castable(raw: List<RawVoice>, here: Locale = Locale.getDefault(), traits: Map<String, VoiceTraits> = emptyMap()): List<CastVoice> {
         val own = here.toLanguageTag().lowercase()
-        val sorted = raw
-            .filter { !it.networkRequired && !it.notInstalled && languageOf(it.localeTag) == "en" }
+        val usable = raw.filter { !it.networkRequired && !it.notInstalled && languageOf(it.localeTag) == "en" }
+        val named = usable.filter { !it.alias }.map { it.localeTag.lowercase() }.toSet()
+        val sorted = usable
+            .filter { !it.alias || it.localeTag.lowercase() !in named }
             .sortedWith(
                 compareByDescending<RawVoice> { it.quality }
                     .thenByDescending { it.localeTag.replace('_', '-').lowercase() == own }
                     .thenByDescending { it.isDefault }
                     .thenBy { it.name },
             )
-        val shared = sorted.groupingBy { it.localeTag }.eachCount()
-        val seen = HashMap<String, Int>()
+        val labels = VoiceLabels.labels(sorted.map { it.name to it.localeTag }, traits)
         return sorted.map { v ->
-            val n = (seen[v.localeTag] ?: 0) + 1
-            seen[v.localeTag] = n
-            val place = Locale.forLanguageTag(v.localeTag.replace('_', '-')).getDisplayName(Locale.US).ifEmpty { v.localeTag }
-            CastVoice(v.name, if ((shared[v.localeTag] ?: 1) > 1) "$place $n" else place, v.localeTag, v.quality, null, v.isDefault)
+            CastVoice(v.name, labels.getValue(v.name), v.localeTag, v.quality, null, v.isDefault, register = VoiceLabels.register(traits[v.name]))
         }
     }
 
@@ -212,8 +214,8 @@ object VoiceCasting {
 
     /**
      * Auto-cast (§2.8 rule 4). [parts] in cast order (largest first), [voices] best first. Speaking
-     * parts take distinct voices, the best first; where voices report a gender, each next part takes
-     * the best remaining voice of the other one. When voices run out the list starts again at the
+     * parts take distinct voices, the best first; where voices report a gender (else a measured register,
+     * §2.8 rule 12), each next part takes the best remaining voice of the other one. When voices run out the list starts again at the
      * next pitch. Directions and sound are Not read. Reads nothing of a part but its place in the list.
      */
     fun autoCast(parts: List<PartID>, voices: List<CastVoice>, rate: Double = 1.0): Map<PartID, VoiceCastEntry> {
@@ -227,15 +229,17 @@ object VoiceCasting {
             if (pool.isEmpty()) { pool.addAll(voices); round += 1 }
             var k = 0
             if (last != null) {
-                val j = pool.indexOfFirst { it.gender != null && it.gender != last }
+                val j = pool.indexOfFirst { it.kind() != null && it.kind() != last }
                 if (j >= 0) k = j
             }
             val v = pool.removeAt(k)
-            if (v.gender != null) last = v.gender
+            if (v.kind() != null) last = v.kind()
             out[id] = entryOf(v, PITCHES[round % PITCHES.size], clamp(rate, RATE, 1.0))
         }
         return out
     }
+
+    private fun CastVoice.kind(): String? = gender ?: register
 
     private fun clamp(x: Double, r: ClosedFloatingPointRange<Double>, d: Double): Double =
         if (x.isNaN() || x.isInfinite()) d else Math.round(x.coerceIn(r.start, r.endInclusive) * 100) / 100.0
@@ -419,12 +423,19 @@ private val PLACE = Regex("\\(([^)]+)\\)")
 
 /**
  * A voice's name as a chip reads it: a region of several words is its initials ("English (United States) 3" is
- * "English (US) 3"), so the part that tells two voices apart (the number) is still there on a narrow chip and a large font.
+ * "English (US) 3"), and an accent every device voice shares is dropped ("High, lively · US" is "High, lively" when
+ * [soleAccent] is "US"), so the words that tell two voices apart lead a narrow chip at a large font (§2.8 rule 12).
  */
-fun chipVoiceName(name: String): String = PLACE.replace(name) { m ->
-    val words = m.groupValues[1].trim().split(Regex("\\s+"))
-    if (words.size > 1) "(" + words.joinToString("") { it.take(1).uppercase() } + ")" else m.value
+fun chipVoiceName(name: String, soleAccent: String? = null): String {
+    val short = PLACE.replace(name) { m ->
+        val words = m.groupValues[1].trim().split(Regex("\\s+"))
+        if (words.size > 1) "(" + words.joinToString("") { it.take(1).uppercase() } + ")" else m.value
+    }
+    return if (soleAccent != null) short.replace(" · $soleAccent", "") else short
 }
+
+/** The accent every device voice here shares, or null when they differ (the chip then keeps it). */
+fun VoiceCast.soleAccent(): String? = voices().map { VoiceLabels.accent(it.localeTag) }.distinct().singleOrNull()
 
 /** A voice's speed as the chip and picker say it: "1.0×", "1.25×". */
 fun speedText(v: Double): String {

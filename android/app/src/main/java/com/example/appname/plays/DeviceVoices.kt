@@ -58,14 +58,20 @@ class DeviceVoiceSource(context: Context) {
                     networkRequired = it.isNetworkConnectionRequired,
                     notInstalled = TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED in (it.features ?: emptySet()),
                     isDefault = it.name == defaultName,
+                    alias = VoiceTraitStore.ALIAS_FEATURE in (it.features ?: emptySet()),
                 )
             }
         }.getOrDefault(emptyList())
-        val next = VoiceCasting.castable(raw)
+        val engine = runCatching { tts.defaultEngine }.getOrNull().orEmpty()
+        val ids = VoiceCasting.castable(raw).map { it.id }
+        val traits = VoiceTraitStore.known(app, engine, ids)
+        val next = VoiceCasting.castable(raw, traits = traits)
         if (next != list) {
             list = next
             _rev.value += 1
         }
+        val missing = ids.filter { it !in traits }
+        if (missing.isNotEmpty()) VoiceTraitStore.measure(app, engine, missing) { refreshOffMain() }
     }
 
     /** The engine's installer for more voices, or null when no activity answers (the button is then hidden). */

@@ -411,6 +411,40 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    read is read by the part's Default among the device's own voices. Kept on the device
    only, never synced. Where the voices are not downloaded but could be, the cast sheet and
    the reader's Voices carry one quiet **Better voices** that opens Library at Voices.
+12. **A device voice the platform does not name is named from what it sounds like**
+   (owner, 2026-11-23, on Android 1.0.161: *"I was talking about the android voices being
+   named United States #1, United States #2. How does that help people to differentiate
+   them? (Even if they sound different, there is no way to choose a voice based upon a
+   numer instead of a name or description)."*). Where the platform gives a voice a name a
+   person can choose by (Apple's "Samantha", a browser's "Google UK English Female"), that
+   name stays. Where it gives only a code or a locale (Android's `en-us-x-sfg-local`, a
+   browser voice named only "English (United States)"), the label is composed from facts,
+   never invented: no persona, no first name, never a bare number.
+   - **The facts are measured from the voice itself**: each voice reads one fixed
+     sentence once into memory (never a file kept, never played aloud), and only four
+     numbers are kept on the device: its median pitch (f0), its pitch range (the 90th over
+     the 10th percentile), its tone (spectral centroid) and its pace (the sentence's
+     length). A table of numbers measured once for an engine's known voices may stand in
+     for the measurement; any voice outside it is measured on the device. The audio is
+     dropped as soon as it is measured (§5).
+   - **The label** is the register, then the trait that tells it from its neighbors, then
+     the accent: "Low, warm · US", "High, lively · UK". Register by median pitch: Deep
+     (under 115 Hz), Low (115 to 150), Middle (150 to 180), High (180 to 220), Very high
+     (220 and up). Where two voices of one accent share a register, the trait whose
+     measured values are furthest apart among them (tone, range or pace) names them in its
+     order: tone warm, clear, bright; range even, varied, lively; pace unhurried, steady,
+     quick (two voices take the ends; four or more split into thirds and the next trait
+     splits again). The accent is the voice's region ("US", "UK", "Australia", "India").
+     Only when every measure ties (one speaker under two names) does the engine's own code
+     follow in parentheses.
+   - **An alias is not a voice.** A voice the platform marks as standing for its locale's
+     default (Android's `en-US-language`, feature `legacySetLanguageVoice`) is left out
+     where a named voice of that locale is here: on the Pixel 8a it renders the same
+     bytes as `en-us-x-iog-local`, so auto-cast gave two parts one speaker.
+   - **Register stands in for gender in auto-cast** (rule 4) where the platform reports no
+     gender: each next part takes the best remaining voice of the other register (lower
+     under 165 Hz, higher above), so neighbors in the cast are told apart by ear. It is a
+     fact about the voice, never a guess about a character.
 
 
 ### §2.9 The studio inside the reader (Decision 076, phase S3; binding on every platform that records)
