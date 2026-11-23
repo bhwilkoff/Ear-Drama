@@ -239,12 +239,14 @@ only here:
   the window. Coming back to the app re-reads the record. The invitation shows in
   Library's Ear dramas in the main window, and Open or Take Part opens
   the production's own window.
-- **§4.7a Read along** (PLAYS-DESIGN §2.11; iOS-DESIGN §4.15a is the same view): the
-  production window's Read along is the reader in follow mode; Space stops and starts the
-  listen-through; scrolling or a key turn stops the turning and **Back to the line**
-  (a toolbar button) returns. A finished ear drama's page opens the same window on the library's
-  script (`StudioTarget.drama`), the item's line files as the transport (PLAYS-DESIGN §2.11
-  rule 6).
+- **§4.7a Read along** (PLAYS-DESIGN §2.11, rewritten 2026-11-23; iOS-DESIGN §4.15a is the same view and
+  model): the production window's Read along is the reader reading along at once; the word heard is marked in
+  the speaker's hue and the pages turn themselves; the transport is the reader's bottom bar with words (the
+  speaker, Previous Line, Play or Pause, Next Line, the Speed menu, Stop, the page count). **Keys**: Space plays
+  and pauses (the Reader menu's Turn Page gives Space up while a read-along transport shows), Option-Left and
+  Option-Right step a line; the arrows still turn pages, which stops the turning, and **Back to the Line** (in the
+  bar's place above the transport) returns. A finished ear drama's page opens the same window on the library's
+  script (`StudioTarget.drama`), the item's line files as the transport (PLAYS-DESIGN §2.11 rule 11).
 - **§4.7 The script reader** (Decision 076 S1; PLAYS-DESIGN §2.7 binding on
   the verbs; `docs/iOS-DESIGN.md` §4.15 for the shared SwiftUI view; port spec
   `docs/research/design/R2-reader-port-brief.md`). **Read** on a play's page,

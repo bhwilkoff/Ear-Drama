@@ -214,6 +214,9 @@ struct KokoroCoreTests {
         #expect(Kokoro.phonemes(row, voice: try #require(Kokoro.voice("af_heart"))) == "tˈi?")
         #expect(Kokoro.phonemes(PhonemeLine(id: "L1", t: "Tea?", us: "tˈi?"), voice: try #require(Kokoro.voice("bm_lewis"))) == "tˈi?")
         #expect(Kokoro.keyOf("  Well,\n _Molly_. ") == "Well, Molly.")
+        // Hear in Library > Voices reads the opening through OpeningSpeech.clean; it must find the script's row.
+        let printed = "--Ah--this is the place--very quiet, retired, romantic--et cetera"
+        #expect(Kokoro.keyOf(OpeningSpeech.clean(printed)) == Kokoro.keyOf(printed))
     }
 
     @Test func theManifestIsAcceptedOnlyWithPermissiveCoreMLFilesTheAppsVoicesAndNeverFP16() throws {

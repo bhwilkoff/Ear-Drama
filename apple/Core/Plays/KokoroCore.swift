@@ -104,10 +104,15 @@ nonisolated enum Kokoro {
         return try JSONDecoder().decode(File.self, from: data).model.vocab
     }
 
-    /// The words as the phoneme file keys them: printed italic marks dropped, whitespace folded.
+    /// The words as the phoneme file keys them: printed italic marks dropped, whitespace folded, two hyphens read as
+    /// a dash and leading punctuation dropped, so a line shown through `OpeningSpeech.clean` (Hear in Library > Voices,
+    /// Today's Scene) finds the same row as the script's own words.
+    /// Unfolded, every downloaded voice's Hear there was silent (2026-11-23).
     static func keyOf(_ text: String) -> String {
-        text.replacingOccurrences(of: "_", with: "")
+        let folded = text.replacingOccurrences(of: "_", with: "")
             .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+            .replacingOccurrences(of: "--", with: "\u{2014}")
+        return folded.replacingOccurrences(of: #"^[.,:;\x{2014}-]+\s*"#, with: "", options: .regularExpression)
     }
 
     /// Where a voice's style row for `tokenCount` padded tokens starts in the table (the row is the unpadded length).

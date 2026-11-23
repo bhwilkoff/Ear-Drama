@@ -5,6 +5,14 @@ import Foundation
 /// Renders one piece of tokens in one voice: 24 kHz mono samples, in memory.
 nonisolated protocol KokoroRenderer: AnyObject, Sendable {
     func render(_ tokens: [Int32], voice: Int, speed: Float) throws -> [Float]
+    /// The samples and the duration model's frames for each token (nil when the renderer cannot say).
+    func renderTimed(_ tokens: [Int32], voice: Int, speed: Float) throws -> (samples: [Float], frames: [Int]?)
+}
+
+nonisolated extension KokoroRenderer {
+    func renderTimed(_ tokens: [Int32], voice: Int, speed: Float) throws -> (samples: [Float], frames: [Int]?) {
+        (try render(tokens, voice: voice, speed: speed), nil)
+    }
 }
 
 nonisolated enum KokoroRenderError: Error, Equatable {
@@ -93,6 +101,10 @@ nonisolated final class CoreMLKokoroRenderer: KokoroRenderer, @unchecked Sendabl
     }
 
     func render(_ tokens: [Int32], voice: Int, speed: Float) throws -> [Float] {
+        try renderTimed(tokens, voice: voice, speed: speed).samples
+    }
+
+    func renderTimed(_ tokens: [Int32], voice: Int, speed: Float) throws -> (samples: [Float], frames: [Int]?) {
         let n = tokens.count
         guard let tb = Kokoro.bucket(n, in: tokenBuckets) else { throw KokoroRenderError.tooLong }
         var ids = [Int32](repeating: 0, count: tb)
@@ -130,7 +142,7 @@ nonisolated final class CoreMLKokoroRenderer: KokoroRenderer, @unchecked Sendabl
             "length": MLMultiArray(MLShapedArray<Float>(scalars: [Float(total)], shape: [1])),
         ]))
         guard let audio = second.featureValue(for: "audio")?.multiArrayValue else { throw KokoroRenderError.badOutput }
-        return Array(MLShapedArray<Float>(converting: audio).scalars.prefix(Kokoro.samplesPerFrame * total))
+        return (Array(MLShapedArray<Float>(converting: audio).scalars.prefix(Kokoro.samplesPerFrame * total)), frames)
     }
 
     /// Standard normal noise for the excitation (the model takes it as an input, so no random operator is in a graph).
@@ -244,20 +256,25 @@ actor KokoroReader {
     /// The line's renders, one per piece of at most `maxSymbols` symbols, handed to `onPiece` as each is made. False
     /// when Kokoro cannot read the line or its FIRST piece is refused (nothing was handed over, so the system voice
     /// can read it); a later refused piece ends the line there.
+    /// `onTiming`, when given, hears each piece's phoneme symbols and frames just before its samples, with the line's
+    /// whole phoneme string (the read-along's word clock, PLAYS-DESIGN §2.11 rule 3); nil when the renderer could not say.
     func renderPieces(_ playID: String, _ text: String, voice voiceID: String, speed: Float,
+                      onTiming: (@Sendable (ReadAlong.KokoroPiece?, _ line: String) async -> Void)? = nil,
                       onPiece: @Sendable ([Float]) async -> Void) async -> Bool {
         guard let voice = Kokoro.voice(voiceID), ready() else { return false }
         await prepare(playID)
         guard let r = row(playID, text), let e = try? await engine() else { return false }
-        var queue = Kokoro.chunks(Kokoro.phonemes(r, voice: voice), max: maxSymbols)
+        let whole = Kokoro.phonemes(r, voice: voice)
+        var queue = Kokoro.chunks(whole, max: maxSymbols)
         var handed = 0
         while !queue.isEmpty {
             let piece = queue.removeFirst()
             let tokens = Kokoro.tokenize(piece, vocab: vocab)
             guard tokens.count > 2 else { continue }
             let samples: [Float]
+            let frames: [Int]?
             do {
-                samples = try e.render(tokens, voice: voice.index, speed: speed)
+                (samples, frames) = try e.renderTimed(tokens, voice: voice.index, speed: speed)
             } catch KokoroRenderError.tooLong where piece.count > 8 {
                 queue.insert(contentsOf: Kokoro.chunks(piece, max: max(8, piece.count / 2)), at: 0)
                 continue
@@ -270,6 +287,10 @@ actor KokoroReader {
                 return handed > 0
             }
             SyntheticAudio.mark(samples)
+            if let onTiming {
+                let symbols = piece.unicodeScalars.filter { vocab[String($0)] != nil }.map { Character($0) }
+                await onTiming(frames.map { ReadAlong.KokoroPiece(symbols: symbols, frames: $0) }, whole)
+            }
             await onPiece(samples)
             handed += 1
         }

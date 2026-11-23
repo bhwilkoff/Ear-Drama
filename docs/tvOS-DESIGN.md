@@ -307,14 +307,16 @@ The only shapes; a new one needs a new rule.
   and one after, at 29 pt or larger (the body floor), the speaker's name in the
   part's hue, "Device voice" beside a line the device reads. It follows the
   audio by line id (the same `follow(line)` seam as the readers) and never takes
-  focus: focus stays on the transport. Built 2026-11-15 as PLAYS-DESIGN §2.11 rule 5: `ReadAlongPanel` in the Listen Through screen; the line comes from the listen plan, 31 pt body, inside the 5% safe area.
+  focus: focus stays on the transport. No word mark and no speed control on the TV (PLAYS-DESIGN §2.11
+  rule 10, 2026-11-23): the listen-through and a drama's files play at the device's remembered read-along speed
+  (`ReadAlong.savedSpeed()`, 1× until a speed is chosen on this device, which the TV cannot do yet). Built 2026-11-15 as PLAYS-DESIGN §2.11 rule 10: `ReadAlongPanel` in the Listen Through screen; the line comes from the listen plan, 31 pt body, inside the 5% safe area.
   **No studio** (PLAYS-DESIGN §2.9): the TV records nothing, so the reader's
   studio, take lists and Record never appear here. **No marks** (PLAYS-DESIGN
   §2.10): marks are made where there is a selection, a keyboard or a pencil, and
   are private to the device that made them; the read-along panel draws none.
   A **finished ear drama's** Listen (the shared `FinishedDramaScreen`) shows the same panel
   under the transport while its line files play, the file playing being the line heard
-  (PLAYS-DESIGN §2.11 rule 6); a recording with no line timeline plays with no panel.
+  (PLAYS-DESIGN §2.11 rule 11); a recording with no line timeline plays with no panel.
   The listen-through on the TV reads open parts with the device's cast (PLAYS-DESIGN
   §2.8, Decision 076 S2): the same `VoiceCast` auto-cast from the TV's own voices,
   kept in `UserDefaults` (never Application Support, which tvOS devices refuse); the TV has no picker (the cast is changed on a

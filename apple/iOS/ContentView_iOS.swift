@@ -38,6 +38,13 @@ struct ContentView_iOS: View {
             guard let script = try? await plays.script(id: id), let made = try? plays.store.create(script) else { return }
             store.selectedTab = .record
             store.push(PlayRoute.production(made.id))
+            #if DEBUG
+            // APP_READER_ALONG=1: then the production page's Read Along (LaunchDoors).
+            if ProcessInfo.processInfo.environment["APP_READER_ALONG"] == "1" {
+                try? await Task.sleep(for: .seconds(2))
+                store.reading = ReaderTarget(scriptID: made.scriptID, studio: .along(made.id))
+            }
+            #endif
         }
         .fullScreenCover(item: $store.reading) { target in
             NavigationStack { ScriptReaderView(scriptID: target.scriptID, startLine: target.line, studio: target.studio) }

@@ -31,7 +31,8 @@ import Foundation
 ///   (no microphone) and APP_STUDIO_PHASE=listening | takes shows a take recording or the take list (StudioDoor)
 ///
 /// - APP_PRODUCTION=<script id>: open a production's cast sheet on that play (made if none exists; iOS and macOS);
-///   APP_PICKER=role:NAME opens that part's voice picker, APP_READER_HEAR=1 starts Hear the Cast in the reader
+///   APP_PICKER=role:NAME opens that part's voice picker, APP_READER_ALONG=1 then opens its Read Along (iOS),
+///   APP_READER_HEAR=1 starts Hear the Cast in the reader
 ///
 /// - APP_SCENE=try | hear: presses Today's Scene's Try a Line or Hear It once (iOS and macOS; read by `SceneDoor`)
 ///

@@ -326,7 +326,7 @@ nonisolated struct StudioTarget: Codable, Hashable, Sendable {
     let production: String
     /// The part's raw id ("role:MOLLY").
     let part: String
-    /// A finished drama's read-along (PLAYS-DESIGN 2.11 rule 6): `production` is the finished production's id and this
+    /// A finished drama's read-along (PLAYS-DESIGN 2.11 rule 11): `production` is the finished production's id and this
     /// the script it follows; nothing local backs it.
     var dramaScriptID: String? = nil
     var partID: PartID { PartID(rawValue: part) }

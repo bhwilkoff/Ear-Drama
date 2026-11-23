@@ -1,0 +1,64 @@
+{
+  "_comment": "PLAYS-DESIGN 2.11 rule 3: the word heard, mapped onto the printed words. Every stack runs these cases: Apple ReadAlongTests, Android ReadAlongTest, web js/reader.test.js. Offsets are UTF-16 units. 'spoken': a line, the exact string a device voice is given (DeviceVoices.said(spokenText)), and voice ranges (location, length in that string) with the printed word each maps to in lineText (start, end exclusive). 'textWords': the printed words of a spoken string. 'kokoro': phoneme pieces (the symbols that became tokens) with the duration model's frames per token (padding at both ends), and each word's first sample (600 samples per frame) paired with its range of the spoken string; null when the phoneme words and the printed words do not pair.",
+  "spoken": [
+    {
+      "line": {"id": "L1", "kind": "speech", "role": "HAMLET", "parts": [{"say": "Good night, _sweet_ prince."}]},
+      "said": "Good night, sweet prince.",
+      "cases": [
+        {"range": [0, 4], "word": [0, 4]},
+        {"range": [12, 5], "word": [13, 18]},
+        {"range": [18, 6], "word": [20, 26]},
+        {"range": [24, 5], "word": null}
+      ]
+    },
+    {
+      "line": {"id": "L2", "kind": "speech", "role": "BERNARDO", "parts": [{"say": "Who's there?"}, {"direction": "Aside"}, {"say": "Nay, answer me."}]},
+      "said": "Who's there? Nay, answer me.",
+      "cases": [
+        {"range": [0, 5], "word": [0, 5]},
+        {"range": [13, 3], "word": [19, 22]},
+        {"range": [18, 6], "word": [24, 30]}
+      ]
+    },
+    {
+      "line": {"id": "L3", "kind": "direction", "source": "  Enter HAMLET.  "},
+      "said": "Enter HAMLET.",
+      "cases": [
+        {"range": [0, 5], "word": [2, 7]},
+        {"range": [6, 6], "word": [8, 14]}
+      ]
+    }
+  ],
+  "textWords": [
+    {"said": "Well, Molly—I mean it.", "words": [[0, 4], [6, 11], [12, 13], [14, 18], [19, 21]]},
+    {"said": "Don't--stop", "words": [[0, 5], [7, 11]]},
+    {"said": "well-known", "words": [[0, 10]]},
+    {"said": "1920!", "words": [[0, 4]]},
+    {"said": "— ...", "words": []}
+  ],
+  "kokoro": [
+    {
+      "said": "Well, Molly.",
+      "pieces": [{"symbols": "wˈɛl, mˈɑli.", "frames": [3, 2, 1, 4, 2, 5, 2, 2, 1, 3, 2, 2, 6, 4]}],
+      "words": [[1800, 0, 4], [11400, 6, 11]]
+    },
+    {
+      "said": "Go. Now!",
+      "pieces": [
+        {"symbols": "gˈO. ", "frames": [2, 3, 1, 4, 2, 1, 3]},
+        {"symbols": "nˈW!", "frames": [4, 2, 1, 5, 3, 2]}
+      ],
+      "words": [[1200, 0, 2], [12000, 4, 7]]
+    },
+    {
+      "said": "Oh — no.",
+      "pieces": [{"symbols": "ˈO — nˈO.", "frames": [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}],
+      "words": [[1200, 0, 2], [4200, 5, 7]]
+    },
+    {
+      "said": "In 1920 we met.",
+      "pieces": [{"symbols": "ɪn nˈIntin twˈɛnti wi mˈɛt.", "frames": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}],
+      "words": null
+    }
+  ]
+}

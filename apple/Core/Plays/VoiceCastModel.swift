@@ -88,12 +88,22 @@ final class VoiceCastModel {
             playing = voice.id
             let id = voice.id
             Task {
-                _ = await KokoroLive.shared.speak(playID, text, voice: id, rate: rate, pitch: pitch, muted: SpeechMute.volume == 0)
-                if self.playing == id { self.playing = nil }
+                let ok = await KokoroLive.shared.speak(playID, text, voice: id, rate: rate, pitch: pitch, muted: SpeechMute.volume == 0)
+                guard self.playing == id else { return }
+                // A line Kokoro cannot read is read by the device's own voice, never skipped (PLAYS-DESIGN §2.8 rule 10).
+                if !ok, let fallback = DeviceVoices.castable().first {
+                    self.speakSystem(text, voice: fallback, rate: rate, pitch: pitch, as: id)
+                } else {
+                    self.playing = nil
+                }
             }
             return
         }
         #endif
+        speakSystem(text, voice: voice, rate: rate, pitch: pitch, as: voice.id)
+    }
+
+    private func speakSystem(_ text: String, voice: CastVoice, rate: Double, pitch: Double, as id: String) {
         let words = DeviceVoices.said(text)
         guard !words.isEmpty, let av = DeviceVoices.avVoice(voice) else {
             playing = nil
@@ -109,7 +119,7 @@ final class VoiceCastModel {
         utterance.rate = min(AVSpeechUtteranceMaximumSpeechRate, AVSpeechUtteranceDefaultSpeechRate * Float(rate))
         utterance.volume = SpeechMute.volume
         current = ObjectIdentifier(utterance)
-        playing = voice.id
+        playing = id
         synthesizer.speak(utterance)
     }
 

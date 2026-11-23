@@ -265,6 +265,35 @@ nonisolated extension ReaderLayout {
         }
     }
 
+    // MARK: The word heard (PLAYS-DESIGN §2.11 rule 2)
+
+    /// The page-string range of a word of line `li` (offsets into its `lineText`), or nil when it draws nothing.
+    func range(ofWord w: ReadAlong.Word, line li: Int) -> NSRange? {
+        guard li >= 0, li < lineRanges.count, w.end > w.start else { return nil }
+        let runs = MarkGeometry.runs(string, in: lineRanges[li])
+        guard let s = MarkGeometry.start(runs, w.start), let e = MarkGeometry.end(runs, w.end), e > s else { return nil }
+        return NSRange(location: s, length: e - s)
+    }
+
+    /// The page a word of line `li` is drawn on.
+    func page(ofWord w: ReadAlong.Word, line li: Int) -> Int? {
+        range(ofWord: w, line: li).map { page(containing: $0.location) }
+    }
+
+    /// The word heard: a fill in the speaker's hue with a rule under it (ink for a direction or a cue).
+    func drawWord(page: Int, in cg: CGContext, theme: Theme, marks: Marks, hue: (Int) -> CGColor) {
+        guard let li = marks.along, let w = marks.alongWord, let r = range(ofWord: w, line: li) else { return }
+        let h = li < hueOfLine.count ? hueOfLine[li] : -1
+        let c = h >= 0 ? hue(h) : theme.ink
+        for s in spans(of: r, page: page) {
+            cg.setFillColor(c.copy(alpha: 0.26) ?? c)
+            cg.addPath(CGPath(roundedRect: s.rect, cornerWidth: 3, cornerHeight: 3, transform: nil))
+            cg.fillPath()
+            cg.setFillColor(c)
+            cg.fill(CGRect(x: s.origin.x + s.x0 - 1, y: s.origin.y - s.desc * 0.6, width: s.x1 - s.x0 + 2, height: 2))
+        }
+    }
+
     private func drawText(_ text: String, font: ReaderFont, color: CGColor, kern: CGFloat = 0, at p: CGPoint, in cg: CGContext) {
         let a = NSAttributedString(string: text, attributes: [
             .font: font, .kern: kern, NSAttributedString.Key(kCTForegroundColorAttributeName as String): color,
