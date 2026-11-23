@@ -275,7 +275,7 @@ async function runJob(env, pid, now, budget) {
   const held = files.length - sendable.length;
 
   /** A transient failure: back off, or give up after MAX_ATTEMPTS. The caller stops this job for the run. */
-  const transient = async (r, f) => {
+  const transient = async (r, f, settle = {}) => {
     const attempts = job.attempts + 1;
     if (attempts < MAX_ATTEMPTS) {
       await setJob(env, pid, { attempts, next_attempt_at: now + backoff(attempts), reason: r.reason }, now);
@@ -285,7 +285,8 @@ async function runJob(env, pid, now, budget) {
     const reason = `gave up after ${attempts} attempts: ${r.reason}`;
     if (initial) await setJob(env, pid, { status: "failed", attempts, reason }, now);
     else {
-      await setJob(env, pid, { attempts: 0, reason, next_attempt_at: now + MAX_BACKOFF_MS }, now);
+      // `settle` records what was given up on (a credits rewrite), so only a new change opens the job again.
+      await setJob(env, pid, { attempts: 0, reason, next_attempt_at: now + MAX_BACKOFF_MS, ...settle }, now);
       if (f) await refused(f, reason);
     }
     log(pid, `gave up after ${r.status}`);
@@ -343,7 +344,7 @@ async function runJob(env, pid, now, budget) {
     if (budget.left <= 0) return;
     budget.left--;
     const r = await patchCredits(env, identifier, itemMeta(script, credits, job.created_at));
-    if (!r.ok) return r.transient ? transient(r) : void (await setJob(env, pid, { credits: creditText, reason: r.reason }, now));
+    if (!r.ok) return r.transient ? transient(r, null, { credits: creditText }) : void (await setJob(env, pid, { credits: creditText, reason: r.reason }, now));
     await setJob(env, pid, { credits: creditText, attempts: 0, reason: held ? "reported_take" : null }, now);
     return;
   }
@@ -351,17 +352,30 @@ async function runJob(env, pid, now, budget) {
 }
 
 /**
+ * Jobs the cron has something to do for: lay out, remove a line, finish a
+ * first upload a device stopped short of, rewrite credits, or say a take is
+ * held. A job only waiting for its devices is not one: picked every five
+ * minutes it changed nothing, kept its old updated_at, and took the LIMIT
+ * ahead of every newer job (owner 2026-11-23: "fix the re-scan of the exact
+ * same failures. We should never build something that does that.").
+ */
+const CRON_WORK =
+  "SELECT production_id FROM play_archive_jobs j WHERE next_attempt_at <= ?1 AND lease_until <= ?1 AND (status = 'queued' " +
+  "OR (status IN ('uploading', 'published') AND EXISTS (SELECT 1 FROM play_archive_files f WHERE f.production_id = j.production_id AND f.state = 'remove')) " +
+  "OR (status = 'uploading' AND NOT EXISTS (SELECT 1 FROM play_archive_files f WHERE f.production_id = j.production_id AND f.state IN ('pending', 'remove'))) " +
+  "OR (status = 'published' AND credits IS NULL) " +
+  "OR (COALESCE(reason, '') <> 'reported_take' AND EXISTS (SELECT 1 FROM play_archive_files f JOIN play_reports r ON r.production_id = f.production_id " +
+  "AND r.take_id = f.take_id AND r.status = 'open' WHERE f.production_id = j.production_id AND f.state = 'pending'))) " +
+  "ORDER BY updated_at LIMIT 5";
+
+/**
  * The uploader's run (index.js `scheduled`). Takes the jobs whose backoff has
- * passed and that no other run holds, oldest first, until the run's request
- * budget is spent.
+ * passed, that no other run holds, and that have cron work, oldest first,
+ * until the run's request budget is spent.
  */
 export async function runArchive(env, now = Date.now(), requests = REQUESTS_PER_RUN) {
   if (!iaConfigured(env)) return;
-  const { results } = await env.DB.prepare(
-    "SELECT production_id FROM play_archive_jobs j WHERE next_attempt_at <= ?1 AND lease_until <= ?1 AND (status IN ('queued', 'uploading') " +
-      "OR (status = 'published' AND (credits IS NULL OR EXISTS (SELECT 1 FROM play_archive_files f WHERE f.production_id = j.production_id AND f.state IN ('pending', 'remove'))))) " +
-      "ORDER BY updated_at LIMIT 5",
-  )
+  const { results } = await env.DB.prepare(CRON_WORK)
     .bind(now)
     .all();
   const budget = { left: requests };

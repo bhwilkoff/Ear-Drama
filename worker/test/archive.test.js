@@ -698,3 +698,40 @@ describe("a published production outlives its members' accounts (owner, 2026-10-
     expect(await takeUsers(p.id)).toEqual([]);
   });
 });
+
+// Owner 2026-11-23: "fix the re-scan of the exact same failures. We should never build something that does that."
+describe("the cron does not pick the same job again for nothing", () => {
+  it("jobs only waiting for their devices do not crowd a new job out of the run", async () => {
+    for (let i = 0; i < 5; i++) {
+      const w = await complete(`wait-${i}`);
+      expect((await publish(w.director, w.p.id)).status).toBe(201);
+      await runArchive(ia, Date.now(), 1000);
+      expect((await job(w.p.id)).status).toBe("uploading");
+    }
+    const fresh = await complete("wait-new");
+    expect((await publish(fresh.director, fresh.p.id)).status).toBe(201);
+    await runArchive(ia, Date.now(), 1000);
+    expect((await job(fresh.p.id)).status).toBe("uploading");
+  });
+
+  it("a credits rewrite archive.org keeps refusing with 503 is given up on and reported, and only a new change tries again", async () => {
+    const { p } = await published("cr-retry");
+    const reopen = () => env.DB.prepare("UPDATE play_archive_jobs SET credits = NULL WHERE production_id = ?1").bind(p.id).run();
+    await reopen();
+    fake.state.fail = (r) => (r.host === "archive.org" ? new Response("busy", { status: 503 }) : null);
+    let now = Date.now();
+    await runArchive(ia, now, 1000);
+    for (let i = 1; i < MAX_ATTEMPTS; i++) {
+      now += backoff(i);
+      await runArchive(ia, now, 1000);
+    }
+    expect((await job(p.id)).reason).toMatch(new RegExp(`^gave up after ${MAX_ATTEMPTS} attempts`));
+    fake.requests.length = 0;
+    await runArchive(ia, now + 13 * 3_600_000, 1000);
+    await runArchive(ia, now + 30 * 86_400_000, 1000);
+    expect(fake.requests).toEqual([]);
+    await reopen();
+    await runArchive(ia, now + 31 * 86_400_000, 1000);
+    expect(fake.requests.length).toBe(1);
+  });
+});
