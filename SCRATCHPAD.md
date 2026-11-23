@@ -48,6 +48,10 @@
   or more episodes. Research database and caches: `catalog/README.md`.
 - **Open infrastructure**: `workflow-health.yml` and `retry-infra-failures.yml` run on schedule and
   are green. `www.eardrama.org` answers (301) and the apex serves.
+- **Free plan (2026-11-23)**: the read room long-polls, writes one row per cursor move, and a hidden or
+  idle receiver holds no pickup. **The Worker needs a deploy** (`worker/`, not deployed by the agent). Not
+  yet mirrored: the receiver and sender rules in Apple `ClassInbox`/`RelayHub` and Android
+  `RelayAcrossTime.kt` (PARITY, Relay across time).
 - **Owner steps**: "Owner: only you" in `DESIGN-LOOP.md`, and the "Needs Ben" table in `LOOP-PLAN.md`.
   Outreach and trademark are off for now (Decision 060).
 
@@ -101,6 +105,23 @@ the entry retire when circumstances change).
 
 <!-- Append-only. Format: state found -> work done -> state left. Keep the
      two newest here; roll older ones word for word into docs/SESSION-LOG.md. -->
+
+**2026-11-23: a $0.00 stack.** Owner: *"We should optimize all of the repositories so that we can
+continue to ensure we have a $0.00 stack for every app"* and *"We should not be anywhere close to the
+limits on any plan if we are using them correctly."* Found: the read room's poll fallback asked every
+second plus an HTTP ping every 10 s (a class of 30 is ~118,800 requests an hour, the shared account's day
+in under an hour); ReadRoom.save wrote room, members and an alarm on every change; class pages and cast
+sheets held a 25 s pickup forever, hidden tabs included; RelayWatch asked every 30 s per production; the
+Actions cache at 9.96 of 10 GB. Done: `GET /v1/read/{code}?gen=N` is a long poll the room holds until a
+change or 20 s (poll presence in memory, so a poll writes nothing), the web, Swift and Kotlin clients
+use it with no HTTP ping; save writes members only on a real change and sets an alarm only when sooner;
+an unchanged alarm writes nothing; `RelayCore.receive` holds a pickup only while shown and stops after
+30 idle minutes (Keep receiving takes); RelayWatch skips hidden ticks and waits 5 minutes after an empty
+ask; setup-gradle writes the cache only from main and cleans it; concurrency on three workflows. Each
+new test seen to fail on the old code (worker 4, `read.test.js` 62 polls a minute, `relay.test.js` 21
+asks in 10 minutes and a missing `receive`); worker 487/487, three new mutants caught, web PASS, Kotlin
+`ReadRoomTest` 23/23, Swift `ReadCoreTests`+`ReadRecordTests` 21/21 (macOS, unsigned). Left: merely
+fixed, not verified on a device or in production; the Worker needs a deploy.
 
 **2026-10-22: the repository.** Owner: *"Alright, I think we are ready to
 make a copy of the Universal App Template for Ear Drama and port over the full
