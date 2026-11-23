@@ -54,7 +54,7 @@ jobs:
     strategy:  # TEMPORARY comparison
       fail-fast: false
       matrix:
-        v: ${{ fromJSON(github.event_name == 'push' && '["fp32:int8b","fp32:pal8","mixed:taps"]' || '["dispatch"]') }}
+        v: ${{ fromJSON(github.event_name == 'push' && '["fp32:pal8","fp32:none"]' || '["dispatch"]') }}
     env:
       VERSION: ${{ inputs.version || '3' }}
       PUBLISH: ${{ github.event_name == 'push' && 'false' || (format('{0}', inputs.publish) == 'false' && 'false' || 'true') }}
@@ -85,7 +85,7 @@ jobs:
         run: |
           python -m venv "$RUNNER_TEMP/venv"
           V="$RUNNER_TEMP/venv/bin"
-          "$V/pip" install --quiet coremltools==9.0 torch==2.7.0 "numpy<2.3" huggingface_hub loguru "transformers<4.50"
+          "$V/pip" install --quiet coremltools==9.0 torch==2.7.0 "numpy<2.3" huggingface_hub loguru "transformers<4.50" scikit-learn==1.6.1
           "$V/pip" install --quiet --no-deps kokoro==0.9.4
           "$V/python" -c "import coremltools, torch, numpy, transformers, platform; print('[kokoro-coreml] toolchain', platform.mac_ver()[0], 'coremltools', coremltools.__version__, 'torch', torch.__version__, 'numpy', numpy.__version__, 'transformers', transformers.__version__)"
           sw_vers
