@@ -29,7 +29,7 @@ final class QueueUITests: DeviceTestCase {
         enqueue(Fixture.short)
 
         let app = launch(["APP_START_TAB": "library", "APP_DOOR_SECONDS": "300"])
-        XCTAssertTrue(app.staticTexts["Queue"].waitForExistence(timeout: 20), "Queue section in Library")
+        XCTAssertTrue(app.staticTexts["Up next"].waitForExistence(timeout: 20), "Up next section in Library")
         let first = row(app, Fixture.longTitle)
         XCTAssertTrue(first.waitForExistence(timeout: 10), "queued row")
         XCTAssertTrue(row(app, Fixture.shortTitle).exists, "second queued row")

@@ -172,8 +172,7 @@ only here:
 - **§4.2 Downloads** are the same background `URLSession`, the same
   series Download menu (in the toolbar), and the same Downloads place
   pushed from Library's row as iOS (`docs/iOS-DESIGN.md` §4.3, §4.6,
-  §4.8); a row's Remove is on right-click. Library is iOS's list (§4.6, D3-5): Continue, Queue, Following as a shelf of show
-  tiles (right-click a tile for Unfollow), History, Downloads, Ear dramas, each with its empty caption. A download is played, never
+  §4.8); a row's Remove is on right-click. Library is iOS's list (§4.6, direction B, owner 2026-11-23): the same `List` with a `Picker(.segmented)`, Listening | Making, remembered (`ed.library.side`), the same Up next, Shows you follow (right-click a tile for Unfollow), History and Downloads lines, Productions grouped by play (a production opens in its own window), Classes, and the foot "Account and preferences" (Account, Voices disclosed in place, Export my data, About Ear Drama, whose Credits, Privacy and Take-down requests are `Link`s here as well as in the Help menu); an empty part is absent, with no header or caption. A download is played, never
   exported.
 - **D3-8** (D3-8, 2026-10-30) Stations, Surprise, Search's people and a person's page follow WEB-DESIGN §6.4f in this platform's idiom: the same views as iOS-DESIGN's D3-8 note, in the detail column at the readable measure; hover and the pointer are the platform's own.
 - **§4.3g Item pages wear Home's hero** (Decision 081, Round 3 V7; owner, 2026-11-19: *"We need to continue making the app more visually appealing, both from the home screen perspective ... and the individual item perspective."*). As iOS-DESIGN §4.3g in the Mac's idiom: the same

@@ -215,13 +215,7 @@ The only shapes; a new one needs a new rule.
   the query names an air date, then episodes, then **Automatic
   transcript**: each row the episode row plus the line where the words
   are said, verbatim (iOS-DESIGN §4.5).
-- **§4.6 Library** (D3-5) is **Continue**, **Queue**, **Following** (a shelf of the grammar's show
-  tiles, focus scaling the whole tile through `.card`), then Ear dramas shared with the person (§11.7)
-  and the account. A held Select on a Continue row offers Remove from History. There is no History
-  or Downloads section on the TV (below). An empty section keeps its header and one caption that
-  says what it would hold: "Episodes you stop partway through wait here.", "Episodes you add play
-  in this order, after the one that is playing.", "Series you follow appear here." Ear dramas
-  keeps its own four states (§11.7). Its last row is "Account" (§4.9). Not yet seen on a TV.
+- **§4.6 Library** (direction B, owner 2026-11-23: *"Most people we exclusively use this app for listening, so let's do option B ..."*; replaces D3-5 and its rule that every section keeps its header and caption) is **Listening only** on a TV, as focus shelves: **Up next** (the started episodes, then the queue in order, each once; a held Select offers Remove from History or the queue menu) and **Shows you follow** (the grammar's show tiles through `.card`), then the foot headed "Account and preferences": **Account** (§4.9), **Show a Reading** (§4.13), **About Ear Drama** (the site's pages as addresses, §4.9a). There is no Making side, no Voices, no Export, no History or Downloads on a TV; ear dramas shared with the person are no longer listed here (a TV records and edits nothing). An empty shelf is absent, no header and no caption; a Library with nothing heads with "Nothing played yet" and Browse (§7.3a). Not yet seen on a TV.
 - **§4.9 The account** is the foot of Library, as on iOS
   (`docs/iOS-DESIGN.md` §4.10), never a tab and never at first launch.
   The row pushes `AccountScreen_tvOS`: signed out, Sign in with Apple

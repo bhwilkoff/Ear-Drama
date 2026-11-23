@@ -107,47 +107,6 @@ struct StartEarDramaButton: View {
     }
 }
 
-/// Library's Ear dramas (iOS-DESIGN §4.6, §4.12a): the productions on this
-/// device and, signed in, the shared ones not opened here, then Classes.
-struct EarDramasSection: View {
-    @Environment(PlaysLibrary.self) private var plays
-    @Environment(SharedPlays.self) private var shared
-    @Environment(AccountStore.self) private var account
-    @Environment(AppStore.self) private var app
-    #if os(macOS)
-    @Environment(\.openWindow) private var openWindow
-    #endif
-
-    var body: some View {
-        let rows = PlaysShare.libraryRows(plays.store, remote: account.isSignedIn ? shared.remote : [])
-        if rows.isEmpty {
-            Section("Ear dramas") { SectionCaption("Ear dramas you record or join appear here.") }
-        } else if !rows.isEmpty {
-            Section("Ear dramas") {
-                ForEach(rows) { row in
-                    if let production = row.local {
-                        ProductionLink(production: production)
-                    } else if let remote = row.remote {
-                        RemoteProductionRow(remote: remote, open: open)
-                    }
-                }
-            }
-        }
-        if account.isSignedIn {
-            ClassesSection()
-        }
-    }
-
-    private func open(_ production: Production) {
-        #if os(macOS)
-        openWindow(id: ProductionWindow_macOS.id, value: production.id)
-        #else
-        app.selectedTab = .library
-        app.push(PlayRoute.production(production.id))
-        #endif
-    }
-}
-
 /// A production opens in place on iPhone and iPad, and in its own window on
 /// the Mac (§2.2).
 struct ProductionLink: View {

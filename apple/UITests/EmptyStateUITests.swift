@@ -8,10 +8,10 @@ final class EmptyStateUITests: DeviceTestCase {
         let app = launch(["APP_START_TAB": "library", "APP_EMPTY_LIBRARY": "1", "APP_DOOR_SECONDS": "60"])
         XCTAssertTrue(text(app, matching: "Nothing played yet").waitForExistence(timeout: 25), "the empty state")
         XCTAssertTrue(text(app, matching: "^Account").waitForExistence(timeout: 5), "the Account row under it")
-        let credits = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Credits")).firstMatch
+        let about = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "About Ear Drama")).firstMatch
         var n = 0
-        while !credits.waitForExistence(timeout: n == 0 ? 5 : 1) && n < 6 { app.scrollUp(); n += 1 }
-        XCTAssertTrue(credits.exists, "the site pages under it")
+        while !about.waitForExistence(timeout: n == 0 ? 5 : 1) && n < 6 { app.scrollUp(); n += 1 }
+        XCTAssertTrue(about.exists, "About under it")
         shot(app, "empty-library")
         app.scrollDown()
         let browse = hittable(app, "empty-action")

@@ -15,7 +15,7 @@ struct SiteLinkRows: View {
             .lineLimit(1)
             .fixedSize()
         }
-        #elseif os(iOS)
+        #else
         Link("Credits", destination: SiteLinks.credits)
         Link("Privacy", destination: SiteLinks.privacy)
         Link("Take-down requests", destination: SiteLinks.takedown)

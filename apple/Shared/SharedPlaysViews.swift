@@ -521,9 +521,33 @@ struct RemoteProductionRow: View {
     }
 }
 
-/// Classes (rule 10): a roster only. A teacher sees each code in two groups of
-/// four; an under-13 class waits for the school's consent.
+/// Library's Classes (rule 10): a roster only, one line per class. A teacher sees each code in two groups of
+/// four; an under-13 class waits for the school's consent. Absent with no class; Make and Join live at Record.
 struct ClassesSection: View {
+    @Environment(SharedPlays.self) private var shared
+
+    var body: some View {
+        Group {
+            if let classes = shared.classes, !(classes.teaching.isEmpty && classes.memberOf.isEmpty) {
+                Section("Classes") {
+                    ForEach(classes.teaching) { c in
+                        PushLink(value: Route.classPage(c.id)) {
+                            ClassListRow(name: c.name, code: c.code, waitsForSchool: c.under13 && c.schoolConsent != true,
+                                         deletesOn: c.deletesOn)
+                        }
+                    }
+                    ForEach(classes.memberOf) { c in
+                        Text(verbatim: c.name).font(TypeRamp.body)
+                    }
+                }
+            }
+        }
+        .task { await shared.loadClasses() }
+    }
+}
+
+/// Make a Class and Join a Class, at Record (they left Library, owner 2026-11-23 direction B). Signed in only.
+struct ClassDoors: View {
     @Environment(SharedPlays.self) private var shared
     @State private var making = false
     @State private var joining = false
@@ -532,18 +556,7 @@ struct ClassesSection: View {
     @State private var code = ""
 
     var body: some View {
-        Section("Classes") {
-            if let classes = shared.classes {
-                ForEach(classes.teaching) { c in
-                    PushLink(value: Route.classPage(c.id)) {
-                        ClassListRow(name: c.name, code: c.code, waitsForSchool: c.under13 && c.schoolConsent != true,
-                                     deletesOn: c.deletesOn)
-                    }
-                }
-                ForEach(classes.memberOf) { c in
-                    Text(verbatim: c.name).font(TypeRamp.body)
-                }
-            }
+        Group {
             Button("Make a Class") {
                 name = ""
                 under13 = false
@@ -557,7 +570,6 @@ struct ClassesSection: View {
                 Label(refusal, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
             }
         }
-        .task { await shared.loadClasses() }
         .sheet(isPresented: $making) {
             NavigationStack {
                 Form {
@@ -587,6 +599,7 @@ struct ClassesSection: View {
         }
     }
 }
+
 // MARK: - The CC0 consent (PLAYS-DESIGN §11.7 rule 6)
 
 /// The served consent words as a lead and a bulleted list, none changed.

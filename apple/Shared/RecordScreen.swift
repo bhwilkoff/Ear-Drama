@@ -32,12 +32,24 @@ struct RecordScreen: View {
                 PlaysLibrarySection(scripts: plays.rows, filter: $filter)
             }
             MadeHereSection()
+            ClassDoorsSection()
         }
         .navigationTitle("Record")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
         #endif
         .task { await plays.load() }
+    }
+}
+
+/// Make a Class and Join a Class: Record's class door, signed in only.
+struct ClassDoorsSection: View {
+    @Environment(AccountStore.self) private var account
+
+    var body: some View {
+        if account.isSignedIn {
+            PageRows("Classes") { ClassDoors().pageRow() }
+        }
     }
 }
 

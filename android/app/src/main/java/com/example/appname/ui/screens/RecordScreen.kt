@@ -120,6 +120,7 @@ fun RecordScreen(
                         }
                     }
                 }
+                if (reads) wide("class-doors") { ClassDoors() }
                 wide("today") { TodaysScene(onOpenScript, onRead, onOpenStudio) }
                 wide("plays-h") { SectionHeader("Plays") }
                 when (state) {
