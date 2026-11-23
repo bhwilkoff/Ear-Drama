@@ -2,8 +2,9 @@ import Foundation
 import Observation
 
 // A device's seat in a read room (PLAYS-DESIGN §12, Decision 082): the socket first, with the member key in a first
-// "hello" and never in a URL, falling back to polling the same messages every second, and trying the socket again
-// as the web's js/read-session.js does. Every rule is ReadCore's; this is the transport and the state a screen reads.
+// "hello" and never in a URL, falling back to long-polling the same messages (the room answers on a change or after
+// 20 s, so a quiet room costs three requests a minute), and trying the socket again less often each time, as the
+// web's js/read-session.js does. Every rule is ReadCore's; this is the transport and the state a screen reads.
 // Keys live in memory for the app run only (owner, 2026-11-19: a shared device keeps no seat key at rest).
 
 /// A Worker refusal or a transport failure, by the Worker's own code (`ReadCore.refusal` words it).
@@ -51,6 +52,8 @@ nonisolated protocol ReadWire: Sendable {
     func create(body: Data, teacher: Bool) async throws -> ReadJoined
     func join(code: String, body: Data) async throws -> ReadJoined
     func poll(code: String, key: String) async throws -> ReadSnapshot
+    /// A long poll: the room answers when its generation moves past `gen`, or after 20 s.
+    func poll(code: String, key: String, gen: Int) async throws -> ReadSnapshot
     func send(code: String, key: String, message: Data) async throws -> ReadSnapshot?
     func socket(code: String) -> (any ReadSocket)?
     /// A reader's take of a line it holds, passing through to the room's receiver (`PUT /v1/read/{code}/takes/{id}`).
@@ -64,6 +67,8 @@ nonisolated protocol ReadWire: Sendable {
 }
 
 extension ReadWire {
+    func poll(code: String, key: String, gen: Int) async throws -> ReadSnapshot { try await poll(code: code, key: key) }
+
     /// Whether a room answers to `code` before anyone joins: a keyless poll, which the Worker answers `no_such_room` or `room_ended`
     /// for a room that is not there and a membership refusal for one that is. Returns the gone code, else nil.
     func gone(code: String) async -> String? {
@@ -84,14 +89,14 @@ nonisolated struct WorkerReadWire: ReadWire {
     private func failure(_ status: Int, _ data: Data) -> ReadFailure { ReadFailure.of(status: status, data: data) }
 
     private func run(_ method: String, _ path: String, body: Data? = nil, key: String? = nil, keyHeader: String = WorkerReadWire.keyHeader,
-                     bearer: Bool = false) async throws -> Data {
+                     bearer: Bool = false, timeout: TimeInterval? = nil) async throws -> Data {
         let headers = key.map { [keyHeader: $0] } ?? [:]
         let data: Data
         let status: Int
         do {
             (data, status) = bearer
                 ? try await api.workerResponse(method, path: path, body: body, headers: headers)
-                : try await api.anonWorkerResponse(method, path: path, body: body, headers: headers)
+                : try await api.anonWorkerResponse(method, path: path, body: body, headers: headers, timeout: timeout)
         } catch WorkerError.notConfigured {
             throw ReadFailure(code: "not_configured")
         } catch {
@@ -119,6 +124,13 @@ nonisolated struct WorkerReadWire: ReadWire {
 
     func poll(code: String, key: String) async throws -> ReadSnapshot {
         guard let s = try? JSONDecoder().decode(ReadSnapshot.self, from: try await run("GET", Self.at(code), key: key)) else {
+            throw ReadFailure(code: "error")
+        }
+        return s
+    }
+
+    func poll(code: String, key: String, gen: Int) async throws -> ReadSnapshot {
+        guard let s = try? JSONDecoder().decode(ReadSnapshot.self, from: try await run("GET", Self.at(code) + "?gen=\(gen)", key: key, timeout: 35)) else {
             throw ReadFailure(code: "error")
         }
         return s
@@ -238,6 +250,7 @@ final class ReadSession {
     @ObservationIgnored private var forcePoll = false
     @ObservationIgnored private var socket: (any ReadSocket)?
     @ObservationIgnored private var socketOpen = false
+    @ObservationIgnored private var polling = false
     @ObservationIgnored private var runID = 0
     @ObservationIgnored private var tasks: [Task<Void, Never>] = []
     @ObservationIgnored private var samples: [ReadCore.ClockSample] = []
@@ -246,7 +259,8 @@ final class ReadSession {
     @ObservationIgnored private let diag = ProcessInfo.processInfo.environment["APP_READ_DIAG"] == "1"
 
     static let gone: Set<String> = ["no_such_room", "room_ended", "not_a_member", "seat_key_required"]
-    static let retryMS: [UInt64] = [2000, 5000, 15000, 30000]
+    static let retryMS: [UInt64] = [2000, 5000, 15000, 30000, 60000, 300_000]
+    static let pollErrorMS: UInt64 = 5000
     static let pingMS: UInt64 = 10_000
     static let openWaitMS: UInt64 = 5000
 
@@ -368,6 +382,7 @@ final class ReadSession {
         socket?.close()
         socket = nil
         socketOpen = false
+        polling = false
     }
 
     private func later(_ ms: UInt64, _ mine: Int, _ body: @escaping @MainActor () async -> Void) {
@@ -381,24 +396,35 @@ final class ReadSession {
     // MARK: - Polling
 
     private func poll(_ mine: Int) {
-        guard runID == mine, ended == nil, let code, let key else { return }
+        guard runID == mine, ended == nil, !polling, let code, let key else { return }
+        polling = true
         let t0 = now()
+        let gen = snapshot?.generation
         tasks.append(Task { [weak self] in
             guard let self else { return }
+            var wait = UInt64(ReadCore.pollMS)
             do {
-                let snap = try await self.wire.poll(code: code, key: key)
+                let snap: ReadSnapshot
+                if let gen { snap = try await self.wire.poll(code: code, key: key, gen: gen) } else { snap = try await self.wire.poll(code: code, key: key) }
                 guard self.runID == mine else { return }
-                self.apply(snap)
                 let took = self.now() - t0
-                let isSlow = took > ReadCore.slowMS
+                let held = snap.heldMS ?? 0
+                // Every answer is a clock sample, with the time it waited in the room taken out.
+                self.sample(t0: t0 + held, serverTime: snap.serverTime, t1: self.now())
+                self.apply(snap)
+                let isSlow = took - held > ReadCore.slowMS
                 if isSlow != self.slow { self.slow = isSlow }
+                wait = UInt64(max(0, Double(ReadCore.pollMS) - took))
             } catch let f as ReadFailure {
                 guard self.runID == mine else { return }
                 self.failed(f)
                 if !self.slow && self.now() - self.lastOK > ReadCore.slowMS { self.slow = true }
+                wait = Self.pollErrorMS
             } catch {}
-            if self.runID == mine, self.ended == nil, self.transport == "poll" {
-                self.later(UInt64(ReadCore.pollMS), mine) { [weak self] in self?.poll(mine) }
+            guard self.runID == mine else { return }
+            self.polling = false
+            if self.ended == nil, self.transport == "poll" {
+                self.later(wait, mine) { [weak self] in self?.poll(mine) }
             }
         })
     }
@@ -419,9 +445,13 @@ final class ReadSession {
     private func connect() {
         stopTransport()
         let mine = runID
-        let sock = forcePoll ? nil : wire.socket(code: code ?? "")
         schedulePing(mine)
-        guard let sock, let key else { startPolling(mine); return }
+        if forcePoll || !openSocket(mine) { startPolling(mine) }
+    }
+
+    /// A socket alongside a poll in flight: polling stops only once the socket is open.
+    private func openSocket(_ mine: Int) -> Bool {
+        guard let sock = wire.socket(code: code ?? ""), let key else { return false }
         socket = sock
         later(Self.openWaitMS, mine) { [weak self] in
             guard let self, !self.socketOpen else { return }
@@ -445,6 +475,7 @@ final class ReadSession {
                 self.fallBack(mine)
             }
         })
+        return true
     }
 
     private func handle(_ text: String) {
@@ -472,7 +503,7 @@ final class ReadSession {
         startPolling(mine)
         let wait = Self.retryMS[min(retries, Self.retryMS.count - 1)]
         retries += 1
-        later(wait, mine) { [weak self] in self?.connect() }
+        later(wait, mine) { [weak self] in _ = self?.openSocket(mine) }
     }
 
     // MARK: - The clock
@@ -486,13 +517,10 @@ final class ReadSession {
 
     private func schedulePing(_ mine: Int) {
         later(Self.pingMS, mine) { [weak self] in
-            guard let self, let code = self.code, let key = self.key else { return }
-            let t0 = self.now()
+            guard let self else { return }
+            // Polling sends no ping: every poll answer is a clock sample.
             if self.socketOpen, let socket = self.socket {
-                try? await socket.send(String(decoding: Self.json(["type": "ping", "t0": t0]), as: UTF8.self))
-            } else if let snap = try? await self.wire.send(code: code, key: key, message: Self.json(["type": "ping", "t0": t0])) {
-                self.apply(snap)
-                self.sample(t0: t0, serverTime: snap.serverTime, t1: self.now())
+                try? await socket.send(String(decoding: Self.json(["type": "ping", "t0": self.now()]), as: UTF8.self))
             }
             self.schedulePing(mine)
         }

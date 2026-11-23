@@ -1716,15 +1716,17 @@ const API = (() => {
     const at = (code) => `/v1/read/${encodeURIComponent(code)}`;
     const keep = (t0, data, t1) => {
       if (data && typeof data.server_time === 'number') {
-        samples.push({ t0, server_time: data.server_time, t1 });
+        // A long poll's answer says how long it waited in the room; that wait is not the round trip.
+        const held = typeof data.held_ms === 'number' && data.held_ms > 0 ? data.held_ms : 0;
+        samples.push({ t0: t0 + held, server_time: data.server_time, t1 });
         if (samples.length > KEEP_SAMPLES) samples.shift();
       }
       return data;
     };
-    async function call(method, path, { key, body } = {}) {
+    async function call(method, path, { key, body, timeout } = {}) {
       const headers = key ? { [KEY_HEADER]: key } : {};
       const t0 = now();
-      const data = await account.anon(method, path, { headers, body });
+      const data = await account.anon(method, path, { headers, body, timeout });
       return keep(t0, data, now());
     }
     return {
@@ -1736,7 +1738,13 @@ const API = (() => {
         return keep(t0, data, now());
       },
       join: (code, want = {}) => call('POST', `${at(code)}/join`, { body: want }),
-      poll: (code, key) => call('GET', at(code), { key }),
+      /**
+       * The room's snapshot. With `gen` (the generation in hand) it is a long poll: the room answers
+       * when something changes or after 20 s, so a quiet room costs three requests a minute.
+       */
+      poll: (code, key, gen) => (Number.isInteger(gen)
+        ? call('GET', `${at(code)}?gen=${gen}`, { key, timeout: 35000 })
+        : call('GET', at(code), { key })),
       send: (code, key, msg) => call('POST', `${at(code)}/send`, { key, body: msg }),
       /** A socket to the room, or null where there is none; the caller sends `{ type: 'hello', key }` first. */
       socket: (code) => {

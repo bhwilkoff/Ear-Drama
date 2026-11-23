@@ -6,6 +6,7 @@ import com.example.appname.radio.TonightFile
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -118,6 +119,8 @@ class ApiClient @Inject constructor() {
 
     @PublishedApi internal val client = HttpClient(OkHttp) {
         engine { preconfigured = okHttp }
+        // No defaults: only a request that asks (a read room's long poll) waits longer than OkHttp's own timeouts.
+        install(HttpTimeout)
         install(ContentNegotiation) {
             json(
                 Json {

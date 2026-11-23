@@ -220,6 +220,7 @@ function stubWorker(P, w) {
   const snap = (room, id) => P.joinSnapshot(room.room, cast, room.members, id, w.now());
   function broadcast(room) {
     for (const ws of s.sockets) if (ws.room === room && ws.member && ws.readyState === 1) ws.deliver(snap(room, ws.member));
+    for (const p of (room.parked || []).slice()) p.answer();
   }
   function apply(room, id, msg) {
     const r = P.applyMessage({ room: room.room, cast, members: room.members }, id, msg, w.now());
@@ -301,6 +302,23 @@ function stubWorker(P, w) {
       const r = apply(room, id, body);
       if (r.error) return problem(r.error === 'stale' ? 409 : 403, r.error, r.detail);
       return json(200, r.reply ? { ...snap(room, id), reply: r.reply } : snap(room, id));
+    }
+    // As read-rooms.js: a poll at the room's generation waits for a change, or 20 s.
+    const gen = u.searchParams.get('gen');
+    if (gen !== null && Number(gen) >= room.room.generation) {
+      const since = w.now();
+      room.parked = room.parked || [];
+      return new Promise((resolve) => {
+        const p = {};
+        p.answer = () => {
+          if (!room.parked.includes(p)) return;
+          room.parked = room.parked.filter((x) => x !== p);
+          w.timers_.clearTimeout(p.timer);
+          resolve(json(200, { ...snap(room, id), held_ms: w.now() - since }));
+        };
+        p.timer = w.timers_.setTimeout(p.answer, 20000);
+        room.parked.push(p);
+      });
     }
     return json(200, snap(room, id));
   };
@@ -457,6 +475,34 @@ async function main() {
     ok(server.calls.some((c) => c.method === 'GET' && c.key), 'polled with the key in its header');
   });
 
+  // 2026-11-23 free-tier audit: a poll every second plus a ping every ten seconds was ~66
+  // requests a minute per member; a class of 30 used up the shared account in under an hour.
+  test('polling is a long poll: a quiet room costs at most 4 polls a minute and no pings', async () => {
+    const w = world();
+    const server = stubWorker(P, w);
+    server.blockSockets = true;
+    const lead = client(w, server);
+    await lead.session.open(body);
+    await w.advance(300);
+    eq(lead.session.state().transport, 'poll');
+    const before = server.calls.length;
+    await w.advance(60000);
+    const after = server.calls.slice(before);
+    const polls = after.filter((c) => c.method === 'GET' && c.path === '/v1/read/ABC123').length;
+    const posts = after.filter((c) => c.method === 'POST').length;
+    ok(polls <= 4, `polls in 60 s: ${polls}`);
+    eq(posts, 0, 'no HTTP ping while polling');
+    const last = lead.api.read.samples().slice(-1)[0];
+    ok(last && last.t1 - last.t0 < 1000, 'a held poll is a clock sample with the wait taken out');
+    const reader = client(w, server);
+    await reader.session.join('ABC123');
+    await w.advance(300);
+    await lead.session.send({ type: 'cursor', line: 'l3', base: 0 });
+    await w.advance(50);
+    eq(reader.session.state().snap.cursor, 'l3', 'the parked poll brings the move at once');
+    eq(reader.session.state().slow, false, 'time spent waiting is not a slow connection');
+  });
+
   test('a dropped socket keeps following by polling, then the socket comes back', async () => {
     const w = world();
     const server = stubWorker(P, w);
@@ -584,6 +630,7 @@ async function main() {
     eq(A.rr.state().outbox.length, 2, 'still waiting: the leader\'s device is not receiving');
     eq(A.rr.state().lastError, 'nobody_receiving');
     const back = await recorder(w, lead, leadLog);
+    back.rr.resume(); // as read-ui does: a long poll brings no snapshot until something changes
     await w.advance(12000);
     await w.flush();
     eq(A.rr.state().outbox.length, 0, 'sent once the leader\'s device holds the pickup');

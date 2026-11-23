@@ -222,13 +222,16 @@ const ReadRecord = (() => {
       if (st.outbox.length) flush();
     }
 
-    /** Loads this room's production (and its outbox) when one exists already: a reload keeps waiting takes. */
+    /**
+     * Loads this room's production (and its outbox) when one exists already: a reload keeps waiting
+     * takes. Then acts on the snapshot in hand, since a long poll brings the next only on a change.
+     */
     async function resume() {
       const s = snap();
       const found = s && store.productions.find((p) => p.room === s.code);
       if (found) { st.localId = found.id; st.outbox = (found.roomOutbox || []).slice(); }
       changed();
-      if (st.outbox.length) flush();
+      onSnapshot();
     }
 
     const off = session.onChange((kind) => { if (kind === 'snapshot' || kind === 'transport') onSnapshot(); });

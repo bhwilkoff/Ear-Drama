@@ -14,6 +14,7 @@ object ReadCore {
     const val MAX_MEMBERS = 40
     const val MEMBER_GONE_MS = 2 * 60 * 1000L
     const val LEADER_GONE_MS = 2 * 60 * 1000L
+    /** The least time between two polls' starts; each is a long poll the room holds until a change or 20 s. */
     const val POLL_MS = 1000L
     val MODES = listOf("read", "rehearse", "record")
 

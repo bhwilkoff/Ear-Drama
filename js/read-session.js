@@ -4,11 +4,15 @@
  *
  * - The socket first (the Durable Object's hibernating WebSocket), its key in a first "hello"
  *   message, never the URL. A socket that will not open, closes, or a `poll_only` room falls
- *   back to polling the same room every second (ReadCore.POLL_MS) with the same messages, and
- *   the socket is tried again later. A school that blocks WebSockets never notices.
+ *   back to long-polling the same room with the same messages: each poll carries the generation
+ *   in hand and the room answers when it changes or after 20 s, never sooner than
+ *   ReadCore.POLL_MS after the last one began. The socket is tried again later, less often each
+ *   time. A school that blocks WebSockets never notices, and a quiet room costs three requests a
+ *   minute, not sixty (the free plan's request count is shared by every app, 2026-11-23).
  * - Reconnect and reload resume with the member key from this tab's sessionStorage (`ed.read`),
  *   and the next snapshot puts the device back at the cursor.
- * - The clock: every answer and every pong is a sample; `offset()` is ReadCore.clockOffset over
+ * - The clock: every answer and every pong is a sample (a long poll's wait taken out); there is
+ *   no HTTP ping while polling, since every poll answer is a sample; `offset()` is ReadCore.clockOffset over
  *   them, kept for T4's cursor-delay measurement. Logged only with `?readdiag=1`.
  * - A snapshot older than the one in hand is dropped (ReadCore.newer), so a slow poll never
  *   moves the cursor back.
@@ -18,7 +22,8 @@ const ReadSession = (() => {
   const KEY = 'ed.read';
   const PING_MS = 10000;
   const OPEN_WAIT_MS = 5000;
-  const RETRY_MS = [2000, 5000, 15000, 30000];
+  const RETRY_MS = [2000, 5000, 15000, 30000, 60000, 300000];
+  const POLL_ERROR_MS = 5000;
   const GONE = new Set(['no_such_room', 'room_ended', 'not_a_member', 'seat_key_required']);
 
   function make({ api, core, timers = globalThis, now = () => Date.now(), storage = null, diag = false, log = console.log } = {}) {
@@ -27,6 +32,7 @@ const ReadSession = (() => {
     let ws = null;
     let wsOpen = false;
     let pollTimer = null;
+    let polling = false;
     let pingTimer = null;
     let retryTimer = null;
     let openTimer = null;
@@ -71,6 +77,7 @@ const ReadSession = (() => {
       run += 1;
       [pollTimer, pingTimer, retryTimer, openTimer].forEach((t) => t && timers.clearTimeout(t));
       pollTimer = pingTimer = retryTimer = openTimer = null;
+      polling = false;
       if (ws) { try { ws.onclose = null; ws.close(); } catch { /* already closed */ } }
       ws = null;
       wsOpen = false;
@@ -86,25 +93,32 @@ const ReadSession = (() => {
 
     /* ---- Polling ---- */
     function poll(mine) {
-      if (mine !== run || st.ended) return;
+      if (mine !== run || st.ended || polling) return;
+      polling = true;
       const t0 = now();
-      api.read.poll(st.code, st.key).then((snap) => {
+      const gen = st.snap && Number.isInteger(st.snap.generation) ? st.snap.generation : undefined;
+      let wait = core.POLL_MS;
+      api.read.poll(st.code, st.key, gen).then((snap) => {
         if (mine !== run) return;
         const took = now() - t0;
         apply(snap);
-        const slow = took > core.SLOW_MS;
+        const slow = took - ((snap && snap.held_ms) || 0) > core.SLOW_MS;
         if (slow !== st.slow) { st.slow = slow; emit('slow', slow); }
+        wait = Math.max(0, core.POLL_MS - took);
       }).catch((err) => {
         if (mine !== run) return;
         failed(err);
         if (!st.slow && now() - lastOk > core.SLOW_MS) { st.slow = true; emit('slow', true); }
+        wait = POLL_ERROR_MS;
       }).finally(() => {
-        if (mine === run && !st.ended && st.transport === 'poll') pollTimer = timers.setTimeout(() => poll(mine), core.POLL_MS);
+        if (mine !== run) return;
+        polling = false;
+        if (!st.ended && st.transport === 'poll') pollTimer = timers.setTimeout(() => poll(mine), wait);
       });
     }
     function startPolling(mine) {
       if (st.transport !== 'poll') { st.transport = 'poll'; emit('transport', 'poll'); said('transport poll'); }
-      if (pollTimer) timers.clearTimeout(pollTimer);
+      if (pollTimer) { timers.clearTimeout(pollTimer); pollTimer = null; }
       poll(mine);
     }
 
@@ -112,9 +126,13 @@ const ReadSession = (() => {
     function connect() {
       stopTransport();
       const mine = run;
-      const sock = st.wire !== 'poll' ? api.read.socket(st.code) : null;
       schedulePing(mine);
-      if (!sock) { startPolling(mine); return; }
+      if (st.wire === 'poll' || !openSocket(mine)) startPolling(mine);
+    }
+    /** A socket alongside a poll in flight: polling stops only once the socket is open. */
+    function openSocket(mine) {
+      const sock = api.read.socket(st.code);
+      if (!sock) return false;
       ws = sock;
       openTimer = timers.setTimeout(() => { if (mine === run && !wsOpen) fallBack(mine); }, OPEN_WAIT_MS);
       sock.onopen = () => {
@@ -140,6 +158,7 @@ const ReadSession = (() => {
       };
       sock.onclose = () => { if (mine === run && !st.ended) fallBack(mine); };
       sock.onerror = () => {};
+      return true;
     }
     function fallBack(mine) {
       if (mine !== run) return;
@@ -149,7 +168,7 @@ const ReadSession = (() => {
       startPolling(mine);
       const wait = RETRY_MS[Math.min(retries, RETRY_MS.length - 1)];
       retries += 1;
-      retryTimer = timers.setTimeout(() => { if (mine === run && !st.ended) connect(); }, wait);
+      retryTimer = timers.setTimeout(() => { if (mine === run && !st.ended) openSocket(mine); }, wait);
     }
 
     /* ---- The clock (T4) ---- */
@@ -162,7 +181,7 @@ const ReadSession = (() => {
         if (mine !== run || st.ended) return;
         const t0 = now();
         if (ws && wsOpen) ws.send(JSON.stringify({ type: 'ping', t0 }));
-        else api.read.send(st.code, st.key, { type: 'ping', t0 }).then((r) => { apply(r); clock(); }).catch(failed);
+        else clock();
         schedulePing(mine);
       }, PING_MS);
     }

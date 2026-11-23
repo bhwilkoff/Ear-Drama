@@ -449,6 +449,41 @@ class ReadRoomTest {
         assertTrue(wire.sent.isEmpty())
     }
 
+    // ---- the poll fallback (2026-11-23 free-tier audit: a poll a second used up the shared Worker account) ----
+
+    /** As read-rooms.js: a poll at the room's generation waits 20 s for a change; one without answers at once. */
+    private class LongPollWire(val room: ReadSnapshot) : ReadWire {
+        var polls = 0
+        var sends = 0
+        override suspend fun create(body: JsonObject, teacher: Boolean) = error("unused")
+        override suspend fun join(code: String, body: JsonObject) = error("unused")
+        override suspend fun poll(code: String, key: String): ReadSnapshot { polls += 1; return room }
+        override suspend fun poll(code: String, key: String, gen: Int): ReadSnapshot {
+            polls += 1
+            kotlinx.coroutines.delay(20_000)
+            return room.copy(heldMs = 20_000.0)
+        }
+        override suspend fun send(code: String, key: String, message: JsonObject): ReadSnapshot? { sends += 1; return room }
+        override fun socket(code: String, listener: ReadSocketListener): ReadSocket? = null
+        override suspend fun sendTake(code: String, key: String, takeId: String, bytes: ByteArray, meta: JsonObject) = error("unused")
+        override suspend fun inbox(code: String, key: String) = error("unused")
+        override suspend fun pairStart() = error("unused")
+        override suspend fun pairPoll(pairCode: String, pairKey: String) = error("unused")
+        override suspend fun attach(code: String, key: String, pairCode: String) = error("unused")
+    }
+
+    @Test fun `polling is a long poll - a quiet room costs at most 4 polls a minute and no pings`() = runTest {
+        val wire = LongPollWire(snap("L0003"))
+        val session = ReadSession(wire, backgroundScope, now = { testScheduler.currentTime.toDouble() })
+        session.adopt(ReadJoined(snap("L0003"), "key-1", "poll"))
+        runCurrent()
+        advanceTimeBy(60_000); runCurrent()
+        assertEquals("poll", session.state.value.transport)
+        assertTrue("polls in 60 s: ${wire.polls}", wire.polls <= 4)
+        assertEquals("no HTTP ping while polling", 0, wire.sends)
+        assertFalse("time spent waiting is not a slow connection", session.state.value.slow)
+    }
+
     // ---- a TV's pairing ----
 
     private class PairWire(val answers: MutableList<Any?>) : ReadWire {

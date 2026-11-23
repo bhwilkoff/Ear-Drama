@@ -1691,9 +1691,15 @@ WEB-DESIGN §4.17 to §4.19 hold the web's idiom; what the other ports need to k
    (`worker/test/read-golden.json`): every client-side function the golden file covers, and from
    each `joinSnapshot` case the client's own next line and lit lines rebuilt from the snapshot
    alone. Swift and Kotlin ports run the same file (T4).
-2. **The transport**: the socket first (the key in a first `hello`), polling the same room every
-   second when the socket will not open or closes, and the socket tried again (2, 5, 15, 30 s). A
-   snapshot older than the one in hand is dropped, so a slow poll never rewinds the cursor.
+2. **The transport**: the socket first (the key in a first `hello`), a long poll of the same room
+   when the socket will not open or closes, and the socket tried again (2, 5, 15, 30, 60 s, then
+   every 5 minutes) while the poll goes on. Each poll carries the generation in hand (`?gen=`);
+   the room answers at once when it is behind, else when the room changes or after 20 s, never
+   sooner than 1 s after the last poll began. No HTTP ping while polling: every answer is a clock
+   sample, its `held_ms` (the wait in the room) taken out. A quiet room costs a polling member
+   three requests a minute, not sixty-six (2026-11-23: every app shares one free Worker account,
+   and a class of 30 polling every second used it up in under an hour). A snapshot older than the
+   one in hand is dropped, so a slow poll never rewinds the cursor.
 3. **A class room's join** needs the seat key, and a room code does not say which class it is: a
    device without a key for this room asks for the class code and the name. Seat keys live in the
    tab (the shared-cart rule, R3c §4.2).

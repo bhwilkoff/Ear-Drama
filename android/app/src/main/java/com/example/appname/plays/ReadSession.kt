@@ -29,8 +29,9 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 
 // A device's seat in a read room (PLAYS-DESIGN §12, Decision 082): the socket first, with the member key in a first
-// "hello" and never in a URL, falling back to polling the same messages every second, and trying the socket again as
-// the web's js/read-session.js and the Swift ReadSession do. Every rule is ReadCore's; this is the transport and the
+// "hello" and never in a URL, falling back to long-polling the same messages (the room answers on a change or after
+// 20 s, so a quiet room costs three requests a minute), and trying the socket again less often each time, as the web's
+// js/read-session.js and the Swift ReadSession do. Every rule is ReadCore's; this is the transport and the
 // state a screen reads. Keys live in memory for the app run only (owner, 2026-11-19: a shared device keeps no seat key
 // at rest).
 
@@ -64,6 +65,8 @@ data class ReadSnapshot(
     val assignments: List<AssignmentRow> = emptyList(),
     val done: List<String> = emptyList(),
     @SerialName("server_time") val serverTime: Double = 0.0,
+    /** How long a long poll waited in the room before this answer; taken out of the clock sample. */
+    @SerialName("held_ms") val heldMs: Double? = null,
 ) {
     @Serializable data class You(val id: String, val role: String, val seat: String? = null, val name: String? = null, val leads: Boolean = false, val owner: Boolean = false, val receives: Boolean = false)
     @Serializable data class Member(val id: String, val role: String, val seat: String? = null, val name: String? = null, val live: Boolean = true)
@@ -138,6 +141,9 @@ interface ReadWire {
     suspend fun join(code: String, body: JsonObject): ReadJoined
     suspend fun poll(code: String, key: String): ReadSnapshot
 
+    /** A long poll: the room answers when its generation moves past [gen], or after 20 s. */
+    suspend fun poll(code: String, key: String, gen: Int): ReadSnapshot = poll(code, key)
+
     /**
      * Whether a room answers to [code] before anyone joins: a keyless poll, which the Worker answers `no_such_room` or
      * `room_ended` for a room that is not there and a membership refusal for one that is. Returns the gone code, else null.
@@ -188,6 +194,10 @@ class WorkerReadWire(private val worker: WorkerApi, private val ok: OkHttpClient
 
     override suspend fun poll(code: String, key: String): ReadSnapshot = guarded {
         ShareJson.decodeFromString(ReadSnapshot.serializer(), worker.anonText(HttpMethod.Get, at(code), null, mapOf(KEY_HEADER to key)))
+    }
+
+    override suspend fun poll(code: String, key: String, gen: Int): ReadSnapshot = guarded {
+        ShareJson.decodeFromString(ReadSnapshot.serializer(), worker.anonText(HttpMethod.Get, at(code) + "?gen=$gen", null, mapOf(KEY_HEADER to key), ReadSession.LONG_POLL_TIMEOUT_MS))
     }
 
     override suspend fun send(code: String, key: String, message: JsonObject): ReadSnapshot? = guarded {
@@ -291,6 +301,7 @@ class ReadSession(
     private var forcePoll = false
     private var socket: ReadSocket? = null
     private var socketOpen = false
+    private var polling = false
     private var run = 0
     private val jobs = mutableListOf<Job>()
     private val samples = ArrayDeque<ReadCore.ClockSample>()
@@ -380,6 +391,7 @@ class ReadSession(
         socket?.close()
         socket = null
         socketOpen = false
+        polling = false
     }
 
     private fun later(ms: Long, mine: Int, body: suspend () -> Unit) {
@@ -394,21 +406,32 @@ class ReadSession(
     private fun poll(mine: Int) {
         val code = _state.value.code ?: return
         val k = key ?: return
-        if (run != mine || _state.value.ended != null) return
+        if (run != mine || _state.value.ended != null || polling) return
+        polling = true
         val t0 = now()
+        val gen = _state.value.snapshot?.generation
         jobs += scope.launch {
+            var wait = ReadCore.POLL_MS
             try {
-                val snap = wire.poll(code, k)
+                val snap = if (gen != null) wire.poll(code, k, gen) else wire.poll(code, k)
                 if (run != mine) return@launch
+                val took = now() - t0
+                val held = snap.heldMs ?: 0.0
+                // Every answer is a clock sample, with the time it waited in the room taken out.
+                sample(t0 + held, snap.serverTime, now())
                 apply(snap)
-                val slow = now() - t0 > ReadCore.SLOW_MS
+                val slow = took - held > ReadCore.SLOW_MS
                 if (slow != _state.value.slow) _state.update { it.copy(slow = slow) }
+                wait = maxOf(0L, ReadCore.POLL_MS - took.toLong())
             } catch (f: ReadFailure) {
                 if (run != mine) return@launch
                 failed(f)
                 if (!_state.value.slow && now() - lastOk > ReadCore.SLOW_MS) _state.update { it.copy(slow = true) }
+                wait = POLL_ERROR_MS
             }
-            if (run == mine && _state.value.ended == null && _state.value.transport == "poll") later(ReadCore.POLL_MS, mine) { poll(mine) }
+            if (run != mine) return@launch
+            polling = false
+            if (_state.value.ended == null && _state.value.transport == "poll") later(wait, mine) { poll(mine) }
         }
     }
 
@@ -430,10 +453,16 @@ class ReadSession(
     private fun connect() {
         stopTransport()
         val mine = run
-        val code = _state.value.code ?: return
-        val k = key ?: return
+        if (_state.value.code == null || key == null) return
         schedulePing(mine)
-        val sock = if (forcePoll) null else wire.socket(code, object : ReadSocketListener {
+        if (forcePoll || !openSocket(mine)) startPolling(mine)
+    }
+
+    /** A socket alongside a poll in flight: polling stops only once the socket is open. */
+    private fun openSocket(mine: Int): Boolean {
+        val code = _state.value.code ?: return false
+        val k = key ?: return false
+        val sock = wire.socket(code, object : ReadSocketListener {
             override fun onOpen() {
                 scope.launch {
                     var waited = 0
@@ -450,10 +479,10 @@ class ReadSession(
             override fun onText(text: String) { scope.launch { if (run == mine) handle(text) } }
 
             override fun onClosed() { scope.launch { if (run == mine && _state.value.ended == null) fallBack(mine) } }
-        })
-        if (sock == null) { startPolling(mine); return }
+        }) ?: return false
         socket = sock
         later(OPEN_WAIT_MS, mine) { if (!socketOpen) fallBack(mine) }
+        return true
     }
 
     private fun handle(text: String) {
@@ -480,7 +509,7 @@ class ReadSession(
         startPolling(mine)
         val wait = RETRY_MS[minOf(retries, RETRY_MS.lastIndex)]
         retries += 1
-        later(wait, mine) { connect() }
+        later(wait, mine) { openSocket(mine) }
     }
 
     // ---- The clock ----
@@ -495,14 +524,11 @@ class ReadSession(
 
     private fun schedulePing(mine: Int) {
         later(PING_MS, mine) {
-            val code = _state.value.code
-            val k = key
-            if (code != null && k != null) {
-                val t0 = now()
-                val ping = buildJsonObject { put("type", JsonPrimitive("ping")); put("t0", JsonPrimitive(t0)) }
-                val sock = socket
-                if (socketOpen && sock != null) sock.send(ShareJson.encodeToString(JsonObject.serializer(), ping))
-                else runCatching { wire.send(code, k, ping) }.getOrNull()?.let { apply(it); sample(t0, it.serverTime, now()) }
+            // Polling sends no ping: every poll answer is a clock sample.
+            val sock = socket
+            if (socketOpen && sock != null) {
+                val ping = buildJsonObject { put("type", JsonPrimitive("ping")); put("t0", JsonPrimitive(now())) }
+                sock.send(ShareJson.encodeToString(JsonObject.serializer(), ping))
             }
             schedulePing(mine)
         }
@@ -510,7 +536,9 @@ class ReadSession(
 
     companion object {
         val GONE = setOf("no_such_room", "room_ended", "not_a_member", "seat_key_required")
-        val RETRY_MS = longArrayOf(2000, 5000, 15000, 30000)
+        val RETRY_MS = longArrayOf(2000, 5000, 15000, 30000, 60000, 300_000)
+        const val POLL_ERROR_MS = 5000L
+        const val LONG_POLL_TIMEOUT_MS = 35_000L
         const val PING_MS = 10_000L
         const val OPEN_WAIT_MS = 5000L
     }

@@ -1,6 +1,7 @@
 package com.example.appname.account
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.header
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
@@ -163,10 +164,13 @@ class WorkerApi(
         return r.bodyAsBytes() to r.headers["x-take"]
     }
 
-    /** A call that needs no account (a read room, a seat): no bearer, no refresh; [headers] carries its own key. */
-    suspend fun anonText(method: HttpMethod, path: String, body: String? = null, headers: Map<String, String> = emptyMap()): String {
+    /**
+     * A call that needs no account (a read room, a seat): no bearer, no refresh; [headers] carries its own key.
+     * [timeoutMs] is for a long poll, which the Worker holds open longer than OkHttp's default read timeout.
+     */
+    suspend fun anonText(method: HttpMethod, path: String, body: String? = null, headers: Map<String, String> = emptyMap(), timeoutMs: Long? = null): String {
         if (!config.workerReady) throw WorkerException(503, "not_configured")
-        return ok(send(method, path, body, null, null, headers)).bodyAsText()
+        return ok(send(method, path, body, null, null, headers, timeoutMs)).bodyAsText()
     }
 
     /**
@@ -230,10 +234,12 @@ class WorkerApi(
         token: String? = null,
         raw: ByteArray? = null,
         headers: Map<String, String> = emptyMap(),
+        timeoutMs: Long? = null,
     ): HttpResponse {
         if (!config.workerReady) throw SignedOutException()
         return http.request(config.baseUrl.trimEnd('/') + path) {
             this.method = method
+            timeoutMs?.let { ms -> timeout { requestTimeoutMillis = ms; socketTimeoutMillis = ms } }
             token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
             headers.forEach { (name, value) -> if (!name.equals(HttpHeaders.ContentType, true)) header(name, value) }
             if (raw != null) {

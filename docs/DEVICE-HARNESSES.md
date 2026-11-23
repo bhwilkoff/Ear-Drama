@@ -840,7 +840,7 @@ Reports go to `docs/research/data/t7/<tag>-report.json` (and per-device delays),
 
 - Joining: screens and readers open with `APP_START_READ_ROOM`; a reader also needs `APP_START_SEAT=<anything>` /
   `appname_start_seat` (DEBUG: any value joins an adult room without the form). Web readers click Join in the DOM.
-- Polling is measured on the web: a second Chrome with `WebSocket` removed falls back to the 1 s poll of the same room. The
+- Polling is measured on the web: a second Chrome with `WebSocket` removed falls back to the long poll of the same room. The
   native clients' fallback cannot be forced without a build that points at another Worker.
 - Each device is leased by its bench name (`android`, `gtv`, `iphone`, `duo`, `ipad`, `atv`); a busy or unreachable device
   is reported SKIP with the reason. Every app is terminated and the device is asked whether it is gone.

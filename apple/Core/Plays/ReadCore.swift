@@ -12,6 +12,7 @@ nonisolated enum ReadCore {
     static let maxMembers = 40
     static let memberGoneMS: Double = 2 * 60 * 1000
     static let leaderGoneMS: Double = 2 * 60 * 1000
+    /// The least time between two polls' starts; each is a long poll the room holds until a change or 20 s.
     static let pollMS = 1000
     static let modes = ["read", "rehearse", "record"]
     /// §12.6: a polled cursor slower than this shows "Slow connection".
@@ -486,9 +487,11 @@ nonisolated struct ReadSnapshot: Codable, Equatable, Sendable {
     var assignments: [Assignment]
     var done: [String]
     var serverTime: Double
+    /// How long a long poll waited in the room before this answer; taken out of the clock sample.
+    var heldMS: Double? = nil
 
     enum CodingKeys: String, CodingKey {
-        case code, kind, mode, cursor, generation, locked, ended, leader, you, members, present, claims, seats, assignments, done, receiver
+        case code, kind, mode, cursor, generation, locked, ended, leader, you, members, present, claims, seats, assignments, done, receiver, heldMS = "held_ms"
         case scriptID = "script_id", scriptRevision = "script_revision", productionID = "production_id", classID = "class_id"
         case cursorGen = "cursor_gen", leaderName = "leader_name", readOpen = "read_open", waitingForLeader = "waiting_for_leader"
         case nextMine = "next_mine", readsNow = "reads_now", serverTime = "server_time"

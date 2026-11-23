@@ -21,6 +21,7 @@ const ReadCore = (() => {
   const MAX_MEMBERS = 40;
   const MEMBER_GONE_MS = 2 * 60 * 1000;
   const LEADER_GONE_MS = 2 * 60 * 1000;
+  /** The least time between two polls' starts; each is a long poll the room holds until a change or 20 s. */
   const POLL_MS = 1000;
   const MODES = ['read', 'rehearse', 'record'];
   /** PLAYS-DESIGN §12.6: a polled cursor slower than this shows "Slow connection" (a warning). */

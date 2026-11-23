@@ -290,8 +290,8 @@ actor APIClient {
 
     /// A Worker call that needs no account (a read room, a seat): no bearer, no refresh. `path` is already percent-encoded.
     func anonWorkerResponse(_ method: String, path: String, body: Data? = nil,
-                            headers: [String: String] = [:]) async throws -> (Data, Int) {
-        try await rawWorker(method, path, body, nil, headers, token: nil)
+                            headers: [String: String] = [:], timeout: TimeInterval? = nil) async throws -> (Data, Int) {
+        try await rawWorker(method, path, body, nil, headers, token: nil, timeout: timeout)
     }
 
     /// The `wss://` form of a Worker path, for a read room's socket; nil when no Worker is configured.
@@ -303,11 +303,11 @@ actor APIClient {
     }
 
     private func rawWorker(_ method: String, _ path: String, _ body: Data?, _ contentType: String?,
-                           _ headers: [String: String], token: String?) async throws -> (Data, Int) {
+                           _ headers: [String: String], token: String?, timeout: TimeInterval? = nil) async throws -> (Data, Int) {
         guard let base = config.workerURL else { throw WorkerError.notConfigured }
         let root = base.absoluteString.hasSuffix("/") ? String(base.absoluteString.dropLast()) : base.absoluteString
         guard let url = URL(string: root + path) else { throw WorkerError.badResponse }
-        var request = URLRequest(url: url, timeoutInterval: (body?.count ?? 0) > 1_000_000 ? 120 : 20)
+        var request = URLRequest(url: url, timeoutInterval: timeout ?? ((body?.count ?? 0) > 1_000_000 ? 120 : 20))
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
