@@ -55,7 +55,7 @@ Mechanics:
   Apple `ClassInbox`/`RelayHub` and Android `RelayAcrossTime.kt`; tests that count asks; PARITY row.
 - [x] **B4 Web voice labels** (e1e27720; real Chrome on the Pixel still to confirm the voiceURI carries the engine id: B5). Browsers that name voices only by locale get measured labels like
   Android's (PLAYS-DESIGN 2.8 rule 12); PARITY ⏳ cleared.
-- [ ] **B5 Library and read-along on devices** (device pass done 2026-11-23; Android door + web fixture running). New-user Library on the Pixel (without wiping the
+- [x] **B5 Library and read-along on devices** (2026-11-23; follow-ups on a device: Pixel empty door, iPhone Export tap area, TV foot alignment). New-user Library on the Pixel (without wiping the
   owner's data: a second user profile or a DEBUG door) and the Duo; Apple TV frames; run the Library
   UI tests; press read-along pause, step and speed on an Apple device (muted).
 - [ ] **B6 Round 3 leftovers.** Class-room takes end on silence (adult rooms do); Duo Record "Plays"
@@ -100,3 +100,6 @@ store words; radio-script rights rule; GRW request.
   fixed b377a936 (not yet seen on device). Real Chrome on the Pixel has no engine ids: web voices read "US voice"
   etc. (one per locale). Gaps: Android empty-library door (agent running); Homebrew python3 Pillow broken for
   tools/ios_uitest.py (use /usr/bin/python3).
+- 2026-11-23 16:40, tick 7: Android empty-library door (draws only) + real Chrome 157 voices test merged
+  (80a52f91; 78/78 web, lintRelease 0 warnings; also fixed own-locale sort for Chrome's en_US tags). B6 class
+  takes end-on-silence running in an agent. Duo is out with the owner: Duo Record indent BLIND today.
