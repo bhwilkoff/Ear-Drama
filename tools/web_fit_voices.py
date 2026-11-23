@@ -43,6 +43,9 @@ STUB = r"""(() => {
     V('Zoe (Enhanced)', 'com.apple.voice.enhanced.en-US.Zoe', 'en-US'),
     V('Fred', 'com.apple.speech.synthesis.voice.Fred', 'en-US'),
     V('Google US English', 'Google US English', 'en-US', false),
+    V('English United Kingdom', 'en-gb-x-rjs-local', 'en_GB'),
+    V('English Australia', 'en-au-x-aua-local', 'en_AU'),
+    ...['iob', 'iog', 'iol', 'iom', 'sfg', 'tpc', 'tpd', 'tpf'].map((c, i) => V('English United States' + (i ? ' ' + (i + 1) : ''), 'en-us-x-' + c + '-local', 'en_US')),
   ];
   window.__errors = [];
   window.addEventListener('error', (e) => window.__errors.push(String(e.message)));
@@ -180,7 +183,7 @@ def main():
             if label != 'Download (340 MB)': bad(f'the Download button reads {label!r}, want the manifest size')
             if ev("document.querySelectorAll('.vs-row[data-voice^=kokoro]').length"): bad('Kokoro voices listed before the download')
             rows = ev("document.querySelectorAll('.vs-row').length")
-            if rows != 6: bad(f'{rows} device voice rows, want the 6 local English ones')
+            if rows != 16: bad(f'{rows} device voice rows, want 16: six named, UK and Australia, the eight Pixel voices')
             if ev(engine): bad('the engine scripts loaded while the model is absent')
             if not ev(fits): bad('Voices is wider than the screen (not downloaded)')
             first = ev("document.querySelector('.vs-row .vc-name').textContent")

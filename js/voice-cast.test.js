@@ -359,6 +359,53 @@ test('the defaults persist in this browser, are cleaned on read, and survive blo
   eq(/ed\.voices|loadDefaults/.test(sync), false, 'sync never carries the defaults');
 });
 
+// Rule 12 on the web (PLAYS-DESIGN §2.8; Android's golden: VoiceLabelsTest "every Pixel voice is named by its sound").
+const synthV = (name, lang, voiceURI, extra = {}) => ({ name, lang, voiceURI: voiceURI || name, localService: true, default: false, ...extra });
+const PIXEL_IDS = ['iob', 'iog', 'iol', 'iom', 'sfg', 'tpc', 'tpd', 'tpf'];
+const PIXEL_WANT = {
+  'en-us-x-iob-local': 'High, lively · US', 'en-us-x-iog-local': 'Very high · US', 'en-us-x-iol-local': 'Low, bright · US',
+  'en-us-x-iom-local': 'Low, clear · US', 'en-us-x-sfg-local': 'High, even · US', 'en-us-x-tpc-local': 'Middle · US',
+  'en-us-x-tpd-local': 'Low, warm · US', 'en-us-x-tpf-local': 'High, varied · US',
+};
+
+test('rule 12: Android Chrome\'s locale-named voices read as Android labels them (the Pixel golden)', () => {
+  const all = PIXEL_IDS.map((c, i) => synthV(`English United States${i ? ' ' + (i + 1) : ''}`, 'en_US', `en-us-x-${c}-local`));
+  const got = {};
+  for (const v of VoiceCast.systemVoices(all, 'en-US')) got[v.id] = v.name;
+  eq(Object.fromEntries(Object.entries(got).sort()), PIXEL_WANT, 'the same eight labels Android shows');
+  ok(Object.values(got).every(n => !/\d|United States/.test(n)), 'no number, no locale name');
+});
+
+test('rule 12: a name a person can choose by stays; a locale name does not; duplicates are listed once', () => {
+  const all = [synthV('Samantha', 'en-US'), synthV('Daniel', 'en-GB'), synthV('Microsoft Aria Online (Natural)', 'en-US'),
+               synthV('Google UK English Female', 'en-GB'), synthV('Samantha', 'en-US', 'dup.samantha'),
+               synthV('English (United States)', 'en-US', 'a'), synthV('English (United States) 2', 'en-US', 'b'),
+               synthV('English (Australia)', 'en-AU', 'c'), synthV('English (United Kingdom)', 'en-GB', 'd')];
+  const names = VoiceCast.systemVoices(all, 'en-US').map(v => v.name).sort();
+  eq(names, ['Australia voice', 'Daniel', 'Google UK English Female', 'Microsoft Aria Online (Natural)', 'Samantha', 'UK voice', 'US voice'],
+     'named voices keep their names; locale-named ones read "<accent> voice"; one Samantha; two indistinguishable US voices are one');
+});
+
+test('rule 12: a voice never reads as a number, and only a measured voice claims a register', () => {
+  eq(VoiceCast.localeNamed(synthV('en-US', 'en-US')), true, 'a bare tag is a locale name');
+  eq(VoiceCast.localeNamed(synthV('Samantha', 'en-US')), false, 'a first name is not');
+  eq(VoiceCast.accentOf('en_AU'), 'Australia', 'accent: region name');
+  eq(VoiceCast.accentOf('en-GB'), 'UK', 'accent: UK');
+  eq(VoiceCast.accentOf('en'), 'English', 'accent: language when no region');
+  const v = VoiceCast.systemVoices([synthV('English United States', 'en-US', 'en-us-x-tpd-local'), synthV('Samantha', 'en-US')], 'en-US');
+  eq(v.map(x => String(x.register)).sort(), ['lower', 'null'], 'register only from the seed');
+  eq(v.every(x => x.gender === null), true, 'the web still reports no gender');
+});
+
+test('rule 12: auto-cast alternates lower and higher over seeded voices', () => {
+  const all = PIXEL_IDS.map((c) => synthV('English United States', 'en-US', `en-us-x-${c}-local`));
+  const voices = VoiceCast.systemVoices(all, 'en-US');
+  const parts = ['role:A', 'role:B', 'role:C', 'role:D', 'role:E', 'role:F'];
+  const cast = VoiceCast.autoCast(parts, voices);
+  const reg = parts.map(p => voices.find(v => v.id === cast[p].voice).register);
+  eq(reg, ['higher', 'lower', 'higher', 'lower', 'higher', 'lower'], 'neighbors differ in register');
+});
+
 (async () => {
   for (const [name, fn] of results) {
     const before = failures;
