@@ -2,6 +2,9 @@
 import CoreML
 import Darwin
 import Foundation
+#if os(iOS)
+import UIKit
+#endif
 
 /// The S6a gate for Apple (R2-kokoro-feasibility §6, S6e), the mirror of Android's KokoroBenchActivity: a DEBUG-only
 /// door that renders real lines muted (nothing reaches an output) through the shipping reader and engine, in a loop
@@ -52,7 +55,15 @@ enum KokoroBench {
 
     static func runIfAsked(_ env: [String: String] = ProcessInfo.processInfo.environment) async {
         guard env["APP_KOKORO_BENCH"] == "1" else { return }
+        #if os(iOS)
+        // A device that dims its screen suspends the app mid-run (the Duo, 2026-11-22: two runs stopped logging
+        // a minute in), so the bench keeps it awake while it runs.
+        await MainActor.run { UIApplication.shared.isIdleTimerDisabled = true }
+        #endif
         await run(Options(env))
+        #if os(iOS)
+        await MainActor.run { UIApplication.shared.isIdleTimerDisabled = false }
+        #endif
     }
 
     /// Runs the bench and returns its summary (nil when it could not run; the reason is logged and written).

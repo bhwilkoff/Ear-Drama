@@ -253,9 +253,10 @@ nonisolated struct KokoroManifest: Codable, Equatable, Sendable {
 }
 
 /// Whether the downloadable voices are offered: always in a DEBUG build (the bench, the doors), and in a release build
-/// once the S6a gate passed on the iPhone 12 (RTF at most 0.7, memory under 600 MB; R2-kokoro-feasibility, S6e).
+/// since the S6a gate passed on the open iPhone Duo, 2026-11-22: RTF 0.116, peak 539 MB against 0.7 and 600 MB, over
+/// 623 renders in 10 minutes with kokoro-v3-apple (R2-kokoro-feasibility, S6e).
 nonisolated enum KokoroFlag {
-    static let inRelease = false
+    static let inRelease = true
 
     static var enabled: Bool {
         #if DEBUG

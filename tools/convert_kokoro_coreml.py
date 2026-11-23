@@ -38,10 +38,9 @@ Writes WORK_DIR/KokoroDuration.mlpackage, KokoroDecoder.mlpackage (multifunction
 kokoro-coreml-report.json (sizes, SHA-256, the error measured); tools/publish_kokoro_model.py --coreml WORK_DIR
 publishes them. Refuses a model whose audio has a non-finite sample or that drifts from PyTorch.
 
-On macOS 27 coremltools 9.0 segfaults loading any Core ML model (MLModel.__init__, with or without torch in the
-process; Python crash reports 2026-11-15/16), so step 4 cannot run on the owner's Mac and must not be retried there: the
-conversion and steps 1-2 finish, the verify exits 245. The Swift engine is the check instead (apple/Tests/
-KokoroBenchTests.swift, docs/research/design/kokoro-spike/coreml_asr_check.py). Known waste, not yet fixed: every
+coremltools 9.0's MLModel segfaults loading the decoder (macOS 27, 2026-11-15/16; the macos-26 runner, 2026-11-22), so
+step 4 runs the converted models through Core ML itself (tools/kokoro_coreml_predict.swift, compiled with swiftc; Xcode
+needed). .github/workflows/kokoro-coreml.yml runs all of this on a released macOS and publishes the result. Known waste, not yet fixed: every
 `torch.zeros_like` / `full_like` / scalar on a select's other side is folded into a constant of the bucket's whole
 shape, one per function, and the int8 pass stores each: about 48 MB of the decoder's 112 MB weight.bin (2026-11-16).
 Deriving the filler from a runtime tensor (the mask) should remove it; untested, as the conversion needs a Mac where
@@ -56,6 +55,9 @@ import sys
 import time
 
 import numpy as np
+
+TAPS = ["tap_f0", "tap_N", "tap_enc", "tap_dec", "tap_low", "tap_hi", "tap_har", "tap_hs", "tap_g0", "tap_post"] \
+    if os.environ.get("KOKORO_TAPS") == "1" else []
 
 HF = "hexgrad/Kokoro-82M"
 REV = "f3ff3571791e39611d31c381e3a41a3af07b4987"
@@ -244,10 +246,12 @@ def build(km):
             for block in p.N:
                 n = block(n, s)
             f0, n = p.F0_proj(f0).squeeze(1), p.N_proj(n).squeeze(1)  # 1, 2F
+            taps = {"tap_f0": f0, "tap_N": n}
             d = self.dec
             F0 = d.F0_conv(f0.unsqueeze(1))
             N = d.N_conv(n.unsqueeze(1))
             x = d.encode(torch.cat([asr, F0, N], dim=1), sref)
+            taps["tap_enc"] = x
             asr_res = d.asr_res(asr)
             res = True
             for block in d.decode:
@@ -256,20 +260,27 @@ def build(km):
                 x = block(x, sref)
                 if block.upsample_type != "none":
                     res = False
+            taps["tap_dec"] = x
             g, up = self.gen, 300
             # The source: harmonics of the F0 curve (replicated past the end, as interpolation clamps there).
             f0c = f0.index_select(-1, ctx.last(2 * Fb, 2))
-            rad = torch.remainder(f0c.unsqueeze(-1) * self.harmonics / 24000.0, 1.0)  # 1, 2F, 9
+            # x - floor(x), not torch.remainder(x, 1.0): coremltools 9.0 converts that remainder to zeros, which left
+            # the source without its harmonics (Core ML against PyTorch, the decoder alone: 3 dB; 2026-11-22).
+            cyc = f0c.unsqueeze(-1) * self.harmonics / 24000.0
+            rad = cyc - torch.floor(cyc)  # 1, 2F, 9
             phase = torch.cumsum(rad, dim=1) * (2 * math.pi)
             uv_low = (f0c.unsqueeze(-1) > 10).to(torch.float32)
             # One linear upsample for both: thresholding the interpolated voicing at 0.5 is exactly nearest.
-            hi = F.interpolate(torch.cat([phase * up, uv_low], dim=-1).transpose(1, 2), scale_factor=float(up),
-                               mode="linear").transpose(1, 2)  # 1, 600F, 10
+            low = torch.cat([phase * up, uv_low], dim=-1)  # 1, 2F, 10
+            taps["tap_low"] = low
+            hi = F.interpolate(low.transpose(1, 2), scale_factor=float(up), mode="linear").transpose(1, 2)  # 1, 600F, 10
+            taps["tap_hi"] = hi
             sines = torch.sin(hi[..., :9]) * 0.1
             uv = (hi[..., 9:] > 0.5).to(torch.float32)
             amp = uv * 0.003 + (1 - uv) * (0.1 / 3)
             har = torch.tanh(g.m_source.l_linear(sines * uv) + amp * self.wnorm * noise).squeeze(-1)  # 1, 600F
             har = har.index_select(-1, ctx.last(600 * Fb, 600))
+            taps["tap_har"] = har
             st = g.stft
             wav = F.pad(har, (st.n_fft // 2, st.n_fft // 2), mode="replicate").unsqueeze(1)
             re = F.conv1d(wav, st.weight_forward_real, stride=st.hop_length)
@@ -278,6 +289,7 @@ def build(km):
             ph = torch.atan2(im, re)
             ph = torch.where((im == 0) & (re < 0), torch.full_like(ph, math.pi), ph)
             hs = torch.cat([mag, ph], dim=1)
+            taps["tap_hs"] = hs
             for i in range(g.num_upsamples):
                 x = F.leaky_relu(x, negative_slope=0.1)
                 xs_ = g.noise_res[i](g.noise_convs[i](hs), sref)
@@ -290,13 +302,18 @@ def build(km):
                     r = g.resblocks[i * g.num_kernels + j](x, sref)
                     acc = r if acc is None else acc + r
                 x = acc / g.num_kernels
+                if i == 0:
+                    taps["tap_g0"] = x
             x = g.conv_post(F.leaky_relu(x))
+            taps["tap_post"] = x
             nb = g.post_n_fft // 2 + 1
             spec = torch.exp(x[:, :nb, :])
             pha = torch.sin(x[:, nb:, :])
             out = F.conv_transpose1d(ctx.keep(spec * torch.cos(pha)), st.weight_backward_real, stride=st.hop_length) - \
                 F.conv_transpose1d(ctx.keep(spec * torch.sin(pha)), st.weight_backward_imag, stride=st.hop_length)
             pad = st.n_fft // 2
+            if TAPS:
+                return (out[:, 0, pad:-pad],) + tuple(taps[t] for t in TAPS)
             return out[:, 0, pad:-pad]
 
     def unmasked(fn):
@@ -408,7 +425,8 @@ def main():
                 noise = rng.standard_normal((1, 600 * nf, 1)).astype(np.float32)
             F = fb or nf
             a = dec_m(torch.from_numpy(pad_to(en, 2, F)), torch.from_numpy(pad_to(asr, 2, F)), ref,
-                      torch.from_numpy(pad_to(noise, 1, 600 * F)), torch.tensor([float(nf)]))[0].numpy()
+                      torch.from_numpy(pad_to(noise, 1, 600 * F)), torch.tensor([float(nf)]))
+            a = (a[0] if TAPS else a)[0].numpy()
         return a[:600 * nf], nf, noise
 
     # 1. The unpadded wrappers against kokoro's own forward (noise zero on both sides).
@@ -452,10 +470,15 @@ def main():
     if "--check-only" not in sys.argv:
         # 3. One converted function per bucket, merged into one package each (weights stored once).
         common = dict(convert_to="mlprogram", minimum_deployment_target=ct.target.iOS18, compute_precision=cp)
-        if wq == "int8":
-            from coremltools.optimize.coreml import OpLinearQuantizerConfig, OptimizationConfig, linear_quantize_weights
-            qc = OptimizationConfig(global_config=OpLinearQuantizerConfig(mode="linear_symmetric", dtype="int8",
-                                                                           granularity="per_channel", weight_threshold=2048))
+        from coremltools.optimize import coreml as cto
+        if wq == "int8":  # per output channel
+            qc = cto.OptimizationConfig(global_config=cto.OpLinearQuantizerConfig(
+                mode="linear_symmetric", dtype="int8", granularity="per_channel", weight_threshold=2048))
+        elif wq == "int8b":  # per block of 32 input weights (iOS 18): a scale per block, not per channel
+            qc = cto.OptimizationConfig(global_config=cto.OpLinearQuantizerConfig(
+                mode="linear_symmetric", dtype="int8", granularity="per_block", block_size=32, weight_threshold=2048))
+        elif wq == "pal8":  # a 256-entry k-means table per tensor
+            qc = cto.OptimizationConfig(global_config=cto.OpPalettizerConfig(mode="kmeans", nbits=8, weight_threshold=2048))
         meta = {"source": f"https://huggingface.co/{HF}/tree/{REV}", "license": "Apache-2.0",
                 "converter": "tools/convert_kokoro_coreml.py", "precision": precision, "weights": wq}
         parts = os.path.join(work, "parts")
@@ -484,10 +507,12 @@ def main():
                                ct.TensorType("ref_s", shape=(1, 256), dtype=np.float32),
                                ct.TensorType("noise", shape=(1, 600 * b, 1), dtype=np.float32),
                                ct.TensorType("length", shape=(1,), dtype=np.float32)]
-                        outs = [ct.TensorType("audio")]
+                        outs = [ct.TensorType("audio")] + [ct.TensorType(t) for t in TAPS]
                 m = ct.convert(tr, inputs=ins, outputs=outs, **common)
-                if wq == "int8":
-                    m = linear_quantize_weights(m, qc)
+                if wq in ("int8", "int8b"):
+                    m = cto.linear_quantize_weights(m, qc)
+                elif wq == "pal8":
+                    m = cto.palettize_weights(m, qc)
                 p = os.path.join(parts, f"{name}-{key}{b}.mlpackage")
                 m.save(p)
                 desc.add_function(p, src_function_name="main", target_function_name=f"{key}{b}")
@@ -516,7 +541,13 @@ def main():
             with torch.no_grad():
                 du, d, t = dur_m(torch.from_numpy(ids), torch.from_numpy(ref), torch.tensor([1.0]), torch.tensor([float(n)]))
             en_t, asr_t, _ = align(du.numpy(), d.numpy(), t.numpy(), n)
-            for key, v in dict(want=want, noise=noise, ids=ids, ref=ref, en=en_t, asr=asr_t,
+            if TAPS:
+                with torch.no_grad():
+                    tt = dec_m(torch.from_numpy(en_t), torch.from_numpy(asr_t), torch.from_numpy(ref),
+                               torch.from_numpy(noise), torch.tensor([float(nf)]))
+                for name, v in zip(TAPS, tt[1:]):
+                    cases[f"{k}_{name}"] = v.numpy()
+            for key, v in dict(want=want, noise=noise, ids=ids, ref=ref, en=en_t, asr=asr_t, du=du.numpy(), dd=d.numpy(), te=t.numpy(),
                                meta=np.array([li, vi, nf, n])).items():
                 cases[f"{k}_{key}"] = v
             k += 1
@@ -529,48 +560,106 @@ def main():
 
 
 def verify(work, precision, wq, units):
-    """The Core ML half of the check (no torch in this process): writes the report's lines, sizes and SHA-256."""
-    import coremltools as ct
-    import faulthandler
-    faulthandler.enable()
+    """The Core ML half of the check (no torch in this process): writes the report's lines, sizes and SHA-256.
+
+    The predictions run through Core ML itself (tools/kokoro_coreml_predict.swift, compiled here with swiftc), not
+    coremltools' MLModel: its Python binding segfaults loading the decoder on macOS 26 and 27 (2026-11-16, -22)."""
+    import subprocess
     report = json.load(open(os.path.join(work, "kokoro-coreml-report.json")))
     global TOKEN_BUCKETS, FRAME_BUCKETS
     TOKEN_BUCKETS, FRAME_BUCKETS = report["token_buckets"], report["frame_buckets"]
     z = np.load(os.path.join(work, "check-cases.npz"))
     out = {n: os.path.join(work, n + ".mlpackage") for n in ("KokoroDuration", "KokoroDecoder")}
-    cu = {"cpu": ct.ComputeUnit.CPU_ONLY, "gpu": ct.ComputeUnit.CPU_AND_GPU, "ane": ct.ComputeUnit.CPU_AND_NE,
-          "all": ct.ComputeUnit.ALL}[units]
-    models = {}
+    cases = os.path.join(work, "cases")
+    shutil.rmtree(cases, ignore_errors=True)
+    os.makedirs(cases)
+    predict = os.path.join(cases, "predict")
+    here = os.path.dirname(os.path.abspath(__file__))
+    subprocess.run(["xcrun", "swiftc", "-O", os.path.join(here, "kokoro_coreml_predict.swift"), "-o", predict], check=True)
 
-    def model(name, fn):
-        if (name, fn) not in models:
-            models[(name, fn)] = ct.models.MLModel(out[name], compute_units=cu, function_name=fn)
-        return models[(name, fn)]
+    def put(name, a):
+        path = os.path.join(cases, name + ".bin")
+        a = np.ascontiguousarray(a, dtype=np.int32 if a.dtype.kind in "iu" else np.float32)
+        a.tofile(path)
+        return {"file": path, "shape": list(a.shape), "dtype": "int32" if a.dtype == np.int32 else "float32"}
 
-    worst = 99.0
-    report["lines"] = []
-    for k in range(int(z["count"][0])):
-        c = lambda key: z[f"{k}_{key}"]
-        li, vi, nf, n = (int(x) for x in c("meta"))
-        want, noise, ids, ref = c("want"), c("noise"), c("ids"), c("ref")
+    def run(calls, tag):
+        req, res = os.path.join(cases, tag + "-request.json"), os.path.join(cases, tag + "-result.json")
+        json.dump({"units": units, "calls": calls}, open(req, "w"))
+        r = subprocess.run([predict, req, res])
+        if r.returncode != 0:
+            sys.exit(f"refused: Core ML could not run the {tag} model (exit {r.returncode})")
+        got = json.load(open(res))
+        load.update(got["load_seconds"])
+        return [{"seconds": c["seconds"], **{k: np.fromfile(v["file"], "<f4").reshape(v["shape"])
+                                              for k, v in c["outputs"].items()}} for c in got["calls"]]
+
+    load = {}
+    count = int(z["count"][0])
+    c = lambda k, key: z[f"{k}_{key}"]
+    meta = [tuple(int(x) for x in c(k, "meta")) for k in range(count)]
+    calls = []
+    for k, (li, vi, nf, n) in enumerate(meta):
         tb = bucket(n, TOKEN_BUCKETS)
-        model("KokoroDuration", f"t{tb}")  # loaded (and compiled) before the clock starts
-        t0 = time.time()
-        r = model("KokoroDuration", f"t{tb}").predict({"input_ids": pad_to(ids, 1, tb), "ref_s": ref,
-                                                       "speed": np.array([1.0], np.float32),
-                                                       "length": np.array([n], np.float32)})
+        calls.append({"model": out["KokoroDuration"], "function": f"t{tb}",
+                      "inputs": {"input_ids": put(f"{k}-ids", pad_to(c(k, "ids"), 1, tb)), "ref_s": put(f"{k}-ref", c(k, "ref")),
+                                 "speed": put(f"{k}-speed", np.array([1.0], np.float32)),
+                                 "length": put(f"{k}-length", np.array([n], np.float32))},
+                      "outputs": {o: os.path.join(cases, f"{k}-{o}.out") for o in ("duration", "d", "t_en")}})
+    durations = run(calls, "duration")
+    calls, aligned = [], []
+    for k, (li, vi, nf, n) in enumerate(meta):
+        r = durations[k]
         en, asr, nf2 = align(r["duration"], r["d"], r["t_en"], n)
         if nf2 != nf:  # a duration rounding edge: the decoder is compared on the PyTorch alignment
-            en, asr = c("en"), c("asr")
+            en, asr = c(k, "en"), c(k, "asr")
+        aligned.append(nf2)
         fb = bucket(nf, FRAME_BUCKETS)
-        a = model("KokoroDecoder", f"f{fb}").predict({
-            "en": pad_to(en, 2, fb), "asr": pad_to(asr, 2, fb), "ref_s": ref,
-            "noise": pad_to(noise, 1, 600 * fb), "length": np.array([nf], np.float32)})["audio"][0][:600 * nf]
-        secs = time.time() - t0
+        calls.append({"model": out["KokoroDecoder"], "function": f"f{fb}",
+                      "inputs": {"en": put(f"{k}-en", pad_to(en, 2, fb)), "asr": put(f"{k}-asr", pad_to(asr, 2, fb)),
+                                 "ref_s": put(f"{k}-ref", c(k, "ref")), "noise": put(f"{k}-noise", pad_to(c(k, "noise"), 1, 600 * fb)),
+                                 "length": put(f"{k}-frames", np.array([nf], np.float32))},
+                      "outputs": {"audio": os.path.join(cases, f"{k}-audio.out")}})
+    decoded = run(calls, "decoder")
+    if os.environ.get("KOKORO_CHECK_DIAG") == "1":  # each model alone: duration outputs, the decoder on PyTorch's alignment
+        for k, (li, vi, nf, n) in enumerate(meta):
+            r = durations[k]
+            print(f"diag {k}: duration max diff {np.abs(r['duration'][0][:n] - c(k, 'du')[0][:n]).max():.4f}, "
+                  f"d SNR {snr_db(c(k, 'dd')[0][:n].ravel(), r['d'][0][:n].ravel()):.1f} dB, "
+                  f"t_en SNR {snr_db(c(k, 'te')[0][:, :n].ravel(), r['t_en'][0][:, :n].ravel()):.1f} dB", flush=True)
+        ref_calls = []
+        for k, (li, vi, nf, n) in enumerate(meta):
+            fb = bucket(nf, FRAME_BUCKETS)
+            ref_calls.append({**calls[k], "inputs": {**calls[k]["inputs"], "en": put(f"{k}-ten", pad_to(c(k, "en"), 2, fb)),
+                                                     "asr": put(f"{k}-tasr", pad_to(c(k, "asr"), 2, fb))},
+                              "outputs": {"audio": os.path.join(cases, f"{k}-taudio.out"),
+                                          **{t: os.path.join(cases, f"{k}-{t}.out") for t in TAPS}}})
+        for k, r in enumerate(run(ref_calls, "decoder-on-pytorch")):
+            nf = meta[k][2]
+            fb = bucket(nf, FRAME_BUCKETS)
+            for t in TAPS:
+                ref_t, got_t = c(k, t), r[t]
+                L = ref_t.shape[-1]
+                g = got_t[tuple(slice(0, n) for n in ref_t.shape)]
+                print(f"diag {k} {t}: torch {list(ref_t.shape)} coreml {list(got_t.shape)} SNR "
+                      f"{snr_db(ref_t.ravel(), g.ravel()):.1f} dB, max diff {np.abs(ref_t - g).max():.4f}", flush=True)
+            a = r["audio"].reshape(-1)[:600 * nf]
+            want = c(k, "want")
+            print(f"diag {k}: decoder on PyTorch's alignment: spectral SNR {spec_snr_db(want, a):.1f} dB, wave "
+                  f"{snr_db(want, a):.1f} dB, peak {np.abs(a).max():.3f} vs {np.abs(want).max():.3f}, "
+                  f"first {a[:4].round(4).tolist()} vs {want[:4].round(4).tolist()}", flush=True)
+    worst = 99.0
+    report["lines"] = []
+    for k, (li, vi, nf, n) in enumerate(meta):
+        want = c(k, "want")
+        a = decoded[k]["audio"].reshape(-1)[:600 * nf]
+        secs = durations[k]["seconds"] + decoded[k]["seconds"]
+        tb, fb = bucket(n, TOKEN_BUCKETS), bucket(nf, FRAME_BUCKETS)
         finite = bool(np.isfinite(a).all())
         snr = spec_snr_db(want, a) if finite else -99.0
-        row = {"line": li, "voice": vi, "tokens": n, "frames": nf, "coreml_frames": nf2, "buckets": [tb, fb],
+        row = {"line": li, "voice": vi, "tokens": n, "frames": nf, "coreml_frames": aligned[k], "buckets": [tb, fb],
                "finite": finite, "peak": round(float(np.abs(a).max()), 3) if finite else None,
+               "max_abs_diff": round(float(np.abs(want[:len(a)] - a).max()), 4) if finite else None,
                "wave_snr_db": round(snr_db(want, a), 1) if finite else None, "spec_snr_db": round(snr, 1),
                "mac_seconds": round(secs, 3), "rtf_mac": round(secs / (nf * 0.025), 3)}
         report["lines"].append(row)
@@ -578,6 +667,8 @@ def verify(work, precision, wq, units):
         if not finite:
             sys.exit("refused: the Core ML model rendered a non-finite sample")
         worst = min(worst, snr)
+    report["load_seconds"] = {k: round(v, 2) for k, v in sorted(load.items())}
+    shutil.rmtree(cases, ignore_errors=True)
     report["worst_spec_snr_db"] = round(worst, 1)
     files = []
     for name, p in out.items():

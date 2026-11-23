@@ -376,7 +376,7 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    "Downloaded" group, under "On this device", holds one button until the model is here:
    **Download voices (… MB)** (the size is everything the platform fetches: on Android the
    on-demand engine module, 19 MB, and the q8 model, 107 MB, so 126 MB, R2-kokoro-feasibility
-   S6a; Apple reads our own Core ML conversion, `kokoro-v3-apple-manifest.json`, 151 MB, its
+   S6a; Apple reads our own Core ML conversion, `kokoro-v3-apple-manifest.json`, 532 MB, its
    size in the iOS and macOS design docs; Apple writes it title case, "Download Voices (… MB)"),
    never started for the person, on any network. While it downloads: one progress bar over
    everything fetched, "34 MB of 126 MB" and Cancel (Play's own confirmation first when Play

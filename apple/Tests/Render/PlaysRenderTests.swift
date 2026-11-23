@@ -188,7 +188,7 @@ private final class RenderRig {
         VStack(alignment: .leading, spacing: Spacing.s3) {
             Text("High-Fidelity Voices").font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
             VStack(alignment: .leading, spacing: Spacing.s2) {
-                KokoroControls(state: state, done: 62_000_000, total: 151_355_119, bytes: 151_355_119)
+                KokoroControls(state: state, done: 62_000_000, total: 532_310_241, bytes: 532_310_241)
                 if state == .ready { Text(VoicePickerForm.attribution).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted) }
             }
             LabeledContent("Speed", value: VoiceChipText.rate(1.0))

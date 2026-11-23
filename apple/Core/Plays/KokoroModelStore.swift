@@ -25,9 +25,9 @@ final class KokoroModelStore {
     static let shared = KokoroModelStore()
     nonisolated static let release = URL(string: "https://github.com/bhwilkoff/Ear-Drama/releases/download/kokoro-model/")!
     nonisolated static let manifestName = "kokoro-v3-apple-manifest.json"
-    /// What the picker says before the manifest is read: kokoro-v3-apple-manifest.json's files as built 2026-11-16
-    /// (151,355,119 bytes; not yet on the Release).
-    nonisolated static let knownBytes: Int64 = 151_355_119
+    /// What the picker says before the manifest is read: kokoro-v3-apple-manifest.json's files as published 2026-11-22
+    /// (fp32, uncompressed: the compressed conversions failed the check against PyTorch; R2-kokoro-feasibility S6e).
+    nonisolated static let knownBytes: Int64 = 532_310_241
 
     private(set) var state: State = .absent
     let root: URL
