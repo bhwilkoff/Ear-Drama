@@ -48,7 +48,7 @@ Mechanics:
   (d) SCRATCHPAD Current State brought up to date.
 - [x] **B2 Worker deploy** (a8982b67, 2026-11-23). The $0.00 stack Worker changes (SCRATCHPAD "The Worker needs a deploy"),
   under the deploy rule above; then watch `wrangler tail` for a minute for errors.
-- [ ] **B3 Relay rules on Apple and Android.** Mirror the web's receiver and sender rules (hidden or idle
+- [x] **B3 Relay rules on Apple and Android** (de3cb83d; delta: apps have no cast-sheet pickup and no watch tick, quieter than web; Keep receiving takes flow untested directly). Mirror the web's receiver and sender rules (hidden or idle
   holds no pickup, 30 idle minutes stops, Keep receiving takes, RelayWatch 5-minute empty wait) in
   Apple `ClassInbox`/`RelayHub` and Android `RelayAcrossTime.kt`; tests that count asks; PARITY row.
 - [x] **B4 Web voice labels** (e1e27720; real Chrome on the Pixel still to confirm the voiceURI carries the engine id: B5). Browsers that name voices only by locale get measured labels like
@@ -84,3 +84,7 @@ store words; radio-script rights rule; GRW request.
   ("Low, warm · US") when the id carries Google's engine code, else "US voice"; no engine codes on the web
   (I removed "(aua)": the web never measures, so a code would read like a number); 73/73, fit PASS, PNG read.
   B3 relay rules running.
+- 2026-11-23 15:33, tick 4: B3 merged (de3cb83d): PickupLoop on Apple and Android (foreground only, stops
+  after 30 idle minutes, Keep receiving takes), senders defer retries while backgrounded; 4+4 tests that count
+  asks, all failing with the rules removed; macOS relay suites, iOS, tvOS, Android lintRelease green. Fixed the
+  LibrarySides.kt:107 compiler warning (5a8afec7). Next: CI green -> bump + TestFlight + Play; then B5 devices.
