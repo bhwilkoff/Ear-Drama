@@ -241,6 +241,7 @@ async function createInput(request, env) {
 // Transport 1: the Durable Object.
 
 const CAST_CHUNK = 2000;
+const MIN_ALARM_MS = 5 * 1000;
 
 export class ReadRoom extends DurableObject {
   constructor(ctx, env) {
@@ -277,12 +278,16 @@ export class ReadRoom extends DurableObject {
 
   /** One alarm: the next leader check for an adult room, else the idle end. */
   async schedule(world) {
+    const now = Date.now();
     let at = world.room.touched_at + P.ROOM_IDLE_MS;
     if (world.room.kind === "adult") {
       const leader = world.members.find((m) => m.id === world.room.leader);
-      if (leader && !this.connected().has(leader.id)) at = Math.min(at, leader.seen_at + P.LEADER_GONE_MS + 1);
+      const check = leader ? leader.seen_at + P.LEADER_GONE_MS + 1 : 0;
+      // A check already past has run: with nobody to hand the lead to, the next join reschedules.
+      if (check > now && !this.connected().has(leader.id)) at = Math.min(at, check);
     }
-    await this.ctx.storage.setAlarm(at);
+    // Never in the past: an alarm that sets its successor in the past fires without end.
+    await this.ctx.storage.setAlarm(Math.max(at, now + MIN_ALARM_MS));
   }
 
   connected() {

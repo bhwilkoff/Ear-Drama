@@ -2,7 +2,7 @@
 // golden cases, the Durable Object over sockets and HTTP, the D1 polling
 // fallback, and the limits a classroom behind one address needs.
 import { describe, expect, it } from "vitest";
-import { createExecutionContext, createScheduledController, waitOnExecutionContext } from "cloudflare:test";
+import { createExecutionContext, createScheduledController, runInDurableObject, waitOnExecutionContext } from "cloudflare:test";
 import worker from "../src/index.js";
 import { call, env, installProviderKeys, signIn } from "./helpers.js";
 import { cast, script, order, linesFor } from "./plays-helpers.js";
@@ -266,6 +266,21 @@ describe("read rooms over the Durable Object", () => {
     expect((await send(h.code, g.member_key, { type: "end" })).status).toBe(403);
     expect((await send(h.code, h.member_key, { type: "end" })).status).toBe(200);
     expect((await read("GET", `/${h.code}`, { key: g.member_key })).status).toBe(410);
+  });
+
+  // 2026-11-23 the account hit its Durable Object limit: an adult room whose
+  // leader left with nobody to hand the lead to set its alarm in the past,
+  // and every alarm set the next one in the past again, for six hours.
+  it("an adult room whose leader left alone never sets its alarm in the past", async () => {
+    const h = await open();
+    const room = env.READ_ROOMS.get(env.READ_ROOMS.idFromName(h.code));
+    const at = await runInDurableObject(room, async (instance, ctx) => {
+      const gone = Date.now() - P.LEADER_GONE_MS - 60_000;
+      instance.world = { ...instance.world, members: instance.world.members.map((m) => ({ ...m, seen_at: gone })) };
+      await instance.alarm();
+      return ctx.storage.getAlarm();
+    });
+    expect(at).toBeGreaterThan(Date.now() + 60_000);
   });
 });
 
