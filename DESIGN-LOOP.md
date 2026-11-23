@@ -334,18 +334,24 @@ the main thread reads the frames before anything merges. Left: N5, N7 to N10, N1
   Read before cleaning, and scan the live index, not only these examples.
 
 ### D. Harness and player defects
-- [ ] **N7 Three intermittent checks** (a harness defect, never rerun until green):
+- [x] **N7 Three intermittent checks** (a harness defect, never rerun until green):
   `LayoutSweepUITests/testMiniHome`, `DownloadsPlaceUITests`, and `web_fit_library` (failed 3 of 4 under
-  load on 10-31). No fix is in the log for any of them.
+  load on 10-31). Fixed 2026-11-23 (B7): testMiniHome paused the episode before the sweep (playing, it crossed
+  ListeningHistory's 30 s mark mid-sweep and Home inserted Continue), the sweep settles on one-snapshot
+  signatures instead of a 0.7 s sleep and swipes the largest container, not Home's dial; DownloadsPlace drives
+  the control to Download from any leftover state and taps rows only once clear of the bars; STAGE lines time
+  every wait. web_fit_library was already deterministic (4da183a: waits for #library-body to draw).
 - [x] **N8 Android's stall watchdog can count a slow seek as a stall.** Fixed on Apple and web
   2026-10-31. Fixed on Android 2026-11-23: `StallWatchdog.stalled(..., seeking)` restarts the count while a
   seek is in flight; `PlaybackEngine` sets it from Media3's `onPositionDiscontinuity(DISCONTINUITY_REASON_SEEK)`
   while BUFFERING and clears it on the next state change out of BUFFERING; three `StallWatchdogTest` cases
   seen failing first.
-- [ ] **N12 The tap tier tests the same two shows.** Owner, 2026-11-04: "It seems to me that it is running
+- [x] **N12 The tap tier tests the same two shows.** Owner, 2026-11-04: "It seems to me that it is running
   the same things over and over." `Fixture` pins X Minus One and Hopalong Cassidy, so every run walks the
   same pages (the vary-test-content rule). Pick shows from the live catalog per run: rich, bare, no
-  picture, long title. Run only the classes a change touches; the whole tier once per ship.
+  picture, long title. Run only the classes a change touches; the whole tier once per ship. Done 2026-11-23
+  (B7): `tools/uitest_fixture.py` picks by shape from catalog-latest per run, ios_uitest prints the seed and
+  ids (`--fixture-seed N` or `UITEST_FIXTURE` JSON reproduces), tests read them via TEST_RUNNER_UITEST_FIXTURE.
 - [ ] **N13 Remaining raw titles, a further catalog pass (run tools/catalog_dryrun.sh first).** Seen on
   screens 2026-11-04: "Tarzans First Birthday", "Battle WithThe Apes", "Production 2", "CGS #055...",
   "GG Season 05", "Rc Superman", "(DM)", "The Silver Clippe", "(second audion...)", "1943-xx-xx RRGO...",
