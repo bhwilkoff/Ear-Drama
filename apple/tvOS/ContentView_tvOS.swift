@@ -1066,6 +1066,7 @@ private struct LibraryScreen_tvOS: View {
                                 ForEach(following) { TileLink(value: Route.series($0.key), series: $0) }
                             }
                         }
+                        SharedEarDramasSection_tvOS()
                         VStack(alignment: .leading, spacing: Spacing.s4) {
                             SectionHead(title: "Account and preferences") { EmptyView() }
                             AccountRow()

@@ -20,34 +20,32 @@ struct SharedEarDramasSection_tvOS: View {
     @State private var load = 0
 
     var body: some View {
-        if account.isSignedIn {
-            Section("Ear dramas") {
-                if let refusal {
-                    Label(catalog.isOnline ? refusal : Connectivity.offlineLine, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(Color.semanticError)
-                    Button("Try Again") { load += 1 }
-                } else if let rows {
-                    if rows.isEmpty {
-                        Text("No ear drama is shared with you.").foregroundStyle(Color.brandTextMuted)
-                    }
-                    ForEach(rows) { row in
-                        NavigationLink(value: SharedPlayRoute(id: row.id, title: row.title)) {
-                            Text(row.title).font(TypeRamp.bodyStrong)
+        Group {
+            if account.isSignedIn && (refusal != nil || !(rows ?? []).isEmpty) {
+                Section("Ear dramas") {
+                    if let refusal {
+                        Label(catalog.isOnline ? refusal : Connectivity.offlineLine, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(Color.semanticError)
+                        Button("Try Again") { load += 1 }
+                    } else if let rows {
+                        ForEach(rows) { row in
+                            NavigationLink(value: SharedPlayRoute(id: row.id, title: row.title)) {
+                                Text(row.title).font(TypeRamp.bodyStrong)
+                            }
                         }
                     }
-                } else {
-                    ProgressView()
                 }
             }
-            .task(id: "\(account.isSignedIn)#\(load)") {
-                guard !LaunchDoors.current.emptyLibrary else { rows = []; return }
-                do {
-                    let list = try await WorkerPlays(api: .shared).list()
-                    rows = list.sorted { ($0.updatedAt ?? 0) > ($1.updatedAt ?? 0) }
-                    refusal = nil
-                } catch {
-                    refusal = PlaysShare.line(error)
-                }
+        }
+        .task(id: "\(account.isSignedIn)#\(load)") {
+            guard account.isSignedIn else { return }
+            guard !LaunchDoors.current.emptyLibrary else { rows = []; return }
+            do {
+                let list = try await WorkerPlays(api: .shared).list()
+                rows = list.sorted { ($0.updatedAt ?? 0) > ($1.updatedAt ?? 0) }
+                refusal = nil
+            } catch {
+                refusal = PlaysShare.line(error)
             }
         }
     }
