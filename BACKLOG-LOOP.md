@@ -51,7 +51,7 @@ Mechanics:
 - [ ] **B3 Relay rules on Apple and Android.** Mirror the web's receiver and sender rules (hidden or idle
   holds no pickup, 30 idle minutes stops, Keep receiving takes, RelayWatch 5-minute empty wait) in
   Apple `ClassInbox`/`RelayHub` and Android `RelayAcrossTime.kt`; tests that count asks; PARITY row.
-- [ ] **B4 Web voice labels.** Browsers that name voices only by locale get measured labels like
+- [x] **B4 Web voice labels** (e1e27720; real Chrome on the Pixel still to confirm the voiceURI carries the engine id: B5). Browsers that name voices only by locale get measured labels like
   Android's (PLAYS-DESIGN 2.8 rule 12); PARITY ⏳ cleared.
 - [ ] **B5 Library and read-along on devices.** New-user Library on the Pixel (without wiping the
   owner's data: a second user profile or a DEBUG door) and the Duo; Apple TV frames; run the Library
@@ -80,3 +80,7 @@ store words; radio-script rights rule; GRW request.
 - 2026-11-23 15:16, tick 2: B1b merged (a491f751: Media3 seek discontinuity while BUFFERING marks a seek in
   flight; StallWatchdog restarts its count; 3 tests seen failing first; lintRelease clean). B2: Worker suite
   489/489, no D1 migrations pending, deployed a8982b67, /v1/health 200, a minute of tail with 0 exceptions.
+- 2026-11-23 15:25, tick 3: B4 merged (e1e27720): locale-named web voices read Android's seed labels
+  ("Low, warm · US") when the id carries Google's engine code, else "US voice"; no engine codes on the web
+  (I removed "(aua)": the web never measures, so a code would read like a number); 73/73, fit PASS, PNG read.
+  B3 relay rules running.
