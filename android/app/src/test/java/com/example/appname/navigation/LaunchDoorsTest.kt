@@ -94,4 +94,12 @@ class LaunchDoorsTest {
         assertEquals(true, LaunchDoors.from(extras, debug = true).forceOffline)
         assertEquals(false, LaunchDoors.from(extras, debug = false).forceOffline)
     }
+
+    @Test
+    fun emptyLibraryDoorReadsInDebugOnly() {
+        assertEquals(true, LaunchDoors.from(mapOf("appname_empty_library" to "1"), debug = true).emptyLibrary)
+        assertEquals(true, LaunchDoors.from(mapOf("appname_empty_library" to true), debug = true).emptyLibrary)
+        assertEquals(false, LaunchDoors.from(emptyMap(), debug = true).emptyLibrary)
+        assertEquals(false, LaunchDoors.from(mapOf("appname_empty_library" to "1"), debug = false).emptyLibrary)
+    }
 }

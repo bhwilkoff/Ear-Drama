@@ -406,6 +406,19 @@ test('rule 12: auto-cast alternates lower and higher over seeded voices', () => 
   eq(reg, ['higher', 'lower', 'higher', 'lower', 'higher', 'lower'], 'neighbors differ in register');
 });
 
+test('rule 12: Chrome 157 on a Pixel (voiceURI equal to name, one voice per locale) shows one plain label each', () => {
+  // The English voices of a real dump (Pixel, Chrome/157, 2026-11-23): no `-x-<code>-local` id anywhere.
+  const all = [['English Australia', 'en_AU'], ['English United Kingdom', 'en_GB'], ['English India', 'en_IN'],
+               ['English Nigeria', 'en_NG'], ['English United States', 'en_US']].map(([n, l]) => synthV(n, l, n, { default: false }));
+  const voices = VoiceCast.systemVoices(all, 'en-US');
+  eq(voices.map(v => v.name).sort(), ['Australia voice', 'India voice', 'Nigeria voice', 'UK voice', 'US voice'], 'one label per locale');
+  ok(voices.every(v => !/\d|\(|-x-/.test(v.name)), 'no numbers, no engine codes');
+  ok(voices.every(v => v.register === null && v.gender === null), 'the code path claims no register');
+  eq(voices[0].name, 'US voice', 'the person\'s own locale first');
+  const cast = VoiceCast.autoCast(['role:A', 'role:B'], voices);
+  ok(cast['role:A'].voice !== cast['role:B'].voice, 'two parts still take two voices');
+});
+
 (async () => {
   for (const [name, fn] of results) {
     const before = failures;

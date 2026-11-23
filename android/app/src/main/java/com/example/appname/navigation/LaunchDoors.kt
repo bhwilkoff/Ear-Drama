@@ -87,6 +87,8 @@ data class LaunchDoors(
     val startReadRecord: Boolean = false,
     /** `appname_start_read_pair`: the TV's pairing screen (Show a reading). */
     val startReadPair: Boolean = false,
+    /** `appname_empty_library`: Library drawn as a new listener's; draws only, never writes or deletes stored data. */
+    val emptyLibrary: Boolean = false,
 ) {
     fun requests(): List<InboxRequest> =
         listOfNotNull(
@@ -129,6 +131,7 @@ data class LaunchDoors(
         const val EXTRA_START_READ_PART = "appname_start_read_part"
         const val EXTRA_START_READ_RECORD = "appname_start_read_record"
         const val EXTRA_START_READ_PAIR = "appname_start_read_pair"
+        const val EXTRA_EMPTY_LIBRARY = "appname_empty_library"
         const val EXTRA_READ_DIAG = "appname_read_diag"
         const val EXTRA_WORKER_URL = "appname_worker_url"
         private val BENCH_HOST = Regex("""^http://(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|localhost|127\.0\.0\.1):\d+$""")
@@ -166,6 +169,7 @@ data class LaunchDoors(
                 startReadPart = extras[EXTRA_START_READ_PART]?.toString()?.takeIf { it.isNotBlank() },
                 startReadRecord = extras[EXTRA_START_READ_RECORD].let { it == true || it == "1" || it == "true" },
                 startReadPair = extras[EXTRA_START_READ_PAIR].let { it == true || it == "1" || it == "true" },
+                emptyLibrary = extras[EXTRA_EMPTY_LIBRARY].let { it == true || it == "1" || it == "true" },
             )
         }
     }
@@ -189,4 +193,9 @@ object ReadRoomDoor {
 /** Set by the Along door when it opens a drama: the page presses Listen once, then clears it. Never set in release. */
 object AlongDoor {
     @Volatile var autoplay: String? = null
+}
+
+/** DEBUG door `appname_empty_library`, set once by MainActivity; Library only reads it to draw. Never set in release. */
+object LibraryDoor {
+    @Volatile var empty = false
 }

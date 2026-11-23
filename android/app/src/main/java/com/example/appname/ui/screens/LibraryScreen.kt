@@ -119,7 +119,9 @@ fun LibraryScreen(
             following = resolveFollowing(container.user.followed()) { db.series(it) },
         )
     }
-    val downloadRecords by container.downloads.records.collectAsState()
+    val emptied = com.example.appname.navigation.LibraryDoor.empty
+    val storedDownloads by container.downloads.records.collectAsState()
+    val downloadRecords = if (emptied) emptyMap() else storedDownloads
     var unfollowing by remember { mutableStateOf<SeriesRow?>(null) }
     // Voices is a section of Library (Decision 086); a TV has none.
     val voices = if (LocalIsTelevision.current) null else rememberVoicesState()
@@ -141,13 +143,14 @@ fun LibraryScreen(
     val (storedSide, setSide) = rememberLibrarySide()
     // A TV has no Making side (owner 2026-11-23): its Library is Listening and the foot.
     val side = if (television) LibraryModel.LISTENING else storedSide
-    val groups = remember(dramaRows) { LibraryModel.groups(dramaRows) }
+    val groups = remember(dramaRows, emptied) { if (emptied) emptyList() else LibraryModel.groups(dramaRows) }
     val classes by sharing.classes.collectAsState()
-    val classRows = if (withClasses) classes?.let { it.teaching + it.memberOf }.orEmpty() else emptyList()
+    val classRows = if (withClasses && !emptied) classes?.let { it.teaching + it.memberOf }.orEmpty() else emptyList()
     val waiting by produceState(emptyList<com.example.appname.plays.SharedPlays.OpenPart>(), account?.userId, television) {
-        value = if (account == null || television) emptyList() else runCatching { sharing.openParts() }.getOrDefault(emptyList())
+        value = if (account == null || television || emptied) emptyList() else runCatching { sharing.openParts() }.getOrDefault(emptyList())
     }
-    val marksIn = if (television) 0 else rememberMarkedScripts()
+    val storedMarks = if (television) 0 else rememberMarkedScripts()
+    val marksIn = if (emptied) 0 else storedMarks
     var voicesOpen by rememberSaveable { mutableStateOf(false) }
     var aboutOpen by rememberSaveable { mutableStateOf(false) }
     val voicesAt = remember { intArrayOf(0) }
@@ -158,7 +161,8 @@ fun LibraryScreen(
         }
     }
     Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
-        LoadableContent(lists, Modifier.padding(padding)) { library ->
+        LoadableContent(lists, Modifier.padding(padding)) { stored ->
+            val library = if (emptied) LibraryLists(emptyList(), emptyList(), emptyList(), emptyList()) else stored
             val up = remember(library) { LibraryModel.upNext(library.inProgress, library.queued) }
             val listeningEmpty = up.isEmpty() && library.following.isEmpty() && library.finished.isEmpty() && downloadRecords.isEmpty()
             val makingEmpty = groups.isEmpty() && waiting.isEmpty() && marksIn == 0 && classRows.isEmpty()
