@@ -1,5 +1,6 @@
 /**
- * Relay across time (PLAYS-DESIGN §12.11): the sender's rules, no DOM and no network of its own.
+ * Relay across time (PLAYS-DESIGN §12.11): the sender's rules and the receiver's pickup loop, no
+ * DOM and no network of its own.
  * A performer's takes are written on their device first; this decides when each one passes
  * through the Worker to the receiving (teacher's or leader's) device, which is only when that
  * device is there, and says each take's state in essential words. Nothing is kept anywhere but
@@ -126,6 +127,59 @@ const RelayCore = (() => {
     };
   }
 
-  return { make, delay, wording, stateOf, assignedLines, isLater, GAPS };
+  /** A receiver stops holding its pickup after this long with no take (PLAYS-DESIGN §12.11 item 4). */
+  const RECEIVE_IDLE_MS = 30 * 60 * 1000;
+
+  /**
+   * The receiver's pickup (a class page, a director's cast sheet): long polls `inbox()` one after
+   * another, but only while the page is visible, and stops after RECEIVE_IDLE_MS with no take,
+   * calling `onIdle` so the page can offer Keep receiving takes. A held pickup keeps a Durable Object
+   * awake, and every app shares one free Worker account (2026-11-23), so a hidden or forgotten tab
+   * holds nothing. `onTake(got)` returning true ends the loop; `stopOn(err)` true ends it on a refusal.
+   */
+  function receive({ inbox, onTake, stopOn = () => false, onIdle = () => {}, doc = typeof document !== 'undefined' ? document : null,
+                     timers = globalThis, now = () => Date.now(), idleMs = RECEIVE_IDLE_MS }) {
+    let stopped = false;
+    let wake = null;
+    const visible = () => !doc || doc.visibilityState === 'visible';
+    const rouse = () => { if (wake) { const w = wake; wake = null; w(); } };
+    const onVisibility = () => { if (visible()) rouse(); };
+    const stop = () => {
+      if (stopped) return;
+      stopped = true;
+      if (doc) doc.removeEventListener('visibilitychange', onVisibility);
+      rouse();
+    };
+    if (doc) doc.addEventListener('visibilitychange', onVisibility);
+    (async () => {
+      let active = now();
+      let wait = 0;
+      while (!stopped) {
+        if (!visible()) {
+          await new Promise((r) => { wake = r; });
+          active = now();
+          continue;
+        }
+        if (now() - active >= idleMs) { stop(); onIdle(); return; }
+        try {
+          const got = await inbox();
+          wait = 0;
+          if (stopped) break;
+          if (got) {
+            active = now();
+            if (await onTake(got)) break;
+          }
+        } catch (err) {
+          if (stopped || stopOn(err)) break;
+          wait = Math.min(30000, wait ? wait * 2 : 2000);
+          await new Promise((r) => timers.setTimeout(r, wait));
+        }
+      }
+      stop();
+    })();
+    return { stop, stopped: () => stopped };
+  }
+
+  return { make, receive, delay, wording, stateOf, assignedLines, isLater, GAPS, RECEIVE_IDLE_MS };
 })();
 if (typeof module !== 'undefined') module.exports = RelayCore;

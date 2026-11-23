@@ -1237,9 +1237,11 @@ web app follows today.
      evenly** (a proposal over the open parts, ReadCore.fillEvenly) and **Clear**, then **Save**
      (PUT the whole casting; `422 bad_assignments` reads "Two seats hold one line."). The app
      never suggests who reads what and never labels a reader.
-  7. **Review**: while the class page is open the teacher's device holds the pickup
+  7. **Review**: while the class page is open and shown the teacher's device holds the pickup
      (`GET .../takes/inbox`) so seats' takes pass through to it (Decision 082; nothing waits on
-     the Worker); each arriving take is kept in this tab for listening. The queue lists the
+     the Worker); a hidden tab holds none, and after 30 minutes with no take the pickup stops and
+     a **Keep receiving takes** button (`btn`) above the review starts it again
+     (`RelayCore.receive`; PLAYS-DESIGN §12.11 item 4). The cast sheet's pickup does the same; each arriving take is kept in this tab for listening. The queue lists the
      seats' chosen takes without a review, in script order: the line, the seat, **Play** (when the
      take reached this device; otherwise "On another device"), **Approve**, and **Again** with a
      typed note (500 characters at most, shown to that seat only).

@@ -256,6 +256,103 @@ test('a credited maker blocks Publish and is listed; the director\'s own agreeme
   eq(S.line({ code: 'consent_missing' }), 'Not every performer has agreed to the consent.', 'the Worker\'s refusal reads the same');
 });
 
+/* ---- The free plan (2026-11-23 audit): what an open tab costs the shared Worker account ---- */
+
+/** A clock that runs every job due in order, including jobs a job schedules, as time moves. */
+function steppedClock() {
+  let t = 0, id = 0;
+  const jobs = new Map();
+  const flush = async () => { for (let i = 0; i < 10; i++) await new Promise((r) => setImmediate(r)); };
+  const add = (fn, ms, every) => { jobs.set(++id, { at: t + Math.max(0, ms || 0), fn, every }); return id; };
+  return {
+    now: () => t,
+    setTimeout: (fn, ms) => add(fn, ms, 0),
+    clearTimeout: (i) => jobs.delete(i),
+    setInterval: (fn, ms) => add(fn, ms, ms),
+    clearInterval: (i) => jobs.delete(i),
+    async advance(ms) {
+      const end = t + ms;
+      for (;;) {
+        await flush();
+        let next = null;
+        for (const [k, j] of jobs) if (!next || j.at < next[1].at) next = [k, j];
+        if (!next || next[1].at > end) break;
+        const [k, j] = next;
+        t = j.at;
+        if (j.every) j.at += j.every; else jobs.delete(k);
+        await j.fn();
+      }
+      t = end;
+      await flush();
+    },
+  };
+}
+
+function fakeDoc(state) {
+  const fns = new Set();
+  const doc = {
+    visibilityState: state,
+    get hidden() { return doc.visibilityState !== 'visible'; },
+    addEventListener: (type, fn) => { if (type === 'visibilitychange') fns.add(fn); },
+    removeEventListener: (type, fn) => fns.delete(fn),
+    set(v) { doc.visibilityState = v; fns.forEach((f) => f()); },
+  };
+  return doc;
+}
+
+test('a receiver holds no pickup while its page is hidden, and stops after 30 idle minutes until asked again', async () => {
+  const t = steppedClock();
+  const doc = fakeDoc('hidden');
+  let calls = 0, idle = 0;
+  const inbox = () => { calls++; return new Promise((r) => t.setTimeout(() => r(null), 25000)); };
+  const h = R.receive({ inbox, onTake: () => false, onIdle: () => { idle++; }, doc, timers: t, now: t.now });
+  await t.advance(10 * 60 * 1000);
+  eq(calls, 0, 'no pickup in 10 hidden minutes');
+  doc.set('visible');
+  await t.advance(1000);
+  eq(calls, 1, 'visible again: it asks at once');
+  await t.advance(31 * 60 * 1000);
+  eq(idle, 1, 'thirty minutes with no take: it stops and says so once');
+  ok(h.stopped(), 'stopped');
+  const at = calls;
+  ok(at <= 74, `pickups in those 30 minutes: ${at}`);
+  await t.advance(10 * 60 * 1000);
+  eq(calls, at, 'stopped means no more pickups');
+});
+
+test('a take resets the idle clock, and a page hidden mid-wait asks no more until it is back', async () => {
+  const t = steppedClock();
+  const doc = fakeDoc('visible');
+  let calls = 0, idle = 0;
+  const takes = [];
+  const inbox = () => { calls++; return new Promise((r) => t.setTimeout(() => r(calls === 40 ? { take: { id: 'T1' } } : null), 25000)); };
+  R.receive({ inbox, onTake: (got) => { takes.push(got.take.id); return false; }, onIdle: () => { idle++; }, doc, timers: t, now: t.now });
+  await t.advance(31 * 60 * 1000);
+  eq(takes, ['T1'], 'the take arrived');
+  eq(idle, 0, 'a take at 16 minutes keeps it receiving past 30');
+  doc.set('hidden');
+  await t.advance(30000);
+  const at = calls;
+  await t.advance(20 * 60 * 1000);
+  eq(calls, at, 'hidden: no pickup');
+});
+
+test('a watch with nothing to send asks the Worker at most twice in 10 minutes while hidden, and backs off while shown', async () => {
+  for (const [state, most] of [['hidden', 2], ['visible', 3]]) {
+    const w = stubWorker({ receiving: false });
+    let pendings = 0;
+    const seatHome = w.plays.seatHome;
+    w.plays.seatHome = (...a) => { pendings++; return seatHome(...a); };
+    const a = await localWith(seatLink, []);
+    const t = steppedClock();
+    const watch = W.make({ api: w, store: a.store, timers: t, online: () => true, doc: fakeDoc(state) });
+    watch.start();
+    await t.advance(10 * 60 * 1000);
+    watch.stop();
+    ok(pendings >= 1 && pendings <= most, `${state}: pending() asked ${pendings} times in 10 minutes (at most ${most})`);
+  }
+});
+
 (async () => {
   for (const [name, fn] of results) {
     try { await fn(); } catch (e) { failures++; console.log(`FAIL ${name}: ${e.stack || e}`); }

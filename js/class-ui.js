@@ -43,26 +43,19 @@ const ClassUI = (() => {
   const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const plusDays = (n) => { const d = new Date(Date.now() + n * 86400000); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
-  function stopPickups() { pickups.forEach((p) => { p.stop = true; }); pickups = []; if (player) { player.pause(); player = null; } }
+  function stopPickups() { pickups.forEach((p) => p.stop()); pickups = []; if (player) { player.pause(); player = null; } }
 
-  /** The director's pickup for one production: takes pass through to this tab while the page is open. */
-  function pickup(pid, onTake) {
-    const p = { stop: false };
-    pickups.push(p);
-    (async () => {
-      let wait = 0;
-      while (!p.stop) {
-        try {
-          const got = await API.plays.inbox(pid);
-          wait = 0;
-          if (got && !p.stop) { heard.set(got.take.id, got.bytes); onTake(got.take); }
-        } catch (err) {
-          if (['unauthorized', 'not_configured'].includes(codeOf(err)) || err.status === 409 || err.status === 503 || err.status === 403) return;
-          wait = Math.min(30000, wait ? wait * 2 : 2000);
-          await new Promise((r) => setTimeout(r, wait));
-        }
-      }
-    })();
+  /**
+   * The director's pickup for one production: takes pass through to this tab while the page is open
+   * and shown, until 30 minutes pass with none (RelayCore.receive; WEB-DESIGN §4.19 item 7).
+   */
+  function pickup(pid, onTake, onIdle) {
+    pickups.push(RelayCore.receive({
+      inbox: () => API.plays.inbox(pid),
+      onTake: (got) => { heard.set(got.take.id, got.bytes); onTake(got.take); return false; },
+      stopOn: (err) => ['unauthorized', 'not_configured'].includes(codeOf(err)) || err.status === 409 || err.status === 503 || err.status === 403,
+      onIdle,
+    }));
   }
 
   function render(r, helpers) {
@@ -128,8 +121,12 @@ const ClassUI = (() => {
     body.replaceChildren(...out);
     const paintReview = () => reviewQueue(reviewBox, waitingRow, cls, productions, offline);
     paintReview();
-    for (const p of productions) {
-      if (!p.rec) continue;
+    const keep = h.el('button', { type: 'button', class: 'btn', hidden: true, onclick: () => { keep.hidden = true; receiveAll(); } }, 'Keep receiving takes');
+    reviewBox.before(keep);
+    const idle = () => { if (my !== token) return; stopPickups(); keep.hidden = false; };
+    const receiveAll = () => { for (const p of productions) if (p.rec) receiveFor(p); };
+    receiveAll();
+    function receiveFor(p) {
       pickup(p.id, async (take) => {
         if (my !== token) return;
         try { p.rec = await API.plays.get(p.id); } catch { p.rec.takes = [...(p.rec.takes || []), take]; }
@@ -141,7 +138,7 @@ const ClassUI = (() => {
           const old = body.querySelector('#cl-plays');
           if (old) old.replaceWith(playsBox(cls, productions, offline, redraw));
         } catch { /* the next arrival or a reload shows the counts */ }
-      });
+      }, idle);
     }
   }
 

@@ -878,32 +878,36 @@ const PlaysUI = (() => {
    * reads the open lines live. Publish asks the consent first (consentSheet).
    */
   const dismissedConsent = new Set();
-  /** The director's pickup (Decision 082): takes pass through to this device while the cast sheet is open. */
+  /**
+   * The director's pickup (Decision 082): takes pass through to this device while the cast sheet is
+   * open and shown, until 30 minutes pass with none; then Keep receiving takes (RelayCore.receive).
+   */
   let pickupRun = 0;
-  function holdPickup(rec, local, script, pid, me, rerender) {
+  let pickupHeld = null;
+  function holdPickup(rec, local, script, pid, me, rerender, box) {
     const mine = ++pickupRun;
-    (async () => {
-      let wait = 0;
-      while (mine === pickupRun && sharedShown) {
-        try {
-          const got = await API.plays.inbox(pid);
-          wait = 0;
-          if (!got || mine !== pickupRun) continue;
-          const fresh = await API.plays.get(pid);
-          await S.bringHome({ store, localId: local.id, rec: fresh, script, me, delivered: new Map([[got.take.id, got.bytes]]) });
-          if (mine === pickupRun) rerender();
-          return;
-        } catch (err) {
-          if (err && (err.status === 409 || err.status === 503 || err.status === 403 || err.kind === 'unauthorized')) return;
-          wait = Math.min(30000, wait ? wait * 2 : 2000);
-          await new Promise((r) => setTimeout(r, wait));
-        }
-      }
-    })();
+    if (pickupHeld) pickupHeld.stop();
+    const keep = h.el('button', { type: 'button', class: 'btn', hidden: true, onclick: () => { keep.remove(); holdPickup(rec, local, script, pid, me, rerender, box); } }, 'Keep receiving takes');
+    box.append(keep);
+    pickupHeld = RelayCore.receive({
+      inbox: async () => {
+        if (mine !== pickupRun || !sharedShown) throw { left: true };
+        return API.plays.inbox(pid);
+      },
+      onTake: async (got) => {
+        if (mine !== pickupRun) return true;
+        const fresh = await API.plays.get(pid);
+        await S.bringHome({ store, localId: local.id, rec: fresh, script, me, delivered: new Map([[got.take.id, got.bytes]]) });
+        if (mine === pickupRun) rerender();
+        return true;
+      },
+      stopOn: (err) => !!(err && (err.left || err.status === 409 || err.status === 503 || err.status === 403 || err.kind === 'unauthorized')),
+      onIdle: () => { if (mine === pickupRun) keep.hidden = false; },
+    });
   }
   function sharedListen(rec, local, script, pid, me, rerender) {
     const box = listenThrough(store.production(local.id), script, rerender);
-    if (rec.director === me) holdPickup(rec, local, script, pid, me, rerender);
+    if (rec.director === me) holdPickup(rec, local, script, pid, me, rerender, box);
     if (rec.hidden_takes) {
       box.append(h.el('p', { class: 'caption' }, rec.hidden_takes === 1 ? '1 take is hidden from you.'
         : `${num.format(rec.hidden_takes)} takes are hidden from you.`));

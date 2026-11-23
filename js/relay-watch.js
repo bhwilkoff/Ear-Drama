@@ -12,9 +12,16 @@ const RelayWatch = (() => {
   'use strict';
   const C = PlaysCore;
   const R = RelayCore;
-  const IDLE_MS = 30000;
+  /**
+   * How often an open tab asks again: every 30 s while a take waits to pass through, every 5 minutes
+   * when the last ask found nothing, and never while the page is hidden (each ask is a Worker request
+   * on the free account every app shares; recording, the network returning, and the page coming back
+   * all kick at once).
+   */
+  const BUSY_MS = 30000;
+  const QUIET_MS = 5 * 60 * 1000;
 
-  function make({ api, store, me = () => null, timers = globalThis, online, onChange = () => {} }) {
+  function make({ api, store, me = () => null, timers = globalThis, online, onChange = () => {}, doc = typeof document !== 'undefined' ? document : null }) {
     const senders = new Map();
     const listeners = new Set();
     let idle = null;
@@ -102,14 +109,28 @@ const RelayWatch = (() => {
       for (const x of ids) { try { const s = await senderFor(x); if (s) await s.kick(); } catch (e) { console.error(e); } }
     }
 
+    /** Nothing waits on any sender: the last ask of each found no take to send. */
+    const quiet = () => [...senders.values()].every((s) => s.state().idle);
+    function next() {
+      if (stopped) return;
+      idle = timers.setTimeout(tick, quiet() ? QUIET_MS : BUSY_MS);
+    }
+    async function tick() {
+      idle = null;
+      if (stopped) return;
+      if (!(doc && doc.hidden)) await kick();
+      next();
+    }
+
     function start() {
       stopped = false;
-      kick();
-      if (!idle) idle = timers.setInterval(() => kick(), IDLE_MS);
+      if (idle) return;
+      idle = true;
+      kick().finally(() => { if (idle === true) next(); });
     }
     function stop() {
       stopped = true;
-      if (idle) timers.clearInterval(idle);
+      if (idle && idle !== true) timers.clearTimeout(idle);
       idle = null;
       for (const s of senders.values()) s.stop();
       senders.clear();

@@ -1825,8 +1825,10 @@ that are assigned record at once.
    `409 one_take_at_a_time`, `429`, a timeout, offline and `5xx` keep the take and back off; any
    other refusal is final for that take. The ask reads the relay's memory and writes nothing.
 4. **The receiver** (the teacher's class page, an adult director's cast sheet) holds the pickup
-   while it is open, as §12.10 item 3 does for a room; each arrival is kept in that tab or device
-   only, and the **progress list** (counts per seat and part: lines assigned, recorded, approved,
+   while it is open and shown, as §12.10 item 3 does for a room: a hidden page holds none, and
+   after 30 minutes with no take it stops and shows **Keep receiving takes** (a held pickup keeps
+   the relay awake on the shared free account; a sender keeps its takes and waits). Each arrival
+   is kept in that tab or device only, and the **progress list** (counts per seat and part: lines assigned, recorded, approved,
    again) refreshes on every arrival. Counts and links, never a ranking, and the Worker cannot
    say what is still waiting on a device: it has no record of a take it never received.
 5. **At home with no one else there** the same screen works: a seat opens **Your parts** (its
