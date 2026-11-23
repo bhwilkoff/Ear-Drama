@@ -63,6 +63,16 @@ nonisolated protocol ReadWire: Sendable {
     func attachScreen(code: String, key: String, pairCode: String) async throws
 }
 
+extension ReadWire {
+    /// Whether a room answers to `code` before anyone joins: a keyless poll, which the Worker answers `no_such_room` or `room_ended`
+    /// for a room that is not there and a membership refusal for one that is. Returns the gone code, else nil.
+    func gone(code: String) async -> String? {
+        do { _ = try await poll(code: code, key: "-"); return nil } catch let f as ReadFailure {
+            return ["no_such_room", "room_ended"].contains(f.code) ? f.code : nil
+        } catch { return nil }
+    }
+}
+
 nonisolated struct WorkerReadWire: ReadWire {
     let api: APIClient
     private static let keyHeader = "x-read-key"

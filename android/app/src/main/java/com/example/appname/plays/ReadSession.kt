@@ -137,6 +137,12 @@ interface ReadWire {
     suspend fun create(body: JsonObject, teacher: Boolean): ReadJoined
     suspend fun join(code: String, body: JsonObject): ReadJoined
     suspend fun poll(code: String, key: String): ReadSnapshot
+
+    /**
+     * Whether a room answers to [code] before anyone joins: a keyless poll, which the Worker answers `no_such_room` or
+     * `room_ended` for a room that is not there and a membership refusal for one that is. Returns the gone code, else null.
+     */
+    suspend fun gone(code: String): String? = try { poll(code, "-"); null } catch (e: ReadFailure) { e.code.takeIf { it == "no_such_room" || it == "room_ended" } } catch (e: java.io.IOException) { null }
     suspend fun send(code: String, key: String, message: JsonObject): ReadSnapshot?
     suspend fun sendTake(code: String, key: String, takeId: String, bytes: ByteArray, meta: JsonObject)
     suspend fun inbox(code: String, key: String): ReadTakeIn?

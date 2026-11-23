@@ -173,6 +173,11 @@ fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> U
         }
     }
 
+    LaunchedEffect(code) {
+        if (!asking) return@LaunchedEffect
+        val normal = ReadCore.normalizeCode(code) ?: return@LaunchedEffect
+        container.readWire.gone(normal)?.let { failure = ReadCore.refusal(it); gone = true }
+    }
     LaunchedEffect(attempt, asking) { if (!asking && !needsSeat) join() }
     LaunchedEffect(state.snapshot?.scriptId) {
         val id = state.snapshot?.scriptId ?: return@LaunchedEffect

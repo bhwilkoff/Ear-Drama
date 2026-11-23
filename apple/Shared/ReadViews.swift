@@ -18,6 +18,7 @@ struct ReadRoomScreen: View {
     @State private var script: PlayScript?
     @State private var roomModel: RoomReaderModel?
     @State private var failure: String?
+    @State private var goneCode: String?
     @State private var needsSeat = false
     @State private var joining = false
     @State private var name = ReadName.remembered
@@ -41,6 +42,8 @@ struct ReadRoomScreen: View {
                 ContentUnavailableView(ReadCore.refusal(ended), systemImage: "waveform.slash")
             } else if session.snapshot != nil {
                 ProgressView()
+            } else if let goneCode {
+                ContentUnavailableView(ReadCore.refusal(goneCode), systemImage: "waveform.slash")
             } else if needsSeat {
                 seatPicker
             } else if held == nil {
@@ -62,6 +65,10 @@ struct ReadRoomScreen: View {
             held = nil
             ReadHandover.release(h)
             loadScript(h.snapshot?.scriptID)
+            return
+        }
+        if held == nil, session.snapshot == nil, let normal = ReadCore.normalizeCode(code), let gone = await WorkerReadWire(api: .shared).gone(code: normal) {
+            goneCode = gone
             return
         }
         #if DEBUG

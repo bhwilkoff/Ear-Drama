@@ -155,6 +155,30 @@ class ReadRoomTest {
         }
     }
 
+    /** The join screen asks the room first: a missing or ended room is named before any form, a live one (a membership refusal) is not. */
+    @Test fun `a room is checked before the join form is shown`() = runTest {
+        val engine = MockEngine { request ->
+            val path = request.url.encodedPath
+            val (status, body) = when {
+                path.endsWith("/ZZZZZZ") -> HttpStatusCode.NotFound to """{"error":"no_such_room"}"""
+                path.endsWith("/ENDED1") -> HttpStatusCode.Gone to """{"error":"room_ended"}"""
+                else -> HttpStatusCode.Forbidden to """{"error":"not_a_member"}"""
+            }
+            respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+        val worker = com.example.appname.account.WorkerApi(
+            HttpClient(engine), com.example.appname.account.WorkerConfig("https://worker.test", "web", "svc", "https://eardrama.org/"),
+            object : com.example.appname.account.SessionStore {
+                override fun load(): com.example.appname.account.StoredAccount? = null
+                override fun save(account: com.example.appname.account.StoredAccount?) {}
+            },
+        )
+        val wire = WorkerReadWire(worker)
+        assertEquals("no_such_room", wire.gone("ZZZZZZ"))
+        assertEquals("room_ended", wire.gone("ENDED1"))
+        assertNull("a live room shows its form", wire.gone("LIVE01"))
+    }
+
     @Test fun `the screen's voice reads an open line only while Read open parts is on`() {
         val open = ReadSnapshot.ReadsNow("role:DOC", holder = null)
         assertEquals("L0005", snap("L0005", mode = "read", readOpen = true, readsNow = open).openVoiceLine())
