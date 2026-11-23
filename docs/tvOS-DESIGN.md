@@ -215,7 +215,7 @@ The only shapes; a new one needs a new rule.
   the query names an air date, then episodes, then **Automatic
   transcript**: each row the episode row plus the line where the words
   are said, verbatim (iOS-DESIGN §4.5).
-- **§4.6 Library** (direction B, owner 2026-11-23: *"Most people we exclusively use this app for listening, so let's do option B ..."*; replaces D3-5 and its rule that every section keeps its header and caption) is **Listening only** on a TV, as focus shelves: **Up next** (the started episodes, then the queue in order, each once; a held Select offers Remove from History or the queue menu) and **Shows you follow** (the grammar's show tiles through `.card`), then the foot headed "Account and preferences": **Account** (§4.9), **Show a Reading** (§4.13), **About Ear Drama** (the site's pages as addresses, §4.9a). There is no Making side, no Voices, no Export, no History or Downloads on a TV; ear dramas shared with the person are no longer listed here (a TV records and edits nothing). An empty shelf is absent, no header and no caption; a Library with nothing heads with "Nothing played yet" and Browse (§7.3a). Not yet seen on a TV.
+- **§4.6 Library** (direction B, owner 2026-11-23: *"Most people we exclusively use this app for listening, so let's do option B ..."*; replaces D3-5 and its rule that every section keeps its header and caption) is **Listening only** on a TV, as focus shelves: **Up next** (the started episodes, then the queue in order, each once; a held Select offers Remove from History or the queue menu) and **Shows you follow** (the grammar's show tiles through `.card`), then, signed in and only when there are some, **Ear dramas** (the shared productions this person is in, newest first, to listen to: §4.12), then the foot headed "Account and preferences": **Account** (§4.9), **Show a Reading** (§4.13), **About Ear Drama** (the site's pages as addresses, §4.9a). There is no Making side, no Voices, no Export, no History or Downloads on a TV. Shared ear dramas stay listed (restored 2026-11-23, owner: they are listening content; Decision 087 item 4 stands); the TV still records and edits nothing. An empty shelf is absent, no header and no caption; a Library with nothing heads with "Nothing played yet" and Browse (§7.3a). Not yet seen on a TV.
 - **§4.9 The account** is the foot of Library, as on iOS
   (`docs/iOS-DESIGN.md` §4.10), never a tab and never at first launch.
   The row pushes `AccountScreen_tvOS`: signed out, Sign in with Apple
@@ -268,10 +268,9 @@ The only shapes; a new one needs a new rule.
 
 - **§4.12 Shared ear dramas** (PLAYS-DESIGN §11.7 rule 12, binding:
   "Apple TV plays back ... Nothing is claimed, recorded, uploaded, invited,
-  or published there"). Signed in, Library gains an **Ear dramas** section
-  above Account: each shared production by title, newest first
-  (`SharedEarDramasSection_tvOS`); loading is a `ProgressView` row, empty is
-  "No ear drama is shared with you.", an error or offline is its one line
+  or published there"). Signed in, Library gains an **Ear dramas** shelf
+  after Shows you follow, above the foot: each shared production by title, newest first
+  (`SharedEarDramasSection_tvOS`); loading and empty draw nothing (an empty section is absent, Decision 087), an error or offline is its one line
   with Try Again. Signed out the section is absent. A row pushes
   `SharedPlayScreen_tvOS`, a `List`: the title at page-title size, then
   **Listen Through** (the default focus), which fetches the chosen takes
