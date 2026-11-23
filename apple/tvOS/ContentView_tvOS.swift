@@ -1070,15 +1070,15 @@ private struct LibraryScreen_tvOS: View {
                         VStack(alignment: .leading, spacing: Spacing.s4) {
                             SectionHead(title: "Account and preferences") { EmptyView() }
                             AccountRow()
-                                .frame(maxWidth: 640)
+                                .frame(maxWidth: 640, alignment: .leading)
                             NavigationLink { ReadPairHost() } label: {
                                 Label("Show a Reading", systemImage: "tv")
                             }
-                            .frame(maxWidth: 640)
+                            .frame(maxWidth: 640, alignment: .leading)
                             NavigationLink { TVAboutScreen() } label: {
                                 Label("About Ear Drama", systemImage: "info.circle")
                             }
-                            .frame(maxWidth: 640)
+                            .frame(maxWidth: 640, alignment: .leading)
                         }
                         .focusSection()
                     }

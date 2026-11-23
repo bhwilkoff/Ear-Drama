@@ -16,9 +16,9 @@ import Foundation
 /// - APP_FORCE_OFFLINE=1: the offline state, for a screenshot (fakes the
 ///   state, never the network)
 /// - APP_READER_RESET_MARKS=1: erases the opened play's marks first (R2-marks-port-brief frames).
-/// - APP_RESET_USER_STATE=1: the listening history, queue and followed shows are erased before the
+/// - APP_RESET_USER_STATE=1: the listening history, queue and followed shows are set aside before the
 ///   stores open, so a UI test starts from a new listener's lists, not an earlier run's (the tap tier
-///   sets it on every launch)
+///   sets it on every launch); the next launch without it puts the person's own lists back
 /// - APP_RESET_PRODUCTIONS=1: this device's productions (Record, Yours) are deleted before the stores open
 ///   (the App Review recording starts from none)
 /// - APP_EMPTY_LIBRARY=1: Library drawn as a new listener's, for its empty
@@ -126,13 +126,37 @@ struct LaunchDoors: Sendable, Equatable {
     /// The keys of the lists a person builds by listening, on this device.
     static let userStatePrefixes = ["listeningHistory.", "listeningQueue.", "followedSeries."]
 
-    /// Erases those lists from `defaults` when the door is open. Called before any store is made.
+    /// Where the reset door sets a person's own lists aside. Test devices are also the owner's phones: on
+    /// 2026-11-23 this door erased the owner's history, queue and follows on two of them.
+    static let setAsidePrefix = "launchDoors.setAside."
+    static let setAsideTaken = "launchDoors.setAside.taken"
+
+    /// Clears those lists from `defaults` when the door is open, setting the first copy aside rather than
+    /// erasing it (later test launches never overwrite it). Called before any store is made.
     @discardableResult
     static func resetUserStateIfAsked(_ doors: LaunchDoors = .current, defaults: UserDefaults = .standard) -> Bool {
         guard doors.resetUserState else { return false }
-        for key in defaults.dictionaryRepresentation().keys where userStatePrefixes.contains(where: key.hasPrefix) {
+        let first = !defaults.bool(forKey: setAsideTaken)
+        for (key, value) in defaults.dictionaryRepresentation() where userStatePrefixes.contains(where: key.hasPrefix) {
+            if first { defaults.set(value, forKey: setAsidePrefix + key) }
             defaults.removeObject(forKey: key)
         }
+        defaults.set(true, forKey: setAsideTaken)
+        return true
+    }
+
+    /// The first launch without the reset door puts the set-aside lists back and drops what the tests left.
+    /// Runs in every build, so a Release build installed over a test run restores them too.
+    @discardableResult
+    static func restoreUserStateIfSetAside(_ doors: LaunchDoors = .current, defaults: UserDefaults = .standard) -> Bool {
+        guard !doors.resetUserState, defaults.bool(forKey: setAsideTaken) else { return false }
+        let all = defaults.dictionaryRepresentation()
+        for key in all.keys where userStatePrefixes.contains(where: key.hasPrefix) { defaults.removeObject(forKey: key) }
+        for (key, value) in all where key.hasPrefix(setAsidePrefix) && key != setAsideTaken {
+            defaults.set(value, forKey: String(key.dropFirst(setAsidePrefix.count)))
+            defaults.removeObject(forKey: key)
+        }
+        defaults.removeObject(forKey: setAsideTaken)
         return true
     }
 

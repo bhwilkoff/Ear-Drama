@@ -44,4 +44,27 @@ struct EmptyStateTests {
         #expect(defaults.string(forKey: "followedSeries.v1") == nil)
         #expect(defaults.string(forKey: "catalog.etag") == "keep")
     }
+
+    /// 2026-11-23 the tap tier erased the owner's lists on two phones: the door sets them aside, a second
+    /// test launch never overwrites the copy, and the next ordinary launch puts them back without test leftovers.
+    @Test func resetUserStateDoorPutsThePersonsListsBack() throws {
+        let defaults = try #require(UserDefaults(suiteName: "reset-door-restore-test"))
+        defer { defaults.removePersistentDomain(forName: "reset-door-restore-test") }
+        defaults.set("mine", forKey: "listeningQueue.v1")
+        defaults.set("mine", forKey: "followedSeries.v1")
+        let on = LaunchDoors.from(environment: ["APP_RESET_USER_STATE": "1"], arguments: [])
+        let off = LaunchDoors.from(environment: [:], arguments: [])
+        #expect(LaunchDoors.resetUserStateIfAsked(on, defaults: defaults))
+        #expect(!LaunchDoors.restoreUserStateIfSetAside(on, defaults: defaults))
+        defaults.set("test", forKey: "listeningQueue.v1")
+        defaults.set("test", forKey: "listeningHistory.v1")
+        #expect(LaunchDoors.resetUserStateIfAsked(on, defaults: defaults))
+        defaults.set("test", forKey: "listeningHistory.v1")
+        #expect(LaunchDoors.restoreUserStateIfSetAside(off, defaults: defaults))
+        #expect(defaults.string(forKey: "listeningQueue.v1") == "mine")
+        #expect(defaults.string(forKey: "followedSeries.v1") == "mine")
+        #expect(defaults.string(forKey: "listeningHistory.v1") == nil)
+        #expect(!LaunchDoors.restoreUserStateIfSetAside(off, defaults: defaults))
+        #expect(defaults.dictionaryRepresentation().keys.allSatisfy { !$0.hasPrefix(LaunchDoors.setAsidePrefix) })
+    }
 }

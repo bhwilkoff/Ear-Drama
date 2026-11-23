@@ -1350,7 +1350,8 @@ struct LibraryScreen: View {
         }
         .navigationTitle("Library")
         #if os(iOS)
-        .toolbar { if side == .listening { ToolbarItem(placement: .primaryAction) { EditButton() } } }
+        // Edit reorders the queue in Up next; with nothing queued there is nothing to edit.
+        .toolbar { if side == .listening && !queued.isEmpty && !Self.emptied { ToolbarItem(placement: .primaryAction) { EditButton() } } }
         #endif
         .task(id: account.isSignedIn) { if account.isSignedIn { await shared.loadRemote() } }
         .task(id: LibraryKey(entries: history.entries, queue: queue.items, load: catalog.loadKey)) {

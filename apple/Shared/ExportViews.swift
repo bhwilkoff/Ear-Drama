@@ -64,7 +64,10 @@ struct ExportRow: View {
                     }
                     .accessibilityIdentifier("export-csv")
                 } label: {
+                    // The whole row opens the menu, not only its words (B5: a tap right of them did nothing).
                     Label("Export my data", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
                 .menuIndicator(.hidden)
                 .buttonStyle(.borderless)

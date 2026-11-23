@@ -24,6 +24,7 @@ struct EarDramaApp: App {
 
     init() {
         LaunchDoors.resetUserStateIfAsked()
+        LaunchDoors.restoreUserStateIfSetAside()
         #if os(iOS) || os(macOS)
         LaunchDoors.resetProductionsIfAsked()
         #endif
