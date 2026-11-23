@@ -75,7 +75,7 @@ class VoiceCastTest {
         val v = voices()
         assertEquals(listOf("en-us-x-tpd-local", "en-au-x-aua-local", "en-us-x-sfg-local", "en-gb-x-rjs-local"), v.map { it.id })
         assertEquals(
-            listOf("English (United States) 1", "English (Australia)", "English (United States) 2", "English (United Kingdom)"),
+            listOf("US voice (tpd)", "Australia voice (aua)", "US voice (sfg)", "UK voice (rjs)"),
             v.map { it.name },
         )
         assertEquals(listOf(null, null, null, null), v.map { it.gender })

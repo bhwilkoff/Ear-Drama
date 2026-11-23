@@ -191,6 +191,7 @@ import com.example.appname.plays.RecordingSession
 import com.example.appname.plays.Relay
 import com.example.appname.plays.StudioCore
 import com.example.appname.plays.chipVoiceName
+import com.example.appname.plays.soleAccent
 import com.example.appname.plays.StudioOpen
 import com.example.appname.plays.ScriptLine
 import com.example.appname.plays.ScriptReading
@@ -2003,7 +2004,7 @@ internal fun ReaderBody(
                 .filter { it.isSpeaking && it != studio.part }
                 .associate { p ->
                     val d = describeVoice(castHandle, p)
-                    p.roleName!! to DeviceVoice(p, if (d.resolved.read && !d.resolved.none) chipVoiceName(StudioCore.shortVoiceName(d.text)) else d.text, d.text)
+                    p.roleName!! to DeviceVoice(p, if (d.resolved.read && !d.resolved.none) chipVoiceName(StudioCore.shortVoiceName(d.text), castHandle.cast.soleAccent()) else d.text, d.text)
                 },
             taken = script.lines.indices.filter { studioProduction.usableTake(script.lines[it].id) != null }.toSet(),
         )

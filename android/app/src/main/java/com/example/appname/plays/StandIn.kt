@@ -4,11 +4,9 @@ import android.content.Context
 import android.media.AudioFormat
 import android.os.Build
 import android.os.Bundle
-import android.os.ParcelFileDescriptor
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import java.util.UUID
-import kotlin.concurrent.thread
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -31,9 +29,8 @@ interface StandInVoice {
 
 /**
  * The device's text-to-speech engine, collected into memory from
- * `onAudioAvailable` (research 08a §2). On API 30 and later the engine writes
- * to a pipe, never a file, and the pipe is drained and dropped; on API 29,
- * which has no pipe overload, the engine speaks at zero volume and the same
+ * `onAudioAvailable` (research 08a §2). On API 30 and later the engine's file copy
+ * goes to /dev/null, so nothing is written anywhere; on API 29 the engine speaks at zero volume and the same
  * callback hands over the samples. Only voices that need no network are used
  * (§5 rule 5), so a script line is never sent to a speech server.
  */
@@ -67,16 +64,8 @@ class SystemStandInVoice(context: Context, private val cast: VoiceCast) : StandI
         pending = collector
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val (source, sink) = ParcelFileDescriptor.createPipe()
-                thread(name = "standin-drain") {
-                    ParcelFileDescriptor.AutoCloseInputStream(source).use { input ->
-                        val scratch = ByteArray(8_192)
-                        do { val n = input.read(scratch) } while (n >= 0)
-                    }
-                }
-                val queued = tts.synthesizeToFile(words, Bundle(), sink, collector.id)
-                sink.close()
-                if (queued != TextToSpeech.SUCCESS) return null
+                // Not a pipe: its failed header seek left every line waiting the full timeout (VoiceTraitStore.DISCARD).
+                if (tts.synthesizeToFile(words, Bundle(), VoiceTraitStore.DISCARD, collector.id) != TextToSpeech.SUCCESS) return null
             } else {
                 val silent = Bundle().apply { putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 0f) }
                 if (tts.speak(words, TextToSpeech.QUEUE_FLUSH, silent, collector.id) != TextToSpeech.SUCCESS) return null

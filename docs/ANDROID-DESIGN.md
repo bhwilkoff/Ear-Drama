@@ -636,11 +636,17 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   The chip opens a `ModalBottomSheet` picker: Speed and Pitch as − value + steppers,
   then "On this device": `TextToSpeech.getVoices()` filtered to English and
   `!isNetworkConnectionRequired` and without `KEY_FEATURE_NOT_INSTALLED`, sorted by
-  `quality` (500 down to 100), then the person's locale, then name; a voice's label is
-  its locale's display name (engines name voices like "en-us-x-sfg-local", which says
-  nothing to a person, so the raw name is never shown), numbered in sort order when two
-  share a locale ("English (United States) 2"), with "High quality" under it when the
-  engine reports quality 400 or more. The sheet is full height on a phone
+  `quality` (500 down to 100), then the person's locale, then name, leaving out the
+  locale stand-in (`en-US-language`, feature `legacySetLanguageVoice`, the same speaker
+  as `en-us-x-iog-local` on the Pixel 8a); a voice's label is what it sounds like and
+  its accent (PLAYS-DESIGN §2.8 rule 12; *replaced* 2026-11-23: "its locale's display
+  name, numbered in sort order when two share a locale ("English (United States) 2")",
+  which the owner could not choose by): "Low, warm · US", from `VoiceLabels.SEED` for
+  Google's voices, else measured once on the device (`VoiceTraitStore`, four numbers in
+  `ed.voicetraits`, about 0.7 s a voice, the sound never kept), with "High quality"
+  under it when the engine reports quality 400 or more. A chip drops the accent when
+  every voice here shares it ("Low, warm") and ellipsizes at the end, so the words that
+  tell voices apart lead. The sheet is full height on a phone
   (`skipPartiallyExpanded = true`). Recast all sits with the cast sheet's manage actions;
   on a TV the chips and picker are absent and the listen-through reads the cast. The
   reader's top bar has Voices (`RecordVoiceOver`: every part with its chip, Recast all)

@@ -278,6 +278,8 @@ class StandInNeverStoredTest {
         assertEquals(listOf("plays/StandIn.kt"), writeViolations("x/plays/StandIn.kt", "TakeAudio.write(capture, file)"))
         assertEquals(listOf("screens/Other.kt"), writeViolations("x/ui/screens/Other.kt", "WavSink(file, 48_000)"))
         assertEquals(listOf("ui/Other.kt"), writeViolations("x/ui/Other.kt", "tts.synthesizeToFile(text, params, file, id)"))
+        assertEquals(emptyList<String>(), writeViolations("x/plays/VoiceTraitStore.kt", "tts.synthesizeToFile(t, b, File(\"/dev/null\"), id)"))
+        assertEquals(listOf("plays/VoiceTraitStore.kt"), writeViolations("x/plays/VoiceTraitStore.kt", "tts.synthesizeToFile(t, b, File(cacheDir, \"v.wav\"), id)"))
         // Kokoro (S6d): the sources that hold rendered audio touch no file writer, and the model store holds no audio.
         assertTrue("the Kokoro sources are where the guard looks", kokoroAudio.all { k -> sourceRoots.any { File("$it/com/example/appname/$k").isFile } })
         assertEquals(listOf("kokoroengine/OrtKokoroRenderer.kt"), writeViolations("x/kokoroengine/OrtKokoroRenderer.kt", "File(dir, \"line.pcm\").writeBytes(b)"))
@@ -309,10 +311,13 @@ class StandInNeverStoredTest {
         "TakeAudio.write(" to setOf("plays/PlayFiles.kt"),
         "MediaMuxer" to setOf("plays/MixEncoder.kt"),
         "AacMixSink(" to setOf("plays/MixEncoder.kt", "plays/PlaysLibrary.kt"),
-        "synthesizeToFile(" to setOf("plays/StandIn.kt"),
+        "synthesizeToFile(" to setOf("plays/StandIn.kt", "plays/VoiceTraitStore.kt"),
     )
 
     /** Tokens the stand-in source may never hold: it reaches the engine through a pipe and memory only. */
+    /** The voice measurer (PLAYS-DESIGN §2.8 rule 12) synthesizes only to /dev/null and keeps four numbers, never sound. */
+    private val traitForbidden = listOf("FileOutputStream", "filesDir", "cacheDir", "writeBytes", "writeText", "WavSink", "TakeAudio.write", "MediaMuxer", "createTempFile")
+
     private val standInForbidden = listOf("java.io.", "FileOutputStream", "filesDir", "cacheDir", "writeBytes", "writeText", "WavSink", "TakeAudio.write", "MediaMuxer")
 
     /** Code only: a comment may name a writer it explains. */
@@ -327,7 +332,8 @@ class StandInNeverStoredTest {
             (inPlays || !scoped) && source.contains(token) && name !in allowed
         } || (name == "plays/StandIn.kt" && (standInForbidden.any { source.contains(it) } || Regex("""(?<![A-Za-z])File\(""").containsMatchIn(source))) ||
             (name in kokoroAudio && (kokoroForbidden.any { source.contains(it) } || Regex("""(?<![A-Za-z])File\(""").containsMatchIn(source))) ||
-            (name == "kokoro/KokoroModelStore.kt" && modelStoreForbidden.any { source.contains(it) })
+            (name == "kokoro/KokoroModelStore.kt" && modelStoreForbidden.any { source.contains(it) }) ||
+            (name == "plays/VoiceTraitStore.kt" && (traitForbidden.any { source.contains(it) } || Regex("""(?<![A-Za-z])File\((?!"/dev/null"\))""").containsMatchIn(source)))
         return if (bad) listOf(name) else emptyList()
     }
 }

@@ -78,6 +78,7 @@ import com.example.appname.plays.VoiceCast
 import com.example.appname.plays.VoiceCasting
 import com.example.appname.plays.VoiceCastEntry
 import com.example.appname.plays.chipVoiceName
+import com.example.appname.plays.soleAccent
 import com.example.appname.plays.pitchText
 import com.example.appname.plays.speedText
 import com.example.appname.ui.theme.AppSemantics
@@ -197,12 +198,12 @@ fun VoiceChip(handle: CastHandle, part: PartID, onClick: () -> Unit, modifier: M
         label = {
             Text(
                 buildAnnotatedString {
-                    append(chipVoiceName(d.text))
+                    append(chipVoiceName(d.text, handle.cast.soleAccent()))
                     if (d.isDefault) withStyle(SpanStyle(color = muted)) { append("  Default") }
                     if (d.tune.isNotEmpty()) withStyle(SpanStyle(color = muted)) { append("  ${d.tune}") }
                 },
                 maxLines = 1,
-                overflow = TextOverflow.StartEllipsis,
+                overflow = TextOverflow.Ellipsis,
             )
         },
         leadingIcon = if (d.warn) ({
