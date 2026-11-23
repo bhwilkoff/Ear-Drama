@@ -1,6 +1,6 @@
 /**
  * Listen Together's face on the web (WEB-DESIGN §4.12): the button in Now
- * Playing, Library's "Join a room" row, and the one sheet both open. The
+ * Playing, Library's "Listen together" row, and the one sheet both open. The
  * session (js/together.js) does the work; this file only draws and asks.
  */
 const TogetherUI = (() => {
@@ -124,7 +124,7 @@ const TogetherUI = (() => {
     const i = session.info();
     box.replaceChildren(...[
       el('button', { type: 'button', class: 'btn btn-ghost account-open', disabled: !i.available, onclick: () => open() },
-        svg(GROUP), i.inRoom ? `Room ${spaced(i.code)}` : 'Join a room'),
+        svg(GROUP), i.inRoom ? `Room ${spaced(i.code)}` : 'Listen together'),
       !i.available ? el('span', { class: 'caption' }, 'Not available yet')
         : i.inRoom ? el('span', { class: 'caption' }, listening(i.members)) : null].filter(Boolean));
   }

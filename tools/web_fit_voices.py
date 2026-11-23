@@ -173,8 +173,9 @@ def main():
             if not wait(f"{sheet} && document.querySelector('.vs-hifi[data-state=absent] .vs-get')", 'Library > Voices, not downloaded'): return
             if not ev(no_settings): bad('Library still offers a Settings row or sheet')
             if ev("document.querySelector('#voices').getBoundingClientRect().top") > ev("innerHeight") * 0.5: bad('the section link did not scroll Voices into view')
-            tail = ev("[...document.querySelectorAll('#view-library .library-account > *')].map(n => n.id)")
-            if tail[-1] != 'voices': bad(f'Voices is not the last part of Library: {tail}')
+            tail = ev("[...document.querySelectorAll('#library-foot .lib-group > *')].map(n => n.id)")
+            if tail[:2] != ['account-row', 'voices-more']: bad(f'Voices is not the foot row after Account (Decision 087): {tail}')
+            if not ev("document.getElementById('voices-more').open"): bad('the deep link did not open the Voices disclosure')
             label = ev("document.querySelector('.vs-get').textContent")
             if label != 'Download (340 MB)': bad(f'the Download button reads {label!r}, want the manifest size')
             if ev("document.querySelectorAll('.vs-row[data-voice^=kokoro]').length"): bad('Kokoro voices listed before the download')

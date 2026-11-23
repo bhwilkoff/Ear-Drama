@@ -63,6 +63,7 @@ const PlaysUI = (() => {
   }
 
   const num = new Intl.NumberFormat('en-US');
+  const dayFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const lines = (n) => (n === 1 ? '1 line' : `${num.format(n)} lines`);
 
   async function openStore() {
@@ -155,11 +156,13 @@ const PlaysUI = (() => {
       try { remote = (await API.plays.list()).productions || []; } catch (err) { console.error(err); }
       if (my !== token) return;
     }
-    const rows = S.libraryRows(store, remote);
+    const rows = S.libraryRows(store, remote).filter(r => !opts.play || playKey(r) === opts.play);
     if (!rows.length && opts.onEmpty) { body.replaceChildren(); opts.onEmpty(); return; }
     if (!rows.length) out.push(h.stateBox('empty', { text: 'No ear dramas yet.' }));
     else {
       const ul = h.el('ul', { class: 'play-list' });
+      // One play's productions (Library, Decision 087) share a title, so each says when it was made or last changed.
+      const when = (r) => (opts.play ? ` · ${dayFmt.format(new Date(r.local ? (r.local.created + 978307200) * 1000 : r.remote.updated_at || 0))}` : '');
       for (const r of rows) {
         if (r.local) {
           const script = await store.script(r.local);
@@ -167,13 +170,13 @@ const PlaysUI = (() => {
           ul.append(h.el('li', { class: 'play-row' },
             h.el('a', { class: 'play-link', href: `?production=${encodeURIComponent(r.local.id)}` },
               h.el('span', { class: 'body-strong' }, r.local.title),
-              h.el('span', { class: 'caption' }, r.pid ? 'Shared' : progressLine(r.local, script)))));
+              h.el('span', { class: 'caption' }, (r.pid ? 'Shared' : progressLine(r.local, script)) + when(r)))));
         } else {
           const status = h.el('span', { class: 'caption refusal', role: 'alert' });
           ul.append(h.el('li', { class: 'play-row' },
             h.el('button', { type: 'button', class: 'play-link play-remote', onclick: () => openRemote(r.remote, status) },
               h.el('span', { class: 'body-strong' }, r.remote.title),
-              h.el('span', { class: 'caption' }, 'Shared')), status));
+              h.el('span', { class: 'caption' }, `Shared${when(r)}`)), status));
         }
       }
       out.push(ul);
@@ -184,6 +187,53 @@ const PlaysUI = (() => {
       out.push(classes);
     }
     body.replaceChildren(...out);
+  }
+
+  /** The play a production row belongs to: its script id (a production's title is its play's). */
+  const playKey = (r) => (r.local ? r.local.scriptID : r.remote.script_id) || (r.local ? r.local.title : r.remote.title);
+
+  /** Library's Making side (WEB-DESIGN §4.7, Decision 087): the productions grouped by play, newest play first,
+      each { key, title, count, state, href | remote }; the classes when signed in (null otherwise or on a failed
+      read); and the class seats this browser holds. Throws only when the play store will not open. */
+  async function making(helpers) {
+    h = h || helpers;
+    await openStore();
+    let remote = [];
+    if (canShare()) {
+      try { remote = (await API.plays.list()).productions || []; } catch (err) { console.error(err); }
+    }
+    const groups = new Map();
+    for (const r of S.libraryRows(store, remote)) {
+      const k = playKey(r);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(r);
+    }
+    const plays = [];
+    for (const [key, rs] of groups) {
+      const top = rs[0];
+      const own = top.local ? (top.pid ? 'Shared' : progressLine(top.local, await store.script(top.local).catch(() => null))) : 'Shared';
+      plays.push({
+        key, title: top.local ? top.local.title : top.remote.title, count: rs.length,
+        state: rs.length > 1 ? `${num.format(rs.length)} productions · newest ${own.charAt(0).toLowerCase()}${own.slice(1)}` : own,
+        href: rs.length > 1 ? `?view=library&side=make&productions=${encodeURIComponent(key)}`
+          : top.local ? `?production=${encodeURIComponent(top.local.id)}` : null,
+        remote: rs.length === 1 && !top.local ? top.remote : null,
+      });
+    }
+    let classes = null;
+    if (canShare()) {
+      try { classes = await API.plays.classes(); } catch (err) { console.error(err); }
+    }
+    const seats = typeof PartsUI !== 'undefined' ? PartsUI.seatKeys(store) : [];
+    return { plays, classes, seats };
+  }
+
+  /** Record's class door (WEB-DESIGN §4.15 item 4, Decision 087): the classes with Make a class and Join a class; signed in only. */
+  async function classDoor(body, helpers) {
+    h = h || helpers;
+    if (!canShare()) { body.replaceChildren(); return; }
+    const my = token;
+    body.replaceChildren(await classesBox(my));
   }
 
   /** Home's Open parts (WEB-DESIGN §4.2 item 7, owner 2026-11-14): shared productions someone else directs
@@ -537,7 +587,7 @@ const PlaysUI = (() => {
       if (mix && mix.id === p.id) { URL.revokeObjectURL(mix.url); mix = null; }
       await store.delete(p.id);
       VoiceCast.forget(VoiceCast.productionKey(p.id));
-      h.navigate('?view=library&tab=dramas', true);
+      h.navigate('?view=library&side=make', true);
     } }, 'Delete production');
   }
 
@@ -716,7 +766,7 @@ const PlaysUI = (() => {
         await API.plays.deleteProduction(rec.id);
         if (mix && mix.id === p.id) { URL.revokeObjectURL(mix.url); mix = null; }
         await store.delete(p.id);
-        h.navigate('?view=library&tab=dramas', true);
+        h.navigate('?view=library&side=make', true);
       } catch (err) { console.error(err); btn.disabled = false; h.announce(S.line(err)); }
     } }, 'Delete for everyone');
     return btn;
@@ -1578,5 +1628,5 @@ const PlaysUI = (() => {
     return renderScript(body, my, r.p.get('play'));
   }
 
-  return { openStore, render, renderInvite, renderDrama, dramaAlongFor, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, startButton, readLink, leave, fingerprint, BOARD };
+  return { openStore, render, renderInvite, renderDrama, dramaAlongFor, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, making, classDoor, openShared: openRemote, startButton, readLink, leave, fingerprint, BOARD };
 })();

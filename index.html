@@ -157,19 +157,35 @@
 
       <section id="view-library" class="view" aria-labelledby="library-h" hidden>
         <h1 id="library-h" class="view-heading" tabindex="-1">Library</h1>
-        <div class="segmented segmented-scroll" role="group" aria-label="Library section" id="library-tabs">
-          <button type="button" data-lib="continue" aria-pressed="true">Continue</button>
-          <button type="button" data-lib="queue" aria-pressed="false">Queue</button>
-          <button type="button" data-lib="following" aria-pressed="false">Following</button>
-          <button type="button" data-lib="history" aria-pressed="false">History</button>
-          <button type="button" data-lib="dramas" aria-pressed="false" class="ear-drama-only">Ear dramas</button>
+        <div class="segmented lib-sides ear-drama-only" role="group" aria-label="Library side" id="library-sides">
+          <button type="button" data-side="listen" aria-pressed="true">Listening</button>
+          <button type="button" data-side="make" aria-pressed="false">Making</button>
         </div>
-        <div id="library-body"></div>
-        <div class="library-account">
-          <div id="account-row" class="account-row" role="group" aria-label="Account"></div>
-          <div id="together-row" class="account-row" role="group" aria-label="Listen together"></div>
-          <div id="export-row" class="account-row" role="group" aria-label="Export your data"></div>
-          <section id="voices" class="vs-voices"></section>
+        <div class="lib-cols">
+          <div id="library-body" class="lib-body"></div>
+          <section id="library-foot" class="lib-foot" aria-labelledby="lib-foot-h">
+            <h2 id="lib-foot-h" class="section-header">Account and preferences</h2>
+            <div class="lib-group">
+              <div id="account-row" class="account-row lib-row" role="group" aria-label="Account"></div>
+              <details id="voices-more" class="lib-row lib-more lib-voices">
+                <summary><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1a7 7 0 0 0 6-6.9z"/></svg><span class="lib-label">Voices</span><span id="voices-state" class="caption lib-value tabular"></span></summary>
+                <section id="voices" class="vs-voices"></section>
+              </details>
+              <div id="together-row" class="account-row lib-row" role="group" aria-label="Listen together"></div>
+              <div id="export-row" class="account-row lib-row" role="group" aria-label="Export your data"></div>
+              <details class="lib-row lib-more lib-about">
+                <summary><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg><span class="lib-label">About Ear Drama</span></summary>
+                <ul class="lib-about-links">
+                  <li><a href="credits/">Credits</a></li>
+                  <li><a href="privacy/">Privacy</a></li>
+                  <li><a href="schools/">For schools</a></li>
+                  <li><a href="security/">Security</a></li>
+                  <li><a href="takedown/">Take-down requests</a></li>
+                  <li><a href="delete-account/">Delete an account</a></li>
+                </ul>
+              </details>
+            </div>
+          </section>
         </div>
       </section>
 

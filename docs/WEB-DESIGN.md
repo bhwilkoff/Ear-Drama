@@ -55,7 +55,7 @@ web app follows today.
   `?view=record&voices=&length=&kind=&sort=` (§4.15),
   `?series={key}&season=`, `?item={episode id}`, `?person={person id}&order=newest`
   (§4.14), `?view=search&q=`,
-  `?view=library&tab=`, the script reader (§4.16) `?read={script id}` with an
+  `?view=library&side=listen|make&list=upnext|history|marks&productions={script id}&section=voices` (§4.7; the older `&tab=continue|queue|following|history|dramas` still opens, read as the side or list it became), the script reader (§4.16) `?read={script id}` with an
   optional `&line={line id}` to open at a line, and for an ear drama (§4.10) `?play={script id}`,
   `?production={id}`, `?production={id}&part={part id}`, `?room={CODE}`
   (§4.12), which opens the Listen Together sheet over the Home view, `?read-room={CODE}` (and
@@ -340,25 +340,55 @@ web app follows today.
   does not load. The query is mirrored to the URL. The client never builds
   an index of its own from fetched transcripts: it would search only what
   this browser happened to open.
-- **§4.7 Library** = the account row (§4.11), then one segmented scope, in the order the person
-  returns to things: **Continue** (episodes started and not finished), **Queue**, **Following**,
-  **History**, and **Ear dramas** (the productions this browser recorded in or joined, newest
-  first, each with "N of M lines recorded" or "Finished", "Shared" for a shared one, then the
-  shared ones this browser has not opened, and Classes, §4.10a; Decision 068), on this device.
-  Every section draws the one grammar (§6.4b): Continue, Queue and History are rows (the series'
-  window leads where series mix); **Following is show tiles** in a grid (`.g-grid`, subgrid slots so
-  names, strips and facts line up across a row). Queue keeps move up, move down and remove on its
-  rows; Clear history asks first. The four states: every section reads this browser's storage, so
-  there is no loading or offline state of its own (a tile or window whose picture does not load
-  draws its title block); an empty section is one caption that says what it would hold, and the
-  Browse button: "Episodes you stop partway through wait here.", "Episodes you add play in this
-  order, after the one that is playing.", "Series you follow appear here.", "Episodes you play
-  appear here, newest first." An empty Ear dramas says "No ear dramas yet." and nothing more.
-  `tools/web_fit_library.py` shoots every section, empty and full, light and dark, at 320, 375,
-  390 and 430 px and fails on a wrapped button, a sideways scroll, an overflowing tile name, a full
-  section that drew nothing or an empty one with no caption. The tab strip scrolls inside itself
-  (`.segmented-scroll`) when five labels do not fit.
-  Library's foot holds the rare jobs, in order: the account row, Listen together, Export, and **Voices** (§4.11a, Decision 086; no Settings page exists).
+- **§4.7 Library** (Decision 087, owner 2026-11-23: *"Most people we exclusively use this app for
+  listening, so let's do option B to make it easier for them to use the app that way."*). One scroll:
+  the heading, a two-way segmented control **Listening** | **Making** (`#library-sides`, buttons with
+  `aria-pressed`), the chosen side, then the foot. Listening is the default; the last side chosen is
+  kept in this browser (`localStorage` `ed.library.side`, read and written in try/catch, so a blocked
+  store just means Listening). `&side=listen|make` chooses a side in the address and is remembered.
+  On a TV (`html.tv`) there is no control and no Making side.
+  - **Listening**, in order: **Up next**: the started episodes (`Store.inProgress`, each with its
+    progress bar), then the queue in the person's order (`Store.queue()`, an episode already started
+    shown once), each queued row keeping Move up, Move down and Remove. Five rows; when there are
+    more, the heading carries **All N**, which opens the whole list (`&list=upnext`). Up next is a
+    view over the two stores, never a store of its own. **Shows you follow**: the followed shows as
+    show tiles on a rail (`shelf()`). **History**: one line with its count ("42 episodes"), opening
+    `&list=history`, where the whole history is drawn with Clear history (which asks first). No
+    Downloads line: the web downloads nothing (Decision 071).
+  - **Making**, in order: **Waiting on you**: each class seat this browser holds (§4.20), one line
+    with the seat's name, opening Your parts. **Productions**: this browser's productions and the
+    shared ones it has not opened (`PlaysShare.libraryRows`) grouped by play (the script id), one row
+    per play: its title, then "N productions · newest {state}" or, for one, its own state ("18 of 166
+    lines recorded", "Finished", "Shared"). A play with one production opens it; with several, opens
+    `&productions={script id}`, that play's productions newest first, each its state and its date ("Shared · Nov 22, 2026"), since they share a title. **Marks**: one line, "In 3 scripts",
+    opening `&list=marks`, one row per script with marks, each opening the reader. **Classes**
+    (signed in): one line per class; a class the person teaches opens its class page (§4.19), one
+    they belong to opens Your parts. Make a class and Join a class live at Record's class door
+    (§4.15 item 4), not here.
+  - **Empty**: a section with nothing is **absent**, no header and no caption. A side with nothing at
+    all is one sentence and one button: Listening "Episodes you start, queue or follow wait here."
+    with Browse; Making "Plays you record, parts you take and classes you join wait here." with
+    Record a play.
+  - **States**: Listening reads this browser's storage, so it has no loading or offline state; a tile
+    or window whose picture does not load draws its title block. Making reads the play store and,
+    signed in, the Worker: a spinner in the side's place while it loads; a store that fails to open is
+    the problem box with Try again in the side's place; a Worker list that fails leaves the local rows
+    standing.
+  - **The foot** (both sides): an `h2` "Account and preferences", then one group of rows, in this
+    order: **Account** (§4.11), **Voices** (a `<details>` whose summary is "Voices" and its state,
+    "Kokoro · 1.0×" or "Device · 1.0×"; opening it mounts the full Voices controls in place, §4.11a),
+    **Listen together** (§4.12), **Export my data** (with History as CSV), and **About Ear Drama** (a
+    `<details>` holding the site pages: Credits, Privacy, For schools, Security, Take-down requests,
+    Delete an account). Library therefore draws no site footer of its own (§4.8).
+  - **Wide** (from 1024 px): two columns, the side on the left and the foot on the right.
+  - `tools/web_fit_library.py` shoots a new person and a heavy person, both sides, light and dark, at
+    320, 375, 390, 430 and 1440 px, and fails on a wrapped button, a sideways scroll, an overflowing
+    tile name, an empty section that drew a header, an empty side without exactly one sentence and
+    one button, a heavy side that drew nothing, more than five Up next rows, or Voices open when the
+    address did not ask for it.
+  - *Replaced* (2026-11-23, Decision 087): "Library = the account row (§4.11), then one segmented
+    scope ... Continue, Queue, Following, History, and Ear dramas ... an empty section is one caption
+    that says what it would hold, and the Browse button".
 - **§4.9 Stations** (was Radio, Decision 068: *"collections of ear dramas
   should be stations"*) = the stations row, then Tonight's schedule.
   **The stations row** (R10, contract §8) lists Tonight in 19xx first, then
@@ -657,14 +687,14 @@ web app follows today.
     Take button went with the take audio route, Decision 082).
   - **An invite** arrives as `/invite#{token}` (forwarded by `404.html` as
     `#invite={token}`); `app.js` holds it in `sessionStorage` for the tab,
-    clears it from the address, and opens `?view=library&tab=dramas`, where
-    **Invitation** leads the list (§11.7 rule 3).
-  - **Library's Ear dramas** (§4.7) lists this browser's productions, then
+    clears it from the address, and opens the Invitation page (§11.7 rule 3).
+  - **Library's Making side** (§4.7) groups this browser's productions and
     the shared ones not yet opened here (a button that makes the production
-    here, then opens it); shared rows say "Shared". Signed in, **Classes**
-    follows the list: each class with its code (two groups of four, tabular),
-    Make a class (name, "Under 13"), Join a class (code, optional name). A class the person
-    teaches is a link to its class page (§4.19, T3).
+    here, then opens it) by play; shared rows say "Shared". **Record's class
+    door** (§4.15 item 4, signed in) lists each class with its code (two groups
+    of four, tabular), Make a class (name, "Under 13"), Join a class (code,
+    optional name). A class the person teaches is a link to its class page
+    (§4.19, T3).
 - **§4.13 Surprise** (`?view=surprise`, Decision 068; opened from the
   Surprise button in Home's heading row since Decision 075, and lighting
   the Home tab; Archive Watch WEB-DESIGN §4.9): three random picks drawn from the data on each visit,
@@ -696,7 +726,7 @@ web app follows today.
   B, "Record tab"). The section for making an ear drama. Not on a TV.
   Top to bottom:
   1. **Yours**: this browser's productions and the shared ones it has not
-     opened, the list Library's Ear dramas draws (§4.7), newest first, each
+     opened (the rows Library's Making side groups by play, §4.7), newest first, each
      row its title and "N of M lines recorded", "Finished" or "Shared".
      A production with no take is never a row (Decision 079, PLAYS-DESIGN
      §2.3 rule 3a): it is deleted when the studio closes without a take and
@@ -748,7 +778,11 @@ web app follows today.
      and opens the reader (§4.16).
      The window's bars and the fingerprint come from the row's `cast`
      (each named role's speeches, largest first).
-  4. **Made here**: finished ear dramas, as Home's row (§4.2 item 10).
+  4. **Classes** (signed in only; Decision 087 moved it here from Library):
+     the class door, an `h2` "Classes" (`#classes-h`), each class with its
+     code, then Make a class (name, "Under 13") and Join a class (code,
+     optional name), as §4.10a describes.
+  5. **Made here**: finished ear dramas, as Home's row (§4.2 item 10).
 
   **States**: the plays load once; loading is the spinner in the Plays
   box; a failed read is "This did not load." with Try again; offline,
@@ -1178,8 +1212,8 @@ web app follows today.
   adds it, a fresh code replacing an expired one without a word (PLAYS-DESIGN §12.10 item 9).
 
 - **§4.19 The class page** (`?class={id}`, lighting Library; R3c §4.1-§4.6; PLAYS-DESIGN §12.4;
-  `learner-experience-design` §2-§3). Reached from Library's Ear dramas, where each class the
-  person teaches is now a link. Code: `js/class-ui.js`; every call `API.plays`. The order is
+  `learner-experience-design` §2-§3). Reached from Library's Making side and Record's class door, where each class the
+  person teaches is a link. Code: `js/class-ui.js`; every call `API.plays`. The order is
   what needs the teacher now, never a dashboard:
   1. The head: the class name (h1) and the code, two groups of four in tabular figures, with
      **Show code** (a full-screen `<dialog>` for the projector). Under 13 without the school's
@@ -1236,23 +1270,28 @@ web app follows today.
      Frames: `docs/research/design/img/t6/` (`node tools/relay_frames.mjs`), light and dark, 375 and 1440.
 
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
-  scroll except Home's (Decision 075) and on each site page: Credits, Privacy, Take-down requests,
+  scroll except Home's (Decision 075) and Library's, whose About Ear Drama row holds the same pages (Decision 087), and on each site page: Credits, Privacy, Take-down requests,
   Delete an account (§4.11).
   They are never featured in the main UI (AGENTS.md "side doors").
 
 - **§4.11a Voices are a section of Library** (Decision 086, amended 2026-11-22;
   owner, 2026-11-22: *"I was talking about the fact that the "library" page shows the "settings" of the app, even without calling it a settings page. I don't think we need a settings page, but we should continue to iterate upon the library page to make it serve all of the given purposes we need."*). There is no Settings
   page, row, sheet, or route: Library is the app's settings home, and each
-  preference is a section of it. A preference that holds across the whole app
-  is a rare job like the account (§4.11), so it sits at the foot: below the
-  person's own collections (the scope, §4.7), after the account, Listen
-  together and Export rows (`learner-experience-design`: account pages hold
-  rare jobs). Today the one section is **Voices**, an `<h2 id="voices-h">` in
-  `<section id="voices">`, the last part of Library. `?view=library&section=voices`
-  is its deep link (the page scrolls it into view and focuses its heading, like
-  `tab=`); the cast sheet's and reader's **Better voices** close any open
-  dialog and navigate to it. Same three parts as before, in the page rather
-  than a dialog, in this order:
+  preference is one row of its foot (§4.7, Decision 087). A preference that
+  holds across the whole app is a rare job like the account (§4.11), so it
+  sits in the foot, below the person's own things (either side), second after
+  the account (`learner-experience-design`: account pages hold rare jobs).
+  Today the one preference is **Voices**: a `<details id="voices-more">` whose
+  summary reads "Voices" and its state ("Kokoro · 1.0×" when the Kokoro
+  voices are here and lead the order, else "Device · 1.0×"; the speed is the
+  Default speed). Closed by default; opening it mounts the controls, an
+  `<h2 id="voices-h">` in `<section id="voices">`, in place on Library, and
+  closing it lets them go (a Hear stops). `?view=library&section=voices` is its
+  deep link: it opens the disclosure, scrolls it into view and focuses its
+  heading; the cast sheet's and reader's **Better voices** close any open
+  dialog and navigate to it. (*Replaced* 2026-11-23: Voices drawn in full as
+  the last section of Library, about 80% of the page in a browser with fifty
+  system voices.) The controls, in this order:
   1. **Kokoro voices** (PLAYS-DESIGN §2.8 rules 10 and 11): **Download (… MB)**,
      the size summed from the manifest before anything else loads, an ink
      primary button; never started for the person. While downloading: a
@@ -1286,8 +1325,8 @@ web app follows today.
 
 - **§4.11 The account lives in one row of Library** (Decision 057, 063;
   LOOP-PLAN M5). An account is a rare
-  job, so it gets no tab, no route, and no header chrome: one row under
-  Library's heading, above the Queue, History, Following scope, and a
+  job, so it gets no tab, no route, and no header chrome: the first row of
+  Library's foot (§4.7, Decision 087), under either side, and a
   `<dialog showModal>` it opens (full screen on a phone, a 440 px sheet
   from 768 px, like Now Playing, §5.1). Nothing about it appears at first
   launch or anywhere else in the app.
@@ -1827,13 +1866,13 @@ web app follows today.
   words on screen. A caption must be a refusal, a warning, or a fact the
   person cannot discover by looking." `stateBox('empty', { text,
   action })` draws the sentence and, when one helps, one link
-  (`{ label, href }`, a `.btn`). Library's Queue ("Nothing queued."),
-  History ("Nothing played yet."), and Following ("Not following any
-  series.") link to Browse; Browse with nothing matching links "Clear
-  filters" (keeping the sort). No results echo the query, "No matches
+  (`{ label, href }`, a `.btn`). In Library an empty section is absent,
+  not a sentence (Decision 087); a whole side with nothing is the one
+  sentence and one button of §4.7 (Browse, or Record a play). Browse with
+  nothing matching links "Clear filters" (keeping the sort). No results echo the query, "No matches
   for “{query}”.", and suggest nothing. An empty state never replaces
-  navigation: the account row, Listen together, Library's sections, and
-  the footer's site pages stay drawn around it.
+  navigation: Library's side control and its foot, and the footer's site
+  pages elsewhere, stay drawn around it.
 - **§7.1b No hints** (one-shot tips), as iOS §7.5: each candidate
   repeats a visible control, and Search finding words said in an
   episode belongs in the search placeholder (the owner's copy call). No
