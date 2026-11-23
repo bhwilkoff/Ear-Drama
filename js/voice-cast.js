@@ -167,14 +167,14 @@ const VoiceCast = (() => {
    * the person's own language, the system default, the name. Each as { engine, id, name, lang, tier, gender }.
    */
   function systemVoices(all, language) {
-    const lang = (language || 'en-US').toLowerCase();
+    const lang = tagOf(language || 'en-US').toLowerCase();
     const named = label((all || []).filter(v => v && v.localService && /^en([-_]|$)/i.test(v.lang || '')));
     return named.voices
       .map(v => ({ engine: 'system', id: v.voiceURI || v.name, name: named.labels.get(v.voiceURI || v.name), lang: v.lang, tier: tierOf(v.name),
                    gender: genderOf(v), register: registerOf(v), isDefault: !!v.default, raw: v }))
       .sort((a, b) => {
         if (a.tier !== b.tier) return b.tier - a.tier;
-        const al = a.lang.toLowerCase() === lang, bl = b.lang.toLowerCase() === lang;
+        const al = tagOf(a.lang).toLowerCase() === lang, bl = tagOf(b.lang).toLowerCase() === lang;
         if (al !== bl) return al ? -1 : 1;
         if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
         return a.name < b.name ? -1 : a.name > b.name ? 1 : (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
