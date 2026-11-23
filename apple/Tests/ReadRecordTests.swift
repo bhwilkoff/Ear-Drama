@@ -440,7 +440,8 @@ struct ReadPairingTests {
         var asked = 0
         func create(body: Data, teacher: Bool) async throws -> ReadJoined { throw ReadFailure(code: "error") }
         func join(code: String, body: Data) async throws -> ReadJoined { throw ReadFailure(code: "error") }
-        func poll(code: String, key: String) async throws -> ReadSnapshot { throw ReadFailure(code: "error") }
+        var polls: [String: String] = [:]
+        func poll(code: String, key: String) async throws -> ReadSnapshot { throw ReadFailure(code: polls[code] ?? "not_a_member") }
         func send(code: String, key: String, message: Data) async throws -> ReadSnapshot? { nil }
         func socket(code: String) -> (any ReadSocket)? { nil }
         func sendTake(code: String, key: String, takeID: String, audio: Data, contentType: String, meta: TakeMeta) async throws {}
@@ -455,6 +456,14 @@ struct ReadPairingTests {
 
     private func joined() throws -> ReadJoined {
         ReadJoined(snapshot: try snapshot("tv", mode: "read", role: "screen"), key: "member-key", transport: "poll")
+    }
+
+    @Test func aRoomIsCheckedBeforeTheJoinFormShowsAMissingOrEndedOneNamesItself() async {
+        let wire = Wire()
+        wire.polls = ["ZZZZZZ": "no_such_room", "ENDED1": "room_ended"]
+        #expect(await wire.gone(code: "ZZZZZZ") == "no_such_room")
+        #expect(await wire.gone(code: "ENDED1") == "room_ended")
+        #expect(await wire.gone(code: "LIVE01") == nil, "a live room refuses a keyless poll as a member check and shows its form")
     }
 
     @Test func theTVAsksForACodeThenPollsUntilALeaderAttachesIt() async throws {
