@@ -411,3 +411,13 @@ privacy words) is folded in when it arrives, never waited on.
   published (publish 44968377954, deploy 44969982597): plays with a picture 551/803 (authorArt 471, title
   page 176, production 6); series picture 319, hero 21; no magazine art served. Owner still: OPERATOR_TOKEN
   secret; SCHOOL_CONSENT_POLICY (open under-13 classes) after a lawyer's read or now.
+- **2026-11-23, tick 29's open item closed**: "class-room takes did not end on silence (adult rooms
+  did)" was the bench, not the room kind. tools/class_bench.py's stub microphone was a steady tone
+  under the detector's floor (RMS ~0.00035 vs 0.003) that never "spoke"; read_bench's speaks 1.5 s
+  per line. No onset, so the line-end detector never ends (§2.4), in any kind of room (class-r3 seat
+  log: "take L0008 start", no end). The take engine never sees the room kind on any stack (web
+  RecordingSession, Apple/Android recordInRoom). Bench stub now speaks and the take must end without
+  Stop (also fixed: "25 seats" counted the Delete class button): local Worker run 46/46, every class
+  take ended on silence. js/read.test.js: adult and class rooms each end a take on silence (a mutant
+  that skips the end in class rooms fails it), and a never-speaking microphone stays open the same
+  way in both. No client or Worker change.

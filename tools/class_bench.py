@@ -47,7 +47,7 @@ MIC_HOOK = r"""(() => {
   Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { enumerateDevices: async () => [],
     async getUserMedia() { const ctx = new AudioContext(); const osc = ctx.createOscillator(); osc.frequency.value = 160;
       const g = ctx.createGain(); g.gain.value = 0.0005; const dest = ctx.createMediaStreamDestination(); osc.connect(g); g.connect(dest);
-      osc.start(); await ctx.resume(); window.__micOpens = (window.__micOpens || 0) + 1; return dest.stream; } } });
+      osc.start(); await ctx.resume(); window.__micGain = g; window.__micOpens = (window.__micOpens || 0) + 1; return dest.stream; } } });
   window.confirm = () => true;
 })();"""
 
@@ -140,7 +140,7 @@ def setup_class(run, b, site, q, lw, cid, test, names):
     if not run.step(test, "the class page opens", class_page(b, site, q, cid)):
         return None
     b.js(f"""(() => {{ const t = document.querySelector('textarea.cl-names'); t.value = {json.dumps(chr(10).join(names))}; t.form.requestSubmit(); return true; }})()""")
-    n = wait(b, f"(() => {{ const n = document.querySelectorAll('.cl-remove').length; return n >= {len(names)} ? n : null; }})()", 40)
+    n = wait(b, f"(() => {{ const n = [...document.querySelectorAll('.cl-remove')].filter((x) => x.textContent === 'Remove').length; return n >= {len(names)} ? n : null; }})()", 40)
     run.step(test, f"{len(names)} seats from a pasted list", n == len(names), seats=n)
     script = b.js("""API.castableScripts().then(l => { const s = l.find(x => x.id === 'gut-7364') || l[0]; return s ? s.id : null; })""", timeout=40)
     b.js(f"""(() => {{ const s = document.querySelector('select[aria-label="Pick a play"]'); s.value = {json.dumps(script)}; s.dispatchEvent(new Event('change'));
@@ -191,12 +191,22 @@ def seat_join(run, s, site, q, room, ccode, label, test):
 
 
 def take(run, s, line, test):
-    """The seat's microphone opens on `line`; after four seconds the reader's own Stop ends the take."""
+    """The seat's microphone opens on `line`; the stub speaks 1.5 s (as read_bench's does) and the take ends on its silence.
+
+    Until 2026-11-23 this stub never spoke, so the line-end detector heard no onset and the take stayed open: that was
+    the "class-room takes did not end on silence" of ROUND3-LOOP tick 29 (read_bench's stub speaks, so adult rooms
+    ended). Stop is pressed now only when the silence did not end the take, and the step fails then."""
     opened = wait(s, f"(() => (window.__logs || []).some(x => x.includes('rec {line} ')))()", 30)
-    time.sleep(4)
-    stop = s.js("(() => { const b = [...document.querySelectorAll('.rr-rec button')].find(x => x.textContent === 'Stop'); if (!b) return false; b.click(); return true; })()")
-    ended = wait(s, f"(() => (window.__logs || []).some(x => x.includes('take {line} end')))()", 20)
-    run.step(test, f"the seat's microphone opens on {line}, Stop ends the take", bool(opened and ended), stop_pressed=stop)
+    time.sleep(0.8)
+    s.js("window.__micGain && (window.__micGain.gain.value = 0.25)")
+    time.sleep(1.5)
+    s.js("window.__micGain && (window.__micGain.gain.value = 0.0005)")
+    ended = wait(s, f"(() => (window.__logs || []).some(x => x.includes('take {line} end')))()", 10)
+    stop = False
+    if not ended:
+        stop = s.js("(() => { const b = [...document.querySelectorAll('.rr-rec button')].find(x => x.textContent === 'Stop'); if (!b) return false; b.click(); return true; })()")
+        wait(s, f"(() => (window.__logs || []).some(x => x.includes('take {line} end')))()", 20)
+    run.step(test, f"the seat's microphone opens on {line}, the take ends on the reader's silence (no Stop)", bool(opened and ended), stop_pressed=stop)
     return bool(opened and ended)
 
 
