@@ -88,3 +88,5 @@ store words; radio-script rights rule; GRW request.
   after 30 idle minutes, Keep receiving takes), senders defer retries while backgrounded; 4+4 tests that count
   asks, all failing with the rules removed; macOS relay suites, iOS, tvOS, Android lintRelease green. Fixed the
   LibrarySides.kt:107 compiler warning (5a8afec7). Next: CI green -> bump + TestFlight + Play; then B5 devices.
+- 2026-11-23 15:48, tick 5: CI green; 1.0.166 (167) bumped (35121322), TestFlight run 45282662411 and Play
+  internal run 45282668426 dispatched. B5 device pass running in one agent (muted, leases, no wipes).
