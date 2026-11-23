@@ -1,5 +1,6 @@
 package com.example.appname.ui.screens
 
+import androidx.core.content.edit
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -102,7 +103,7 @@ fun rememberLibrarySide(): Pair<String, (String) -> Unit> {
     var side by remember { mutableStateOf(LibraryModel.side(runCatching { prefs.getString(LibraryModel.SIDE_KEY, null) }.getOrNull())) }
     return side to { next ->
         side = next
-        runCatching { prefs.edit().putString(LibraryModel.SIDE_KEY, next).apply() }
+        runCatching { prefs.edit { putString(LibraryModel.SIDE_KEY, next) } }
         Unit
     }
 }
