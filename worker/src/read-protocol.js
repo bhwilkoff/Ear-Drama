@@ -41,7 +41,10 @@ export const MEMBER_FORGET_MS = 30 * 60 * 1000;
 export const SEEN_REFRESH_MS = 20 * 1000;
 /** A room with no change for this long is over. */
 export const ROOM_IDLE_MS = 6 * 60 * 60 * 1000;
-/** The polling transport's interval: a lit line should arrive before the reader needs it. */
+/**
+ * The polling transport's least gap between two polls' starts. Each poll is a long poll the room
+ * holds until a change or 20 s (read-rooms.js LONG_POLL_MS), so a lit line arrives at once.
+ */
 export const POLL_MS = 1000;
 
 export const MODES = ["read", "rehearse", "record"];

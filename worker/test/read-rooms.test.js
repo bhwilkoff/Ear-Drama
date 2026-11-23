@@ -284,6 +284,76 @@ describe("read rooms over the Durable Object", () => {
   });
 });
 
+// 2026-11-23 free-tier audit: the poll fallback asked every second, so a
+// class of 30 behind a WebSocket block used up the shared account in under an
+// hour. A poll now waits in the room until something changes.
+describe("the long poll and the writes a room makes", () => {
+  const settled = (p, ms = 300) => Promise.race([p.then(() => "answered"), new Promise((r) => setTimeout(() => r("pending"), ms))]);
+
+  it("a poll at the room's generation waits until a change, then answers with the new snapshot", async () => {
+    const h = await open();
+    const g = await enter(h.code);
+    const now = await poll(h.code, g.member_key);
+    const waiting = read("GET", `/${h.code}?gen=${now.generation}`, { key: g.member_key });
+    expect(await settled(waiting)).toBe("pending");
+    const line = cast[3][0];
+    expect((await send(h.code, h.member_key, { type: "cursor", line, base: 0 })).status).toBe(200);
+    const r = await waiting;
+    expect(r.status).toBe(200);
+    const snap = await r.json();
+    expect(snap.cursor).toBe(line);
+    expect(snap.generation).toBeGreaterThan(now.generation);
+    expect(snap.held_ms).toBeGreaterThanOrEqual(0);
+  });
+
+  it("a poll behind the room's generation, or with none, answers at once", async () => {
+    const h = await open();
+    const g = await enter(h.code);
+    expect(await settled(read("GET", `/${h.code}?gen=0`, { key: g.member_key }))).toBe("answered");
+    expect(await settled(read("GET", `/${h.code}`, { key: g.member_key }))).toBe("answered");
+  });
+
+  it("a parked poll learns the room ended", async () => {
+    const h = await open();
+    const g = await enter(h.code);
+    const now = await poll(h.code, g.member_key);
+    const waiting = read("GET", `/${h.code}?gen=${now.generation}`, { key: g.member_key });
+    expect(await settled(waiting)).toBe("pending");
+    expect((await send(h.code, h.member_key, { type: "end" })).status).toBe(200);
+    const r = await waiting;
+    expect(r.status === 410 || (await r.json()).ended === true).toBe(true);
+  });
+
+  it("a cursor move writes only the room, and sets no alarm", async () => {
+    const h = await open();
+    const stub = env.READ_ROOMS.get(env.READ_ROOMS.idFromName(h.code));
+    const out = await runInDurableObject(stub, async (instance, ctx) => {
+      const puts = [];
+      let alarms = 0;
+      const put = ctx.storage.put.bind(ctx.storage);
+      const setAlarm = ctx.storage.setAlarm.bind(ctx.storage);
+      ctx.storage.put = (k, v) => (puts.push(typeof k === "string" ? [k] : Object.keys(k)), put(k, v));
+      ctx.storage.setAlarm = (t) => (alarms++, setAlarm(t));
+      const r = await instance.fetch(new Request("https://read-room/send", {
+        method: "POST",
+        headers: { "x-read-key": h.member_key },
+        body: JSON.stringify({ type: "cursor", line: cast[3][0], base: 0 }),
+      }));
+      const quiet = puts.length;
+      const moved = alarms;
+      await instance.alarm();
+      return { status: r.status, puts: puts.slice(0, quiet), moved, alarms, afterAlarm: puts.length - quiet, next: await ctx.storage.getAlarm() };
+    });
+    expect(out.status).toBe(200);
+    expect(out.puts).toEqual([["room"]]);
+    expect(out.moved).toBe(0);
+    // An alarm with nothing changed writes nothing and sets only its successor.
+    expect(out.afterAlarm).toBe(0);
+    expect(out.alarms).toBe(1);
+    expect(out.next).toBeGreaterThan(Date.now());
+  });
+});
+
 describe("the D1 polling fallback", () => {
   it("opens on polling when the Worker has no Durable Object, and refuses a socket", async () => {
     const h = await open({}, { envOverride: NO_DO });

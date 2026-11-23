@@ -237,6 +237,10 @@ const M = [
   ["read: no member limit", "src/read-rooms.js", 'if (await limited(env.READ_MEMBER_LIMITER, me.id)) return { error: "rate_limited" };', ""],
   ["read: rooms under the address floor", "src/index.js", "const floor = isReadRoute(url.pathname) ? env.READ_IP_LIMITER : env.EVERY_IP_LIMITER;", "const floor = env.EVERY_IP_LIMITER;"],
   ["read: object broadcasts nothing", "src/read-rooms.js", "        ws.send(JSON.stringify(snapshot(world, a.member, now)));", "        void 0;"],
+  // The free plan (2026-11-23): a poll waits in the room, a cursor move writes one row and sets no alarm
+  ["read: a poll never waits", "src/read-rooms.js", "      return this.park(auth.me.id, now);", "      return json(snapshot(w, auth.me.id, now));"],
+  ["read: members written every save", "src/read-rooms.js", "    if (withCast || membersDiffer(this.stored, world.members)) {", "    if (true) {"],
+  ["read: alarm set every save", "src/read-rooms.js", "    if (this.alarmAt !== null && this.alarmAt <= at) return;\n", ""],
   ["read: D1 rooms never swept", "src/index.js", "sweepRooms(env), sweepReadRooms(env), ", "sweepRooms(env), "],
   // Classes, seats and takes that pass through (Decision 082, T2)
   ["t2: seat key stored raw", "src/plays-seats.js", ".bind(c.id, s.id, await sha256Hex(key), now, s.key_hash)", ".bind(c.id, s.id, key, now, s.key_hash)"],

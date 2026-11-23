@@ -242,15 +242,39 @@ async function createInput(request, env) {
 
 const CAST_CHUNK = 2000;
 const MIN_ALARM_MS = 5 * 1000;
+/** A poll at the room's generation waits this long for a change (the free plan counts requests, not waiting). */
+export const LONG_POLL_MS = 20 * 1000;
+
+/**
+ * Whether stored members differ from these in anything worth a write: a member in or out, a seat,
+ * a name, or a seen_at more than SEEN_REFRESH_MS apart. Presence moves every message; storing it
+ * each time would write a row per member per cursor move.
+ */
+function membersDiffer(stored, next) {
+  if (stored === next) return false;
+  if (!stored || stored.length !== next.length) return true;
+  for (let i = 0; i < next.length; i++) {
+    const { seen_at: a, ...x } = stored[i];
+    const { seen_at: b, ...y } = next[i];
+    if (Math.abs(a - b) > P.SEEN_REFRESH_MS || JSON.stringify(x) !== JSON.stringify(y)) return true;
+  }
+  return false;
+}
 
 export class ReadRoom extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.world = null;
     this.endedAt = null;
+    /** The members as stored, the alarm as set, the polls waiting, and when each poller last asked. */
+    this.stored = null;
+    this.alarmAt = null;
+    this.parked = new Set();
+    this.polled = new Map();
     ctx.blockConcurrencyWhile(async () => {
       this.world = await this.load();
       if (!this.world) this.endedAt = (await this.ctx.storage.get("ended_at")) || null;
+      this.alarmAt = await this.ctx.storage.getAlarm();
     });
   }
 
@@ -258,6 +282,7 @@ export class ReadRoom extends DurableObject {
     const room = await this.ctx.storage.get("room");
     if (!room) return null;
     const members = (await this.ctx.storage.get("members")) || [];
+    this.stored = members;
     const chunks = (await this.ctx.storage.get("cast_chunks")) || 0;
     const cast = [];
     for (let i = 0; i < chunks; i++) cast.push(...((await this.ctx.storage.get(`cast:${i}`)) || []));
@@ -266,7 +291,11 @@ export class ReadRoom extends DurableObject {
 
   async save(world, { withCast = false } = {}) {
     this.world = world;
-    const entries = { room: world.room, members: world.members };
+    const entries = { room: world.room };
+    if (withCast || membersDiffer(this.stored, world.members)) {
+      entries.members = world.members;
+      this.stored = world.members;
+    }
     if (withCast) {
       const n = Math.ceil(world.cast.length / CAST_CHUNK);
       entries.cast_chunks = n;
@@ -276,7 +305,11 @@ export class ReadRoom extends DurableObject {
     await this.schedule(world);
   }
 
-  /** One alarm: the next leader check for an adult room, else the idle end. */
+  /**
+   * One alarm: the next leader check for an adult room, else the idle end. Set only when none is
+   * set or this one is sooner: a later one is the idle end moving out, and alarm() checks again
+   * when the earlier one fires, so a cursor move sets nothing.
+   */
   async schedule(world) {
     const now = Date.now();
     let at = world.room.touched_at + P.ROOM_IDLE_MS;
@@ -287,22 +320,58 @@ export class ReadRoom extends DurableObject {
       if (check > now && !this.connected().has(leader.id)) at = Math.min(at, check);
     }
     // Never in the past: an alarm that sets its successor in the past fires without end.
-    await this.ctx.storage.setAlarm(Math.max(at, now + MIN_ALARM_MS));
+    at = Math.max(at, now + MIN_ALARM_MS);
+    if (this.alarmAt !== null && this.alarmAt <= at) return;
+    this.alarmAt = at;
+    await this.ctx.storage.setAlarm(at);
   }
 
+  /** Members with an open socket or a poll waiting in the room. */
   connected() {
     const ids = new Set();
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment();
       if (a && a.member) ids.add(a.member);
     }
+    for (const p of this.parked) ids.add(p.member);
     return ids;
   }
 
-  /** Members with an open socket are present now. */
+  /** Members connected are present now; a poller between polls was present when it last asked. */
   refresh(world, now) {
     const on = this.connected();
-    return { ...world, members: world.members.map((m) => (on.has(m.id) ? { ...m, seen_at: now } : m)) };
+    return {
+      ...world,
+      members: world.members.map((m) => {
+        if (on.has(m.id)) return m.seen_at === now ? m : { ...m, seen_at: now };
+        const asked = this.polled.get(m.id);
+        return asked > m.seen_at ? { ...m, seen_at: asked } : m;
+      }),
+    };
+  }
+
+  /**
+   * A poll at the room's generation waits here until broadcast() or end() answers it, or
+   * LONG_POLL_MS passes. `held_ms` lets the client take the wait out of its clock sample.
+   */
+  park(member, since) {
+    return new Promise((resolve) => {
+      const p = { member };
+      p.answer = () => {
+        if (!this.parked.delete(p)) return;
+        clearTimeout(p.timer);
+        const now = Date.now();
+        this.polled.set(member, now);
+        if (!this.world) return resolve(refuse(this.endedAt ? "room_ended" : "no_such_room"));
+        resolve(json({ ...snapshot(this.refresh(this.world, now), member, now), held_ms: now - since }));
+      };
+      p.timer = setTimeout(p.answer, LONG_POLL_MS);
+      this.parked.add(p);
+    });
+  }
+
+  answerParked() {
+    for (const p of [...this.parked]) p.answer();
   }
 
   broadcast(world, now) {
@@ -313,6 +382,7 @@ export class ReadRoom extends DurableObject {
         ws.send(JSON.stringify(snapshot(world, a.member, now)));
       } catch {}
     }
+    this.answerParked();
   }
 
   async end(now) {
@@ -324,10 +394,14 @@ export class ReadRoom extends DurableObject {
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     this.world = null;
+    this.stored = null;
     // Only the fact that it ended stays, so its code answers "This reading has ended" rather than "No reading with that code".
     this.endedAt = now;
+    this.answerParked();
+    this.polled.clear();
     await this.ctx.storage.put("ended_at", now);
-    await this.ctx.storage.setAlarm(now + ENDED_KEPT_MS);
+    this.alarmAt = now + ENDED_KEPT_MS;
+    await this.ctx.storage.setAlarm(this.alarmAt);
   }
 
   /** Applies a member's message and fans the result out; the caller gets its reply or refusal. */
@@ -401,15 +475,18 @@ export class ReadRoom extends DurableObject {
     }
 
     if (op === "poll") {
-      const w = this.refresh(this.world, now);
-      const me = w.members.find((m) => m.id === auth.me.id);
-      if (now - me.seen_at > P.SEEN_REFRESH_MS || P.settle(w.room, w.members, now).changed) {
-        const r = engine.send(w, auth.me.id, { type: "ping" }, now);
-        await this.save(r.world);
-        if (r.changed) this.broadcast(r.world, now);
-        return json(snapshot(r.world, auth.me.id, now));
+      // Asking is presence, kept in memory like an open socket: a poll writes only when the room settles differently.
+      this.polled.set(auth.me.id, now);
+      let w = this.refresh(this.world, now);
+      const s = P.settle(w.room, w.members, now);
+      if (s.changed) {
+        w = { ...w, room: s.room, members: s.members };
+        await this.save(w);
+        this.broadcast(w, now);
       }
-      return json(snapshot(w, auth.me.id, now));
+      const gen = Number(url.searchParams.get("gen"));
+      if (!url.searchParams.has("gen") || !Number.isInteger(gen) || gen < w.room.generation || w.room.ended) return json(snapshot(w, auth.me.id, now));
+      return this.park(auth.me.id, now);
     }
 
     if (op === "send") {
@@ -476,6 +553,7 @@ export class ReadRoom extends DurableObject {
   }
 
   async alarm() {
+    this.alarmAt = null;
     if (!this.world) {
       if (this.endedAt) {
         await this.ctx.storage.deleteAll();
@@ -488,8 +566,13 @@ export class ReadRoom extends DurableObject {
     const w = this.refresh(this.world, now);
     const s = P.settle(w.room, w.members, now);
     const world = { ...w, room: s.room, members: s.members };
+    if (!s.changed) {
+      // Nothing settled differently: no write, only the next alarm.
+      this.world = world;
+      return this.schedule(world);
+    }
     await this.save(world);
-    if (s.changed) this.broadcast(world, now);
+    this.broadcast(world, now);
   }
 }
 
@@ -502,7 +585,8 @@ function forward(env, code, op, request, body) {
   const key = request.headers.get(KEY_HEADER);
   if (key) headers.set(KEY_HEADER, key);
   if (op === "socket") headers.set("upgrade", request.headers.get("upgrade") || "");
-  return stub(env, code).fetch(`https://read-room/${op}`, {
+  const search = op === "poll" ? new URL(request.url).search : "";
+  return stub(env, code).fetch(`https://read-room/${op}${search}`, {
     method: body === undefined ? "GET" : "POST",
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
