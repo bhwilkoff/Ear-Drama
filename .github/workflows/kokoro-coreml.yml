@@ -15,26 +15,26 @@
 #            manifest last, each size and SHA-256 read back from the Release. Never --clobber: a
 #            version already there is refused, so a rerun publishes a new `version`.
 #
-# Toolchain (pinned; the set that converted Kokoro-82M on 2026-11-16): Python 3.12, coremltools 9.0,
-# torch 2.7.0, numpy < 2.3, transformers < 4.50, kokoro 0.9.4 (no deps).
+# Toolchain (pinned; converted and checked kokoro-v3-apple on 2026-11-22, run 45088596714, macOS 26.7.2):
+# Python 3.12, coremltools 9.0, torch 2.7.0, numpy 2.2.6, transformers 4.49.0, kokoro 0.9.4 (no deps),
+# scikit-learn 1.6.1 (pal8 only). fp32 with uncompressed weights is the only variant that passes the
+# check (worst spectral SNR 39.8 dB); mixed fp16, int8, per-block int8 and an 8-bit palette all failed
+# it (R2-kokoro-feasibility, S6e 2026-11-22).
 
 name: Kokoro Core ML
 
 on:
-  push:  # TEMPORARY: the first publish runs from the agent branch (a new workflow cannot be dispatched before it is on main)
-    branches: [worktree-agent-a8d5267110917305a]
-    paths: ['.github/workflows/kokoro-coreml.yml', 'tools/convert_kokoro_coreml.py', 'tools/kokoro_coreml_predict.swift']
   workflow_dispatch:
     inputs:
       version:
         description: 'Model version to publish (kokoro-vN-apple-manifest.json)'
-        default: '3'
+        default: '4'
       precision:
-        description: 'Compute precision: mixed (fp16, the phase and inverse STFT in fp32) | fp32 | fp16'
-        default: 'mixed'
+        description: 'Compute precision: fp32 (the only one that passes, 2026-11-22) | mixed | fp16'
+        default: 'fp32'
       weights:
-        description: 'Weight storage: int8 | none'
-        default: 'int8'
+        description: 'Weight storage: none (the only one that passes) | int8 | int8b (per block) | pal8 (k-means)'
+        default: 'none'
       publish:
         description: 'Upload to the kokoro-model Release after the check passes'
         type: boolean
@@ -51,17 +51,11 @@ jobs:
   convert:
     runs-on: macos-26
     timeout-minutes: 240
-    strategy:  # TEMPORARY comparison
-      fail-fast: false
-      matrix:
-        v: ${{ fromJSON(github.event_name == 'push' && '["fp32:pal8","fp32:none"]' || '["dispatch"]') }}
     env:
-      VERSION: ${{ inputs.version || '3' }}
-      PUBLISH: ${{ github.event_name == 'push' && 'false' || (format('{0}', inputs.publish) == 'false' && 'false' || 'true') }}
-      PRECISION: ${{ github.event_name == 'push' && (matrix.v == 'mixed:taps' && 'mixed' || 'fp32') || inputs.precision || 'mixed' }}
-      WEIGHTS: ${{ github.event_name == 'push' && (matrix.v == 'fp32:int8b' && 'int8b' || matrix.v == 'fp32:pal8' && 'pal8' || 'none') || inputs.weights || 'int8' }}
-      KOKORO_TAPS: ${{ matrix.v == 'mixed:taps' && '1' || '' }}
-      KOKORO_CHECK_DIAG: ${{ matrix.v == 'mixed:taps' && '1' || '' }}
+      VERSION: ${{ inputs.version }}
+      PUBLISH: ${{ inputs.publish }}
+      PRECISION: ${{ inputs.precision }}
+      WEIGHTS: ${{ inputs.weights }}
       # KOKORO_CHECK_DIAG: '1' prints each model checked alone; KOKORO_TAPS: '1' adds the decoder's intermediate
       # tensors as outputs and compares each (bisection only: a tapped model must never be published).
       GH_TOKEN: ${{ github.token }}

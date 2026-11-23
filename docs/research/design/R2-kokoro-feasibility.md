@@ -501,6 +501,42 @@ passes.
 
 **2026-11-22 (Decision 086 port):** the gate was not run. The Apple model package is not on the Release, no built copy exists on this Mac, and its Core ML step cannot be redone here (coremltools segfaults on macOS 27), so there was nothing to put on the open iPhone Duo for the bench. Settings > Voices ships with the download and the refusal behind `KokoroFlag.inRelease` (false); when a model is built and published, run `APP_KOKORO_BENCH=1` muted on the Duo (RTF at most 0.7, peak footprint under 600 MB) and flip the flag.
 
+## S6e on the iPhone (Apple, 2026-11-22): the gate PASSES on the open iPhone Duo; kokoro-v3-apple published
+
+**The 2026-11-16 model was wrong, and no check could see it.** Built by `.github/workflows/kokoro-coreml.yml` on a
+released runner (macos-26, macOS 26.7.2; Python 3.12, coremltools 9.0, torch 2.7.0, numpy 2.2.6, transformers
+4.49.0, kokoro 0.9.4), the converter's step 4 ran for the first time, through Core ML itself
+(`tools/kokoro_coreml_predict.swift`: coremltools' `MLModel` segfaults loading the decoder on macOS 26 too). Every
+variant measured 3 to 5 dB spectral SNR against PyTorch, fp32 included. The duration model matched (d 110 dB, t_en
+130 dB); the decoder's intermediate tensors (`KOKORO_TAPS=1`) matched through the decoder blocks (121 dB) and broke at
+the source's low-rate phase: **coremltools 9.0 converts `torch.remainder(x, 1.0)` to zeros**, so the harmonic source
+was silent and the voice ran on the noise branch alone (still intelligible, which is why the Whisper check above
+passed at 7.3%). Reproduced on a three-op model; `x - floor(x)` converts exactly (7e-9). With the fix, fp32:
+
+| Measure | Result |
+|---|---|
+| Wrapper vs kokoro's forward | SNR 43.7 dB; padding worst 39.2 dB |
+| Core ML vs PyTorch, 12 renders (4 lines x 3 voices, every bucket they fall in) | spectral SNR worst **39.8 dB** (median 45), max abs sample difference 0.003 to 0.042 |
+| Published | `kokoro-v3-apple-manifest.json` + 8 files, **532,310,241 bytes** (decoder weights 435 MB, duration 79 MB, voice table 14.6 MB), each size and SHA-256 read back from the Release; run 45088596714's artifact |
+
+**Compression, all failed the same check (a later size optimization):** mixed fp16 (the phase and inverse STFT in
+fp32): non-finite audio, 4 to 12 dB; the source's phase is a 1e5-radian running sum of an F0 curve that fp16 already
+moved by up to 1.4 Hz, so the harmonics drift, and something overflows. fp32 with int8 weights per channel: worst 11.5
+dB (typically 22 to 25); per block of 32: worst 6.2 dB and 225 MB; an 8-bit k-means palette: worst 5.1 dB. The worst
+lines are the same few in each (voicing near the 10 Hz threshold and duration rounding, where one frame of the
+alignment moves: the mixed int8 model's frame counts were off by one or two from PyTorch's on 5 of 12 renders). Next steps if size matters:
+quantize the predictor and text encoders only (the generator and the source in fp32), or measure the int8 variant by
+Whisper WER rather than spectral SNR. About 190 MB of the fp32 decoder is the per-bucket `zeros_like` constants noted
+above.
+
+**The gate, on the open iPhone Duo (iPhone19,4, iOS 27.3), Debug build, `APP_KOKORO_BENCH=1` muted, CPU, keep 2:**
+623 renders of 50 lines from Android's three plays in 10 minutes, the 28 voices in turn: **RTF 0.116** (p95 0.165,
+max 0.55), first audio median 0.38 s (p95 0.73 s, max 2.9 s), **peak footprint 539 MB**, 0 refused, thermal nominal
+throughout. The download through the app's store took 33 s (532 MB, SHA-256 checked). **Passes** (RTF at most 0.7,
+memory under 600 MB): `KokoroFlag.inRelease` is true. Two earlier runs stopped logging a minute in when the screen
+dimmed and suspended the app; the bench now holds the idle timer off while it runs. Not measured: the iPhone 12 (4 GB,
+behind a Screen Time limit) and the iPad; the memory margin is 61 MB.
+
 ## Sources
 
 

@@ -659,6 +659,8 @@ still empty then goes unless a screen holds it. **Why**: a take still encoding m
 
 **078 addendum (owner, 2026-11-15):** Kokoro passed the Android gate (q8, ORT 1.31.1, arena hand-back, 100-symbol pieces; RTF 0.30, peak 579 MB on the Pixel 8a). The engine (~34 MB per device) ships as a Play on-demand feature module fetched with the voices, never in the base install ("Download on demand").
 
+**078 addendum (2026-11-22):** Apple passed the gate on the open iPhone Duo with kokoro-v3-apple, our own Core ML conversion in fp32 with uncompressed weights (532 MB): RTF 0.116, peak 539 MB; `KokoroFlag.inRelease` is true. **Why:** every compressed conversion failed the check against PyTorch, and the earlier model had passed a Whisper check while its harmonic source was silent (coremltools converts `remainder(x, 1.0)` to zeros), so a converted model ships only after Core ML is compared with PyTorch on fixed inputs. **How to apply:** build Apple models with `kokoro-coreml.yml` (dispatch, a new `version` each time; never --clobber); a size change is a new version that passes the same check (R2-kokoro-feasibility S6e 2026-11-22).
+
 ## 080: At regular width Now Playing stands beside what plays next; closing the Duo never stops a take (answered 2026-11-16)
 
 **Rule**: at regular width (the open iPhone Duo, an iPad, a wide window) Now

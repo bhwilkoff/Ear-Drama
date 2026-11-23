@@ -989,8 +989,8 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   then **Delete Downloaded Voices (SIZE)** (`role: .destructive`), and the attribution as the
   section footer. A play without published phonemes shows "Not available for this play." in
   place of the voices. The model is our own Core ML conversion (`tools/convert_kokoro_coreml.py`,
-  fp16 compute with int8 weights, 151 MB with the voice table; `kokoro-v3-apple-manifest.json`, to go on the
-  Release `kokoro-model` once the iPhone 12 passes),
+  fp32 with uncompressed weights, 532 MB with the voice table; `kokoro-v3-apple-manifest.json` on the
+  Release `kokoro-model` since 2026-11-22; every compressed variant failed the check against PyTorch),
   fetched by `KokoroModelStore` through `APIClient.download` (HTTP Range resume, SHA-256 per
   file), kept in Application Support/Kokoro (never Caches; excluded from backup), compiled
   once per version on the device. `KokoroReader` reads the play's `phonemes/<id>.json`, renders
