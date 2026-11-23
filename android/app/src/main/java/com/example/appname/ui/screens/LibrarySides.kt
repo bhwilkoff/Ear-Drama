@@ -101,11 +101,11 @@ fun rememberLibrarySide(): Pair<String, (String) -> Unit> {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(LibraryModel.PREFS, Context.MODE_PRIVATE) }
     var side by remember { mutableStateOf(LibraryModel.side(runCatching { prefs.getString(LibraryModel.SIDE_KEY, null) }.getOrNull())) }
-    return side to { next ->
+    val choose: (String) -> Unit = { next ->
         side = next
         runCatching { prefs.edit { putString(LibraryModel.SIDE_KEY, next) } }
-        Unit
     }
+    return side to choose
 }
 
 @Composable
