@@ -47,8 +47,9 @@ const VoiceCast = (() => {
    * Online (Natural)", "Google UK English Female") keeps it; a voice named only by its locale ("English United
    * States 2", "en-US") is composed from facts in Android's words (android/.../plays/VoiceLabels.kt): "Low, warm
    * · US" from the numbers Android measured once for Google's US voices when the voice's id carries their engine
-   * code (Android Chrome's `en-us-x-sfg-local`), else "US voice (sfg)" or just "US voice". Exact duplicates (one
-   * name and language twice) and voices left indistinguishable are listed once.
+   * code (Android Chrome's `en-us-x-sfg-local`), else "US voice". Android shows an engine code only until it has
+   * measured a voice; the web never measures, so a code would stay for good and reads like a number (owner
+   * 2026-11-23). Exact duplicates and voices left indistinguishable are listed once.
    */
   const TRAIT_WORDS = [['tone', ['warm', 'clear', 'bright']], ['range', ['even', 'varied', 'lively']], ['pace', ['quick', 'steady', 'unhurried']]];
   const SPLIT = 165;
@@ -141,7 +142,7 @@ const VoiceCast = (() => {
       if (!localeNamed(v)) { out.set(idOf(v), v.name); continue; }
       const t = seedOf(v), code = engineCode(v), acc = accentOf(v.lang);
       if (t) measured.push({ id: idOf(v), acc, t, code: code || idOf(v) });
-      else out.set(idOf(v), code ? `${acc} voice (${code})` : `${acc} voice`);
+      else out.set(idOf(v), `${acc} voice`);
     }
     const groups = new Map();
     for (const m of measured) push(groups, `${m.acc}${NUL}${band(m.t.f0)}`, m);

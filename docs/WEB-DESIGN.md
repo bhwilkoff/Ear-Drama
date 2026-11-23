@@ -503,7 +503,7 @@ web app follows today.
     unrecorded (`StandInVoice.speakAs`). Choosing is kept at once; there is
     no Save. The list ends with "Your system's speech settings add
     voices." (a fact the page cannot otherwise show). A voice the browser names only by its
-    locale ("English United States 2", `en-US`) reads "US voice" or "US voice (sfg)", or Android's
+    locale ("English United States 2", `en-US`) reads "US voice" (never an engine code: the web cannot measure, so one would stay for good), or Android's
     "Low, warm · US" where its id carries one of Google's eight US codes (§2.8 rule 12; nothing
     is measured on the web); a person's name stays; duplicates are listed once (`VoiceCast.label`). No voice at all:
     "This browser has no voice on this device." **Recast all** (every part
