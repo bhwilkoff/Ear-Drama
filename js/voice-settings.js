@@ -53,9 +53,10 @@ const VoiceSettings = (() => {
     const h = Voices.shared();
     const voice = StandInVoice.create({ muted: config.muted });
     let sample = null;
-    config.sample().then((s) => {
+    // The scene's phonemes are fetched before a Hear on a Kokoro voice reads, so a press never beats them.
+    const sampled = config.sample().then((s) => {
       sample = s;
-      if (s && s.script && typeof KokoroVoice !== 'undefined') KokoroVoice.prepare(s.script);
+      return s && s.script && typeof KokoroVoice !== 'undefined' ? KokoroVoice.prepare(s.script) : null;
     }).catch(() => {});
     let hearing = null;
 
@@ -113,7 +114,11 @@ const VoiceSettings = (() => {
       btn.replaceChildren(icon(PATHS.stop));
       btn.setAttribute('aria-label', `Stop ${v.name}`);
       const text = (sample && sample.text) || v.name.replace(/\s*\(.*\)$/, '');
-      voice.speakAs(text, v, { rate: V.loadDefaults().rate }).then(() => { if (hearing === btn) stopHearing(); });
+      sampled.then(() => {
+        if (hearing !== btn) return null;
+        const t = (sample && sample.text) || text;
+        return voice.speakAs(t, v, { rate: V.loadDefaults().rate });
+      }).then(() => { if (hearing === btn) stopHearing(); });
     }
     function stopHearing() {
       if (!hearing) return;

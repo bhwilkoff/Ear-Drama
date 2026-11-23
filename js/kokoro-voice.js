@@ -74,8 +74,14 @@ const KokoroVoice = (() => {
     return ids;
   }
 
-  /** The words as the phoneme file keys them: printed italic marks dropped, whitespace folded. */
-  const keyOf = (text) => (text || '').replace(/_/g, '').replace(/\s+/g, ' ').trim();
+  /**
+   * The words as the phoneme file keys them: printed italic marks dropped, whitespace folded, two hyphens read as
+   * a dash and leading punctuation dropped, so a line shown through the opening's clean (Today's scene, Hear in
+   * Library > Voices) finds the same row as the script's own words. Unfolded, a Kokoro voice's Hear found no row
+   * and said nothing (apple Kokoro.keyOf, 2026-11-23).
+   */
+  const keyOf = (text) => (text || '').replace(/_/g, '').replace(/\s+/g, ' ').trim()
+    .replace(/--/g, '\u2014').replace(/^[.,:;\u2014-]+\s*/, '');
 
   /* ---- The engine (browser only) ---- */
 
@@ -95,6 +101,7 @@ const KokoroVoice = (() => {
     let current = null;
     const pending = new Map();
     const phonemes = new Map();
+    const loads = new Map();
 
     async function boot() {
       if (loading) return loading;
@@ -121,9 +128,12 @@ const KokoroVoice = (() => {
     }
 
     /** A play's published phonemes (the catalog's per-play file), fetched once; keyed by the words. */
-    async function prepare(url) {
-      if (!url || phonemes.has(url)) return;
-      phonemes.set(url, null);
+    function prepare(url) {
+      if (!url) return Promise.resolve();
+      if (!loads.has(url)) loads.set(url, load(url));
+      return loads.get(url);
+    }
+    async function load(url) {
       try {
         const r = await fetch(url);
         if (!r.ok) return;
@@ -235,7 +245,8 @@ const KokoroVoice = (() => {
   const voices = () => castable({ enabled: !!(lab && lab.allowed()), ready: ready() });
   /** Fetches a play's published phonemes, once, when the model is here. */
   function prepare(script) {
-    if (ready() && shared && script && script.id) shared.prepare(`${lab.phonemesBase}${script.id}.json`);
+    if (ready() && shared && script && script.id) return shared.prepare(`${lab.phonemesBase}${script.id}.json`);
+    return Promise.resolve();
   }
   const model = () => (lab ? lab.model : null);
 

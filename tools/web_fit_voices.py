@@ -214,6 +214,12 @@ def main():
             if ev("document.querySelector('.vs-row .vc-name').textContent") != 'Heart (Kokoro)': bad('Heart (Kokoro) is not first')
             if 'Apache-2.0' not in (ev("(document.querySelector('.vs-credit') || {}).textContent") or ''): bad('no attribution under the voices')
             if ev("document.querySelector('.vs-delete').textContent") != 'Delete (340 MB)': bad('Delete does not name the size')
+            # Hear on a Kokoro voice that cannot read the line (here: no phonemes) falls to a device voice, never silence (PLAYS-DESIGN 2.8 rule 10).
+            ev("window.__spoken.length = 0; document.querySelector('.vs-row .vc-hear').click()")
+            time.sleep(0.6)
+            sp = json.loads(ev("JSON.stringify(window.__spoken)") or '[]')
+            if not sp: bad('Hear on a Kokoro voice that cannot read the line said nothing')
+            elif sp[0]['volume'] != 0: bad(f'that Hear was not muted: {sp[:1]}')
             if not ev(fits): bad('Voices is wider than the screen (downloaded)')
             shot('ready')
 

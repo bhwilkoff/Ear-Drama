@@ -233,3 +233,10 @@ html.tv dialog.tv-exit button {
 }
 
 html.tv .ear-drama-only { display: none !important; }
+
+/* The read-along panel (PLAYS-DESIGN §2.11 rule 10): the line heard with one before and one after, the speaker in the part's hue,
+   at the 28 px body (the ten-foot size Android TV's bodyLarge shares). No word mark, no controls; focus stays on the transport. */
+html.tv .listen-now .script-line { max-width: none; margin-top: 12px; }
+html.tv .listen-now .line-text, html.tv .listen-now .line-role { font-size: var(--tv-body-lg); }
+html.tv .listen-now .line-role { color: var(--hue, var(--tv-text-muted)); font-weight: var(--type-body-strong-weight); }
+html.tv .listen-now .panel-near .line-text { color: var(--tv-text-muted); }

@@ -385,6 +385,44 @@ atest('read-along, finished drama: the queue follows file boundaries and reports
   eq(seen.at(-1), null, 'the reader is told it stopped');
 });
 
+test('the word heard: the golden cases every stack runs (PLAYS-DESIGN 2.11 rule 3)', () => {
+  const g = JSON.parse(fs.readFileSync(path.join(ROOT, 'catalog', 'tests', 'golden', 'read_along_words.json'), 'utf8'));
+  for (const c of g.spoken) {
+    const sp = R.spoken(c.line);
+    eq(sp.said, c.said, `the string the voice is given for ${c.line.id}`);
+    for (const k of c.cases) {
+      const w = R.word(sp, k.range[0], k.range[1]);
+      eq(w ? [w.start, w.end] : null, k.word, `${c.line.id} range ${k.range}`);
+    }
+  }
+  for (const t of g.textWords) eq(R.textWords(t.said), t.words, `printed words of ${JSON.stringify(t.said)}`);
+  for (const k of g.kokoro) {
+    const pieces = k.pieces.map(p => ({ symbols: p.symbols, frames: p.frames }));
+    eq(R.kokoroWords(k.said, pieces), k.words, `Kokoro words of ${JSON.stringify(k.said)}`);
+  }
+  eq(R.phonemeWordCount('wˈɛl, mˈɑli.'), 2, 'phoneme words counted before the first piece plays');
+  eq(R.phonemeWordStarts([{ symbols: 'ab', frames: [1, 2] }]), null, 'frames that do not fit the symbols are refused');
+});
+
+test('the string a voice is given is exactly what the mapper maps (over real scripts)', () => {
+  const said = (text) => (text || '').replace(/_/g, '').trim();
+  let n = 0;
+  for (const { s } of [...bundle.map(x => ({ s: x })), ...libraryScripts(30)]) {
+    for (const line of s.lines) {
+      const sp = R.spoken(line);
+      n += 1;
+      eq(sp.said, said(C.spokenText(line)), `${s.id} ${line.id}: said`);
+      eq(sp.toLine.length, sp.said.length, `${s.id} ${line.id}: one offset per unit`);
+      const text = C.lineText(line);
+      // Every unit of the spoken string comes from the same character of the printed words (italic marks aside).
+      for (let i = 0; i < sp.said.length; i++) {
+        if (sp.said[i] !== ' ' && text[sp.toLine[i]] !== sp.said[i]) throw new Error(`${s.id} ${line.id}: unit ${i} ${JSON.stringify(sp.said[i])} maps to ${JSON.stringify(text[sp.toLine[i]])}`);
+      }
+    }
+  }
+  ok(n > 1000, `lines checked (${n})`);
+});
+
 (async () => {
   for (const [name, fn] of later) {
     try { await fn(); passes += 1; console.log(`  ok    ${name}`); } catch (e) { failures += 1; console.log(`  FAIL  ${name}\n        ${e.message}`); }

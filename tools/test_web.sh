@@ -26,6 +26,7 @@ DEFAULT_SUITES="js/api.test.js
   js/player.test.js
   js/plays.test.js
   js/reader.test.js
+  js/along.test.js
   js/marks.test.js
   js/studio.test.js
   js/voice-cast.test.js

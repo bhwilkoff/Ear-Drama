@@ -762,22 +762,34 @@ web app follows today.
 
 - **§4.16a Read along** (`?read={script id}&production={id}&along=1`; PLAYS-DESIGN
   §2.11 binding). A production's **Read along** link sits beside Listen through. The
-  reader opens on the production's script with `ListenThrough` as its transport (the
-  bottom bar's Listen through / Stop in place of Hear the cast); `onChange` follows the
-  plan entry's line id (`ReaderCore.alongLine`); a swipe, tap, key, wheel or scroll
+  reader opens on the production's script with `Along` as its transport (below);
+  each entry's line id is followed through the handle's `follow` (`ReaderCore.alongLine`); a swipe, tap, key, wheel or scroll
   calls `away`, shows **Back to the line** (`.rd-back-line`, under the dock), and
   Back to the line returns and follows again (`ReaderCore.alongFollow`). Frames and
   gate: `tools/web_fit_along.py`. Not on the TV layer (no reader there).
-  ⏳ **2026-11-23 rewrite to port** (PLAYS-DESIGN §2.11; Apple is the reference, iOS-DESIGN §4.15a): Read along
-  starts reading at once; Hear the cast is the same read-along; the word heard from the utterance's `boundary`
-  events (`charIndex`, `charLength` in the string given) and from Kokoro's per-token durations, mapped through
-  `ReaderCore` mirrors of `spoken`/`word`/`textWords`/`kokoroWords` against
-  `catalog/tests/golden/read_along_words.json`, drawn with the CSS Custom Highlight API as a hue fill and rule;
-  the page turning when the word's range sits on a page not in view; the transport in the bottom bar (speaker
-  in hue, previous, play or pause, next, a speed `<select>` of 0.5x to 2x, stop; Space plays and pauses);
-  `playbackRate` with `preservesPitch` for takes and dramas; `ed.along.speed` in `localStorage`. Kokoro's
-  `keyOf` folds two hyphens to a dash and drops leading punctuation (Apple `Kokoro.keyOf`, 2026-11-23) so a
-  line shown through the opening's clean finds its phonemes. Renumber code comments citing §2.11 rule 6 (now 11).
+  **2026-11-23 rewrite, ported** (PLAYS-DESIGN §2.11; Apple is the reference, iOS-DESIGN §4.15a). Code: `js/along.js`
+  (the controller: entries from the production's listen plan, the cast over the whole script, or a finished drama's
+  files; Pause holds the line, Play restarts it, Previous and Next, Speed, Stop), `ReaderCore` (the mirrors of
+  `spoken`/`word`/`textWords`/`kokoroWords`, golden-checked against `catalog/tests/golden/read_along_words.json`,
+  the speed steps and `ed.along.speed`), `Reader` (the transport, the word mark, the turning). Read along starts reading
+  at once from the reader's place; Hear the cast is the same read-along and takes the bar on its press. The word heard
+  comes from the utterance's `boundary` events (`charIndex`, `charLength` in the string given); a voice that sends none,
+  a take, a file and a Kokoro line light the line only. It is drawn with the CSS Custom Highlight API as a fill and a
+  2 px rule in the speaker's hue (`::highlight(rd-w-{hue})`, ink for a direction or cue) over the printed runs by their
+  `data-at` offsets; a browser without the API shows the lit line. The page turns itself (the 240 ms slide, cut under
+  Reduce Motion) when the line, or within a long speech the word, sits on a page not in view; either page of a spread
+  counts as in view (`ReaderCore.pageContaining`, not `pageAt`, which rounds a line's left edge); Scroll keeps the word
+  in view. The transport takes the bottom bar (`.rd-bottom.rd-alonging`): speaker, Previous line, Play/Pause (its word
+  from 560 px), Next line, a Speed `<select>` of 0.5x to 2x, Stop, and the page count from 860 px; Space plays and
+  pauses where the reader holds the keyboard. Takes and drama files play through an `<audio>` element at
+  `playbackRate` with `preservesPitch`; a voice takes a new speed from its next line. When the first line cannot be read
+  (a browser holds speech until a press) the reading holds on it instead of racing through. **Kokoro word timing is not
+  on the web yet:** the web's ONNX model has a single output, `waveform`; per-token durations need a re-export with a
+  `durations` output, and the port of `kokoroWords` waits for it. `KokoroVoice.keyOf` folds two hyphens to a dash and
+  drops leading punctuation (Apple `Kokoro.keyOf`, 2026-11-23), and a Kokoro voice's Hear in Library > Voices that
+  Kokoro cannot read falls to a device voice (PLAYS-DESIGN §2.8 rule 10). On a TV the production's listen shows the
+  rule 10 panel (`.listen-now`: the line with one before and one after, the speaker in hue, 28 px) at the remembered speed.
+  Frames and gate: `tools/web_fit_along.py`.
   A **finished ear drama** (`?drama={id}`) offers **Read along** beside Play when its
   item's numbered line files map onto the library script (`?read={script id}&finished={id}&along=1`,
   PLAYS-DESIGN §2.11 rule 11): `ReaderCore.dramaPlan` names each file's line, and
