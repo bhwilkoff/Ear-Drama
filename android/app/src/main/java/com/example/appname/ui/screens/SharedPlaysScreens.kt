@@ -616,12 +616,19 @@ fun ClassesBlock() {
         OutlinedButton(onClick = { making = true }) { Text("Make a class") }
         OutlinedButton(onClick = { joining = true }) { Text("Join a class") }
     }
+    ClassDialogs(making, joining, { making = false }, { joining = false }, scope)
+}
+
+/** The Make a class and Join a class dialogs, shown while their flag is set. */
+@Composable
+internal fun ClassDialogs(making: Boolean, joining: Boolean, onMakingDone: () -> Unit, onJoiningDone: () -> Unit, scope: CoroutineScope) {
+    val sharing = LocalAppContainer.current.sharing
     if (making) {
         ClassDialog(
             title = "Make a class",
             confirm = "Make",
             withUnder13 = true,
-            onDismiss = { making = false },
+            onDismiss = onMakingDone,
             onConfirm = { text, under13 -> sharing.makeClass(text, under13) },
             scope = scope,
         )
@@ -631,7 +638,7 @@ fun ClassesBlock() {
             title = "Join a class",
             confirm = "Join",
             withUnder13 = false,
-            onDismiss = { joining = false },
+            onDismiss = onJoiningDone,
             onConfirm = { text, _ -> sharing.joinClass(text) },
             scope = scope,
         )

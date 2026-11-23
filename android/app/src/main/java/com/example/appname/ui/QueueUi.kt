@@ -95,8 +95,14 @@ fun LazyListScope.queueSection(rows: List<EpisodeRow>, onOpen: (String) -> Unit,
     if (rows.isEmpty()) {
         item(key = "queue-empty") { SectionCaption("Episodes you add play in this order, after the one that is playing.") }
     }
-    items(rows.size, key = { "q:" + rows[it].id }) { i ->
-        val row = rows[i]
+    items(rows.size, key = { "q:" + rows[it].id }) { i -> QueueRow(rows[i], onOpen, onPlay) }
+}
+
+/** One queued episode: swipe away to remove, long-press for Move up, Move down, Remove. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QueueRow(row: EpisodeRow, onOpen: (String) -> Unit, onPlay: (EpisodeRow) -> Unit) {
+    run {
         val container = LocalAppContainer.current
         val state = rememberSwipeToDismissBoxState()
         LaunchedEffect(state.currentValue) {
@@ -124,5 +130,6 @@ fun LazyListScope.queueSection(rows: List<EpisodeRow>, onOpen: (String) -> Unit,
                 modifier = Modifier.background(MaterialTheme.colorScheme.surface),
             )
         }
+
     }
 }

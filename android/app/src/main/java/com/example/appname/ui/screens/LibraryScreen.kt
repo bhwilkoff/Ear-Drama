@@ -8,6 +8,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
@@ -75,6 +77,10 @@ fun LibraryScreen(
     /** Moves each time Better voices asks for the Voices section. */
     voicesRequest: Int = 0,
     onBrowse: () -> Unit,
+    onRecord: () -> Unit = {},
+    onOpenList: (String) -> Unit = {},
+    onOpenPlay: (String) -> Unit = {},
+    onOpenClass: (String) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val allProductions by container.plays.store.productions.collectAsState()
@@ -118,7 +124,6 @@ fun LibraryScreen(
     // Voices is a section of Library (Decision 086); a TV has none.
     val voices = if (LocalIsTelevision.current) null else rememberVoicesState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-    androidx.compose.runtime.LaunchedEffect(voicesRequest) { if (voicesRequest > 0) listState.animateScrollToItem(1) }
     val scope = rememberCoroutineScope()
     unfollowing?.let { row ->
         AlertDialog(
@@ -133,21 +138,84 @@ fun LibraryScreen(
             dismissButton = { TextButton(onClick = { unfollowing = null }) { Text("Cancel") } },
         )
     }
+    val (storedSide, setSide) = rememberLibrarySide()
+    // A TV has no Making side (owner 2026-11-23): its Library is Listening and the foot.
+    val side = if (television) LibraryModel.LISTENING else storedSide
+    val groups = remember(dramaRows) { LibraryModel.groups(dramaRows) }
+    val classes by sharing.classes.collectAsState()
+    val classRows = if (withClasses) classes?.let { it.teaching + it.memberOf }.orEmpty() else emptyList()
+    val waiting by produceState(emptyList<com.example.appname.plays.SharedPlays.OpenPart>(), account?.userId, television) {
+        value = if (account == null || television) emptyList() else runCatching { sharing.openParts() }.getOrDefault(emptyList())
+    }
+    val marksIn = if (television) 0 else rememberMarkedScripts()
+    var voicesOpen by rememberSaveable { mutableStateOf(false) }
+    var aboutOpen by rememberSaveable { mutableStateOf(false) }
+    val voicesAt = remember { intArrayOf(0) }
+    LaunchedEffect(voicesRequest) {
+        if (voicesRequest > 0) {
+            voicesOpen = true
+            listState.animateScrollToItem(voicesAt[0])
+        }
+    }
     Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
         LoadableContent(lists, Modifier.padding(padding)) { library ->
-            val empty = library.queued.isEmpty() && library.inProgress.isEmpty() && library.finished.isEmpty() &&
-                library.following.isEmpty() && downloadRecords.isEmpty() && dramaRows.isEmpty()
+            val up = remember(library) { LibraryModel.upNext(library.inProgress, library.queued) }
+            val listeningEmpty = up.isEmpty() && library.following.isEmpty() && library.finished.isEmpty() && downloadRecords.isEmpty()
+            val makingEmpty = groups.isEmpty() && waiting.isEmpty() && marksIn == 0 && classRows.isEmpty()
             // On a TV the D-pad starts on the first row (§9.2), or on an empty Library's Browse (§7.1a).
             val firstRow = remember { FocusRequester() }
             val tv = LocalIsTelevision.current
-            if (!empty) ClaimTvFocus(firstRow, Unit)
+            if (!listeningEmpty || side == LibraryModel.MAKING) ClaimTvFocus(firstRow, Unit)
             LazyColumn(Modifier.fillMaxSize().focusRequester(firstRow), state = listState, contentPadding = padding) {
-                // §4.11: the account is the first row, above what this device holds.
+                var n = 0
+                if (!tv) {
+                    item(key = "side") { LibrarySideSwitch(side, setSide) }
+                    n++
+                }
+                if (side == LibraryModel.LISTENING) {
+                    if (listeningEmpty) {
+                        item(key = "empty") { EmptyMessage("Nothing played yet.", action = EmptyAction("Browse", onBrowse)) }
+                        n++
+                    }
+                    n += upNextItems(up, onOpenEpisode, onAll = { onOpenList(LIST_UP) })
+                    if (library.following.isNotEmpty()) {
+                        item(key = "following-h") { SectionHeader("Shows you follow") }
+                        item(key = "following") {
+                            ShowShelf(library.following, onOpen = { onOpenSeries(it.key) }, onLongClick = { unfollowing = it })
+                        }
+                        n += 2
+                    }
+                    if (library.finished.isNotEmpty()) {
+                        item(key = "history") { CountLine("History", library.finished.size.toString()) { onOpenList(LIST_HISTORY) } }
+                        n++
+                    }
+                    if (downloadRecords.isNotEmpty()) {
+                        downloadsSection(downloadRecords, container.downloads.totalBytes, onOpen = onOpenDownloads)
+                        n++
+                    }
+                } else {
+                    if (makingEmpty) {
+                        item(key = "empty-making") { EmptyMessage("No ear dramas yet.", action = EmptyAction("Record a play", onRecord)) }
+                        n++
+                    }
+                    n += makingItems(groups, waiting, marksIn, classRows, onOpenProduction, onOpenPlay, onOpenClass)
+                }
+                // The foot, under either side (owner 2026-11-23): Account, Voices, Listen together, Export, About.
+                item(key = "foot-h") { SectionHeader("Account and preferences") }
                 item(key = "account") { AccountRow() }
-                voices?.let { voicesItems(it.first, it.second) }
-                item(key = "export") { ExportRow() }
-                item(key = "together") { ListenTogetherRow(onListenTogether) }
-                if (tv) {
+                n += 2
+                if (voices != null) {
+                    voicesAt[0] = n
+                    item(key = VOICES_KEY) {
+                        DisclosureRow("Voices", voicesState(voices.first), voicesOpen) { voicesOpen = !voicesOpen }
+                    }
+                    n++
+                    if (voicesOpen) voicesItems(voices.first, voices.second, header = false)
+                }
+                if (!tv) {
+                    item(key = "together") { ListenTogetherRow(onListenTogether) }
+                    item(key = "export") { ExportRow() }
+                } else {
                     item(key = "show-reading") {
                         val showReading = com.example.appname.ui.screens.LocalReadNav.current.showReading
                         ListItem(
@@ -157,52 +225,12 @@ fun LibraryScreen(
                         )
                     }
                 }
-                // §7.1a: the empty state heads what this device holds; the account and the site pages stay.
-                if (empty) {
-                    item(key = "empty") { EmptyMessage("Nothing played yet.", action = EmptyAction("Browse", onBrowse)) }
-                }
-                item(key = "progress-h") { SectionHeader("Continue") }
-                if (library.inProgress.isEmpty()) {
-                    item(key = "progress-empty") { SectionCaption("Episodes you stop partway through wait here.") }
-                }
-                items(library.inProgress, key = { "p:" + it.first.id }) { (row, p) ->
-                    EpisodeListItem(
-                        row,
-                        showSeries = true,
-                        onOpen = { onOpenEpisode(row.id) },
-                        onPlay = { container.playback.play(row) },
-                        supporting = "${formatClock(p.positionMs)} of ${formatClock(p.durationMs)}",
-                    )
-                }
-                queueSection(
-                    library.queued,
-                    onOpen = onOpenEpisode,
-                    onPlay = { container.playback.play(it) },
-                )
-                item(key = "following-h") { SectionHeader("Following") }
-                if (library.following.isEmpty()) {
-                    item(key = "following-empty") { SectionCaption("Series you follow appear here.") }
-                } else {
-                    item(key = "following") {
-                        ShowShelf(library.following, onOpen = { onOpenSeries(it.key) }, onLongClick = { unfollowing = it })
-                    }
-                }
-                item(key = "history-h") { SectionHeader("History") }
-                if (library.finished.isEmpty()) {
-                    item(key = "history-empty") { SectionCaption("Episodes you finish appear here, newest first.") }
-                }
-                items(library.finished, key = { "f:" + it.id }) { row ->
-                    EpisodeListItem(
-                        row,
-                        showSeries = true,
-                        onOpen = { onOpenEpisode(row.id) },
-                        onPlay = { container.playback.play(row) },
-                    )
-                }
-                downloadsSection(downloadRecords, container.downloads.totalBytes, onOpen = onOpenDownloads)
-                earDramasSection(dramaRows, withClasses, onOpenProduction, recordsHere = !television)
-                siteLinksItem()
+                item(key = "about") { DisclosureRow("About Ear Drama", null, aboutOpen) { aboutOpen = !aboutOpen } }
+                if (aboutOpen) siteLinksItem()
             }
         }
     }
 }
+
+private fun voicesState(ui: VoiceSettingsUi): String =
+    (if (ui.kokoro is KokoroUi.Ready) "Kokoro" else "This device") + " · " + com.example.appname.plays.speedText(ui.defaults.rate)

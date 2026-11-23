@@ -18,6 +18,10 @@ sealed interface Route : NavKey {
     @Serializable data object Library : Route
     /** Library's Downloads place (§4.6), by series. */
     @Serializable data object Downloads : Route
+    /** A full list from Library (direction B): [kind] is `upnext` or `history`. */
+    @Serializable data class LibraryList(val kind: String) : Route
+    /** One play's productions, opened from Library's Making side (one row per play). */
+    @Serializable data class PlayProductions(val scriptId: String) : Route
     @Serializable data class Series(val key: String) : Route
     @Serializable data class Episode(val id: String) : Route
     /** A person's page (`withPerson`, §4.15), pushed from Detail's credits or Search. */
