@@ -279,7 +279,8 @@ function stubWorker(P, w) {
     if (u.pathname === '/v1/read') {
       const code = 'ABC123';
       const m = member('reader');
-      const made = P.newRoom({ code, kind: 'adult', script_id: body.script_id, script_revision: body.script_revision }, cast, m.id, w.now());
+      const klass = body.kind === 'class' ? { kind: 'class', class_id: body.class_id, seats: body.seats, assignments: body.assignments } : { kind: 'adult' };
+      const made = P.newRoom({ code, ...klass, script_id: body.script_id, script_revision: body.script_revision }, cast, m.id, w.now());
       const room = { room: made.room, members: [m], keys: new Map([[m.key, m.id]]), pollOnly: !!s.pollOnly };
       s.rooms.set(code, room);
       return json(200, { ...snap(room, m.id), member_key: m.key, transport: room.pollOnly ? 'poll' : 'socket' });
@@ -290,7 +291,7 @@ function stubWorker(P, w) {
     if (m[2] === 'join') {
       const refusal = P.joinRefusal(room.room, room.members, body, w.now());
       if (refusal) return problem(409, refusal);
-      const me = { ...member(body.role || 'reader'), name: P.cleanName(room.room, body.name) || null };
+      const me = { ...member(body.role || 'reader'), seat: body.seat || null, name: P.cleanName(room.room, body.name) || null };
       room.members.push(me); room.keys.set(me.key, me.id);
       broadcast(room);
       return json(200, { ...snap(room, me.id), member_key: me.key, transport: room.pollOnly ? 'poll' : 'socket' });
@@ -391,7 +392,7 @@ function tone(seconds, rate = 48000) {
 }
 function joinF(...parts) { const out = new Float32Array(parts.reduce((n, p) => n + p.length, 0)); let o = 0; for (const p of parts) { out.set(p, o); o += p.length; } return out; }
 /** The stub microphone door: plays nothing; the first capture is room tone, every later one a short line then silence. */
-function stubMicrophone(log) {
+function stubMicrophone(log, line = () => joinF(zeros(9600), tone(0.6), zeros(60000))) {
   let captures = 0;
   let captured = zeros(0);
   return {
@@ -399,7 +400,7 @@ function stubMicrophone(log) {
     async start() { log.opened += 1; }, stop() {},
     beginCapture(onChunk) {
       captures += 1;
-      captured = captures === 1 ? Float32Array.from({ length: 48000 }, () => (Math.random() - 0.5) * 0.001) : joinF(zeros(9600), tone(0.6), zeros(60000));
+      captured = captures === 1 ? Float32Array.from({ length: 48000 }, () => (Math.random() - 0.5) * 0.001) : line();
       if (captures > 1) log.takes += 1;
       for (let i = 0; i < captured.length; i += 960) onChunk(captured.subarray(i, Math.min(i + 960, captured.length)));
     },
@@ -420,7 +421,7 @@ const RSCRIPT = {
   ],
   roles: [{ name: 'LUCY', lines: 2, words: 2 }, { name: 'TOM', lines: 2, words: 3 }],
 };
-async function recorder(w, c, log) {
+async function recorder(w, c, log, line) {
   const store = c.ctx.PlayStore ? c.ctx.PlayStore.open(c.ctx.PlayStore.memoryBackend()) : vm.runInContext('PlayStore.open(PlayStore.memoryBackend())', c.ctx);
   await store.load();
   const RS = vm.runInContext('RecordingSession', c.ctx);
@@ -428,7 +429,7 @@ async function recorder(w, c, log) {
   const cast = RSCRIPT.lines.map((l) => [l.id, l.kind === 'speech' ? `role:${l.role}` : l.kind === 'direction' ? 'directions' : 'sound']);
   const rr = RR.make({
     api: c.api, store, session: c.session, script: RSCRIPT, cast, timers: w.timers_, diag: (line) => { (log.diag = log.diag || []).push(line); },
-    engine: (o) => RS.create({ ...o, audio: stubMicrophone(log), voice: { available: () => true, speak: async () => { log.spoke += 1; return true; }, cancel() {} }, sleep: async () => {} }),
+    engine: (o) => RS.create({ ...o, audio: stubMicrophone(log, line), voice: { available: () => true, speak: async () => { log.spoke += 1; return true; }, cancel() {} }, sleep: async () => {} }),
   });
   return { rr, store };
 }
@@ -612,6 +613,65 @@ async function main() {
     eq(server.takes.map((t) => t.lineID), ['l2', 'l4']);
     eq(snap.members.find((m) => m.id === ann.session.state().snap.you.id).name, 'Ann', 'the name she gave travels');
     L.rr.detach(); A.rr.detach();
+  });
+
+  // ROUND3-LOOP tick 29: "Open: class-room takes did not end on silence (adult rooms did)." The same reader, the same
+  // microphone, in an adult room (a claimed part) and a class room (a seat's assignment): the take ends on its own
+  // silence in both, no Stop pressed, and the line is done.
+  async function roomOfKind(kind, line) {
+    const w = world();
+    const server = stubWorker(P, w);
+    server.blockSockets = true;
+    const lead = client(w, server);
+    const reader = client(w, server);
+    if (kind === 'class') {
+      // The stub Worker takes no sign-in: the teacher's signed-in create goes the anonymous way to it.
+      lead.api.account.call = (method, p, b) => lead.api.account.anon(method, p, { body: b });
+      await lead.session.open({ ...body, kind: 'class', class_id: 'c1', seats: [{ id: 's1', label: 'Ann' }], assignments: [{ part: 'role:LUCY', seat: 's1' }] });
+      await reader.session.join('ABC123', { seat: 's1', seat_key: 'sk-1' });
+    } else {
+      await lead.session.open(body);
+      await reader.session.join('ABC123', { name: 'Ann' });
+      await reader.session.send({ type: 'claim', part: 'role:LUCY' });
+    }
+    await lead.session.send({ type: 'mode', mode: 'record' });
+    const leadLog = { opened: 0, takes: 0, played: 0, spoke: 0 };
+    const log = { opened: 0, takes: 0, played: 0, spoke: 0 };
+    const L = await recorder(w, lead, leadLog);
+    const R = await recorder(w, reader, log, line);
+    L.rr.onSnapshot();
+    await w.advance(1500);
+    await R.rr.arm();
+    await lead.session.send({ type: 'cursor', line: 'l2', base: lead.session.state().snap.cursor_gen });
+    await w.advance(1500);
+    await w.flush();
+    await w.advance(1500);
+    const out = { kind: lead.session.state().snap.kind, opened: log.diag || [], recording: R.rr.state().recording,
+                  done: lead.session.state().snap.done, kept: Object.keys((R.rr.production() || { chosen: {} }).chosen),
+                  arrived: Object.keys((L.rr.production() || { chosen: {} }).chosen) };
+    L.rr.detach(); R.rr.detach();
+    return out;
+  }
+  for (const kind of ['adult', 'class']) {
+    test(`Record in the room, ${kind} room: a take ends on the reader's silence with no Stop, and the line is done`, async () => {
+      const r = await roomOfKind(kind);
+      eq(r.kind, kind, 'the room is the kind under test');
+      ok(r.opened[0] === 'l2', `the reader's microphone opened on line 2 (opened ${JSON.stringify(r.opened)})`);
+      ok(r.kept.includes('l2'), `the take of line 2 ended and was kept (kept ${JSON.stringify(r.kept)}, still recording ${r.recording})`);
+      ok(r.done.includes('l2'), `line 2 is done (done ${JSON.stringify(r.done)})`);
+      ok(r.arrived.includes('l2'), `the take reached the receiving device (arrived ${JSON.stringify(r.arrived)})`);
+    });
+  }
+
+  // What tools/class_bench.py's seat microphone was: a steady 160 Hz at gain 0.0005 (RMS ~0.00035, under the detector's
+  // 0.003 floor) that never "spoke", unlike read_bench's, which speaks 1.5 s per line. No onset, so no end, in either
+  // kind of room (§2.4: the detector waits for the reader to start): the bench, not the room kind, kept the take open.
+  test('a microphone that never hears a voice keeps the take open the same way in adult and class rooms', async () => {
+    const quiet = () => { const n = 48000 * 3; const out = new Float32Array(n); for (let i = 0; i < n; i++) out[i] = 0.0005 * Math.sin(2 * Math.PI * 160 * (i / 48000)); return out; };
+    const a = await roomOfKind('adult', quiet);
+    const c = await roomOfKind('class', quiet);
+    eq([a.recording, c.recording], ['l2', 'l2'], 'both still recording line 2');
+    eq([a.kept, c.kept], [[], []], 'neither kept a take');
   });
 
   test('nobody receiving, or a dropped network: the take waits on the device and is sent when both are there', async () => {
