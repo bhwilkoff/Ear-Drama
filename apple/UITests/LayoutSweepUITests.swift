@@ -22,24 +22,44 @@ final class LayoutSweepUITests: DeviceTestCase {
     }
 
     /// With an episode loaded the mini player stands above the tab bar; the end of each screen must clear both.
-    private func withMini(_ tab: String, _ name: String, tapBar: Bool = true) {
-        let app = launch(["APP_START_ITEM": Fixture.long, "APP_AUTOPLAY": "1", "APP_DOOR_SECONDS": "300"])
-        sleep(8)
+    /// Each step waits on the state it needs, never a fixed sleep (N7). The episode is paused as soon as the mini
+    /// player shows it: playing, it crossed ListeningHistory's 30-second "started" mark at a moment set by the
+    /// network and the load, and Home then inserted its Continue section at the top mid-sweep, moving every row
+    /// under the end check (testMiniHome failed 3 of 4 under load, 2026-10-31). Paused, the page holds still.
+    private func withMini(_ tab: String, _ name: String, root: String? = nil) {
+        stage("fixture long=\(Fixture.long)")
+        let app = launch(["APP_START_ITEM": Fixture.long, "APP_AUTOPLAY": "1", "APP_DOOR_SECONDS": "900"])
         let close = app.buttons["Close player"]
-        if close.waitForExistence(timeout: 5) { close.tap(); sleep(2) }
+        XCTAssertTrue(wait(close, "exists == true AND hittable == true", timeout: 30, "the player sheet"), "the player opened")
+        close.tap()
+        wait(close, "exists == false", timeout: 10, "the sheet closed")
+        let mini = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Now playing'")).firstMatch
+        XCTAssertTrue(wait(mini, "exists == true AND hittable == true", timeout: 60, "the mini player"), "the mini player stands")
+        let pause = app.buttons.matching(NSPredicate(format: "label == 'Pause'")).firstMatch
+        if wait(pause, "exists == true AND hittable == true", timeout: 30, "the mini's Pause") {
+            pause.tap()
+            wait(app.buttons.matching(NSPredicate(format: "label == 'Play'")).firstMatch, "exists == true", timeout: 10, "paused")
+        }
         openTab(app, tab)
-        sleep(3)
+        let title = root ?? tab
+        if !wait(app.navigationBars[title], "exists == true", timeout: 10, "\(title) at its root") {
+            // A reselected tab may keep its pushed page (the door pushed the episode on Home): go back to the root.
+            let back = app.navigationBars.buttons.firstMatch
+            if back.exists { back.tap() }
+            XCTAssertTrue(wait(app.navigationBars[title], "exists == true", timeout: 10, "\(title) after Back"), "\(title) at its root")
+        }
+        wait(app.progressIndicators.firstMatch, "exists == false", timeout: 30, "\(title) loaded")
         sweep(app, name, pages: 9)
     }
 
     func testMiniRecord() { withMini("Record", "mini-record") }
     func testMiniLibrary() { withMini("Library", "mini-library") }
-    func testMiniHome() { withMini("Home", "mini-home") }
+    func testMiniHome() { withMini("Home", "mini-home", root: "Ear Drama") }
     func testMiniBrowse() { withMini("Browse", "mini-browse") }
     func testMiniSearch() { withMini("Search", "mini-search") }
 
-    /// A 71-character title: the head board holds it to three lines and its facts stay on screen.
-    func testLongTitleSeries() { sweep(tab("browse", ["APP_START_ITEM": "librivox2469"]), "series-long-title") }
+    /// A name of 60 characters or more (Fixture.longName): the head board holds it to three lines and its facts stay on screen.
+    func testLongTitleSeries() { sweep(tab("browse", ["APP_START_ITEM": Fixture.longName]), "series-long-title") }
 
     /// Record (Decision 075: the plays are tiles on the Record tab), a play, Record This, the cast sheet and
     /// the recorder in its three modes. Nothing is
@@ -179,10 +199,10 @@ final class LayoutSweepUITests: DeviceTestCase {
         XCTAssertTrue(series.buttons["Follow"].waitForExistence(timeout: 5), "unfollowed again")
     }
 
-    func testSeries() {
-        let app = tab("browse", ["APP_START_ITEM": "tarzan"])
-        sweep(app, "series")
-    }
+    /// A series page of each shape (Fixture: picked per run from the catalog): rich, bare, words without a picture.
+    func testSeries() { sweep(tab("browse", ["APP_START_ITEM": Fixture.rich]), "series") }
+    func testBareSeries() { sweep(tab("browse", ["APP_START_ITEM": Fixture.bare]), "series-bare") }
+    func testNoPictureSeries() { sweep(tab("browse", ["APP_START_ITEM": Fixture.noPicture]), "series-no-picture") }
 
     func testEpisode() {
         let app = launch(["APP_START_ITEM": Fixture.long, "APP_DOOR_SECONDS": "300"])

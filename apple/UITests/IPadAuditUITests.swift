@@ -28,7 +28,7 @@ final class IPadAuditUITests: DeviceTestCase {
         if field.waitForExistence(timeout: 5) { field.tap(); field.typeText("Gunsmoke\n") }
         sleep(4)
         sweep(search, "\(tag)-search", pages: 3)
-        for (name, item) in [("rich", "gunsmoke"), ("dragnet", "dragnet"), ("long", "librivox2469"), ("tarzan", "tarzan")] {
+        for (name, item) in [("rich", Fixture.rich), ("bare", Fixture.bare), ("long", Fixture.longName), ("no-picture", Fixture.noPicture)] {
             sweep(tab("browse", ["APP_START_ITEM": item]), "\(tag)-series-\(name)", pages: 3)
         }
         let person = tab("browse")
@@ -52,10 +52,10 @@ final class IPadAuditUITests: DeviceTestCase {
         sweep(tab("record"), "\(tag)-record", pages: 2)
         sweep(tab("stations"), "\(tag)-stations", pages: 1)
         sweep(tab("browse"), "\(tag)-browse", pages: 1)
-        for (name, item) in [("rich", "gunsmoke"), ("sparse", "tarzan")] {
+        for (name, item) in [("rich", Fixture.rich), ("sparse", Fixture.bare)] {
             sweep(tab("browse", ["APP_START_ITEM": item]), "\(tag)-series-\(name)", pages: 1)
         }
-        shot(tab("browse", ["APP_START_ITEM": "gunsmoke|1952-04-26"]), "\(tag)-episode-p00")
+        shot(tab("browse", ["APP_START_ITEM": Fixture.long]), "\(tag)-episode-p00")
         let person = tab("browse")
         person.buttons["Voices"].tap(); sleep(3)
         shot(person, "\(tag)-voices-p00")

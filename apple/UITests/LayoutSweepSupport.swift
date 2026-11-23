@@ -28,33 +28,64 @@ extension DeviceTestCase {
 
     /// What is on screen, as the frames and labels of its elements: it changes when the content scrolled and
     /// is the same when it did not, whatever the scroll indicator or a running animation paints.
-    private func contentSignature(_ app: XCUIApplication) -> String {
-        let kinds: [XCUIElementQuery] = [app.cells, app.staticTexts, app.buttons, app.images]
-        return kinds.flatMap { $0.allElementsBoundByIndex.prefix(60) }.filter { $0.exists }
-            .map { "\($0.elementType.rawValue):\($0.label.prefix(24)):\(Int($0.frame.minY)):\(Int($0.frame.minX))" }
-            .joined(separator: "|")
+    /// Read in ONE snapshot of the tree: element by element it took hundreds of round trips, long enough for a
+    /// scroll to still be moving between the first read and the last (N7). The screenshot is no longer compared:
+    /// its pixels change with the scroll indicator's fade and Home's live clock, so a page at its end read as
+    /// moved and the end check was skipped or run on a page still in motion.
+    func contentSignature(_ app: XCUIApplication) -> String {
+        guard let root = try? app.snapshot() else { return "" }
+        let kinds: Set<XCUIElement.ElementType> = [.cell, .staticText, .button, .image]
+        var out: [String] = []
+        func walk(_ s: XCUIElementSnapshot) {
+            if kinds.contains(s.elementType) {
+                out.append("\(s.elementType.rawValue):\(s.label.prefix(24)):\(Int(s.frame.minY)):\(Int(s.frame.minX))")
+            }
+            s.children.forEach(walk)
+        }
+        walk(root)
+        return out.joined(separator: "|")
     }
 
-    /// One page up by swiping the scroll view itself. A drag computed from the app element lands sideways
-    /// whenever XCUITest reports the app's frame in portrait while the window is landscape (the iPhone 12 in
-    /// landscape, the open iPhone Duo: DuoScrollProbeUITests 2026-11-16); an element's own swipe does not.
+    /// Waits until the screen stops changing, the same signature on two reads 0.3 s apart, and returns it. A
+    /// fixed 0.7 s sleep after each swipe was the race: under load a fast swipe's deceleration and bounce outlast
+    /// it, so the end check read frames still moving (N7).
+    @discardableResult
+    func settle(_ app: XCUIApplication, _ what: String, timeout: TimeInterval = 10) -> String {
+        let t0 = Date()
+        var last = contentSignature(app)
+        while Date().timeIntervalSince(t0) < timeout {
+            usleep(300_000)
+            let now = contentSignature(app)
+            if now == last {
+                stage(String(format: "%@ settled after %.1fs", what, Date().timeIntervalSince(t0)))
+                return now
+            }
+            last = now
+        }
+        stage(String(format: "%@ NEVER settled in %.0fs", what, timeout))
+        return last
+    }
+
+    /// One page up by swiping the page's own scroll container, the largest on screen (UITestScrolling). A drag
+    /// computed from the app element lands sideways whenever XCUITest reports the app's frame in portrait while
+    /// the window is landscape (the iPhone 12 in landscape, the open iPhone Duo: DuoScrollProbeUITests
+    /// 2026-11-16); an element's own swipe does not. The first scroll view taller than 100 pt was taken before,
+    /// which on Home is the dial or the voices shelf whenever they had loaded: a sideways strip (N7).
     private func scrollPage(_ app: XCUIApplication, far: Bool = false) {
-        let area = [app.scrollViews, app.collectionViews, app.tables].map { $0.firstMatch }.first { $0.exists && $0.frame.height > 100 }
-        if let area { area.swipeUp(velocity: far ? .fast : .slow) } else { app.scrollUp() }
+        if let area = app.scrollTarget { area.swipeUp(velocity: far ? .fast : .slow) } else { app.swipeUp() }
     }
 
     func sweep(_ app: XCUIApplication, _ name: String, pages: Int = 3) {
+        var last = settle(app, "\(name) top")
         shot(app, "\(name)-p00")
-        var last = (XCUIScreen.main.screenshot().pngRepresentation, contentSignature(app))
         for i in 1...pages {
             var moved = false
             for far in [false, true] {
                 scrollPage(app, far: far)
-                usleep(700_000)
-                let now = (XCUIScreen.main.screenshot().pngRepresentation, contentSignature(app))
-                if now.0 != last.0 || now.1 != last.1 { last = now; moved = true; break }
+                let now = settle(app, "\(name) page \(i)\(far ? " far" : "")")
+                if now != last { last = now; moved = true; break }
             }
-            if !moved { assertEndClears(app, name); break }
+            if !moved { stage("\(name) end at page \(i)"); assertEndClears(app, name); break }
             shot(app, "\(name)-p\(String(format: "%02d", i))")
         }
     }

@@ -25,6 +25,12 @@ Usage:
     python3 tools/ios_uitest.py                         # the whole suite on `iphone`
     python3 tools/ios_uitest.py --only TabSmokeUITests  # xcodebuild -only-testing
     python3 tools/ios_uitest.py --only QueueUITests/testAddReorderRemove
+    python3 tools/ios_uitest.py --fixture-seed 123456                  # the same shows as an earlier run
+    UITEST_FIXTURE='{"short": "..."}' python3 tools/ios_uitest.py      # pin one show
+
+The shows the tests open are picked per run from the published catalog by shape
+(tools/uitest_fixture.py, DESIGN-LOOP N12); the run prints its seed and every chosen id
+and writes them to fixture-<stamp>.json beside the log.
 """
 import argparse
 import json
@@ -44,6 +50,7 @@ import bench  # noqa: E402
 import devharness as dh  # noqa: E402
 import devlease  # noqa: E402
 import frame_blind  # noqa: E402
+import uitest_fixture  # noqa: E402
 
 REPO = app_config.REPO
 SCHEME = "EarDramaUITests"
@@ -113,6 +120,8 @@ def main():
                     help="Class or Class/testName, repeatable")
     ap.add_argument("--catalog-seed", help="CATALOG_SEED_PATH for the build")
     ap.add_argument("--lease-wait", type=int, default=0)
+    ap.add_argument("--fixture-seed", type=int, help="pick the same shows as the run that printed this seed")
+    ap.add_argument("--fixture", help="JSON of Fixture fields to pin (else UITEST_FIXTURE)")
     a = ap.parse_args()
 
     entry = bench.require(a.device, platforms=("ios", "ipados"))
@@ -134,7 +143,7 @@ def main():
         return 1
 
 
-def xcodebuild(action, udid, a, log, extra):
+def xcodebuild(action, udid, a, log, extra, fixture=None):
     cmd = ["xcodebuild", action, "-project", str(REPO / "EarDrama.xcodeproj"),
            "-scheme", SCHEME, "-destination", f"id={udid}", "-derivedDataPath", str(DERIVED),
            f"DEVELOPMENT_TEAM={TEAM}", "-allowProvisioningUpdates"] + extra
@@ -142,8 +151,12 @@ def xcodebuild(action, udid, a, log, extra):
     if seed:
         cmd.append(f"CATALOG_SEED_PATH={seed}")
     print(f"[uitest] xcodebuild {action} ... (log {log})")
+    e = env()
+    if fixture is not None:
+        # xcodebuild hands TEST_RUNNER_-prefixed variables to the test runner without the prefix.
+        e["TEST_RUNNER_UITEST_FIXTURE"] = json.dumps({k: fixture[k] for k in uitest_fixture.FIELDS})
     with log.open("w") as fh:
-        return subprocess.run(cmd, stdout=fh, stderr=subprocess.STDOUT, env=env(), cwd=REPO).returncode
+        return subprocess.run(cmd, stdout=fh, stderr=subprocess.STDOUT, env=e, cwd=REPO).returncode
 
 
 def install_and_confirm(udid, app):
@@ -309,6 +322,9 @@ def run(entry, udid, a, outdir, bundle):
     if not ok:
         print("FAIL suite: the app on the device is not this build — this run covers NOTHING")
         return 1
+    fixture = uitest_fixture.resolve(a.fixture_seed, a.fixture)
+    (outdir / f"fixture-{stamp}.json").write_text(json.dumps(fixture, indent=1))
+    print(f"[uitest] fixture {uitest_fixture.describe(fixture)}")
     extra = ["-resultBundlePath", str(bundle), "-collect-test-diagnostics", "on-failure"]
     for o in a.only:
         extra += ["-only-testing", f"{SCHEME}/{o}"]
@@ -317,7 +333,7 @@ def run(entry, udid, a, outdir, bundle):
     if sampler:
         sampler.start()
     try:
-        rc = xcodebuild("test-without-building", udid, a, log, extra)
+        rc = xcodebuild("test-without-building", udid, a, log, extra, fixture)
     finally:
         if sampler:
             sampler.stop.set()

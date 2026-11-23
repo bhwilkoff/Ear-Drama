@@ -3,11 +3,8 @@ import XCTest
 final class DownloadUITests: DeviceTestCase {
     func testDownloadPlayFromFileRemove() throws {
         let app = launch(["APP_START_ITEM": Fixture.short, "APP_DOOR_SECONDS": "600"])
-        let remove = app.buttons["Remove Download"]
-        let download = app.buttons["Download"]
-        XCTAssertTrue(download.waitForExistence(timeout: 30) || remove.exists, "Download verb")
-        if remove.exists { remove.tap(); XCTAssertTrue(download.waitForExistence(timeout: 10)) }
-        download.tap()
+        XCTAssertTrue(downloadControlReady(app), "the download control reached Download")
+        app.buttons["Download"].tap()
         shot(app, "01-downloading")
         let done = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Downloaded'")).firstMatch
         XCTAssertTrue(done.waitForExistence(timeout: 120), "download finished")

@@ -37,7 +37,7 @@ final class SearchUITests: DeviceTestCase {
     /// search link; the shot name says which path ran.
     func testTypedTitleFindsTheEpisode() throws {
         let app = launch(["APP_START_TAB": "search", "APP_DOOR_SECONDS": "90"])
-        let query = "Andy Clyde"
+        let query = Fixture.shortTitle
         var path = "link"
         let field = app.searchFields.firstMatch
         if field.waitForExistence(timeout: 20) {
