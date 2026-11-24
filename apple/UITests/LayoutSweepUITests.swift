@@ -26,9 +26,9 @@ final class LayoutSweepUITests: DeviceTestCase {
     /// player shows it: playing, it crossed ListeningHistory's 30-second "started" mark at a moment set by the
     /// network and the load, and Home then inserted its Continue section at the top mid-sweep, moving every row
     /// under the end check (testMiniHome failed 3 of 4 under load, 2026-10-31). Paused, the page holds still.
-    private func withMini(_ tab: String, _ name: String, root: String? = nil) {
+    private func withMini(_ tab: String, _ name: String, root: String? = nil, door: [String: String] = [:]) {
         stage("fixture long=\(Fixture.long)")
-        let app = launch(["APP_START_ITEM": Fixture.long, "APP_AUTOPLAY": "1", "APP_DOOR_SECONDS": "900"])
+        let app = launch(["APP_START_ITEM": Fixture.long, "APP_AUTOPLAY": "1", "APP_DOOR_SECONDS": "900"].merging(door) { $1 })
         let close = app.buttons["Close player"]
         XCTAssertTrue(wait(close, "exists == true AND hittable == true", timeout: 30, "the player sheet"), "the player opened")
         close.tap()
@@ -49,8 +49,28 @@ final class LayoutSweepUITests: DeviceTestCase {
             XCTAssertTrue(wait(app.navigationBars[title], "exists == true", timeout: 10, "\(title) after Back"), "\(title) at its root")
         }
         wait(app.progressIndicators.firstMatch, "exists == false", timeout: 30, "\(title) loaded")
-        sweep(app, name, pages: 9)
+        if door.isEmpty { sweep(app, name, pages: 9); return }
+        // Landscape on a phone: XCUITest's synthesized swipes do not move the page (the sweep reads "end at page 1"
+        // with the first screen), so the page is taken to its end by the DEBUG scroll door, which fires after the
+        // player has been closed and the tab chosen, and the same end-of-scroll check runs on that frame.
+        let wait = (door["APP_SCROLL_DELAY"].flatMap(Double.init) ?? 0) + 12 - Date().timeIntervalSince(started)
+        if wait > 0 { sleep(UInt32(wait)) }
+        shot(app, "\(name)-end")
+        assertEndClears(app, name)
     }
+
+    /// The same sweep with the phone on its side: the mini player and the tab bar take a larger share of the
+    /// height, and the end of each screen must still clear them. Portrait is put back afterwards.
+    private func withMiniLandscape(_ tab: String, _ name: String, root: String? = nil) {
+        XCUIDevice.shared.orientation = .landscapeRight
+        defer { XCUIDevice.shared.orientation = .portrait }
+        sleep(2)
+        withMini(tab, name, root: root, door: ["APP_SCROLL_Y": "40000", "APP_SCROLL_DELAY": "55"])
+    }
+
+    func testMiniHomeLandscape() { withMiniLandscape("Home", "mini-land-home", root: "Ear Drama") }
+    func testMiniLibraryLandscape() { withMiniLandscape("Library", "mini-land-library") }
+    func testMiniBrowseLandscape() { withMiniLandscape("Browse", "mini-land-browse") }
 
     func testMiniRecord() { withMini("Record", "mini-record") }
     func testMiniLibrary() { withMini("Library", "mini-library") }
@@ -91,7 +111,9 @@ final class LayoutSweepUITests: DeviceTestCase {
         let confirm = app.alerts.buttons["Take Part"]
         XCTAssertTrue(confirm.waitForExistence(timeout: 3), "the Take this part alert")
         confirm.tap(); sleep(3)
-        XCTAssertTrue(app.descendants(matching: .any)["studio-gate"].waitForExistence(timeout: 15),
+        // The gate's container id is not exposed once its children carry their own; Start Recording (or the
+        // gate's own line, when a second production needs an account) is what the person sees.
+        XCTAssertTrue(app.buttons["Start Recording"].waitForExistence(timeout: 15) || app.descendants(matching: .any)["studio-gate"].exists,
                       "the studio opens at its gate")
         shot(app, "create-studio-gate")
         let close = app.buttons["Close"]
@@ -172,6 +194,15 @@ final class LayoutSweepUITests: DeviceTestCase {
     /// Every button in a page's action row draws its picture and title centered: a folded button's glyph
     /// in the middle, and nothing clipped at the trailing edge.
     private func assertCentered(_ app: XCUIApplication, _ names: [String], _ page: String) {
+        // The tab bar's glass is composited into an element screenshot, so a row at the fold reads as ink
+        // that is not the button's. Measure only with the row scrolled clear of it.
+        let first = app.buttons[names[0]].firstMatch
+        let window = app.windows.firstMatch
+        for _ in 0..<4 where first.exists && first.frame.maxY > app.frame.height - 140 {
+            window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.65))
+                .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+            sleep(1)
+        }
         for name in names {
             let b = app.buttons[name].firstMatch
             guard b.waitForExistence(timeout: 5) else { XCTFail("\(page): no '\(name)' button"); continue }

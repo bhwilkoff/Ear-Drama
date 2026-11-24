@@ -42,6 +42,9 @@ PLATFORM = "IOS"          # set from --platform in main()
 
 
 def token():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import pyneeds
+    pyneeds.need("jwt")
     import jwt
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import asc_key

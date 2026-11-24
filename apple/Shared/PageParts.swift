@@ -555,7 +555,25 @@ struct WidthPadding: ViewModifier {
     }
 }
 
+/// Vertical breathing room for a row of buttons between two blocks at regular width: the phone's 8 pt left the
+/// episode page's Play row 8 pt from the board and 8 pt from the card under it on the open Duo.
+struct RegularVerticalPadding: ViewModifier {
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var size
+    #endif
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.padding(.vertical, size == .regular ? Spacing.s3 : 0)
+        #else
+        content
+        #endif
+    }
+}
+
 extension View {
+    func regularVerticalPadding() -> some View { modifier(RegularVerticalPadding()) }
+
     /// A full page List's margins (iOS-DESIGN §3.6a).
     func pageMargins() -> some View { modifier(PageMargins()) }
 

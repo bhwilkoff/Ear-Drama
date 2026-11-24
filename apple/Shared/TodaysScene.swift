@@ -219,7 +219,8 @@ struct TodaysSceneCard: View {
                 Label(error, systemImage: "exclamationmark.triangle").font(TypeRamp.caption).foregroundStyle(ink)
             }
         }
-        .padding(Spacing.s4)
+        .padding(.vertical, Spacing.s4)
+        .modifier(WidthPadding(compact: Spacing.s4, regular: PageRowInsets.wordsMargin))
         .background(board, in: RoundedRectangle(cornerRadius: Radius.card))
     }
 

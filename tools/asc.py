@@ -23,11 +23,10 @@ BASE = "https://api.appstoreconnect.apple.com/"
 
 
 def token():
-    try:
-        import jwt
-    except ImportError:
-        sys.exit("pip install pyjwt cryptography (or use tools/.play-venv)")
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import pyneeds
+    pyneeds.need("jwt")
+    import jwt
     import asc_key
     kid = asc_key.value("ASC_KEY_ID") or sys.exit("set ASC_KEY_ID (or import the key into the Keychain)")
     iss = asc_key.value("ASC_ISSUER_ID") or sys.exit("set ASC_ISSUER_ID (or import the key into the Keychain)")

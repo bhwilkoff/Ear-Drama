@@ -13,10 +13,11 @@ extension DeviceTestCase {
         let screen = app.frame.height
         let kinds: [XCUIElementQuery] = [app.cells, app.staticTexts, app.buttons, app.images]
         for query in kinds {
-            for el in query.allElementsBoundByIndex where el.exists && el.isHittable && el.label.count <= 128 && !bar.buttons[el.label].exists {
+            for el in query.allElementsBoundByIndex where el.exists && el.label.count <= 128 && !bar.buttons[el.label].exists {
                 let f = el.frame
                 if f.isEmpty || f.minY >= screen { continue }
-                if f.minY < top - 4 && f.maxY > top + 4 {
+                // isHittable only for a candidate: asked of a tile half off the screen it fails the test itself.
+                if f.minY < top - 4 && f.maxY > top + 4 && f.minY < screen && el.isHittable {
                     XCTFail("\(name): \(el.elementType.rawValue) '\(el.label.prefix(40))' straddles the bar top \(Int(top)): \(Int(f.minY))-\(Int(f.maxY))")
                 }
             }

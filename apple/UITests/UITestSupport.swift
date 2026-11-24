@@ -5,7 +5,7 @@ import XCTest
 @MainActor class DeviceTestCase: XCTestCase {
     override func setUp() { continueAfterFailure = true; started = Date() }
 
-    private nonisolated(unsafe) var started = Date()
+    nonisolated(unsafe) var started = Date()
 
     /// One line per stage, seconds since the test began, so two runs of a test can be laid side by side and the
     /// stage whose time moves is the race (N7, owner: "instrument the stages and compare").
@@ -161,4 +161,7 @@ enum Fixture {
     static var bare: String { value("bare", "nelliestuart") }
     static var noPicture: String { value("noPicture", "xminusone") }
     static var longName: String { value("longName", "librivox2469") }
+    /// An episode of 25 to 35 minutes whose show has a served picture, and that show's name: the show-art test.
+    static var faced: String { value("faced", "gunsmoke|1952-04-26") }
+    static var facedSeries: String { value("facedSeries", "Gunsmoke") }
 }

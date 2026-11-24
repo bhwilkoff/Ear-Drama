@@ -245,6 +245,9 @@ def _asc_key():
 
 
 def _jwt(kid, iss, key):
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import pyneeds
+    pyneeds.need("jwt")
     import jwt                                        # PyJWT + cryptography
     t = int(time.time())
     return jwt.encode({"iss": iss, "iat": t, "exp": t + 900, "aud": "appstoreconnect-v1"},

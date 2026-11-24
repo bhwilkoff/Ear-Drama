@@ -877,6 +877,7 @@ struct EpisodeScreen: View {
                     }
                     #endif
                 }
+                .regularVerticalPadding()
                 .gridRow(.words, top: 0)
 
                 // Decision 068: an episode linked to a castable script this bundle holds.

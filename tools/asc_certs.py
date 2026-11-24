@@ -13,6 +13,8 @@ and BOTH the private key and the issued cert are imported into the login keychai
 xcodebuild to sign). The generated .p12/.cer live under build/ (gitignored).
 """
 import sys, os, time, json, base64, subprocess, tempfile, urllib.request, urllib.error
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import pyneeds; pyneeds.need("jwt")
 import jwt
 
 TYPE = {"distribution": "DISTRIBUTION", "mac_installer": "MAC_INSTALLER_DISTRIBUTION"}
