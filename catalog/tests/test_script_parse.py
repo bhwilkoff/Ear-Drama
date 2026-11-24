@@ -805,7 +805,8 @@ def a_gutenberg_illustration_marker_is_never_a_line_and_takes_no_ids_from_the_li
     # "Illustration"; it marks where the book printed a picture, and is not a word of the play
     marks = ["[Illustration]", "_[Illustration: THE KING ENTERS]_", "ROY. Come with me. [Illustration] Now.",
              "JACK (_rising_). Go.", "[ILLUSTRATION: A ROOM.]\n\n[Illustration]", "GRACE. The end.",
-             "[Illustration: THE POWER OF DARKNESS. ACT I.", "GRACE. Again.", "[illustration omitted]", "ROY. Last."]
+             "[Illustration: THE POWER OF DARKNESS. ACT I.", "GRACE. Again.", "[illustration omitted]",
+             "Truly this is a prose sentence and not a role at all, so it is set apart.", "ROY. Last."]
     stand_in = [m.replace("[Illustration]", "[He sits.]").replace("[Illustration: THE KING ENTERS]", "[Exit.]")
                 .replace("[ILLUSTRATION: A ROOM.]", "[A room.]").replace("[Illustration: THE POWER OF DARKNESS. ACT I.", "[A curtain.").replace("[illustration omitted]", "[Dark.]")
                 for m in marks]
@@ -821,6 +822,8 @@ def a_gutenberg_illustration_marker_is_never_a_line_and_takes_no_ids_from_the_li
         if l["source"] in kept:
             assert kept[l["source"]] == l["id"], (l["source"], kept[l["source"]], l["id"])
     assert len(before["lines"]) - len(r["lines"]) == 6, (len(before["lines"]), len(r["lines"]))
+    # the markers were placed blocks: dropping them must not tip a play over the unclassified share (gut-56362)
+    assert r["unclassified_share"] == before["unclassified_share"] > 0, (r["unclassified_share"], before["unclassified_share"])
 
 
 @case

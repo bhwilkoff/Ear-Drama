@@ -929,7 +929,7 @@ def parse(raw, kind, title=None):
         _title_block_is_not_a_speech(raw, items, title)
         _one_speaker_one_role(items)
     lines, roles, unclassified = [], collections.OrderedDict(), []
-    sections, pending, numbered, letters = [], [], 0, 0
+    sections, pending, numbered, letters, pictures = [], [], 0, 0, 0
     for it in items:
         if it["kind"] == "heading" and section_level(it["source"]):
             pending.append(it["source"])
@@ -939,8 +939,9 @@ def parse(raw, kind, title=None):
             unclassified.append(it["source"])
             continue
         if it["kind"] != "speech" and ILLUSTRATION_ONLY.fullmatch(it["source"]):
-            if not it.get("split"):
-                numbered, letters = numbered + 1, 0  # its id stays used, so the lines after keep theirs
+            # its id (or its letter) stays used, so the lines after keep theirs
+            numbered, letters = (numbered, letters + 1) if it.get("split") else (numbered + 1, 0)
+            pictures += 1
             continue
         if it.get("split"):
             letters += 1
@@ -962,7 +963,7 @@ def parse(raw, kind, title=None):
                           **({"em": em} if em else {})})
         else:
             lines.append({"id": lid, "kind": it["kind"], "role": None, "source": it["source"]})
-    blocks = len(lines) + len(unclassified)
+    blocks = len(lines) + len(unclassified) + pictures  # a marker was a placed block: the share judged before it went
     castable = [r for r in roles.values() if r["lines"] >= CASTABLE_LINES]
     big = [r["name"] for r in castable]
     aliases = [r["name"] for r in roles.values() if r["lines"] <= 2 and "(COMMERCIAL " not in r["name"] and any(
