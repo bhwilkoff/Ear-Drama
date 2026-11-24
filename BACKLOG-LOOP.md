@@ -261,3 +261,8 @@ GRW request sent or not.
 - 2026-11-24 15:45: R4-1 JavaScript core + goldens merged (98.5% radio, 97.2% stage words to the right part; 8-word overlap check with cached radio scripts: none). Kotlin port running; Swift port and R4-2 web wait for B15b. B16 running with all 1,721 texts.
 - 2026-11-24 16:20: B15b merged (576 Apple tests, 30 web suites, 12 frames read). 1.0.169 (170) bumped for TestFlight + Play internal.
 - 2026-11-24 16:30: Swift core + B15c Apple merged (602 tests; a library play room drawn on Ben Bedroom). 1.0.169 TestFlight failed on a runner DNS blip after the Mac upload: tools/net_retry.py (8 cases) now waits blips out in the Apple tools. 1.0.170 (171) redispatched. Play internal 1.0.169: success. Footnotes spoken in gut-3012 sent to B16. Ben Bedroom was woken by the agent and left on.
+- 2026-11-24 17:00: 1.0.170 (171) on TestFlight (all three) and Play internal (versionCode 17): success. **R4-2 merged and live
+  on the web** (Add a script; 31 suites, 23 mutants, frames read). R4-2b found reading frames: a pasted Gutenberg file leaves its
+  license as "No part" lines (cut at the `*** START/END OF` markers in the grammar, goldens on three stacks; "Leave out
+  everything above / below"); the web's play-page opening window clips a fourth speaker's name at 768 and 1440. Swift and
+  Kotlin `layoutOf` need the own-script directions rule in R4-6/7.
