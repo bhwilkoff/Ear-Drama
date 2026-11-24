@@ -24,6 +24,11 @@ const M = [
   ],
   ["merge replaces queue", "src/index.js", "handleUpload(a, request, env, { merge: true })", "handleUpload(a, request, env)"],
   ["no session row check", "src/auth.js", 'if (!s) return { error: problem(401, "unauthorized", "session_ended") };', ""],
+  // Read rooms when storage refuses (2026-11-23)
+  ["refused save throws", "src/read-rooms.js", "      if (withCast) {\n        this.world = null;", "      if (true) {\n        this.world = null;"],
+  ["refused alarm remembered", "src/read-rooms.js", "      this.alarmAt = null;\n      console.log(\"read room: storage refused an alarm\"", "      this.alarmAt = at;\n      console.log(\"read room: storage refused an alarm\""],
+  ["no sweep of objects", "src/read-rooms.js", "if (P.roomExpired(this.world.room, now)) await this.end(now);\n      else if", "if"],
+  ["alarm loop floor gone", "src/read-rooms.js", "return this.schedule(world, ALARM_TO_ALARM_MS);", "return this.schedule(world);"],
   // Listen Together rooms (M6)
   ["guest can set state", "src/rooms.js", 'if (!isHost) return problem(403, "host_only", "only the host changes what plays");', ""],
   ["guest can end room", "src/rooms.js", 'if (!isHost) return problem(403, "host_only");', ""],

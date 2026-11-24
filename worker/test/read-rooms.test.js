@@ -284,6 +284,116 @@ describe("read rooms over the Durable Object", () => {
   });
 });
 
+// 2026-11-23: with the account's daily rows used up, every save and alarm threw. Creating a room failed,
+// and the one room in progress lost the alarm that erases it.
+describe("when storage refuses writes", () => {
+  const object = (code) => env.READ_ROOMS.get(env.READ_ROOMS.idFromName(code));
+  const refuse = (ctx) => {
+    const { put, setAlarm } = ctx.storage;
+    const no = () => Promise.reject(new Error("Exceeded allowed rows written in Durable Objects free tier."));
+    ctx.storage.put = no;
+    ctx.storage.setAlarm = no;
+    return () => Object.assign(ctx.storage, { put, setAlarm });
+  };
+  const sweepAt = async (now) => (await import("../src/read-rooms.js")).sweepReadRooms(env, now);
+  const tracked = async (code) => !!(await env.DB.prepare("SELECT 1 FROM read_room_objects WHERE code = ?1").bind(code).first());
+
+  it("a new room opens on D1 polling instead of failing", async () => {
+    const broken = { idFromName: (n) => n, get: () => ({ fetch: () => Promise.reject(new Error("Exceeded allowed rows written")) }) };
+    const r = await read("POST", "", { body: body(), envOverride: { READ_ROOMS: broken } });
+    expect(r.status).toBe(200);
+    const h = await r.json();
+    expect(h.transport).toBe("poll");
+    expect((await send(h.code, h.member_key, { type: "cursor", line: cast[3][0], base: 0 })).status).toBe(200);
+  });
+
+  it("an object that could not store a new room holds no half-made one", async () => {
+    await runInDurableObject(object("AAAA22"), async (instance, ctx) => {
+      const restore = refuse(ctx);
+      const made = { room: { code: "AAAA22", kind: "adult", touched_at: Date.now() }, cast: [], members: [] };
+      await expect(instance.save(made, { withCast: true })).rejects.toThrow("Exceeded");
+      expect(instance.world).toBe(null);
+      restore();
+    });
+  });
+
+  it("a reading under way goes on, and what was refused is stored at the next save", async () => {
+    const h = await open();
+    const restore = await runInDurableObject(object(h.code), async (instance, ctx) => refuse(ctx));
+    const g = await enter(h.code);
+    expect((await send(h.code, h.member_key, { type: "cursor", line: cast[3][0], base: 0 })).status).toBe(200);
+    expect((await poll(h.code, g.member_key)).cursor).toBe(cast[3][0]);
+    await runInDurableObject(object(h.code), async (instance, ctx) => {
+      expect((await ctx.storage.get("members")).length).toBe(1);
+      restore();
+      await instance.save(instance.world);
+      expect((await ctx.storage.get("members")).length).toBe(2);
+    });
+  });
+
+  it("a refused alarm is asked for again, and the alarm handler does not throw", async () => {
+    const h = await open();
+    await runInDurableObject(object(h.code), async (instance, ctx) => {
+      const restore = refuse(ctx);
+      await ctx.storage.deleteAlarm();
+      await instance.alarm();
+      expect(instance.alarmAt).toBe(null);
+      restore();
+      await instance.save(instance.world);
+      expect(await ctx.storage.getAlarm()).toBeGreaterThan(Date.now());
+    });
+  });
+
+  it("the sweep erases a room whose alarm was lost, then forgets its code", async () => {
+    const h = await open();
+    expect(await tracked(h.code)).toBe(true);
+    const lose = (back) =>
+      runInDurableObject(object(h.code), async (instance, ctx) => {
+        await ctx.storage.deleteAlarm();
+        instance.alarmAt = null;
+        if (instance.world) instance.world = { ...instance.world, room: { ...instance.world.room, touched_at: Date.now() - back } };
+        if (instance.endedAt) instance.endedAt -= back;
+      });
+    await lose(7 * 60 * 60 * 1000);
+    await sweepAt(Date.now() + 8 * 60 * 60 * 1000);
+    await runInDurableObject(object(h.code), async (instance, ctx) => {
+      expect([...(await ctx.storage.list()).keys()]).toEqual(["ended_at"]);
+      expect(await ctx.storage.getAlarm()).not.toBe(null);
+    });
+    expect(await tracked(h.code)).toBe(true);
+    await lose(7 * 60 * 60 * 1000);
+    await sweepAt(Date.now() + 24 * 60 * 60 * 1000);
+    await runInDurableObject(object(h.code), async (instance, ctx) => {
+      expect([...(await ctx.storage.list()).keys()]).toEqual([]);
+    });
+    expect(await tracked(h.code)).toBe(false);
+  });
+
+  it("the sweep leaves a live room alone, and a failed visit is made again", async () => {
+    const h = await open();
+    await sweepAt(Date.now() + 8 * 60 * 60 * 1000);
+    expect((await poll(h.code, h.member_key)).code).toBe(h.code);
+    expect(await tracked(h.code)).toBe(true);
+    const before = await env.DB.prepare("SELECT check_at FROM read_room_objects WHERE code = ?1").bind(h.code).first();
+    const broken = { idFromName: (n) => n, get: () => ({ fetch: () => Promise.reject(new Error("down")) }) };
+    const { sweepReadRooms } = await import("../src/read-rooms.js");
+    await sweepReadRooms({ ...env, READ_ROOMS: broken, DB: env.DB }, before.check_at + 1);
+    expect(await env.DB.prepare("SELECT check_at FROM read_room_objects WHERE code = ?1").bind(h.code).first()).toEqual(before);
+  });
+
+  it("an alarm that changes nothing sets the next one at least a minute out", async () => {
+    const h = await open();
+    const at = await runInDurableObject(object(h.code), async (instance, ctx) => {
+      const nearly = Date.now() - P.LEADER_GONE_MS + 10_000;
+      instance.world = { ...instance.world, members: instance.world.members.map((m) => ({ ...m, seen_at: nearly })) };
+      await ctx.storage.deleteAlarm();
+      await instance.alarm();
+      return ctx.storage.getAlarm();
+    });
+    expect(at).toBeGreaterThanOrEqual(Date.now() + 55_000);
+  });
+});
+
 // 2026-11-23 free-tier audit: the poll fallback asked every second, so a
 // class of 30 behind a WebSocket block used up the shared account in under an
 // hour. A poll now waits in the room until something changes.

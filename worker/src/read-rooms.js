@@ -44,7 +44,7 @@ import { parseTakeMeta, passThrough, production, receiveTake } from "./plays.js"
 import { pickup } from "./take-relay.js";
 
 /** Tables that hold no person's rows; test/account.test.js checks they have no user_id. */
-export const READ_ANONYMOUS_TABLES = ["read_rooms", "read_pairs"];
+export const READ_ANONYMOUS_TABLES = ["read_rooms", "read_pairs", "read_room_objects"];
 
 export const KEY_HEADER = "x-read-key";
 export const PAIR_KEY_HEADER = "x-pair-key";
@@ -242,6 +242,11 @@ async function createInput(request, env) {
 
 const CAST_CHUNK = 2000;
 const MIN_ALARM_MS = 5 * 1000;
+/** An alarm sets its successor at least this far out: a loop nobody has thought of costs 1,440 wakes a day, not 57,000 an hour. */
+const ALARM_TO_ALARM_MS = 60 * 1000;
+/** How long the sweep waits before it looks at a room's object again. */
+const OBJECT_CHECK_MS = P.ROOM_IDLE_MS + 60 * 60 * 1000;
+const OBJECT_CHECKS_PER_SWEEP = 40;
 /** A poll at the room's generation waits this long for a change (the free plan counts requests, not waiting). */
 export const LONG_POLL_MS = 20 * 1000;
 
@@ -292,16 +297,26 @@ export class ReadRoom extends DurableObject {
   async save(world, { withCast = false } = {}) {
     this.world = world;
     const entries = { room: world.room };
-    if (withCast || membersDiffer(this.stored, world.members)) {
-      entries.members = world.members;
-      this.stored = world.members;
-    }
+    const members = withCast || membersDiffer(this.stored, world.members);
+    if (members) entries.members = world.members;
     if (withCast) {
       const n = Math.ceil(world.cast.length / CAST_CHUNK);
       entries.cast_chunks = n;
       for (let i = 0; i < n; i++) entries[`cast:${i}`] = world.cast.slice(i * CAST_CHUNK, (i + 1) * CAST_CHUNK);
     }
-    await this.ctx.storage.put(entries);
+    try {
+      await this.ctx.storage.put(entries);
+    } catch (e) {
+      // The account's daily rows are used up (2026-11-23): a reading under way goes on from memory. A new
+      // room has nothing to go on from, so createRoom opens it on D1 instead.
+      if (withCast) {
+        this.world = null;
+        throw e;
+      }
+      console.log("read room: storage refused a save", String(e));
+      return;
+    }
+    if (members) this.stored = world.members;
     await this.schedule(world);
   }
 
@@ -310,7 +325,7 @@ export class ReadRoom extends DurableObject {
    * set or this one is sooner: a later one is the idle end moving out, and alarm() checks again
    * when the earlier one fires, so a cursor move sets nothing.
    */
-  async schedule(world) {
+  async schedule(world, floor = MIN_ALARM_MS) {
     const now = Date.now();
     let at = world.room.touched_at + P.ROOM_IDLE_MS;
     if (world.room.kind === "adult") {
@@ -320,10 +335,20 @@ export class ReadRoom extends DurableObject {
       if (check > now && !this.connected().has(leader.id)) at = Math.min(at, check);
     }
     // Never in the past: an alarm that sets its successor in the past fires without end.
-    at = Math.max(at, now + MIN_ALARM_MS);
+    at = Math.max(at, now + floor);
     if (this.alarmAt !== null && this.alarmAt <= at) return;
-    this.alarmAt = at;
-    await this.ctx.storage.setAlarm(at);
+    await this.setAlarm(at);
+  }
+
+  /** Remembered only once storage has it, so a refused alarm is asked for again; sweepReadRooms covers the rest. */
+  async setAlarm(at) {
+    try {
+      await this.ctx.storage.setAlarm(at);
+      this.alarmAt = at;
+    } catch (e) {
+      this.alarmAt = null;
+      console.log("read room: storage refused an alarm", String(e));
+    }
   }
 
   /** Members with an open socket or a poll waiting in the room. */
@@ -400,8 +425,7 @@ export class ReadRoom extends DurableObject {
     this.answerParked();
     this.polled.clear();
     await this.ctx.storage.put("ended_at", now);
-    this.alarmAt = now + ENDED_KEPT_MS;
-    await this.ctx.storage.setAlarm(this.alarmAt);
+    await this.setAlarm(now + ENDED_KEPT_MS);
   }
 
   /** Applies a member's message and fans the result out; the caller gets its reply or refusal. */
@@ -421,6 +445,8 @@ export class ReadRoom extends DurableObject {
     const now = Date.now();
     const url = new URL(request.url);
     const op = url.pathname.slice(1);
+
+    if (op === "sweep") return json(await this.sweep(now));
 
     if (op === "create") {
       if (this.world || this.endedAt) return problem(409, "code_in_use");
@@ -569,10 +595,26 @@ export class ReadRoom extends DurableObject {
     if (!s.changed) {
       // Nothing settled differently: no write, only the next alarm.
       this.world = world;
-      return this.schedule(world);
+      return this.schedule(world, ALARM_TO_ALARM_MS);
     }
     await this.save(world);
     this.broadcast(world, now);
+  }
+
+  /**
+   * The hourly sweep's visit: what this room's own alarm would have done. Cloudflare drops an alarm
+   * that fails its retries, and while storage refuses writes every alarm fails, so a room could keep
+   * its members past the six hours it promises (one did, 2026-11-23). Nothing happens to a live room.
+   */
+  async sweep(now) {
+    if (this.world) {
+      if (P.roomExpired(this.world.room, now)) await this.end(now);
+      else if (this.alarmAt === null) await this.schedule(this.world);
+    } else if (this.endedAt && now - this.endedAt >= ENDED_KEPT_MS) {
+      await this.ctx.storage.deleteAll();
+      this.endedAt = null;
+    }
+    return { gone: !this.world && !this.endedAt };
   }
 }
 
@@ -715,11 +757,21 @@ async function createRoom(request, env, ip, now) {
   for (let attempt = 0; attempt < 10; attempt++) {
     const code = newCode();
     if (await env.DB.prepare("SELECT 1 FROM read_rooms WHERE code = ?1").bind(code).first()) continue;
-    const r = await stub(env, code).fetch("https://read-room/create", {
-      method: "POST",
-      body: JSON.stringify({ input: made.input, cast: made.cast, code }),
-    });
+    let r;
+    try {
+      r = await stub(env, code).fetch("https://read-room/create", {
+        method: "POST",
+        body: JSON.stringify({ input: made.input, cast: made.cast, code }),
+      });
+    } catch (e) {
+      // The object cannot store a room (the account's daily limit): the same reading over D1 polling.
+      console.log("read room: object unavailable, opening on D1", String(e));
+      return d1.create(env, made.input, made.cast, now);
+    }
     if (r.status === 409 && (await r.clone().json()).error === "code_in_use") continue;
+    if (r.ok) {
+      await env.DB.prepare("INSERT OR REPLACE INTO read_room_objects (code, check_at) VALUES (?1, ?2)").bind(code, now + OBJECT_CHECK_MS).run();
+    }
     return r;
   }
   return problem(503, "no_free_code");
@@ -900,8 +952,24 @@ export async function handleReadRooms(url, request, env, ip) {
   return forward(env, code, op, request, body);
 }
 
-/** The cron sweep: D1 rooms past their idle limit are deleted. Object rooms end on their own alarm. */
+/**
+ * The cron sweep: D1 rooms past their idle limit are deleted. Object rooms end on their own alarm, and
+ * the sweep visits each one due, in case its alarm was lost; a visit that fails is made again next hour.
+ */
 export async function sweepReadRooms(env, now = Date.now()) {
   await env.DB.prepare("DELETE FROM read_rooms WHERE touched_at < ?1").bind(now - P.ROOM_IDLE_MS).run();
   await env.DB.prepare("DELETE FROM read_pairs WHERE expires_at < ?1").bind(now).run();
+  if (!env.READ_ROOMS) return;
+  const due = await env.DB.prepare("SELECT code FROM read_room_objects WHERE check_at < ?1 ORDER BY check_at LIMIT ?2").bind(now, OBJECT_CHECKS_PER_SWEEP).all();
+  for (const { code } of due.results) {
+    let gone;
+    try {
+      gone = (await (await stub(env, code).fetch("https://read-room/sweep")).json()).gone;
+    } catch (e) {
+      console.log("read room: sweep visit failed", String(e));
+      continue;
+    }
+    if (gone) await env.DB.prepare("DELETE FROM read_room_objects WHERE code = ?1").bind(code).run();
+    else await env.DB.prepare("UPDATE read_room_objects SET check_at = ?2 WHERE code = ?1").bind(code, now + OBJECT_CHECK_MS).run();
+  }
 }

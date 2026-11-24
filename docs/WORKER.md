@@ -38,6 +38,7 @@ Cloudflare, Apple, or Google is the owner's.
 | `worker/src/read-rooms.js` | read rooms' transports: the `ReadRoom` Durable Object (sockets and polls) and the D1 polling fallback |
 | `worker/tools/read-golden.mjs`, `worker/test/read-golden.json` | the read protocol's golden cases, shared by every client port |
 | `worker/migrations/0006_read_rooms.sql` | the D1 schema for polled read rooms |
+| `worker/migrations/0011_read_room_objects.sql` | the codes of the rooms held in objects, for the sweep |
 | `worker/src/plays.js` | shared plays' HTTP and D1 adapter, the take intake (`receiveTake`), publishing; deletion's plays step; the plays sweep |
 | `worker/src/plays-seats.js` | classes that own productions (Decision 082): seats, the no-account seat routes, assignments, review, progress |
 | `worker/src/plays-retention.js` | retention (Decision 084): Delete class, Delete production, the class end date, the class export, the operator's school-request route, and the retention sweep |
@@ -311,9 +312,13 @@ file every client port reads). Two transports carry the same messages
   `READ_ROOMS`): sockets through the hibernation API, presence in memory, the
   room's state in the object's own storage, ended by its alarm after 6 idle
   hours. It also answers HTTP polls, so a client without a socket joins the
-  same room.
+  same room. The code goes in `read_room_objects` (migration 0011), and the
+  hourly sweep visits a room 7 hours after it opened and then every 7 hours
+  until it holds nothing, because Cloudflare drops an alarm that fails its
+  retries. When storage refuses writes (the account's daily rows), a reading
+  goes on from memory and a new room opens on D1 polling.
 - **D1 polling** (`read_rooms`, migration 0006): used when the Worker has no
-  `READ_ROOMS` binding. Writes are guarded by a version column, so the first
+  `READ_ROOMS` binding, or the object cannot store a new room. Writes are guarded by a version column, so the first
   claim still wins. The hourly sweep deletes idle rows.
 
 No audio ever passes through or rests in either (owner 2026-11-19: storage is

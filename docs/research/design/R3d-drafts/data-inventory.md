@@ -46,6 +46,7 @@ the identity token and are not written anywhere (`auth.js`; privacy page).
 |---|---|---|---|---|
 | Room state: cast sheet, cursor, mode, members (random id, key hash, role, part held) | R, S, T | Place in a script; who holds which part | The shared cursor | Durable Object: `deleteAll()` on end or after 6 idle hours (`ROOM_IDLE_MS`); an ended room keeps only `ended_at` for 6 hours. D1 fallback: swept hourly after 6 idle hours |
 | `members[].name` (adult rooms), `leader_name`, seat labels | R, T, S | A name a reader typed on joining (40 characters, name filter), or a seat's label | "Waiting for Ana"; credit | Same as the room |
+| `read_room_objects.*` | none | A room's code and when to look at it next | The sweep that erases a room whose alarm was lost | Until the room's object holds nothing |
 | `read_pairs.*` | none | TV pairing code, hash of the TV's key | Pair a TV | 10 minutes, used once, swept hourly |
 
 No audio is written to a Durable Object, KV, or D1. A take in transit through
