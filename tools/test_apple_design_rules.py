@@ -52,6 +52,12 @@ def detail_share_twin(text):
     return "ShareLink(item: SiteLinks.episode(episode.id)" in text
 
 
+def tv_share_code(text):
+    """tvOS-DESIGN §3.6: the TV's Share is a QR code of the https twin."""
+    return ("ShareCodeSheet_tvOS(title: ItemLead.episodeTitle(episode), url: SiteLinks.episode(episode.id))" in text
+            and "ShareCode.image(url.absoluteString)" in text)
+
+
 def phone_shell_is_five_verbs(text, home):
     """iOS-DESIGN §3.1 (Decision 075): the bar is Home, Browse, Record, Search, Library at
     every width; no Surprise tab and no gate that lists one (the Duo's strip shows hidden tabs,
@@ -150,6 +156,8 @@ def main():
                        "Tab(AppTab.stations.title, systemImage: AppTab.stations.symbol, value: AppTab.stations)")),
         ("no Surprise tab gate returns", lambda t: phone_shell_is_five_verbs(t, detail), phone,
          phone + "\nprivate var showsSurpriseTab: Bool { true }\n"),
+        ("tvOS Detail shares the https twin as a QR code", tv_share_code, tv,
+         tv.replace("url: SiteLinks.episode(episode.id))", "url: episode.transcriptURL!)")),
         ("Detail shares the https twin", detail_share_twin, detail,
          detail.replace("SiteLinks.episode(episode.id)", "episode.transcriptURL!")),
         ("haptics go through Haptic", haptics_through_mapping, swift,

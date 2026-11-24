@@ -767,6 +767,7 @@ private struct EpisodeScreen_tvOS: View {
     @State private var show: SeriesRow?
     @State private var creditsOpen = false
     @State private var transcriptOpen = false
+    @State private var shareOpen = false
     @FocusState private var playFocused: Bool
 
     var body: some View {
@@ -823,6 +824,13 @@ private struct EpisodeScreen_tvOS: View {
                         }
                         .accessibilityLabel(Transcript.label)
                     }
+                    // §3.6: no share sheet on a TV; the https twin as a code a phone scans.
+                    Button {
+                        shareOpen = true
+                    } label: {
+                        Label("Share", systemImage: "qrcode")
+                    }
+                    .accessibilityIdentifier("episode-share")
                 }
 
                 if !catalog.isOnline { OfflineNotice() }
@@ -897,6 +905,50 @@ private struct EpisodeScreen_tvOS: View {
                 TranscriptScreen_tvOS(title: episode.displayTitle, url: url)
             }
         }
+        .sheet(isPresented: $shareOpen) {
+            ShareCodeSheet_tvOS(title: ItemLead.episodeTitle(episode), url: SiteLinks.episode(episode.id))
+        }
+    }
+}
+
+/// Share on the TV (§3.6): the https twin as a QR code, the title, the address as words, and Done,
+/// the one control. Menu dismisses it as any sheet.
+private struct ShareCodeSheet_tvOS: View {
+    let title: String
+    let url: URL
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        // Sized to sit inside the system sheet's panel at 1920 by 1080 (tvOS 27): plate 424, words 560.
+        HStack(alignment: .center, spacing: 64) {
+            Group {
+                if let code = ShareCode.image(url.absoluteString) {
+                    Image(decorative: code, scale: 1)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: 376, height: 376)
+            .padding(Spacing.s6)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: Radius.card))
+            .accessibilityLabel("QR code")
+            VStack(alignment: .leading, spacing: Spacing.s6) {
+                Text(verbatim: title)
+                    .font(TypeRamp.sectionHeader)
+                    .lineLimit(3)
+                Text(verbatim: ShareCode.shortText(url))
+                    .font(TypeRamp.body)
+                    .foregroundStyle(Color.brandTextMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Done") { dismiss() }
+                    .accessibilityIdentifier("share-done")
+            }
+            .frame(width: 560, alignment: .leading)
+        }
+        .padding(48)
     }
 }
 

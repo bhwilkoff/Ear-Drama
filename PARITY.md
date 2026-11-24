@@ -246,7 +246,7 @@ shared code only after the core five are complete.
 |---|---|---|---|
 | CarPlay | 🚧 builds | Continue, Stations, Browse, Downloads tabs (R17); Continue and Downloads play | Runs only once Apple grants the carplay-audio entitlement (Needs Ben) |
 | watchOS | 🚧 builds | Continue, "Waiting on the phone" | watchOS 11 floor (pairs with iOS 18); not embedded in the phone app yet |
-| Android Auto | 🚧 builds | Continue, Stations, Browse, Downloads (R17); Continue and Downloads play through the phone's queue | Every release with car support waits on Google's car review: internal or closed track only; Assistant voice (VC-1) not done |
+| Android Auto | 🚧 builds | Continue, Stations, Browse, Downloads (R17); Continue and Downloads list episodes that play through the phone's queue; Stations and Browse are empty folders | Every release with car support waits on Google's car review: internal or closed track only; no search, no art; Assistant voice (VC-1) not done |
 | Android TV / Fire TV | 🚧 builds | Home, D-pad focus on the first row; Now Playing card in the background (TV-NP) | Banner art is a placeholder for the owner |
 | Wear OS | 🚧 builds | Continue, "Waiting on the phone" | minSdk 30 (Wear OS 3); needs its own versionCode before upload |
 | webOS / Tizen | 🚧 builds (.ipk, .wgt) | Listen, D-pad focus on the first card; remote media keys; Back that walks history | Placeholder art; the .wgt was signed with the Archive Watch Samsung profile until Ear Drama has its own |
@@ -278,7 +278,7 @@ history, queue, and follows, and it is required to make a play with others.
 | Forwarded series keys: a moved key opens the series it now is; follows and synced follow rows rewrite once (contract §3.5) | 🚧 `API.forwarding().resolveSeries` in `seriesPage` + `Store.forward` (`account.test.js`, `api.test.js`); `Sync.hydrate` draws every stub, in batches of 60 | 🚧 `IDForwarding.resolveSeries`, `CatalogDatabase.series(key:)`, `FollowedSeries.forward` (`IDForwardingTests`, `CatalogQueryTests`) | 🚧 same Core | 🚧 same Core | 🚧 `CatalogDatabase.seriesPage`, `UserStore.forward` follows (`IdForwardingTest`, `CatalogQueriesTest`) | An alias needs more than half of the old series' recordings in one served series, else a tombstone (C1 measured: 46 keys left, 20 aliased, 26 tombstoned). Downloads need no rewrite: their series is read from the episode id, which forwards above. The watch forwards its own history with the forwarding the phone hands it (`IDForwarding.stored`); nothing hands it one yet, as nothing hands it history yet (Decision 056). Fixtures only; no device yet |
 | Universal Links / App Links | n/a | 🚧 | 🚧 | n/a | 🚧 | 2026-10-24: AASA + assetlinks.json on eardrama.org; series, episode, person, search, library, invite open the apps (DEEP_LINKS.md). Built and unit-tested; not yet opened on a device from a real link. tvOS takes `eardrama://` only (no Safari) |
 | `eardrama://` scheme | n/a | ✅ `CFBundleURLTypes`; `SearchUITests` opened `eardrama://search` on iPhone 12, 2026-10-28 | 🚧 same Info.plist | 🚧 same Info.plist | 🚧 manifest filter | Every route above, the OAuth callbacks, and Android's Sign in with Apple return. Top Shelf would use it; Top Shelf is not built (§12) |
-| Share an episode | 🚧 Web Share | 🚧 share sheet, https link | 🚧 share menu, https link | ⏳ QR code | 🚧 share sheet, https link (not on TV) | The web page is every share's landing twin |
+| Share an episode | 🚧 Web Share | 🚧 share sheet, https link | 🚧 share menu, https link | 🚧 Share on the episode page opens a sheet: a QR code of the https twin (`ShareCode`, CoreImage), the title, the address without its scheme, Done (tvOS-DESIGN §3.6); seen on Ben Bedroom 2026-11-23, the captured code decodes to `https://eardrama.org/episode/suspense%7C1948-11-18`, Done and Menu close it | 🚧 share sheet, https link (not on TV) | The web page is every share's landing twin. The TV shares episodes only, as the row says; its series page has no Share |
 | Archive Watch film cross-links | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | Out of 1.0 (Decision 058) |
 
 ---
@@ -368,7 +368,7 @@ iOS app resized (`macos-platform-patterns`).
 | Predictive back | 🚧 enabled in the manifest | iOS swipe-back is fixed-animation |
 | Media3 notification and lock-screen controls | 🚧 | The MediaSession service |
 | Adaptive icon with a monochrome layer | 🚧 | The ring microphone on the icon red, with its own monochrome silhouette (`tools/render-app-icon.py`); not yet seen on a device |
-| Android Auto library tree | ⏳ | M9 stub |
+| Android Auto library tree | 🚧 four tabs (`CarLibrary`, audited 2026-11-23): Continue (this device's in-progress episodes) and Downloads (finished downloads, newest first) list playable episodes, each starting the phone's queue (`onSetMediaItems`, `takeQueue`); Stations and Browse are empty folders; no search (`onSearch` not implemented), no art; a slow catalog yields an empty list within 8 s (DR-3); `CarLibraryTest` | The Media3 library service the car browses. Gap: two of the four tabs draw empty in the car; filling or hiding them is a car-review release, an owner call. No car or Desktop Head Unit pass on record |
 
 ---
 
