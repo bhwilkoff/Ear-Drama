@@ -609,6 +609,7 @@ object PlaysShare {
         "you_teach_this_class" to "You teach this class.",
         "revision_mismatch" to "This play has changed since it was cast.",
         "not_castable" to "This play cannot be shared.",
+        "script_not_publishable" to "This play cannot be published.",
         "cast_mismatch" to "This play cannot be shared.",
         "production_full" to "This production is full.",
         "too_many_productions" to "You have too many shared productions.",

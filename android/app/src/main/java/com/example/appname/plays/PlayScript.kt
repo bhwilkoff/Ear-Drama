@@ -253,14 +253,28 @@ data class PlayScript(
         private fun cleanSaid(text: String): String =
             text.replace("_", "").replace(SPACE, " ").trim().replace(LEADING_STOP, "").replace("--", "\u2014")
 
+        /** A verse speech keeps its printed rows, one per line (the reader's own [PlayPage.isVerse]); prose is one run. */
+        private fun cleanOpening(text: String, texts: List<String>): Pair<String, Boolean> {
+            if (!PlayPage.isVerse(texts)) return cleanSaid(text) to false
+            val rows = text.split('\n').map { cleanSaid(it) }.filter { it.isNotEmpty() }
+            return rows.joinToString("\n") to (rows.size > 1)
+        }
+
         /** The first [n] speeches with said words: from the script's lines, else from the index row's `opening` (contract §4.1). */
         fun openingOf(play: PlayListing, n: Int = 4): List<OpeningSpeech> = when (play) {
             is PlayScript -> play.lines.asSequence()
                 .filter { it.kind == ScriptLine.Kind.Speech }
-                .mapNotNull { l -> cleanSaid(l.spokenText).takeIf { it.isNotEmpty() }?.let { OpeningSpeech(l.part, l.role.orEmpty(), it, l.id) } }
+                .mapNotNull { l ->
+                    val said = l.parts.orEmpty().filterIsInstance<LinePart.Say>().map { it.text }
+                    val (text, verse) = cleanOpening(l.spokenText, said)
+                    text.takeIf { it.isNotEmpty() }?.let { OpeningSpeech(l.part, l.role.orEmpty(), it, l.id, verse) }
+                }
                 .take(n).toList()
             is PlayRow -> play.opening.orEmpty().take(n)
-                .mapNotNull { o -> cleanSaid(o.text).takeIf { it.isNotEmpty() }?.let { OpeningSpeech(PartID.role(o.role), o.role, it, null) } }
+                .mapNotNull { o ->
+                    val (text, verse) = cleanOpening(o.text, listOf(o.text))
+                    text.takeIf { it.isNotEmpty() }?.let { OpeningSpeech(PartID.role(o.role), o.role, it, null, verse) }
+                }
             else -> emptyList()
         }
 
@@ -284,7 +298,7 @@ data class PlayScript(
 }
 
 /** One speech of a play's opening: its part, the role as printed, the said words cleaned, and its line (null from an index row). */
-data class OpeningSpeech(val part: PartID, val name: String, val text: String, val lineId: String?)
+data class OpeningSpeech(val part: PartID, val name: String, val text: String, val lineId: String?, val verse: Boolean = false)
 
 /** A facet band: [key] holds every count from [lo] to [hi]. */
 data class Band(val key: String, val lo: Int, val hi: Int)
