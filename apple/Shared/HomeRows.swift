@@ -51,7 +51,7 @@ private struct ChipBar: View {
                             .padding(.horizontal, Spacing.s3)
                             .padding(.vertical, Spacing.s1)
                             .foregroundStyle(on ? Color.brandOnSecondary : Color.brandText)
-                            .background(on ? Color.brandSecondary : Color.brandSurface, in: Capsule())
+                            .background(on ? Color.brandSecondary : Color.brandSurfaceAlt, in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .fixedSize()

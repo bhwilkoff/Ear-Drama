@@ -90,6 +90,51 @@ struct PlayBrowseTests {
         #expect(bare.opening(n: 4).isEmpty, "a row published before `opening` has none")
     }
 
+    /// js/reader.test.js "the opening keeps the lines of verse and no other break". Broken controls, 2026-11-24:
+    /// an index row split at any break (no `isVerse`) fails the wrapped-prose case; `verseRows` always nil, the first.
+    @Test func theOpeningKeepsTheLinesOfVerseAndNoOtherBreak() throws {
+        func opening(_ parts: LinePart...) -> OpeningSpeech? {
+            PlayScript(id: "o", revision: "r1", kind: "stage", title: "T", authors: [], source: .init(name: "S", url: "https://example.org"),
+                       rights: .init(bucket: "script_source_cleared", evidence: []),
+                       roles: [.init(name: "A", lines: 1, words: 9), .init(name: "BEA", lines: 1, words: 9)],
+                       lines: [ScriptLine(id: "L1", kind: .speech, role: "A", parts: parts)]).opening(n: 4).first
+        }
+        let verse = opening(.direction("dreamily"), .say("This is the sergeant\nWho, like a _good_ and hardy soldier, fought--\n   \u{2019}Gainst my captivity."))
+        #expect(verse?.verse == ["This is the sergeant", "Who, like a good and hardy soldier, fought\u{2014}", "\u{2019}Gainst my captivity."])
+        #expect(verse?.text == "This is the sergeant Who, like a good and hardy soldier, fought\u{2014} \u{2019}Gainst my captivity.", "the voice is given the words in one piece")
+        #expect(opening(.say("I attribute it to the superior quality of the wine, sir. I have often\nobserved that in married households"))?.verse == nil, "a transcriber's wrap is prose")
+        #expect(opening(.say("Of course.\nBEA. Yes, indeed."))?.verse == nil, "a run-in speaker is not verse")
+        func row(_ text: String) throws -> OpeningSpeech? {
+            let data = try JSONSerialization.data(withJSONObject: ["id": "x", "title": "T", "opening": [["role": "A", "text": text]]])
+            return try JSONDecoder().decode(PlayRow.self, from: data).opening(n: 2).first
+        }
+        #expect(try row("When shall we three meet again?\nIn thunder, lightning, or in rain?")?.verse == ["When shall we three meet again?", "In thunder, lightning, or in rain?"])
+        #expect(try row("When shall we three meet again?\nIn thunder, lightning, or in rain?")?.text == "When shall we three meet again? In thunder, lightning, or in rain?")
+        #expect(try row("I never saw you look so\nwell in my life.")?.verse == nil, "an index row's wrapped prose keeps none")
+    }
+
+    /// js/plays.test.js "a class picks from the whole library".
+    @Test func aClassPicksFromTheWholeLibraryByName() throws {
+        let json = #"""
+        [{"id":"gut-2","title":"The Robbers","sort_name":"robbers","authors":["A. Player"]},
+         {"id":"gut-3","title":"Ghosts","sort_name":"ghosts","authors":["Henrik Ibsen"]},
+         {"id":"gut-1","title":"The Robbers","sort_name":"robbers","authors":["Friedrich Schiller"]},
+         {"id":"gut-5","title":"Belinda","sort_name":"belinda","authors":["A. A. Milne"],"minutes":90},
+         {"id":"gut-4","title":"Belinda","sort_name":"belinda","authors":["A. A. Milne"],"minutes":84},
+         {"id":"gut-6","title":"Anon","authors":[]}]
+        """#
+        let rows = try JSONDecoder().decode([PlayRow].self, from: Data(json.utf8))
+        #expect(PlayBrowse.pickList(rows) == [
+            PlayPick(id: "gut-6", label: "Anon"),
+            PlayPick(id: "gut-4", label: "Belinda, A. A. Milne, about 84 min"),
+            PlayPick(id: "gut-5", label: "Belinda, A. A. Milne, about 90 min"),
+            PlayPick(id: "gut-3", label: "Ghosts"),
+            PlayPick(id: "gut-1", label: "The Robbers, Friedrich Schiller"),
+            PlayPick(id: "gut-2", label: "The Robbers, A. Player"),
+        ])
+        #expect(PlayBrowse.pickList([PlayRow]()).isEmpty)
+    }
+
     @Test func voicesMinutesAndBandsMatchTheWebValues() {
         let three = play("a", roles: [("A", 3000), ("B", 1500), ("C", 10)])
         #expect(three.voices == 3 && three.minutes == 30)

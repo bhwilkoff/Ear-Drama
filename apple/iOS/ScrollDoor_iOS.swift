@@ -8,9 +8,17 @@ import UIKit
 enum ScrollDoor {
     static func openIfAsked() {
         let env = ProcessInfo.processInfo.environment
+        if LaunchDoors.current.landscape { turn() }
         guard let y = env["APP_SCROLL_Y"].flatMap(Double.init) else { return }
         let delay = env["APP_SCROLL_DELAY"].flatMap(Double.init) ?? 6
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { step(CGFloat(y)) }
+    }
+
+    /// APP_LANDSCAPE=1: the scene turned, for a phone on the bench that no test can turn (compact-height frames).
+    private static func turn() {
+        for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight)) { print("APP_LANDSCAPE: \($0)") }
+        }
     }
 
     /// A screen at a time: a lazy List only knows its height as far as it has laid out, so one jump stops at its
@@ -30,7 +38,7 @@ enum ScrollDoor {
         var best: UIScrollView?
         func walk(_ v: UIView) {
             if let s = v as? UIScrollView, !s.isHidden, s.window != nil,
-               s.contentSize.height > s.bounds.height + 1,
+               s.contentSize.height + s.adjustedContentInset.top + s.adjustedContentInset.bottom > s.bounds.height + 1,
                s.bounds.width * s.bounds.height > (best.map { $0.bounds.width * $0.bounds.height } ?? 0) {
                 best = s
             }

@@ -173,21 +173,30 @@ const PlaysCore = (() => {
   const todaysScene = (scripts, dateKey) => todaysPlay(scenePool(scripts), dateKey);
 
   /**
-   * The opening speeches as { part, name, text, id }: the play's own said words, from its lines, or
-   * from the index row's `opening` (contract §4.1, already cut short) when no lines are loaded.
+   * The opening speeches as { part, name, text, id, verse }: the play's own said words, from its lines, or
+   * from the index row's `opening` (contract §4.1, already cut short) when no lines are loaded. `verse` is
+   * the printed lines of a speech the reader sets as verse (`reader` is ReaderCore: the one detection), else
+   * null: a transcriber's wrapping is prose and keeps no break.
    */
-  function openingOf(script, n = 4) {
-    const clean = (t) => (t || '').replace(/_/g, '').replace(/\s+/g, ' ').trim().replace(/^[.,:;\u2014-]+\s*/, '').replace(/--/g, '\u2014');
+  function openingOf(script, n = 4, reader = null) {
+    const tidy = (t) => (t || '').replace(/_/g, '').replace(/\s+/g, ' ').trim().replace(/--/g, '\u2014');
+    const clean = (t) => tidy(t).replace(/^[.,:;\u2014-]+\s*/, '');
+    const rowsOf = (rows) => {
+      const kept = rows.map((r, i) => (i ? tidy(r) : clean(r))).filter(Boolean);
+      return kept.length > 1 ? kept : null;
+    };
     if (!Array.isArray(script.lines)) {
       return (Array.isArray(script.opening) ? script.opening : []).slice(0, n)
-        .filter(o => o && clean(o.text)).map(o => ({ part: role(o.role || ''), name: o.role || '', text: clean(o.text), id: null }));
+        .filter(o => o && clean(o.text)).map(o => ({ part: role(o.role || ''), name: o.role || '', text: clean(o.text), id: null,
+          verse: reader && reader.isVerse([o.text]) ? rowsOf(o.text.split('\n')) : null }));
     }
     const out = [];
     for (const l of script.lines) {
       if (l.kind !== 'speech') continue;
       const text = clean(spokenText(l));
       if (!text) continue;
-      out.push({ part: role(l.role || ''), name: l.role || '', text, id: l.id });
+      const verse = reader ? reader.verseRows(l, (script.roles || []).map(r => r.name)) : null;
+      out.push({ part: role(l.role || ''), name: l.role || '', text, id: l.id, verse: verse && rowsOf(verse) });
       if (out.length >= n) break;
     }
     return out;

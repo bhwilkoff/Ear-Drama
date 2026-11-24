@@ -953,13 +953,13 @@
   function sceneCard({ row, whole }, { wide = false } = {}) {
     const script = whole || row;
     const id = row.id;
-    const lines = PlaysCore.openingOf(script, 4);
+    const lines = PlaysCore.openingOf(script, 4, ReaderCore);
     const v = PlaysCore.voicesOf(row);
     const facts = [PlaysCore.authorLine(row), `${num.format(v)} ${v === 1 ? 'voice' : 'voices'}`, `About ${num.format(PlaysCore.minutesOf(row))} min`];
     const hueOf = (part) => (whole ? PlaysCore.partHue(whole, part) : '') || 'none';
     const page = el('ol', { class: 'pl-scene-page', 'aria-label': 'The opening' },
       ...lines.map(l => el('li', { class: 'pl-scene-sp', dataset: { hue: hueOf(l.part) } },
-        el('span', { class: 'pl-scene-who' }, l.name), el('span', { class: 'pl-scene-said' }, l.text))));
+        el('span', { class: 'pl-scene-who' }, l.name), saidNode('pl-scene-said', l))));
     // The voice you take is the one that answers: the second speaker in the opening, else the second part.
     const speakers = [...new Set(lines.map(l => l.part))];
     const parts = whole ? PlaysCore.castParts(whole).map(p => p.id).filter(p => p.startsWith('role:')) : speakers;
@@ -1050,12 +1050,16 @@
     win.classList.add('pl-cast');
     return win;
   }
+  /** An opening speech's words: a verse speech keeps its printed lines, a turned-over one indented (§4.2 item 7). */
+  const saidNode = (cls, l) => (l.verse
+    ? el('span', { class: `${cls} pl-verse` }, ...l.verse.map(row => el('span', { class: 'pl-verse-row' }, row)))
+    : el('span', { class: cls }, l.text));
   /** A play tile's window: its opening speeches as a page (the row's `opening`), else its cast drawn. */
   function openingWindow(script, hero = false) {
-    const lines = PlaysCore.openingOf(script, hero ? 4 : 2);
+    const lines = PlaysCore.openingOf(script, hero ? 4 : 2, ReaderCore);
     if (!lines.length) return null;
     return el('span', { class: `g-window pl-open${hero ? ' pl-open-hero' : ''}`, 'aria-hidden': 'true', dataset: { art: 'label' } },
-      ...lines.map(l => el('span', { class: 'pl-open-sp' }, el('b', {}, l.name), el('span', { class: 'pl-open-said' }, l.text))),
+      ...lines.map(l => el('span', { class: 'pl-open-sp' }, el('b', {}, l.name), saidNode('pl-open-said', l))),
       Label.svg(LabelCore.labelSpec({ kind: 'play', voices: PlaysCore.voicesOf(script), opening: true }, 200), { overlay: true }));
   }
   function playTile(script) {

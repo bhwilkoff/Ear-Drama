@@ -179,6 +179,7 @@ enum ItemKicker {
     static func show(_ name: String, key: String) -> AnyView {
         AnyView(NavigationLink(value: Route.series(key)) { Text(verbatim: name.uppercased()).underline() }
             .buttonStyle(.plain)
+            .playRowLink()
             .accessibilityLabel("Open \(name)")
             .accessibilityIdentifier("item-head-show"))
     }

@@ -245,6 +245,33 @@ nonisolated enum PlayBrowse {
     }
 }
 
+/// A play in a pick list: its id and the words that tell it apart.
+nonisolated struct PlayPick: Equatable, Sendable, Identifiable {
+    let id: String
+    let label: String
+}
+
+nonisolated extension PlayBrowse {
+    /// The plays as a pick list, by name (the class page; the web's `PlaysCore.pickList`): a title two plays share is
+    /// told apart by its author, then by its length.
+    static func pickList<S: PlayListing>(_ rows: [S]) -> [PlayPick] {
+        let list = rows.sorted { a, b in
+            let order = (a.sortName ?? a.title).compare(b.sortName ?? b.title, options: [.caseInsensitive, .diacriticInsensitive],
+                                                        range: nil, locale: Locale(identifier: "en"))
+            return order == .orderedSame ? a.id < b.id : order == .orderedAscending
+        }
+        func apart(_ labels: [String], _ more: (S) -> String) -> [String] {
+            let seen = Dictionary(labels.map { ($0, 1) }, uniquingKeysWith: +)
+            return zip(labels, list).map { label, row in
+                let extra = more(row)
+                return seen[label, default: 0] > 1 && !extra.isEmpty ? "\(label), \(extra)" : label
+            }
+        }
+        let labels = apart(apart(list.map(\.title), \.authorLine)) { "about \($0.minutes) min" }
+        return zip(list, labels).map { PlayPick(id: $0.id, label: $1) }
+    }
+}
+
 /// One of a play's opening speeches: the part, the role as printed, its said words cleaned for the page, and the line
 /// (nil when it came from the index row's `opening`).
 nonisolated struct OpeningSpeech: Equatable, Sendable, Identifiable {
@@ -252,16 +279,29 @@ nonisolated struct OpeningSpeech: Equatable, Sendable, Identifiable {
     let name: String
     let text: String
     let lineID: String?
+    /// The printed lines of a speech the reader sets as verse (`PlayPage`, the one detection), tidied as the words
+    /// are; nil for prose, whose printed breaks are a transcriber's wrapping.
+    var verse: [String]?
     var id: String { lineID ?? "\(name)|\(text)" }
+
+    /// Verse lines as a page shows them, or nil when there is nothing to keep apart.
+    static func verseLines(_ rows: [String]?) -> [String]? {
+        guard let rows else { return nil }
+        let kept = rows.enumerated().map { $0.offset == 0 ? clean($0.element) : tidy($0.element) }.filter { !$0.isEmpty }
+        return kept.count > 1 ? kept : nil
+    }
+
+    private static func tidy(_ text: String) -> String {
+        text.replacingOccurrences(of: "_", with: "")
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: "--", with: "\u{2014}")
+    }
 
     /// The words as a page shows them: emphasis marks dropped, whitespace collapsed, a leading stray `.,:;—-` dropped,
     /// and `--` set as an em dash (the web's `openingOf`).
     static func clean(_ text: String) -> String {
-        var t = text.replacingOccurrences(of: "_", with: "")
-            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
-            .trimmingCharacters(in: .whitespaces)
-        t = t.replacingOccurrences(of: #"^[.,:;\x{2014}-]+\s*"#, with: "", options: .regularExpression)
-        return t.replacingOccurrences(of: "--", with: "\u{2014}")
+        tidy(text).replacingOccurrences(of: #"^[.,:;\x{2014}-]+\s*"#, with: "", options: .regularExpression)
     }
 }
 
@@ -269,10 +309,12 @@ nonisolated extension PlayScript {
     /// The first `n` speeches with said words, in script order.
     func opening(n: Int = 4) -> [OpeningSpeech] {
         var out: [OpeningSpeech] = []
+        let names = roles.map(\.name)
         for line in lines where line.kind == .speech {
             let text = OpeningSpeech.clean(line.spokenText)
             guard !text.isEmpty else { continue }
-            out.append(OpeningSpeech(part: line.part, name: line.role ?? "", text: text, lineID: line.id))
+            out.append(OpeningSpeech(part: line.part, name: line.role ?? "", text: text, lineID: line.id,
+                                     verse: OpeningSpeech.verseLines(PlayPage.verseRows(line, roles: names))))
             if out.count >= n { break }
         }
         return out
@@ -298,7 +340,9 @@ nonisolated extension PlayRow {
     func opening(n: Int = 4) -> [OpeningSpeech] {
         (openingIndex ?? []).prefix(n).compactMap { o in
             let text = OpeningSpeech.clean(o.text)
-            return text.isEmpty ? nil : OpeningSpeech(part: .role(o.role), name: o.role, text: text, lineID: nil)
+            return text.isEmpty ? nil : OpeningSpeech(
+                part: .role(o.role), name: o.role, text: text, lineID: nil,
+                verse: PlayPage.isVerse([o.text]) ? OpeningSpeech.verseLines(o.text.components(separatedBy: "\n")) : nil)
         }
     }
 }

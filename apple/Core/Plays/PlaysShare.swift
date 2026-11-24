@@ -104,7 +104,7 @@ enum PlaysShare {
         guard let a = rec.archive else { return nil }
         switch a.status {
         case "published": return .published(a.url.flatMap(URL.init(string:)))
-        case "failed": return .failed(a.reason ?? "Publishing failed.")
+        case "failed": return .failed(a.reason.map { lines[$0] ?? $0 } ?? "Publishing failed.")
         case "uploading": return .waiting("Uploading to archive.org")
         default: return .waiting("Queued for archive.org")
         }
@@ -421,6 +421,7 @@ enum PlaysShare {
         "revision_mismatch": "This play has changed since it was cast.",
         "not_castable": "This play cannot be shared.",
         "cast_mismatch": "This play cannot be shared.",
+        "script_not_publishable": "This play cannot be published.",
         "production_full": "This production is full.",
         "too_many_productions": "You have too many shared productions.",
         "too_many_takes": "This line has too many takes.",

@@ -517,6 +517,7 @@ struct PageRowInsets: ViewModifier {
 struct PageMargins: ViewModifier {
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var size
+    @Environment(\.verticalSizeClass) private var height
     /// A List spans the horizontal safe area and its content margins count from its own edges, so the strip's inset
     /// is added to the page margin, read from the List itself (it changes as the strip collapses on a scroll).
     @State private var safe = EdgeInsets()
@@ -524,14 +525,14 @@ struct PageMargins: ViewModifier {
 
     func body(content: Content) -> some View {
         #if os(iOS)
-        if size == .regular {
-            content
-                .contentMargins(.leading, Spacing.s6 + safe.leading, for: .scrollContent)
-                .contentMargins(.trailing, Spacing.s6 + safe.trailing, for: .scrollContent)
-                .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safe = $0 }
-        } else {
-            content
-        }
+        // nil is the system's own margin; one chain, so a fold or a turn changes a margin and rebuilds nothing. A short
+        // window (a phone on its side) gives up the grouped List's 35 pt above its first section (§4.2).
+        let regular = size == .regular
+        content
+            .contentMargins(.leading, regular ? Spacing.s6 + safe.leading : nil, for: .scrollContent)
+            .contentMargins(.trailing, regular ? Spacing.s6 + safe.trailing : nil, for: .scrollContent)
+            .contentMargins(.top, height == .compact ? Spacing.s2 : nil, for: .scrollContent)
+            .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safe = $0 }
         #else
         content
         #endif
