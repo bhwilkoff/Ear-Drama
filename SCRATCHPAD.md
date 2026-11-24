@@ -53,7 +53,7 @@
 - **Open infrastructure**: `workflow-health.yml` and `retry-infra-failures.yml` run on schedule and
   are green. `www.eardrama.org` answers (301) and the apex serves.
 - **Free plan (2026-11-23)**: the read room long-polls, writes one row per cursor move, and a hidden or
-  idle receiver holds no pickup. The Worker is deployed (2026-11-23 15:15, version a8982b67, from a491f751; 489 tests; no migrations pending). Not
+  idle receiver holds no pickup. The Worker is deployed (2026-11-24 10:33, version 4167b816, from 3056b6c9; 496 tests; migration 0011 applied): a room survives refused storage and the hourly sweep erases a room whose alarm was lost. One room from 2026-11-23 (before 0011) still needs its erase visit. Not
   yet mirrored: the receiver and sender rules in Apple `ClassInbox`/`RelayHub` and Android
   `RelayAcrossTime.kt` (PARITY, Relay across time).
 - **Owner steps**: "Owner: only you" in `DESIGN-LOOP.md`, and the "Needs Ben" table in `LOOP-PLAN.md`.
