@@ -44,10 +44,19 @@ enum RoomText {
     }
 }
 
+/// Where the room's script is: asked of the library, or why it did not come.
+enum ScreenScript: Equatable {
+    case ready
+    case loading
+    case failed(String)
+}
+
 struct ReadScreenView: View {
     let snapshot: ReadSnapshot?
     let status: String
     let script: PlayScript?
+    var load: ScreenScript = .ready
+    var retry: (() -> Void)?
 
     private var lines: [ScriptLine] { script?.lines ?? [] }
 
@@ -73,6 +82,13 @@ struct ReadScreenView: View {
                 speech(i > 0 ? lines[i - 1] : nil, large: false)
                 speech(lines[i], large: true)
                 speech(i + 1 < lines.count ? lines[i + 1] : nil, large: false)
+            } else if load == .loading {
+                ProgressView()
+            } else if case let .failed(line) = load {
+                VStack(spacing: Spacing.s4) {
+                    Text(verbatim: line).font(TypeRamp.bodyStrong).foregroundStyle(Color.semanticError).multilineTextAlignment(.center)
+                    if let retry { Button("Try Again", action: retry) }
+                }
             } else if let snap, let r = snap.readsNow {
                 Text(verbatim: PartID(rawValue: r.part).title).font(TypeRamp.pageTitle)
             }
@@ -150,14 +166,20 @@ final class ScreenSpeaker {
 struct ReadScreenBody: View {
     let session: ReadSession
     @State private var script: PlayScript?
+    @State private var load: ScreenScript = .ready
+    @State private var attempt = 0
     #if os(iOS) || os(macOS) || os(tvOS)
     @State private var voice = ScreenSpeaker()
     #endif
 
+    private var scriptKey: String {
+        "\(session.snapshot?.scriptID ?? "")#\(session.snapshot?.scriptRevision ?? "")#\(attempt)"
+    }
+
     var body: some View {
-        ReadScreenView(snapshot: session.snapshot, status: ReadScreenText.status(session), script: script)
-            .onAppear { load(session.snapshot?.scriptID) }
-            .onChange(of: session.snapshot?.scriptID) { _, id in load(id) }
+        ReadScreenView(snapshot: session.snapshot, status: ReadScreenText.status(session), script: script, load: load,
+                       retry: { attempt += 1 })
+            .task(id: scriptKey) { await loadScript() }
             #if os(iOS) || os(macOS) || os(tvOS)
             .onChange(of: session.snapshot) { _, snap in voice.follow(snap, script: script) }
             .onDisappear { voice.stop(); session.leave() }
@@ -166,9 +188,25 @@ struct ReadScreenBody: View {
             #endif
     }
 
-    private func load(_ id: String?) {
-        guard let id else { return }
-        script = CastableLibrary.load()?.scripts.first { $0.id == id }
+    /// The play the room reads: the published library's, else the bundle's. A play the library has since revised shows
+    /// "This play has changed" rather than another version's lines.
+    private func loadScript() async {
+        guard let id = session.snapshot?.scriptID else { return }
+        let revision = session.snapshot?.scriptRevision
+        if let have = script, have.id == id, revision == nil || have.revision == revision { return }
+        script = nil
+        load = .loading
+        do {
+            if let found = try await LibraryScripts.script(id: id, revision: revision) {
+                script = found
+                load = .ready
+            } else {
+                load = .failed(PlaysShare.line(PlaysRefusal.code(revision == nil ? "not_castable" : "revision_mismatch")))
+            }
+        } catch is CancellationError {
+        } catch {
+            load = .failed(PlaysShare.line(error))
+        }
     }
 }
 

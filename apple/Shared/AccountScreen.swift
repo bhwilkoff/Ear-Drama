@@ -25,7 +25,7 @@ struct AccountRow: View {
         case .signedIn:
             if account.lastError != nil { return "Sync failed" }
             guard let last = account.lastSync else { return "Not synced yet" }
-            return "Synced " + last.formatted(date: .omitted, time: .shortened)
+            return AccountSyncText.line(last)
         }
     }
 }
