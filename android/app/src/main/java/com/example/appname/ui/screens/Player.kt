@@ -25,7 +25,11 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
@@ -66,6 +70,7 @@ import com.example.appname.playback.PlaybackEngine
 import com.example.appname.playback.SleepMode
 import com.example.appname.playback.SleepState
 import com.example.appname.together.RoomStatus
+import com.example.appname.data.EpisodeRow
 import com.example.appname.data.Transcript
 import com.example.appname.data.labelItem
 import androidx.compose.ui.focus.FocusRequester
@@ -87,6 +92,7 @@ import com.example.appname.ui.NowPlayingPeople
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.tvFocusMark
 import com.example.appname.ui.rememberCatalogQuery
+import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.formatAirDate
 import com.example.appname.ui.formatClock
@@ -180,12 +186,17 @@ fun PlayerSheet(
     val face by rememberCatalogQuery(episode?.id) { db ->
         episode?.let { db.episodeDetail(it.id)?.face ?: it.seriesFace }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    val wide = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() } >= PLAYER_PANES_FROM.dp
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetMaxWidth = if (wide) androidx.compose.ui.unit.Dp.Unspecified else BottomSheetDefaults.SheetMaxWidth,
+    ) {
         if (episode == null) {
             Box(Modifier.padding(Spacing.S6.dp)) { Text("Nothing is playing.") }
             return@ModalBottomSheet
         }
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding()) {
+        val controls: @Composable () -> Unit = {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -283,7 +294,7 @@ fun PlayerSheet(
                 QueueToggle(episode.id, folded = false)
                 ShareButton(episodeShareTitle(episode), SiteLinks.episode(episode.id), folded = false)
             }
-            if (now.upNext.isNotEmpty()) {
+            if (now.upNext.isNotEmpty() && !wide) {
                 HorizontalDivider()
                 Text(
                     "Up next: ${episodeTitle(now.upNext.first())}",
@@ -316,6 +327,34 @@ fun PlayerSheet(
             onPlay = { engine.play(it) },
             modifier = Modifier.padding(bottom = Spacing.S4.dp),
         )
+        }
+        if (wide) {
+            Row(Modifier.fillMaxWidth().navigationBarsPadding()) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { controls() }
+                VerticalDivider()
+                PlayerQueuePane(now.upNext, onPlay = { engine.play(it) }, modifier = Modifier.weight(1f))
+            }
+        } else {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding()) { controls() }
+        }
+    }
+}
+
+/** The window width (dp) from which the player is two panes (ANDROID-DESIGN §5.3; the reader's and the studio's own switch). */
+internal const val PLAYER_PANES_FROM = 860
+
+/** What plays next, beside the player: the engine's own queue, each row's title and show, a tap playing it (ANDROID-DESIGN §5.3). */
+@Composable
+internal fun PlayerQueuePane(upNext: List<EpisodeRow>, onPlay: (EpisodeRow) -> Unit, modifier: Modifier = Modifier) {
+    androidx.compose.foundation.lazy.LazyColumn(modifier.fillMaxWidth().testTag("player-queue")) {
+        item(key = "h") { SectionHeader("Up next") }
+        items(upNext.size, key = { "u:" + upNext[it].id + ":" + it }) { i ->
+            val row = upNext[i]
+            ListItem(
+                headlineContent = { Text(episodeTitle(row), maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                supportingContent = { Text(row.seriesName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                modifier = Modifier.tvFocusMark().clickable(onClickLabel = "Play") { onPlay(row) },
+            )
         }
     }
 }

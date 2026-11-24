@@ -57,7 +57,7 @@ object ItemLead {
      * The window's frame inside a board [width] dp wide: a label is a square (the column's width on a phone, 320 beside the
      * words); a picture keeps its own shape. A wide one is a plate over the words at the board's full width, at most 360
      * tall (440 beside); an upright or square one stands in the window's place, at most 400 tall and 320 wide beside the
-     * words. The picture is never cropped. [plateMax] caps a plate further: a TV passes 30% of its screen's height, so the
+     * words. A cap that leaves a strip of board under 15% of its width is lifted ([over]). The picture is never cropped. [plateMax] caps a plate further: a TV passes 30% of its screen's height, so the
      * name and the button row stay on the first screen under a wide picture (V8, Google TV 2026-11-20).
      */
     fun window(art: Artwork?, width: Float, plateMax: Float? = null): Window {
@@ -69,11 +69,21 @@ object ItemLead {
             return Window(side, side, false)
         }
         if (shown.isWide) {
-            val h = minOf(width / a, if (beside) 440f else 360f, plateMax ?: Float.MAX_VALUE)
-            return Window(h * a, h, true)
+            val cap = minOf(if (beside) 440f else 360f, plateMax ?: Float.MAX_VALUE)
+            return over(a, cap, width, liftable = plateMax == null).let { Window(it.first, it.second, true) }
         }
-        val h = minOf(UPRIGHT_HEIGHT, (if (beside) minOf(COLUMN, width) else width) / a)
+        if (!beside) return over(a, UPRIGHT_HEIGHT, width).let { Window(it.first, it.second, false) }
+        val h = minOf(UPRIGHT_HEIGHT, minOf(COLUMN, width) / a)
         return Window(h * a, h, false)
+    }
+
+    /** A picture's share of the board's width at or above which it spans the board (WEB-DESIGN §6.4g rule 2, B15b). */
+    const val NEAR_FILL = 0.85f
+
+    /** A picture over the words, at most [cap] tall, unless the cap would leave a thin strip of board beside it (never on a TV's own cap). */
+    private fun over(aspect: Float, cap: Float, width: Float, liftable: Boolean = true): Pair<Float, Float> {
+        val w = minOf(width, cap * aspect)
+        return if (liftable && w >= NEAR_FILL * width) width to width / aspect else w to minOf(cap, w / aspect)
     }
 
     /**

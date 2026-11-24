@@ -35,6 +35,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -173,7 +175,8 @@ fun SeriesBrowseScreen(
         SeriesSort.Episodes -> "Most episodes"
         SeriesSort.FirstAired -> "Oldest first"
     }
-    Scaffold(topBar = { TopAppBar(title = { Text("Browse") }) }) { padding ->
+    val bar = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    Scaffold(modifier = Modifier.nestedScroll(bar.nestedScrollConnection), topBar = { TopAppBar(title = { Text("Browse") }, scrollBehavior = bar) }) { padding ->
       Column(Modifier.padding(padding)) {
         if (!isTv) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {

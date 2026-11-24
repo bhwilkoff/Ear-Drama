@@ -77,7 +77,6 @@ import com.example.appname.plays.OpenPlaysView
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PlayScript
 import com.example.appname.plays.PlaysException
-import com.example.appname.plays.PlaysLibrary
 import com.example.appname.plays.PlaysShare
 import com.example.appname.ui.ActionRow
 import com.example.appname.ui.EmptyAction
@@ -149,9 +148,6 @@ fun InvitationScreen(onBack: () -> Unit, onOpenProduction: (String) -> Unit) {
     val token by sharing.invite.collectAsState()
     val account by container.accounts.account.collectAsState()
     val signedIn = account != null
-    val plays = container.plays
-    LaunchedEffect(Unit) { plays.load() }
-    val library by plays.state.collectAsState()
     var attempt by remember { mutableIntStateOf(0) }
     var state by remember { mutableStateOf<InviteState>(InviteState.Loading) }
     var view by remember { mutableStateOf<InviteView?>(null) }
@@ -192,11 +188,8 @@ fun InvitationScreen(onBack: () -> Unit, onOpenProduction: (String) -> Unit) {
             s is InviteState.Failed -> EmptyMessage(s.line, Modifier.padding(padding), action = EmptyAction("Try again") { attempt++ })
             s is InviteState.Ready -> {
                 val inv = s.invite
-                val script by produceState(
-                    (library as? PlaysLibrary.State.Ready)?.scripts?.let { PlaysShare.scriptFor(it, inv.scriptID, inv.scriptRevision) },
-                    inv.scriptID, inv.scriptRevision,
-                ) {
-                    if (value == null) value = runCatching { container.plays.script(inv.scriptID) }.getOrNull()?.takeIf { it.revision == inv.scriptRevision }
+                val script by produceState<com.example.appname.plays.PlayScript?>(null, inv.scriptID, inv.scriptRevision) {
+                    value = runCatching { container.plays.script(inv.scriptID, inv.scriptRevision) }.getOrNull()
                 }
                 val lineOrder = remember(script) { script?.lines?.map { it.id }.orEmpty() }
                 InviteContent(

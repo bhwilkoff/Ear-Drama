@@ -56,6 +56,16 @@ class SceneTest {
         assertTrue(PlayScript.openingOf(PlayRow(id = "x", title = "x"), 4).isEmpty())
     }
 
+    /** B21: a Record tile draws two speeches (verse keeping its rows) when its row has an opening, else the cast. */
+    @Test fun `a tile's window takes two speeches from the row, else none`() {
+        val verse = "Tomorrow, and tomorrow, and tomorrow,\nCreeps in this petty pace from day to day"
+        val row = PlayRow(id = "r", title = "R", opening = listOf(PlayRow.Opening("MACBETH", verse), PlayRow.Opening("BANQUO", "Good sir."), PlayRow.Opening("MACBETH", "Ay.")))
+        val tile = PlayScript.openingOf(row, 2)
+        assertEquals(listOf("MACBETH", "BANQUO"), tile.map { it.name })
+        assertTrue(tile[0].verse && tile[0].text.contains('\n'))
+        assertTrue("no opening: the tile keeps the cast window", PlayScript.openingOf(PlayRow(id = "x", title = "x"), 2).isEmpty())
+    }
+
     @Test fun `the index row decodes its opening`() {
         val index = PlayIndex.decode("""{"format":1,"plays":[{"id":"a","title":"A","opening":[{"role":"JOE","text":"Hi."}]}]}""")
         assertEquals(listOf(PlayRow.Opening("JOE", "Hi.")), index.plays[0].opening)
