@@ -64,7 +64,7 @@ Mechanics:
   indent; Apple class review screen seen on a device.
 - [x] **B7 Harness** (54150de1). N7 three intermittent checks (instrument, never rerun until green); N12 the tap
   tier draws its shows from the data, not the same two.
-- [ ] **B8 Catalog.** N13 remaining raw titles: `tools/catalog_dryrun.sh` on real data first.
+- [x] **B8 Catalog** (bb506cf8, publish dispatched; follow-up: roman numerals cased "Iii", all-caps Cisco Kid/Escape titles, pre-existing). N13 remaining raw titles: `tools/catalog_dryrun.sh` on real data first.
 - [ ] **B9 PARITY gaps.** Apple TV share as a QR code; Android Auto library tree beyond the stub.
 - [ ] **B10 Parity audit (N9).** Every shipped feature a row, every cell honest; last, after B1-B9.
 
@@ -120,3 +120,6 @@ store words; radio-script rights rule; GRW request.
 - 2026-11-23 18:00, tick 11: B8 first pass (d653e01e, unmerged): 1,894 titles cleaned, 51/51 dry run green, but
   it withheld 27 previously served episodes whose file names carry valid date codes (World's Fair 1939, Fred
   Allen) and left fragments ("1st", "Torr"); sent back to compose from valid dates and guard fragments.
+- 2026-11-23 18:15, tick 12: B8 revision merged (bb506cf8): 1,875 titles cleaned; valid YYMMDD file-name codes
+  compose dated titles (World's Fair 1939, Fred Allen) so only 9 withheld (no real date anywhere); fragment
+  guard; "(partial)" convention; 51/51 dry run. Read the 128 one-to-two-word results. Catalog publish dispatched.
