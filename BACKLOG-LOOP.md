@@ -65,11 +65,12 @@ Mechanics:
 - [x] **B7 Harness** (54150de1). N7 three intermittent checks (instrument, never rerun until green); N12 the tap
   tier draws its shows from the data, not the same two.
 - [x] **B8 Catalog** (bb506cf8, publish dispatched; follow-up: roman numerals cased "Iii", all-caps Cisco Kid/Escape titles, pre-existing). N13 remaining raw titles: `tools/catalog_dryrun.sh` on real data first.
-- [ ] **B9 PARITY gaps.** Apple TV share as a QR code; Android Auto library tree beyond the stub.
+- [x] **B9 PARITY gaps** (e71aa5f7; Android Auto Stations and Browse are empty folders in the car: owner call, car review). Apple TV share as a QR code; Android Auto library tree beyond the stub.
 - [ ] **B10 Parity audit (N9).** Every shipped feature a row, every cell honest; last, after B1-B9.
 
 ## Waiting on the owner (never blocks the loop)
 
+Android Auto: fill or hide the empty Stations and Browse tabs (needs a car-review release). 
 Kokoro re-export for Android and web word marks; a read-only Cloudflare analytics token for a usage
 check; N5 Stations day switcher (ask first); SCHOOL_CONSENT_POLICY; OPERATOR_TOKEN; H1-H4 sessions;
 store words; radio-script rights rule; GRW request.
@@ -123,3 +124,7 @@ store words; radio-script rights rule; GRW request.
 - 2026-11-23 18:15, tick 12: B8 revision merged (bb506cf8): 1,875 titles cleaned; valid YYMMDD file-name codes
   compose dated titles (World's Fair 1939, Fred Allen) so only 9 withheld (no real date anywhere); fragment
   guard; "(partial)" convention; 51/51 dry run. Read the 128 one-to-two-word results. Catalog publish dispatched.
+- 2026-11-23 18:35, tick 13: B9 merged (e71aa5f7): Apple TV episode Share opens a QR sheet (tvOS-DESIGN 3.6),
+  frame read on Ben Bedroom, QR decodes to https://eardrama.org/episode/suspense%7C1948-11-18; 571 Apple tests,
+  16/16 design rules. Android Auto audit: Continue + Downloads work, Stations + Browse empty (PARITY honest).
+  Catalog publish running. B10 parity audit running. Follow-ups: roman numerals "Iii" and all-caps titles.
