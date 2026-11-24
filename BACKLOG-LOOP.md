@@ -71,7 +71,7 @@ Mechanics:
 - [ ] **B11 Follow-ups from the audit.** A full iPhone 12 tap-tier run on a build with 7ecdd3d8 (lists set
   aside and kept across a test's relaunch) to settle the pre-redesign iOS cells (SiteLinks via About, ShowArt,
   Browse, Detail/Person); a real-browser web pass (Safari on the Mac, Chrome on the Pixel) for web cells.
-- [ ] **B12 Catalog follow-ups.** Roman numerals cased as words ("Henry Iii" -> "Henry III"); all-caps titles
+- [x] **B12 Catalog follow-ups** (6aefa199, publish dispatched). Roman numerals cased as words ("Henry Iii" -> "Henry III"); all-caps titles
   (Cisco Kid, Escape) only where certain (acronyms kept). Dry run first.
 - [ ] **B13 Device follow-ups.** Duo Record "Plays" indent (when the Duo is home); Apple class review screen;
   Pixel empty-library door frame; Apple TV foot alignment frame.
@@ -147,3 +147,7 @@ store words; radio-script rights rule; GRW request.
   Robolectric's MavenArtifactFetcher could not download android-all (infra, every Robolectric class); rerun of
   failed jobs started. If it recurs, check whether f1a29bfb's cache cleanup drops Robolectric's jars (report to
   the owner; don't edit the other session's workflow change without them). B12 running.
+- 2026-11-23 19:20, tick 16: B12 merged (6aefa199): 258 titles; roman numerals only after a numeral-taking word
+  or king (Henry III, Mary I from its own file name), shouted titles recased only with catalog proof per word
+  (216 -> 41 left), "-0" tails stripped only when the episode's own file ends that way; 51/51 dry run. Publish
+  dispatched. B11 + B13 device verification running in one agent (Duo excluded). Android CI rerun in progress.
