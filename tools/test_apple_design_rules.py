@@ -177,7 +177,7 @@ def main():
          detail.replace("            AccountRow()\n", "", 1)),
         ("an empty TV Library keeps Account and the site pages",
          lambda t: library_empty_keeps_navigation(t, "LibraryScreen_tvOS"), tv,
-         tv.replace("                            AccountRow()\n                                .frame(maxWidth: 640)\n", "", 1)),
+         tv.replace("                            AccountRow()\n                                .frame(maxWidth: 640, alignment: .leading)\n", "", 1)),
     ]
     for name, check, real, broken in cases:
         ok(check(real), name)
