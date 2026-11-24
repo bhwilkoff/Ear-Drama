@@ -105,6 +105,9 @@ in the daytime (back about 21:00, so device work on it goes first).
 - [ ] **B18 Record anything (088.3): design first (Opus, learning-orientation-design).** Bring your own script
   (paste, file, share sheet); an episode's automatic transcript as a starting script the person casts line by
   line; what never publishes. Research, frames, binding docs, then web, Apple, Android.
+  Designed 2026-11-24: `docs/research/design/R4-record-anything.md` (batches R4-0 to R4-8; three owner questions
+  in its §9). **R4-0 first** (defect: the Worker's castable manifest holds 15 scripts, the library 803, so Share and
+  Read together refuse 788 plays). Then R4-1, 2, 3, 6, 7 on-device half; R4-4 and 5 wait on §9.
 - [ ] **B19 Radio scripts (088.2).** Waits on the owner's answer about the Workshop's text; the parser and match
   (616 served episodes) are ready. Recording open, Publish closed without evidence.
 - [ ] **B20 Seen on a device.** 57 PARITY rows say a part was never seen, heard or run: Mac windows (owner away
@@ -121,7 +124,7 @@ in the daytime (back about 21:00, so device work on it goes first).
 
 ## Waiting on the owner (never blocks the loop)
 
-**B19**: may the app show the Workshop's transcriptions before they answer? Kokoro re-export for Android and web word marks; a read-only Cloudflare analytics token for a usage
+**B19**: the Workshop's answer (request drafted to Larry Groebe, owner sends). **R4 §9**: 1 shared own scripts kept on the server, 2 publishing a script you wrote, 3 who reads reports. Kokoro re-export for Android and web word marks; a read-only Cloudflare analytics token for a usage
 check; SCHOOL_CONSENT_POLICY; OPERATOR_TOKEN; H1-H4 sessions;
 GRW request sent or not.
 
@@ -234,3 +237,5 @@ GRW request sent or not.
     7ecdd3d8.
 - 2026-11-24 13:30: restarted by the owner with rulings (Decision 088); round 2 batches B15-B25. TestFlight 1.0.168 (169) is VALID.
   iOS and macOS 1.0.137 WAITING_FOR_REVIEW since 2026-11-16 (nothing missing in Connect; tvOS approved 11-18).
+- 2026-11-24 14:20: R4 design merged. B16 had no source texts on disk (24 of 1,721); rsync of the cleared texts running into
+  catalog/.cache. R4-0 (manifest covers the library) started. B15 device agent still running.
