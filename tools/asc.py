@@ -13,6 +13,7 @@ Auth uses the same ES256 key the cloud build already uses
     python3 tools/asc.py get 'v1/apps/<id>/inAppPurchasesV2?limit=200'
 """
 import json
+import net_retry
 import os
 import sys
 import time
@@ -46,7 +47,7 @@ def call(path, method="GET", body=None, tok=None):
         "Content-Type": "application/json",
     })
     try:
-        with urllib.request.urlopen(req, timeout=45) as r:
+        with net_retry.urlopen(req, timeout=45) as r:
             raw = r.read()
             return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as e:

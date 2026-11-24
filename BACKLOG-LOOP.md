@@ -100,9 +100,9 @@ in the daytime (back about 21:00, so device work on it goes first).
   series board, a thin strip of board beside a picture that nearly fills it; Today's Scene runs verse together as
   prose; unseen on the Duo: closed, Library Making, a play page. With it the R4-0 follow-ups on Apple and Android
   (class picker reads the library; words for `script_not_publishable`; the bundle tried when the library is newer).
-- [ ] **B15c Left from B15b.** Apple `ReadScreenBody` and tvOS `SharedPlaysScreen` read only bundled plays (a library
-  play's room does not draw): Android and web checked too. Android: the 85% board rule (`ItemLead.kt` `window`). Library's
-  "Synced 4:04 PM" shows a past day's time with no date (Duo, 3:14 PM): every platform. `web_fit_home.py` fails by
+- [ ] **B15c Left from B15b.** Apple rooms and shared screens of library plays: done (`LibraryScripts.swift`; seen on Ben
+  Bedroom, gut-3012); left: `FinishedTiles.script(for:)`, tvOS Surprise, and Android and web checked for the same. Android: the 85% board rule (`ItemLead.kt` `window`). The sync line
+  names the day on Apple (done; web and Android already did). `web_fit_home.py` fails by
   day ("no On the air block", ten day-history failures on unmodified HEAD): make it deterministic. Catalog: gut-49993-1
   (and the scene pool) lost its verse breaks; `opening_of` flattens breaks. Duo closed and portrait unseen.
 - [ ] **B16 Every cleared play records (088.1).** 803 of 1,722 parse clean. Held: unclassified over 5% 269,
@@ -260,3 +260,4 @@ GRW request sent or not.
 - 2026-11-24 15:25: B17 merged (Android Auto tabs, search, art, voice; unit suite + lintRelease 0). Next build-heavy slot: ship after B15b.
 - 2026-11-24 15:45: R4-1 JavaScript core + goldens merged (98.5% radio, 97.2% stage words to the right part; 8-word overlap check with cached radio scripts: none). Kotlin port running; Swift port and R4-2 web wait for B15b. B16 running with all 1,721 texts.
 - 2026-11-24 16:20: B15b merged (576 Apple tests, 30 web suites, 12 frames read). 1.0.169 (170) bumped for TestFlight + Play internal.
+- 2026-11-24 16:30: Swift core + B15c Apple merged (602 tests; a library play room drawn on Ben Bedroom). 1.0.169 TestFlight failed on a runner DNS blip after the Mac upload: tools/net_retry.py (8 cases) now waits blips out in the Apple tools. 1.0.170 (171) redispatched. Play internal 1.0.169: success. Footnotes spoken in gut-3012 sent to B16. Ben Bedroom was woken by the agent and left on.

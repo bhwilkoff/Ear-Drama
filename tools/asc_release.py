@@ -64,6 +64,7 @@ CONFIG (env wins over tools/app_config.py):
 """
 import argparse
 import json
+import net_retry
 import os
 import pathlib
 import re
@@ -137,7 +138,7 @@ def call(path, method="GET", body=None):
         headers={"Authorization": f"Bearer {token()}",
                  "Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:
+        with net_retry.urlopen(req, timeout=60) as r:
             raw = r.read().decode()
             return json.loads(raw) if raw.strip() else {}
     except urllib.error.HTTPError as e:
