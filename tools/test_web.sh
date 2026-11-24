@@ -39,6 +39,7 @@ DEFAULT_SUITES="js/api.test.js
   js/read.test.js
   js/relay.test.js
   js/label.test.js
+  js/own-core.test.js
   tools/test_tv_focus.mjs
   tools/test_no_third_party_code.mjs
   tools/test_tv_ua.mjs

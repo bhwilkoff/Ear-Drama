@@ -1,0 +1,3320 @@
+{
+ "about": "Own scripts (R4, Decision 088.3). Run by js/own-core.test.js, and by the Swift and Kotlin ports. Offsets are UTF-16 code units of a line's text. `control` is wrong on purpose: a test that does not find it wrong is not comparing. Excerpts are from public-domain Project Gutenberg texts named in each case; everything else is invented for this file.",
+ "normalize": [
+  {
+   "name": "plain",
+   "raw": "One\nTwo",
+   "want": "One\nTwo"
+  },
+  {
+   "name": "CRLF, CR, VT, FF, NEL, LS, PS",
+   "raw": "a\r\nb\rc\u000bd\fe\u0085f\u2028g\u2029h",
+   "want": "a\nb\nc\nd\ne\nf\ng\nh"
+  },
+  {
+   "name": "BOM inside and out",
+   "raw": "\ufeffa\ufeffb",
+   "want": "ab"
+  },
+  {
+   "name": "spaces",
+   "raw": "a\u00a0b\u2003c\u3000d\u202fe\tf",
+   "want": "a b c d e\tf"
+  },
+  {
+   "name": "dropped",
+   "raw": "a\u00adb\u200bc\u200ed\u2060e\u0000f\u007fg\u0080h\u202ai\u2066j",
+   "want": "abcdefghij"
+  },
+  {
+   "name": "ZWJ and ZWNJ kept",
+   "raw": "\ud83d\udc69\u200d\ud83d\udc67 \u0646\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645",
+   "want": "\ud83d\udc69\u200d\ud83d\udc67 \u0646\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645"
+  },
+  {
+   "name": "NFC",
+   "raw": "e\u0301 a\u030a \u1100\u1161 \u2126 q\u0323\u0307",
+   "want": "\u00e9 \u00e5 \uac00 \u03a9 q\u0323\u0307"
+  },
+  {
+   "name": "italic marks",
+   "raw": "_so_ and (_so_) and snake_case and ____ and __two__",
+   "want": "so and (so) and snake_case and ____ and __two__"
+  },
+  {
+   "name": "bold marks",
+   "raw": "**so** and * * * and ***x***",
+   "want": "so and * * * and ***x***"
+  },
+  {
+   "name": "quotes and dashes kept",
+   "raw": "\u201cA\u201d \u2018b\u2019 \u2014 \u2013 -- \u2026",
+   "want": "\u201cA\u201d \u2018b\u2019 \u2014 \u2013 -- \u2026"
+  }
+ ],
+ "names": [
+  {
+   "raw": "  anna  maria ",
+   "name": "ANNA MARIA",
+   "refusal": null
+  },
+  {
+   "raw": "Mrs. Vane.",
+   "name": "MRS. VANE",
+   "refusal": null
+  },
+  {
+   "raw": "@McAvoy:",
+   "name": "MCAVOY",
+   "refusal": null
+  },
+  {
+   "raw": "O\u2019Dogh",
+   "name": "O'DOGH",
+   "refusal": null
+  },
+  {
+   "raw": "ren\u00e9e",
+   "name": "REN\u00c9E",
+   "refusal": null
+  },
+  {
+   "raw": "stra\u00dfe",
+   "name": "STRASSE",
+   "refusal": null
+  },
+  {
+   "raw": "\u0391\u03b8\u03b7\u03bd\u03ac",
+   "name": "\u0391\u0398\u0397\u039d\u0386",
+   "refusal": null
+  },
+  {
+   "raw": "\u674e\u56db\uff1a",
+   "name": "\u674e\u56db",
+   "refusal": null
+  },
+  {
+   "raw": "...",
+   "name": "",
+   "refusal": "empty"
+  },
+  {
+   "raw": "",
+   "name": "",
+   "refusal": "empty"
+  },
+  {
+   "raw": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+   "name": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+   "refusal": null
+  },
+  {
+   "raw": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+   "name": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+   "refusal": "too_long"
+  },
+  {
+   "raw": "Tab\tName",
+   "name": "TAB NAME",
+   "refusal": null
+  },
+  {
+   "raw": "BAD\u200bNAME",
+   "name": "BAD\u200bNAME",
+   "refusal": "bad_name"
+  },
+  {
+   "raw": "1st man",
+   "name": "1ST MAN",
+   "refusal": null
+  },
+  {
+   "raw": "\u0131zmir",
+   "name": "IZMIR",
+   "refusal": null
+  }
+ ],
+ "pieces": [
+  {
+   "text": "Plain words.",
+   "parts": [
+    {
+     "say": "Plain words."
+    }
+   ]
+  },
+  {
+   "text": "(softly) Come in. [She sits.] Well?",
+   "parts": [
+    {
+     "direction": "softly"
+    },
+    {
+     "say": "Come in."
+    },
+    {
+     "direction": "She sits."
+    },
+    {
+     "say": "Well?"
+    }
+   ]
+  },
+  {
+   "text": "(a (b) c) d",
+   "parts": [
+    {
+     "direction": "a (b) c"
+    },
+    {
+     "say": "d"
+    }
+   ]
+  },
+  {
+   "text": "actor(s) and wife[2]",
+   "parts": [
+    {
+     "say": "actor(s) and wife[2]"
+    }
+   ]
+  },
+  {
+   "text": "no () nothing [ ] here",
+   "parts": [
+    {
+     "say": "no () nothing [ ] here"
+    }
+   ]
+  },
+  {
+   "text": "open ( and never",
+   "parts": [
+    {
+     "say": "open ( and never"
+    }
+   ]
+  },
+  {
+   "text": "shut ) and [half) both]",
+   "parts": [
+    {
+     "say": "shut ) and"
+    },
+    {
+     "direction": "half) both"
+    }
+   ]
+  },
+  {
+   "text": "JOSS.[Sullenly.] No.",
+   "parts": [
+    {
+     "say": "JOSS."
+    },
+    {
+     "direction": "Sullenly."
+    },
+    {
+     "say": "No."
+    }
+   ]
+  },
+  {
+   "text": "(only this)",
+   "parts": [
+    {
+     "direction": "only this"
+    }
+   ]
+  },
+  {
+   "text": "two\nrows (and\nthree) here",
+   "parts": [
+    {
+     "say": "two\nrows"
+    },
+    {
+     "direction": "and\nthree"
+    },
+    {
+     "say": "here"
+    }
+   ]
+  },
+  {
+   "text": "\u00e9(s) (\u00e9)",
+   "parts": [
+    {
+     "say": "\u00e9(s)"
+    },
+    {
+     "direction": "\u00e9"
+    }
+   ]
+  },
+  {
+   "text": "\ud83d\ude00(x) (y)",
+   "parts": [
+    {
+     "say": "\ud83d\ude00"
+    },
+    {
+     "direction": "x"
+    },
+    {
+     "direction": "y"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "name": "two voices, one row each, no blank rows",
+   "layout": "colon",
+   "raw": "ANNA: Is anyone down there?\nBEN: Only me.\nANNA: Then who is singing?\nBEN: The pipes.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone down there?",
+      "label": "ANNA:"
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "The pipes.",
+      "label": "BEN:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "ANNA",
+      "lines": 2
+     },
+     {
+      "name": "BEN",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "capitals and lower case, a direction after the colon",
+   "layout": "colon",
+   "raw": "Keeper: (calling) The light is out!\n\nBoy: I know.\n\nKeeper: Then climb up and see why.\n\nBoy: (sleepy) Yes, sir.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "KEEPER",
+      "text": "(calling) The light is out!",
+      "label": "Keeper:"
+     },
+     {
+      "kind": "speech",
+      "role": "BOY",
+      "text": "I know.",
+      "label": "Boy:"
+     },
+     {
+      "kind": "speech",
+      "role": "KEEPER",
+      "text": "Then climb up and see why.",
+      "label": "Keeper:"
+     },
+     {
+      "kind": "speech",
+      "role": "BOY",
+      "text": "(sleepy) Yes, sir.",
+      "label": "Boy:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "KEEPER",
+      "lines": 2
+     },
+     {
+      "name": "BOY",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a direction before the colon",
+   "layout": "colon",
+   "raw": "MARA (off): Wait for me.\nTOM [whispering]: Hush.\nMARA (closer): I said wait.\nTOM: I heard you.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "MARA",
+      "text": "(off) Wait for me.",
+      "label": "MARA"
+     },
+     {
+      "kind": "speech",
+      "role": "TOM",
+      "text": "[whispering] Hush.",
+      "label": "TOM"
+     },
+     {
+      "kind": "speech",
+      "role": "MARA",
+      "text": "(closer) I said wait.",
+      "label": "MARA"
+     },
+     {
+      "kind": "speech",
+      "role": "TOM",
+      "text": "I heard you.",
+      "label": "TOM:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "MARA",
+      "lines": 2
+     },
+     {
+      "name": "TOM",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "rows that wrap under a speech",
+   "layout": "colon",
+   "raw": "PILOT: We are over the ridge now and I can see\nthe whole valley laid out like a\ntable.\nTOWER: Say again?\nPILOT: A table.\nTOWER: Copy.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "PILOT",
+      "text": "We are over the ridge now and I can see\nthe whole valley laid out like a\ntable.",
+      "label": "PILOT:"
+     },
+     {
+      "kind": "speech",
+      "role": "TOWER",
+      "text": "Say again?",
+      "label": "TOWER:"
+     },
+     {
+      "kind": "speech",
+      "role": "PILOT",
+      "text": "A table.",
+      "label": "PILOT:"
+     },
+     {
+      "kind": "speech",
+      "role": "TOWER",
+      "text": "Copy.",
+      "label": "TOWER:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "PILOT",
+      "lines": 2
+     },
+     {
+      "name": "TOWER",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a second paragraph of a speech has no part",
+   "layout": "colon",
+   "raw": "GRANDMOTHER: I was nine that winter.\n\nThe snow came up to the sill, and nobody could open the door.\n\nCHILD: What did you eat?\n\nGRANDMOTHER: Apples.\n\nCHILD: Only apples?",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "GRANDMOTHER",
+      "text": "I was nine that winter.",
+      "label": "GRANDMOTHER:"
+     },
+     {
+      "kind": "open",
+      "text": "The snow came up to the sill, and nobody could open the door."
+     },
+     {
+      "kind": "speech",
+      "role": "CHILD",
+      "text": "What did you eat?",
+      "label": "CHILD:"
+     },
+     {
+      "kind": "speech",
+      "role": "GRANDMOTHER",
+      "text": "Apples.",
+      "label": "GRANDMOTHER:"
+     },
+     {
+      "kind": "speech",
+      "role": "CHILD",
+      "text": "Only apples?",
+      "label": "CHILD:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "GRANDMOTHER",
+      "lines": 2
+     },
+     {
+      "name": "CHILD",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a part with one line, where others are printed the same way",
+   "layout": "colon",
+   "raw": "DORA: Operator, the hospital, please.\n\nSAM: Hurry.\n\nOPERATOR: One moment.\n\nDORA: They are ringing.\n\nNight Clerk: Saint Anne\u2019s.\n\nSAM: Ask for the doctor.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "DORA",
+      "text": "Operator, the hospital, please.",
+      "label": "DORA:"
+     },
+     {
+      "kind": "speech",
+      "role": "SAM",
+      "text": "Hurry.",
+      "label": "SAM:"
+     },
+     {
+      "kind": "speech",
+      "role": "OPERATOR",
+      "text": "One moment.",
+      "label": "OPERATOR:"
+     },
+     {
+      "kind": "speech",
+      "role": "DORA",
+      "text": "They are ringing.",
+      "label": "DORA:"
+     },
+     {
+      "kind": "speech",
+      "role": "NIGHT CLERK",
+      "text": "Saint Anne\u2019s.",
+      "label": "Night Clerk:"
+     },
+     {
+      "kind": "speech",
+      "role": "SAM",
+      "text": "Ask for the doctor.",
+      "label": "SAM:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "DORA",
+      "lines": 2
+     },
+     {
+      "name": "SAM",
+      "lines": 2
+     },
+     {
+      "name": "OPERATOR",
+      "lines": 1
+     },
+     {
+      "name": "NIGHT CLERK",
+      "lines": 1
+     }
+    ]
+   }
+  },
+  {
+   "name": "a word and a colon inside a speech is not a part",
+   "layout": "colon",
+   "raw": "LENA: I will say it once.\nRemember: the third step is loose.\nOTTO: I remember.\nLENA: Good.\nOTTO: The third.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "LENA",
+      "text": "I will say it once.\nRemember: the third step is loose.",
+      "label": "LENA:"
+     },
+     {
+      "kind": "speech",
+      "role": "OTTO",
+      "text": "I remember.",
+      "label": "OTTO:"
+     },
+     {
+      "kind": "speech",
+      "role": "LENA",
+      "text": "Good.",
+      "label": "LENA:"
+     },
+     {
+      "kind": "speech",
+      "role": "OTTO",
+      "text": "The third.",
+      "label": "OTTO:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "LENA",
+      "lines": 2
+     },
+     {
+      "name": "OTTO",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "NOTE, TIME, PLACE and a web address are not parts",
+   "layout": "colon",
+   "raw": "TIME: Evening.\nPLACE: A kitchen.\nNOTE: The clock is wrong.\nhttp://example.org/one\nhttp://example.org/two\nROSE: Is it ten already?\nIVAN: The clock is wrong.\nROSE: So it is not ten.\nIVAN: No.",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "TIME: Evening.\nPLACE: A kitchen.\nNOTE: The clock is wrong.\nhttp://example.org/one\nhttp://example.org/two"
+     },
+     {
+      "kind": "speech",
+      "role": "ROSE",
+      "text": "Is it ten already?",
+      "label": "ROSE:"
+     },
+     {
+      "kind": "speech",
+      "role": "IVAN",
+      "text": "The clock is wrong.",
+      "label": "IVAN:"
+     },
+     {
+      "kind": "speech",
+      "role": "ROSE",
+      "text": "So it is not ten.",
+      "label": "ROSE:"
+     },
+     {
+      "kind": "speech",
+      "role": "IVAN",
+      "text": "No.",
+      "label": "IVAN:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "ROSE",
+      "lines": 2
+     },
+     {
+      "name": "IVAN",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "bold names from a web page",
+   "layout": "colon",
+   "raw": "**MAYA:** Did you hear that?\n\n**LEO:** It was the _wind_.\n\n**MAYA:** It said my name.\n\n**LEO:** The wind says everybody\u2019s name.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "MAYA",
+      "text": "Did you hear that?",
+      "label": "MAYA:"
+     },
+     {
+      "kind": "speech",
+      "role": "LEO",
+      "text": "It was the wind.",
+      "label": "LEO:"
+     },
+     {
+      "kind": "speech",
+      "role": "MAYA",
+      "text": "It said my name.",
+      "label": "MAYA:"
+     },
+     {
+      "kind": "speech",
+      "role": "LEO",
+      "text": "The wind says everybody\u2019s name.",
+      "label": "LEO:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "MAYA",
+      "lines": 2
+     },
+     {
+      "name": "LEO",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "words that end in a period are never part of a name",
+   "layout": "colon",
+   "raw": "VERA. No: I will not.\n\nVERA. Yes: I will.\n\nVERA. No: I have changed my mind.\n\nPAUL. Which is it?\n\nPAUL. Tell me.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "VERA",
+      "text": "No: I will not.",
+      "label": "VERA."
+     },
+     {
+      "kind": "speech",
+      "role": "VERA",
+      "text": "Yes: I will.",
+      "label": "VERA."
+     },
+     {
+      "kind": "speech",
+      "role": "VERA",
+      "text": "No: I have changed my mind.",
+      "label": "VERA."
+     },
+     {
+      "kind": "speech",
+      "role": "PAUL",
+      "text": "Which is it?",
+      "label": "PAUL."
+     },
+     {
+      "kind": "speech",
+      "role": "PAUL",
+      "text": "Tell me.",
+      "label": "PAUL."
+     }
+    ],
+    "parts": [
+     {
+      "name": "VERA",
+      "lines": 3
+     },
+     {
+      "name": "PAUL",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "Octavia, italic names (Gutenberg 54702)",
+   "layout": "colon",
+   "raw": "_NERO_: Fulfil my commands! Send a man who can bring back to me the\nsevered heads of Plautus and Sulla.[64]\n\n_PREFECT_: I shall not delay your commands. I will seek the camp\nimmediately.\n\n_SENECA_: It is best to decide nothing rashly against relatives.\n\n_NERO_: It is easy for him to be just whose heart is free from fear.\n\n_SENECA_: Clemency is a great cure for fear.\n\n_NERO_: To destroy an enemy is the greatest virtue of a leader.\n",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "NERO",
+      "text": "Fulfil my commands! Send a man who can bring back to me the\nsevered heads of Plautus and Sulla.[64]",
+      "label": "NERO:"
+     },
+     {
+      "kind": "speech",
+      "role": "PREFECT",
+      "text": "I shall not delay your commands. I will seek the camp\nimmediately.",
+      "label": "PREFECT:"
+     },
+     {
+      "kind": "speech",
+      "role": "SENECA",
+      "text": "It is best to decide nothing rashly against relatives.",
+      "label": "SENECA:"
+     },
+     {
+      "kind": "speech",
+      "role": "NERO",
+      "text": "It is easy for him to be just whose heart is free from fear.",
+      "label": "NERO:"
+     },
+     {
+      "kind": "speech",
+      "role": "SENECA",
+      "text": "Clemency is a great cure for fear.",
+      "label": "SENECA:"
+     },
+     {
+      "kind": "speech",
+      "role": "NERO",
+      "text": "To destroy an enemy is the greatest virtue of a leader.",
+      "label": "NERO:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "NERO",
+      "lines": 3
+     },
+     {
+      "name": "PREFECT",
+      "lines": 1
+     },
+     {
+      "name": "SENECA",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "The Albany Depot, quoted speech (Gutenberg 7364)",
+   "layout": "colon",
+   "raw": "Roberts: \u201cInsulted? By no manner of means! Nothing was further from my\nthoughts. I--I--can explain it all in a moment, my dear sir, if you\nwill have patience; I can indeed. I have the highest respect for the\nlady, and I\u2019m quite incapable of offering her an affront. The fact\nis--I hardly know how to begin--\u201d\n\nMcIlheny: \u201cGo ahn, sor; or I\u2019ll have to do the beginnun\u2019 meself,\npretty soon.\u201d He shifts himself from one foot to another with a\nsaltatory briskness.\n\nRoberts: \u201cThe fact is, my wife had engaged a cook, up-town, and she\nhad sent her down here to meet me, and go out with me to our summer\n\nRoberts: \u201cI assure you.\u201d\n\nMcIlheny: \u201cAn\u2019 what?\u201d",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ROBERTS",
+      "text": "\u201cInsulted? By no manner of means! Nothing was further from my\nthoughts. I--I--can explain it all in a moment, my dear sir, if you\nwill have patience; I can indeed. I have the highest respect for the\nlady, and I\u2019m quite incapable of offering her an affront. The fact\nis--I hardly know how to begin--\u201d",
+      "label": "Roberts:"
+     },
+     {
+      "kind": "speech",
+      "role": "MCILHENY",
+      "text": "\u201cGo ahn, sor; or I\u2019ll have to do the beginnun\u2019 meself,\npretty soon.\u201d He shifts himself from one foot to another with a\nsaltatory briskness.",
+      "label": "McIlheny:"
+     },
+     {
+      "kind": "speech",
+      "role": "ROBERTS",
+      "text": "\u201cThe fact is, my wife had engaged a cook, up-town, and she\nhad sent her down here to meet me, and go out with me to our summer",
+      "label": "Roberts:"
+     },
+     {
+      "kind": "speech",
+      "role": "ROBERTS",
+      "text": "\u201cI assure you.\u201d",
+      "label": "Roberts:"
+     },
+     {
+      "kind": "speech",
+      "role": "MCILHENY",
+      "text": "\u201cAn\u2019 what?\u201d",
+      "label": "McIlheny:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "ROBERTS",
+      "lines": 3
+     },
+     {
+      "name": "MCILHENY",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "names with a period",
+   "layout": "dot",
+   "raw": "ADA. The bridge is out.\n\nCARL. Then we wait.\n\nADA. Till when?\n\nCARL. Till it is in.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ADA",
+      "text": "The bridge is out.",
+      "label": "ADA."
+     },
+     {
+      "kind": "speech",
+      "role": "CARL",
+      "text": "Then we wait.",
+      "label": "CARL."
+     },
+     {
+      "kind": "speech",
+      "role": "ADA",
+      "text": "Till when?",
+      "label": "ADA."
+     },
+     {
+      "kind": "speech",
+      "role": "CARL",
+      "text": "Till it is in.",
+      "label": "CARL."
+     }
+    ],
+    "parts": [
+     {
+      "name": "ADA",
+      "lines": 2
+     },
+     {
+      "name": "CARL",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "titles and initials are part of the name",
+   "layout": "dot",
+   "raw": "MRS. VANE. You are late.\n\nJ. F. I was delayed.\n\nMRS. VANE. By what?\n\nJ. F. By a goose.\n\nDR. OLLIS. A large one?\n\nDR. OLLIS. I must know.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "MRS. VANE",
+      "text": "You are late.",
+      "label": "MRS. VANE."
+     },
+     {
+      "kind": "speech",
+      "role": "J. F",
+      "text": "I was delayed.",
+      "label": "J. F."
+     },
+     {
+      "kind": "speech",
+      "role": "MRS. VANE",
+      "text": "By what?",
+      "label": "MRS. VANE."
+     },
+     {
+      "kind": "speech",
+      "role": "J. F",
+      "text": "By a goose.",
+      "label": "J. F."
+     },
+     {
+      "kind": "speech",
+      "role": "DR. OLLIS",
+      "text": "A large one?",
+      "label": "DR. OLLIS."
+     },
+     {
+      "kind": "speech",
+      "role": "DR. OLLIS",
+      "text": "I must know.",
+      "label": "DR. OLLIS."
+     }
+    ],
+    "parts": [
+     {
+      "name": "MRS. VANE",
+      "lines": 2
+     },
+     {
+      "name": "J. F",
+      "lines": 2
+     },
+     {
+      "name": "DR. OLLIS",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a title alone is a name when nothing longer is printed",
+   "layout": "dot",
+   "raw": "COL. Ruth, dear, I am quite myself again. The major's active brain has\nhelped to clear my cobwebbed intellect, and our united forces have\nconceived a most brilliant scheme. (_Turns; sees_ ROGER; _sternly_.)\nRoger Carruth, what are you doing here?\n\nROGER. Calling upon my sister and my fianc\u00e9e.\n\nCOL. And do you think, sir, that I, their only protector, will allow\none whose name is sullied to hold an interview with them?\n\nRUTH (_goes to_ COLONEL). Gordon, you forget that you are speaking to\nmy brother.\n\nDOR. (_goes to_ ROGER). And please remember, Gordon, that this man I\nlove and honor above all others.\n\nCOL. Stop, I say. In my own house, I will speak my mind. Roger Carruth,\nleave this house. All here bear honored names. We do not associate with\ndishonest men.\n\nRUTH (_sobbing_). Gordon, how can you be so cruel?\n",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "COL",
+      "text": "Ruth, dear, I am quite myself again. The major's active brain has\nhelped to clear my cobwebbed intellect, and our united forces have\nconceived a most brilliant scheme. (Turns; sees ROGER; sternly.)\nRoger Carruth, what are you doing here?",
+      "label": "COL."
+     },
+     {
+      "kind": "speech",
+      "role": "ROGER",
+      "text": "Calling upon my sister and my fianc\u00e9e.",
+      "label": "ROGER."
+     },
+     {
+      "kind": "speech",
+      "role": "COL",
+      "text": "And do you think, sir, that I, their only protector, will allow\none whose name is sullied to hold an interview with them?",
+      "label": "COL."
+     },
+     {
+      "kind": "speech",
+      "role": "RUTH",
+      "text": "(goes to COLONEL) Gordon, you forget that you are speaking to\nmy brother.",
+      "label": "RUTH"
+     },
+     {
+      "kind": "speech",
+      "role": "DOR",
+      "text": "(goes to ROGER). And please remember, Gordon, that this man I\nlove and honor above all others.",
+      "label": "DOR."
+     },
+     {
+      "kind": "speech",
+      "role": "COL",
+      "text": "Stop, I say. In my own house, I will speak my mind. Roger Carruth,\nleave this house. All here bear honored names. We do not associate with\ndishonest men.",
+      "label": "COL."
+     },
+     {
+      "kind": "speech",
+      "role": "RUTH",
+      "text": "(sobbing) Gordon, how can you be so cruel?",
+      "label": "RUTH"
+     }
+    ],
+    "parts": [
+     {
+      "name": "COL",
+      "lines": 3
+     },
+     {
+      "name": "ROGER",
+      "lines": 1
+     },
+     {
+      "name": "RUTH",
+      "lines": 2
+     },
+     {
+      "name": "DOR",
+      "lines": 1
+     }
+    ]
+   }
+  },
+  {
+   "name": "a direction in brackets, with no period after it",
+   "layout": "dot",
+   "raw": "HODGE [hesitating] Is it far?\n\nWARDEN [pointing] Over the hill.\n\nHODGE. Which hill?\n\nWARDEN. The one you came over.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "HODGE",
+      "text": "[hesitating] Is it far?",
+      "label": "HODGE"
+     },
+     {
+      "kind": "speech",
+      "role": "WARDEN",
+      "text": "[pointing] Over the hill.",
+      "label": "WARDEN"
+     },
+     {
+      "kind": "speech",
+      "role": "HODGE",
+      "text": "Which hill?",
+      "label": "HODGE."
+     },
+     {
+      "kind": "speech",
+      "role": "WARDEN",
+      "text": "The one you came over.",
+      "label": "WARDEN."
+     }
+    ],
+    "parts": [
+     {
+      "name": "HODGE",
+      "lines": 2
+     },
+     {
+      "name": "WARDEN",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a direction before the period, and dashes after it",
+   "layout": "dot",
+   "raw": "BERTA (rising).--What was that?\n\nALL, (but one).--Nothing.\n\nBERTA.--It was not nothing.\n\nALL.\u2014It was the cat.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "BERTA",
+      "text": "(rising) What was that?",
+      "label": "BERTA"
+     },
+     {
+      "kind": "speech",
+      "role": "ALL",
+      "text": "(but one) Nothing.",
+      "label": "ALL"
+     },
+     {
+      "kind": "speech",
+      "role": "BERTA",
+      "text": "It was not nothing.",
+      "label": "BERTA."
+     },
+     {
+      "kind": "speech",
+      "role": "ALL",
+      "text": "It was the cat.",
+      "label": "ALL."
+     }
+    ],
+    "parts": [
+     {
+      "name": "BERTA",
+      "lines": 2
+     },
+     {
+      "name": "ALL",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "YES and NO on their own are words, not parts",
+   "layout": "dot",
+   "raw": "JUDGE. Did you see the hat?\nNO. You must speak up.\nWITNESS. I saw it.\nYES. Go on.\nJUDGE. What color?\nNO. Never mind.\nWITNESS. Green.\nYES. Green.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "JUDGE",
+      "text": "Did you see the hat?\nNO. You must speak up.",
+      "label": "JUDGE."
+     },
+     {
+      "kind": "speech",
+      "role": "WITNESS",
+      "text": "I saw it.\nYES. Go on.",
+      "label": "WITNESS."
+     },
+     {
+      "kind": "speech",
+      "role": "JUDGE",
+      "text": "What color?\nNO. Never mind.",
+      "label": "JUDGE."
+     },
+     {
+      "kind": "speech",
+      "role": "WITNESS",
+      "text": "Green.\nYES. Green.",
+      "label": "WITNESS."
+     }
+    ],
+    "parts": [
+     {
+      "name": "JUDGE",
+      "lines": 2
+     },
+     {
+      "name": "WITNESS",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "The Philanderer (Gutenberg 5071)",
+   "layout": "dot",
+   "raw": "CUTHBERTSON (taking a chair beside him, on his left). Neither do I.\nThere's not a room in this club where I can enjoy a pipe quietly\nwithout a woman coming in and beginning to roll a cigarette. It's a\ndisgusting habit in a woman: it's not natural to her sex.\n\nCRAVEN (sighing). Ah, Jo, times have changed since we both courted\nMolly Ebden all those years ago. I took my defeat well, old chap,\ndidn't I?\n\nCUTHBERTSON (with earnest approval). You did, Dan. The thought of it\nhas often helped me to behave well myself: it has, on my honour.\n\nCRAVEN. Yes, you always believe in hearth and home, Jo--in a true\nEnglish wife and a happy wholesome fireside. How did Molly turn out?",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "CUTHBERTSON",
+      "text": "(taking a chair beside him, on his left) Neither do I.\nThere's not a room in this club where I can enjoy a pipe quietly\nwithout a woman coming in and beginning to roll a cigarette. It's a\ndisgusting habit in a woman: it's not natural to her sex.",
+      "label": "CUTHBERTSON"
+     },
+     {
+      "kind": "speech",
+      "role": "CRAVEN",
+      "text": "(sighing) Ah, Jo, times have changed since we both courted\nMolly Ebden all those years ago. I took my defeat well, old chap,\ndidn't I?",
+      "label": "CRAVEN"
+     },
+     {
+      "kind": "speech",
+      "role": "CUTHBERTSON",
+      "text": "(with earnest approval) You did, Dan. The thought of it\nhas often helped me to behave well myself: it has, on my honour.",
+      "label": "CUTHBERTSON"
+     },
+     {
+      "kind": "speech",
+      "role": "CRAVEN",
+      "text": "Yes, you always believe in hearth and home, Jo--in a true\nEnglish wife and a happy wholesome fireside. How did Molly turn out?",
+      "label": "CRAVEN."
+     }
+    ],
+    "parts": [
+     {
+      "name": "CUTHBERTSON",
+      "lines": 2
+     },
+     {
+      "name": "CRAVEN",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "one line and no more, where others are printed the same way",
+   "layout": "dot",
+   "raw": "QUEEN. Who comes?\n\nKNIGHT. A page, madam.\n\nPAGE. Only me.\n\nQUEEN. Speak.\n\nTHE MOON. FULL TONIGHT\n\nKNIGHT. He cannot.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "QUEEN",
+      "text": "Who comes?",
+      "label": "QUEEN."
+     },
+     {
+      "kind": "speech",
+      "role": "KNIGHT",
+      "text": "A page, madam.",
+      "label": "KNIGHT."
+     },
+     {
+      "kind": "speech",
+      "role": "PAGE",
+      "text": "Only me.",
+      "label": "PAGE."
+     },
+     {
+      "kind": "speech",
+      "role": "QUEEN",
+      "text": "Speak.",
+      "label": "QUEEN."
+     },
+     {
+      "kind": "open",
+      "text": "THE MOON. FULL TONIGHT"
+     },
+     {
+      "kind": "speech",
+      "role": "KNIGHT",
+      "text": "He cannot.",
+      "label": "KNIGHT."
+     }
+    ],
+    "parts": [
+     {
+      "name": "QUEEN",
+      "lines": 2
+     },
+     {
+      "name": "KNIGHT",
+      "lines": 2
+     },
+     {
+      "name": "PAGE",
+      "lines": 1
+     }
+    ]
+   }
+  },
+  {
+   "name": "roman numerals are stanzas, not parts",
+   "layout": "dot",
+   "raw": "I. The road is long.\n\nII. The road is dry.\n\nI. The road is long.\n\nII. The road is dry.",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "I. The road is long."
+     },
+     {
+      "kind": "open",
+      "text": "II. The road is dry."
+     },
+     {
+      "kind": "open",
+      "text": "I. The road is long."
+     },
+     {
+      "kind": "open",
+      "text": "II. The road is dry."
+     }
+    ],
+    "parts": []
+   }
+  },
+  {
+   "name": "a tab after the name",
+   "layout": "gap",
+   "raw": "RUTH\tWho rang?\nNED\tNobody rang.\nRUTH\tThe bell did.\nNED\tThen the bell is nobody.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "RUTH",
+      "text": "Who rang?",
+      "label": "RUTH"
+     },
+     {
+      "kind": "speech",
+      "role": "NED",
+      "text": "Nobody rang.",
+      "label": "NED"
+     },
+     {
+      "kind": "speech",
+      "role": "RUTH",
+      "text": "The bell did.",
+      "label": "RUTH"
+     },
+     {
+      "kind": "speech",
+      "role": "NED",
+      "text": "Then the bell is nobody.",
+      "label": "NED"
+     }
+    ],
+    "parts": [
+     {
+      "name": "RUTH",
+      "lines": 2
+     },
+     {
+      "name": "NED",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a tab after a name in capitals and lower case, as a table pastes",
+   "layout": "gap",
+   "raw": "Ruth\tWho rang?\nNed\tNobody rang.\nRuth\tThe bell did.\nNed\tThen the bell is nobody.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "RUTH",
+      "text": "Who rang?",
+      "label": "Ruth"
+     },
+     {
+      "kind": "speech",
+      "role": "NED",
+      "text": "Nobody rang.",
+      "label": "Ned"
+     },
+     {
+      "kind": "speech",
+      "role": "RUTH",
+      "text": "The bell did.",
+      "label": "Ruth"
+     },
+     {
+      "kind": "speech",
+      "role": "NED",
+      "text": "Then the bell is nobody.",
+      "label": "Ned"
+     }
+    ],
+    "parts": [
+     {
+      "name": "RUTH",
+      "lines": 2
+     },
+     {
+      "name": "NED",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "three spaces, and rows indented under the words",
+   "layout": "gap",
+   "raw": "CAPTAIN    Hold her steady while I\n           read the chart.\nMATE       Steady she is.\nCAPTAIN    There is no island here.\nMATE       There is one there.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "CAPTAIN",
+      "text": "Hold her steady while I\nread the chart.",
+      "label": "CAPTAIN"
+     },
+     {
+      "kind": "speech",
+      "role": "MATE",
+      "text": "Steady she is.",
+      "label": "MATE"
+     },
+     {
+      "kind": "speech",
+      "role": "CAPTAIN",
+      "text": "There is no island here.",
+      "label": "CAPTAIN"
+     },
+     {
+      "kind": "speech",
+      "role": "MATE",
+      "text": "There is one there.",
+      "label": "MATE"
+     }
+    ],
+    "parts": [
+     {
+      "name": "CAPTAIN",
+      "lines": 2
+     },
+     {
+      "name": "MATE",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "no-break spaces and a direction in the column",
+   "layout": "gap",
+   "raw": "ELSE\u00a0\u00a0\u00a0(at the door) May I?\nFRITZ\u00a0\u00a0\u00a0You may.\nELSE\u00a0\u00a0\u00a0Thank you.\nFRITZ\u00a0\u00a0\u00a0Wipe your feet.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ELSE",
+      "text": "(at the door) May I?",
+      "label": "ELSE"
+     },
+     {
+      "kind": "speech",
+      "role": "FRITZ",
+      "text": "You may.",
+      "label": "FRITZ"
+     },
+     {
+      "kind": "speech",
+      "role": "ELSE",
+      "text": "Thank you.",
+      "label": "ELSE"
+     },
+     {
+      "kind": "speech",
+      "role": "FRITZ",
+      "text": "Wipe your feet.",
+      "label": "FRITZ"
+     }
+    ],
+    "parts": [
+     {
+      "name": "ELSE",
+      "lines": 2
+     },
+     {
+      "name": "FRITZ",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "two spaces are not a column",
+   "layout": "gap",
+   "raw": "BIG  SALE TODAY\nBIG  SALE TODAY\nCome in and see.",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "BIG  SALE TODAY"
+     },
+     {
+      "kind": "speech",
+      "role": "BIG SALE TODAY",
+      "text": "Come in and see.",
+      "label": "BIG  SALE TODAY"
+     }
+    ],
+    "parts": [
+     {
+      "name": "BIG SALE TODAY",
+      "lines": 1
+     }
+    ]
+   }
+  },
+  {
+   "name": "the name over the words",
+   "layout": "alone",
+   "raw": "TREADWELL\nNobody told me there were stairs.\n\nUSHER\nThere are always stairs.\n\nTREADWELL\nHow many?\n\nUSHER\nCount them.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "TREADWELL",
+      "text": "Nobody told me there were stairs.",
+      "label": "TREADWELL"
+     },
+     {
+      "kind": "speech",
+      "role": "USHER",
+      "text": "There are always stairs.",
+      "label": "USHER"
+     },
+     {
+      "kind": "speech",
+      "role": "TREADWELL",
+      "text": "How many?",
+      "label": "TREADWELL"
+     },
+     {
+      "kind": "speech",
+      "role": "USHER",
+      "text": "Count them.",
+      "label": "USHER"
+     }
+    ],
+    "parts": [
+     {
+      "name": "TREADWELL",
+      "lines": 2
+     },
+     {
+      "name": "USHER",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "the name, a blank row, then the words (Gutenberg 27357)",
+   "layout": "alone",
+   "raw": "WESTON\n\nUntil you have established plantations, you cannot claim it.\n\nKIEFT\n\nI do not wish to argue with you, sir. I am here to close this business\nwith you, Master Robinson. I am waiting--\n\nROBINSON\n\nWe must have time to consider--\n\nKIEFT\n\nI had your word.\n\nCARVER\n\nMaster Kieft, the situation has changed. We are Englishmen, and if we\ncan emigrate under our own flag, you cannot blame us for preferring it\nto another.\n\nKIEFT\n\nYou have tricked us--you are not treating me fairly!\n\nROBINSON\n\nNow, sir--\n\nKIEFT [_louder_]",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "WESTON"
+     },
+     {
+      "kind": "open",
+      "text": "Until you have established plantations, you cannot claim it."
+     },
+     {
+      "kind": "speech",
+      "role": "KIEFT",
+      "text": "I do not wish to argue with you, sir. I am here to close this business\nwith you, Master Robinson. I am waiting--",
+      "label": "KIEFT"
+     },
+     {
+      "kind": "speech",
+      "role": "ROBINSON",
+      "text": "We must have time to consider--",
+      "label": "ROBINSON"
+     },
+     {
+      "kind": "speech",
+      "role": "KIEFT",
+      "text": "I had your word.",
+      "label": "KIEFT"
+     },
+     {
+      "kind": "open",
+      "text": "CARVER"
+     },
+     {
+      "kind": "open",
+      "text": "Master Kieft, the situation has changed. We are Englishmen, and if we\ncan emigrate under our own flag, you cannot blame us for preferring it\nto another."
+     },
+     {
+      "kind": "speech",
+      "role": "KIEFT",
+      "text": "You have tricked us--you are not treating me fairly!",
+      "label": "KIEFT"
+     },
+     {
+      "kind": "speech",
+      "role": "ROBINSON",
+      "text": "Now, sir--",
+      "label": "ROBINSON"
+     },
+     {
+      "kind": "speech",
+      "role": "KIEFT",
+      "text": "[louder]",
+      "label": "KIEFT"
+     }
+    ],
+    "parts": [
+     {
+      "name": "KIEFT",
+      "lines": 4
+     },
+     {
+      "name": "ROBINSON",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a direction beside the name (Gutenberg 28511)",
+   "layout": "alone",
+   "raw": "BLIGH\n\nThen, sir, you will deliver up the charter to me.\n\nTREAT\n\nWhat?\n\nBLIGH\n\nThe charter! The charter--read the rest of the order, sir.\n\nTREAT [_reading_]\n\n\"Governor Treat is hereby ordered to deliver up the forfeited\ncharter\"--but, Colonel Bligh, I cannot deliver up the charter--\n\nBLIGH\n\nWhy not?\n\nTREAT\n\nBecause, sir, it is not in my possession.\n\nBLIGH\n\nIn whose possession is it?\n\nTREAT\n\nIt has been intrusted by the General Court to a special committee.\n\nBLIGH\n\nIndeed--and who comprises the committee?\n\nTREAT",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "BLIGH",
+      "text": "Then, sir, you will deliver up the charter to me.",
+      "label": "BLIGH"
+     },
+     {
+      "kind": "speech",
+      "role": "TREAT",
+      "text": "What?",
+      "label": "TREAT"
+     },
+     {
+      "kind": "speech",
+      "role": "BLIGH",
+      "text": "The charter! The charter--read the rest of the order, sir.",
+      "label": "BLIGH"
+     },
+     {
+      "kind": "speech",
+      "role": "TREAT",
+      "text": "[reading]\n\"Governor Treat is hereby ordered to deliver up the forfeited\ncharter\"--but, Colonel Bligh, I cannot deliver up the charter--",
+      "label": "TREAT"
+     },
+     {
+      "kind": "speech",
+      "role": "BLIGH",
+      "text": "Why not?",
+      "label": "BLIGH"
+     },
+     {
+      "kind": "speech",
+      "role": "TREAT",
+      "text": "Because, sir, it is not in my possession.",
+      "label": "TREAT"
+     },
+     {
+      "kind": "speech",
+      "role": "BLIGH",
+      "text": "In whose possession is it?",
+      "label": "BLIGH"
+     },
+     {
+      "kind": "speech",
+      "role": "TREAT",
+      "text": "It has been intrusted by the General Court to a special committee.",
+      "label": "TREAT"
+     },
+     {
+      "kind": "speech",
+      "role": "BLIGH",
+      "text": "Indeed--and who comprises the committee?",
+      "label": "BLIGH"
+     },
+     {
+      "kind": "open",
+      "text": "TREAT"
+     }
+    ],
+    "parts": [
+     {
+      "name": "BLIGH",
+      "lines": 5
+     },
+     {
+      "name": "TREAT",
+      "lines": 4
+     }
+    ]
+   }
+  },
+  {
+   "name": "a name with a period, and a direction before the words (Gutenberg 49916)",
+   "layout": "alone",
+   "raw": "One lie more or less on your conscience can make no great difference to\nyou.\n\nGEORGE WINTER.\n\nI\u2019ve explained your presence here by your susceptibility to fresh paint.\n\nLADY FRANCIS.\n\nWhat do you mean?\n\nGEORGE WINTER.\n\n[_With a chuckle._] The day after Kate left Portman Square I came to the\nconclusion that the house needed re-decorating. I\u2019m having it papered\nand painted from cellar to attic. When it\u2019s finished I shall start\nagain.\n\nLADY FRANCIS.\n\nFortunately the British workman takes his time.\n\nGEORGE WINTER.\n\nBut that\u2019s not enough. The Middlepool people are nervous about the whole\nthing. You know Swalecliffe--he\u2019s the Nonconformist minister--one of\nthose confounded busybodies who go poking their noses into everybody\u2019s\nprivate life. He\u2019s on my committee. He and Ford control the dissenting\ninterest between them.... They\u2019ve got it into their heads that they want\nthe truth from you.\n\nCATHERINE.\n\nMe?",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "One lie more or less on your conscience can make no great difference to\nyou."
+     },
+     {
+      "kind": "speech",
+      "role": "GEORGE WINTER",
+      "text": "I\u2019ve explained your presence here by your susceptibility to fresh paint.",
+      "label": "GEORGE WINTER."
+     },
+     {
+      "kind": "speech",
+      "role": "LADY FRANCIS",
+      "text": "What do you mean?",
+      "label": "LADY FRANCIS."
+     },
+     {
+      "kind": "speech",
+      "role": "GEORGE WINTER",
+      "text": "[With a chuckle.] The day after Kate left Portman Square I came to the\nconclusion that the house needed re-decorating. I\u2019m having it papered\nand painted from cellar to attic. When it\u2019s finished I shall start\nagain.",
+      "label": "GEORGE WINTER."
+     },
+     {
+      "kind": "speech",
+      "role": "LADY FRANCIS",
+      "text": "Fortunately the British workman takes his time.",
+      "label": "LADY FRANCIS."
+     },
+     {
+      "kind": "speech",
+      "role": "GEORGE WINTER",
+      "text": "But that\u2019s not enough. The Middlepool people are nervous about the whole\nthing. You know Swalecliffe--he\u2019s the Nonconformist minister--one of\nthose confounded busybodies who go poking their noses into everybody\u2019s\nprivate life. He\u2019s on my committee. He and Ford control the dissenting\ninterest between them.... They\u2019ve got it into their heads that they want\nthe truth from you.",
+      "label": "GEORGE WINTER."
+     },
+     {
+      "kind": "open",
+      "text": "CATHERINE."
+     },
+     {
+      "kind": "open",
+      "text": "Me?"
+     }
+    ],
+    "parts": [
+     {
+      "name": "GEORGE WINTER",
+      "lines": 3
+     },
+     {
+      "name": "LADY FRANCIS",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "verse under the name (Gutenberg 1502)",
+   "layout": "alone",
+   "raw": "GEORGE.\nBut when we saw our sunshine made thy spring,\nAnd that thy summer bred us no increase,\nWe set the axe to thy usurping root;\nAnd though the edge hath something hit ourselves,\nYet know thou, since we have begun to strike,\nWe\u2019ll never leave till we have hewn thee down\nOr bathed thy growing with our heated bloods.\n\nGEORGE.\nSo be it.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "GEORGE",
+      "text": "But when we saw our sunshine made thy spring,\nAnd that thy summer bred us no increase,\nWe set the axe to thy usurping root;\nAnd though the edge hath something hit ourselves,\nYet know thou, since we have begun to strike,\nWe\u2019ll never leave till we have hewn thee down\nOr bathed thy growing with our heated bloods.",
+      "label": "GEORGE."
+     },
+     {
+      "kind": "speech",
+      "role": "GEORGE",
+      "text": "So be it.",
+      "label": "GEORGE."
+     }
+    ],
+    "parts": [
+     {
+      "name": "GEORGE",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a name with nothing under it goes back as printed",
+   "layout": "alone",
+   "raw": "CHARACTERS\nOLIVE\nPIM\n\nOLIVE\nIs this the place?\n\nPIM\nIt is a place.\n\nOLIVE\n\nPIM\nYou were about to speak.",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "CHARACTERS"
+     },
+     {
+      "kind": "open",
+      "text": "OLIVE"
+     },
+     {
+      "kind": "open",
+      "text": "PIM"
+     },
+     {
+      "kind": "speech",
+      "role": "OLIVE",
+      "text": "Is this the place?",
+      "label": "OLIVE"
+     },
+     {
+      "kind": "speech",
+      "role": "PIM",
+      "text": "It is a place.",
+      "label": "PIM"
+     },
+     {
+      "kind": "open",
+      "text": "OLIVE"
+     },
+     {
+      "kind": "speech",
+      "role": "PIM",
+      "text": "You were about to speak.",
+      "label": "PIM"
+     }
+    ],
+    "parts": [
+     {
+      "name": "OLIVE",
+      "lines": 1
+     },
+     {
+      "name": "PIM",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a part with one line, and words that open like a label",
+   "layout": "alone",
+   "raw": "GRACE\nYou never said so.\n\nPRAED\nGrace: you never asked.\n\nSOLDIER\nThe carriage, sir.\n\nGRACE\nThen go.\n\nPRAED\nGrace: I will.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "GRACE",
+      "text": "You never said so.",
+      "label": "GRACE"
+     },
+     {
+      "kind": "speech",
+      "role": "PRAED",
+      "text": "Grace: you never asked.",
+      "label": "PRAED"
+     },
+     {
+      "kind": "speech",
+      "role": "SOLDIER",
+      "text": "The carriage, sir.",
+      "label": "SOLDIER"
+     },
+     {
+      "kind": "speech",
+      "role": "GRACE",
+      "text": "Then go.",
+      "label": "GRACE"
+     },
+     {
+      "kind": "speech",
+      "role": "PRAED",
+      "text": "Grace: I will.",
+      "label": "PRAED"
+     }
+    ],
+    "parts": [
+     {
+      "name": "GRACE",
+      "lines": 2
+     },
+     {
+      "name": "PRAED",
+      "lines": 2
+     },
+     {
+      "name": "SOLDIER",
+      "lines": 1
+     }
+    ]
+   }
+  },
+  {
+   "name": "centered names (Gutenberg 67583)",
+   "layout": "alone",
+   "raw": "                                 SARA\n\nJakie! The water! From the sideboard! [JACK _goes quickly to sideboard,\npours a glass of water and brings it over._] Yosele, you shouldn\u2019t\nexcite yourself so. Look, Jakie, see how white your Papa\u2019s face is.\n[_Takes glass of water from_ JACK.] Here, Yosele, drink it slow. Jakie,\nmy son, come, tell him you are sorry. Tell him you are ashamed.\n\n                                 JACK\n\nHow can I, Mama? If I can\u2019t be proud of being a jazz singer, then I\ncan\u2019t be proud of anything. It\u2019s all I\u2019ve got, Mama, it\u2019s all I am.\n[_Gets hat, stick and bag, then pauses._] Well, there won\u2019t be any more\narguments around here on my account, I\u2019ll tell you that. I was away\n\n                                 SARA\n\nJakie.\n\n                                 JACK\n\nMama.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "SARA",
+      "text": "Jakie! The water! From the sideboard! [JACK goes quickly to sideboard,\npours a glass of water and brings it over.] Yosele, you shouldn\u2019t\nexcite yourself so. Look, Jakie, see how white your Papa\u2019s face is.\n[Takes glass of water from JACK.] Here, Yosele, drink it slow. Jakie,\nmy son, come, tell him you are sorry. Tell him you are ashamed.",
+      "label": "SARA"
+     },
+     {
+      "kind": "speech",
+      "role": "JACK",
+      "text": "How can I, Mama? If I can\u2019t be proud of being a jazz singer, then I\ncan\u2019t be proud of anything. It\u2019s all I\u2019ve got, Mama, it\u2019s all I am.\n[Gets hat, stick and bag, then pauses.] Well, there won\u2019t be any more\narguments around here on my account, I\u2019ll tell you that. I was away",
+      "label": "JACK"
+     },
+     {
+      "kind": "speech",
+      "role": "SARA",
+      "text": "Jakie.",
+      "label": "SARA"
+     },
+     {
+      "kind": "speech",
+      "role": "JACK",
+      "text": "Mama.",
+      "label": "JACK"
+     }
+    ],
+    "parts": [
+     {
+      "name": "SARA",
+      "lines": 2
+     },
+     {
+      "name": "JACK",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a direction in brackets over the words (The Jazz Singer, Gutenberg 67583)",
+   "layout": "alone",
+   "raw": "LEE\n\n[_Cordially_]. How are you, Mr. Dillings?\n\nDILLINGS\n\n[_Coldly_]. How do you do?\n\nLEE\n\nVery well.\n\nDILLINGS\n\n[_He bows._]\n\nGood.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "LEE",
+      "text": "[Cordially]. How are you, Mr. Dillings?",
+      "label": "LEE"
+     },
+     {
+      "kind": "speech",
+      "role": "DILLINGS",
+      "text": "[Coldly]. How do you do?",
+      "label": "DILLINGS"
+     },
+     {
+      "kind": "speech",
+      "role": "LEE",
+      "text": "Very well.",
+      "label": "LEE"
+     },
+     {
+      "kind": "speech",
+      "role": "DILLINGS",
+      "text": "[He bows.]\nGood.",
+      "label": "DILLINGS"
+     }
+    ],
+    "parts": [
+     {
+      "name": "LEE",
+      "lines": 2
+     },
+     {
+      "name": "DILLINGS",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "scene headings, characters, parentheticals, action",
+   "layout": "fountain",
+   "raw": "INT. SIGNAL BOX - NIGHT\n\nRain on the glass. A lamp.\n\nSIGNALMAN\n(into the telephone)\nNothing has passed here since nine.\n\nVOICE (V.O.)\nSomething has.\n\nSIGNALMAN\nI would have seen it.\n\nVOICE (V.O.)\nWould you?\n\nCUT TO:\n\nEXT. LINE - CONTINUOUS\n\nFADE OUT.",
+   "want": {
+    "lines": [
+     {
+      "kind": "direction",
+      "text": "INT. SIGNAL BOX - NIGHT"
+     },
+     {
+      "kind": "open",
+      "text": "Rain on the glass. A lamp."
+     },
+     {
+      "kind": "speech",
+      "role": "SIGNALMAN",
+      "text": "(into the telephone)\nNothing has passed here since nine.",
+      "label": "SIGNALMAN"
+     },
+     {
+      "kind": "speech",
+      "role": "VOICE",
+      "text": "(V.O.)\nSomething has.",
+      "label": "VOICE"
+     },
+     {
+      "kind": "speech",
+      "role": "SIGNALMAN",
+      "text": "I would have seen it.",
+      "label": "SIGNALMAN"
+     },
+     {
+      "kind": "speech",
+      "role": "VOICE",
+      "text": "(V.O.)\nWould you?",
+      "label": "VOICE"
+     },
+     {
+      "kind": "direction",
+      "text": "CUT TO:"
+     },
+     {
+      "kind": "direction",
+      "text": "EXT. LINE - CONTINUOUS"
+     },
+     {
+      "kind": "direction",
+      "text": "FADE OUT."
+     }
+    ],
+    "parts": [
+     {
+      "name": "SIGNALMAN",
+      "lines": 2
+     },
+     {
+      "name": "VOICE",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a forced name and two voices at once",
+   "layout": "fountain",
+   "raw": "@McAVOY\nAre you ready?\n\nPIP ^\nNo.\n\n@McAVOY\nAre you now?\n\nPIP\nNo.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "MCAVOY",
+      "text": "Are you ready?",
+      "label": "@McAVOY"
+     },
+     {
+      "kind": "speech",
+      "role": "PIP",
+      "text": "No.",
+      "label": "PIP ^"
+     },
+     {
+      "kind": "speech",
+      "role": "MCAVOY",
+      "text": "Are you now?",
+      "label": "@McAVOY"
+     },
+     {
+      "kind": "speech",
+      "role": "PIP",
+      "text": "No.",
+      "label": "PIP"
+     }
+    ],
+    "parts": [
+     {
+      "name": "MCAVOY",
+      "lines": 2
+     },
+     {
+      "name": "PIP",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "continued speeches are the same part",
+   "layout": "fountain",
+   "raw": "HARRIET\nI had a thought.\n\n(She loses it.)\n\nHARRIET (CONT\u2019D)\nIt is gone.\n\nMILO\nIt will come back.\n\nMILO\nThey do.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "HARRIET",
+      "text": "I had a thought.",
+      "label": "HARRIET"
+     },
+     {
+      "kind": "direction",
+      "text": "(She loses it.)"
+     },
+     {
+      "kind": "speech",
+      "role": "HARRIET",
+      "text": "(CONT\u2019D)\nIt is gone.",
+      "label": "HARRIET"
+     },
+     {
+      "kind": "speech",
+      "role": "MILO",
+      "text": "It will come back.",
+      "label": "MILO"
+     },
+     {
+      "kind": "speech",
+      "role": "MILO",
+      "text": "They do.",
+      "label": "MILO"
+     }
+    ],
+    "parts": [
+     {
+      "name": "HARRIET",
+      "lines": 2
+     },
+     {
+      "name": "MILO",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a shout on its own row is words",
+   "layout": "fountain",
+   "raw": "GUARD\nWho goes?\nSTOP\n\nTRAVELER\nA friend.\n\nGUARD\nSTOP\nI said.\n\nTRAVELER\nI did stop.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "GUARD",
+      "text": "Who goes?\nSTOP",
+      "label": "GUARD"
+     },
+     {
+      "kind": "speech",
+      "role": "TRAVELER",
+      "text": "A friend.",
+      "label": "TRAVELER"
+     },
+     {
+      "kind": "speech",
+      "role": "GUARD",
+      "text": "STOP\nI said.",
+      "label": "GUARD"
+     },
+     {
+      "kind": "speech",
+      "role": "TRAVELER",
+      "text": "I did stop.",
+      "label": "TRAVELER"
+     }
+    ],
+    "parts": [
+     {
+      "name": "GUARD",
+      "lines": 2
+     },
+     {
+      "name": "TRAVELER",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "centered and lower-case headings",
+   "layout": "fountain",
+   "raw": ">THE END<\n\nAct 2\n\nScene iii\n\nNELL\nAgain?\n\nHOB\nAgain.\n\nNELL\nWhy?\n\nHOB\nCurtain.",
+   "want": {
+    "lines": [
+     {
+      "kind": "direction",
+      "text": ">THE END<"
+     },
+     {
+      "kind": "direction",
+      "text": "Act 2"
+     },
+     {
+      "kind": "direction",
+      "text": "Scene iii"
+     },
+     {
+      "kind": "speech",
+      "role": "NELL",
+      "text": "Again?",
+      "label": "NELL"
+     },
+     {
+      "kind": "speech",
+      "role": "HOB",
+      "text": "Again.",
+      "label": "HOB"
+     },
+     {
+      "kind": "speech",
+      "role": "NELL",
+      "text": "Why?",
+      "label": "NELL"
+     },
+     {
+      "kind": "speech",
+      "role": "HOB",
+      "text": "Curtain.",
+      "label": "HOB"
+     }
+    ],
+    "parts": [
+     {
+      "name": "NELL",
+      "lines": 2
+     },
+     {
+      "name": "HOB",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "A Tender Attachment, italic names (Gutenberg 47826)",
+   "layout": "mixed",
+   "raw": "_Hor._ Clapboard, you\u2019ve played me a shabby trick!\n\n_Clap._ I couldn\u2019t help it, sir; he thrust the money into my hands;\nsaid he was your legal guardian, and told me to send you home.\n\n_Hor._ I\u2019ll not go until my work is finished. Well, Clapboard, let him\ncome; his stay shall be short.\n\n_Clap._ What will you do?\n\n\n_Clap._ Well.\n\n_Hor._ Well what?\n\n_Clap._ Nothing.\n\n_Hor._ Say it.\n\n_Clap._ I won\u2019t.\n\n_Hor._ Then go.\n\n_Clap._ I am going.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "HOR",
+      "text": "Clapboard, you\u2019ve played me a shabby trick!",
+      "label": "Hor."
+     },
+     {
+      "kind": "speech",
+      "role": "CLAP",
+      "text": "I couldn\u2019t help it, sir; he thrust the money into my hands;\nsaid he was your legal guardian, and told me to send you home.",
+      "label": "Clap."
+     },
+     {
+      "kind": "speech",
+      "role": "HOR",
+      "text": "I\u2019ll not go until my work is finished. Well, Clapboard, let him\ncome; his stay shall be short.",
+      "label": "Hor."
+     },
+     {
+      "kind": "speech",
+      "role": "CLAP",
+      "text": "What will you do?",
+      "label": "Clap."
+     },
+     {
+      "kind": "speech",
+      "role": "CLAP",
+      "text": "Well.",
+      "label": "Clap."
+     },
+     {
+      "kind": "speech",
+      "role": "HOR",
+      "text": "Well what?",
+      "label": "Hor."
+     },
+     {
+      "kind": "speech",
+      "role": "CLAP",
+      "text": "Nothing.",
+      "label": "Clap."
+     },
+     {
+      "kind": "speech",
+      "role": "HOR",
+      "text": "Say it.",
+      "label": "Hor."
+     },
+     {
+      "kind": "speech",
+      "role": "CLAP",
+      "text": "I won\u2019t.",
+      "label": "Clap."
+     },
+     {
+      "kind": "speech",
+      "role": "HOR",
+      "text": "Then go.",
+      "label": "Hor."
+     },
+     {
+      "kind": "speech",
+      "role": "CLAP",
+      "text": "I am going.",
+      "label": "Clap."
+     }
+    ],
+    "parts": [
+     {
+      "name": "HOR",
+      "lines": 5
+     },
+     {
+      "name": "CLAP",
+      "lines": 6
+     }
+    ]
+   }
+  },
+  {
+   "name": "the First Folio, rows with no blank between (Gutenberg 2265)",
+   "layout": "mixed",
+   "raw": "  Barn. Who\u2019s there?\n  Fran. Nay answer me: Stand & vnfold\nyour selfe\n\n   Barn. Long liue the King\n\n   Fran. Barnardo?\n\n   Barn. He\n\n   Fran. You come most carefully vpon your houre\n\n   Barn. \u2019Tis now strook twelue, get thee to bed Francisco\n\n   Fran. For this releefe much thankes: \u2019Tis bitter cold,\nAnd I am sicke at heart\n\n   Barn. Haue you had quiet Guard?\n\n   Fran. Not a Mouse stirring\n\nEnter Horatio and Marcellus.\n\n  Fran. I thinke I heare them. Stand: who\u2019s there?",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "BARN",
+      "text": "Who\u2019s there?",
+      "label": "Barn."
+     },
+     {
+      "kind": "speech",
+      "role": "FRAN",
+      "text": "Nay answer me: Stand & vnfold\nyour selfe",
+      "label": "Fran."
+     },
+     {
+      "kind": "speech",
+      "role": "BARN",
+      "text": "Long liue the King",
+      "label": "Barn."
+     },
+     {
+      "kind": "speech",
+      "role": "FRAN",
+      "text": "Barnardo?",
+      "label": "Fran."
+     },
+     {
+      "kind": "speech",
+      "role": "BARN",
+      "text": "He",
+      "label": "Barn."
+     },
+     {
+      "kind": "speech",
+      "role": "FRAN",
+      "text": "You come most carefully vpon your houre",
+      "label": "Fran."
+     },
+     {
+      "kind": "speech",
+      "role": "BARN",
+      "text": "\u2019Tis now strook twelue, get thee to bed Francisco",
+      "label": "Barn."
+     },
+     {
+      "kind": "speech",
+      "role": "FRAN",
+      "text": "For this releefe much thankes: \u2019Tis bitter cold,\nAnd I am sicke at heart",
+      "label": "Fran."
+     },
+     {
+      "kind": "speech",
+      "role": "BARN",
+      "text": "Haue you had quiet Guard?",
+      "label": "Barn."
+     },
+     {
+      "kind": "speech",
+      "role": "FRAN",
+      "text": "Not a Mouse stirring",
+      "label": "Fran."
+     },
+     {
+      "kind": "direction",
+      "text": "Enter Horatio and Marcellus."
+     },
+     {
+      "kind": "speech",
+      "role": "FRAN",
+      "text": "I thinke I heare them. Stand: who\u2019s there?",
+      "label": "Fran."
+     }
+    ],
+    "parts": [
+     {
+      "name": "BARN",
+      "lines": 5
+     },
+     {
+      "name": "FRAN",
+      "lines": 6
+     }
+    ]
+   }
+  },
+  {
+   "name": "Mrs. and a name (Gutenberg 76327)",
+   "layout": "mixed",
+   "raw": "  _Mrs. Dig._ You have!\n\n  _Mush._ I have, upon honour.\n\n  _Mrs. Dig._ Have you ever observed it, brother? Mr. Diggerty, what do\nyou think? Hav\u2019n\u2019t the dogs of this here country the brogue?\n\n  _O\u2019Dogh._ Indeed and that they have, my dear, and the cows too, and\nthe sheep, and the bullocks, and that as strong as ever your own mother\nhad it, who was an O\u2019Gallagher.\n\n  _Mrs. Dig._ Oh!\n\n  _O\u2019Dogh._ Not two of whose ancestors could ever speak three words of\nEnglish to be understood.\n\n  _Mrs. Dig._ You are a strange rude man, Mr. Diggerty, to tell me of my\nmother\u2019s family--you know I always despised my mother\u2019s family--I hate\n\n_Mrs. Dig._ Well!\n\n_Mrs. Dig._ Never!\n\n_Mush._ Ha, ha!\n\n_Mush._ Indeed, ma\u2019am.\n\n_Mush._ So it is.\n\n_Mush._ I declare.\n\n_Mrs. Dig._ Hush.\n\n_O\u2019Dogh._ Well?\n\n_O\u2019Dogh._ Well?\n\n_O\u2019Dogh._ Well?",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "MRS. DIG",
+      "text": "You have!",
+      "label": "Mrs. Dig."
+     },
+     {
+      "kind": "speech",
+      "role": "MUSH",
+      "text": "I have, upon honour.",
+      "label": "Mush."
+     },
+     {
+      "kind": "speech",
+      "role": "MRS. DIG",
+      "text": "Have you ever observed it, brother? Mr. Diggerty, what do\nyou think? Hav\u2019n\u2019t the dogs of this here country the brogue?",
+      "label": "Mrs. Dig."
+     },
+     {
+      "kind": "speech",
+      "role": "O'DOGH",
+      "text": "Indeed and that they have, my dear, and the cows too, and\nthe sheep, and the bullocks, and that as strong as ever your own mother\nhad it, who was an O\u2019Gallagher.",
+      "label": "O\u2019Dogh."
+     },
+     {
+      "kind": "speech",
+      "role": "MRS. DIG",
+      "text": "Oh!",
+      "label": "Mrs. Dig."
+     },
+     {
+      "kind": "speech",
+      "role": "O'DOGH",
+      "text": "Not two of whose ancestors could ever speak three words of\nEnglish to be understood.",
+      "label": "O\u2019Dogh."
+     },
+     {
+      "kind": "speech",
+      "role": "MRS. DIG",
+      "text": "You are a strange rude man, Mr. Diggerty, to tell me of my\nmother\u2019s family--you know I always despised my mother\u2019s family--I hate",
+      "label": "Mrs. Dig."
+     },
+     {
+      "kind": "speech",
+      "role": "MRS. DIG",
+      "text": "Well!",
+      "label": "Mrs. Dig."
+     },
+     {
+      "kind": "speech",
+      "role": "MRS. DIG",
+      "text": "Never!",
+      "label": "Mrs. Dig."
+     },
+     {
+      "kind": "speech",
+      "role": "MUSH",
+      "text": "Ha, ha!",
+      "label": "Mush."
+     },
+     {
+      "kind": "speech",
+      "role": "MUSH",
+      "text": "Indeed, ma\u2019am.",
+      "label": "Mush."
+     },
+     {
+      "kind": "speech",
+      "role": "MUSH",
+      "text": "So it is.",
+      "label": "Mush."
+     },
+     {
+      "kind": "speech",
+      "role": "MUSH",
+      "text": "I declare.",
+      "label": "Mush."
+     },
+     {
+      "kind": "speech",
+      "role": "MRS. DIG",
+      "text": "Hush.",
+      "label": "Mrs. Dig."
+     },
+     {
+      "kind": "speech",
+      "role": "O'DOGH",
+      "text": "Well?",
+      "label": "O\u2019Dogh."
+     },
+     {
+      "kind": "speech",
+      "role": "O'DOGH",
+      "text": "Well?",
+      "label": "O\u2019Dogh."
+     },
+     {
+      "kind": "speech",
+      "role": "O'DOGH",
+      "text": "Well?",
+      "label": "O\u2019Dogh."
+     }
+    ],
+    "parts": [
+     {
+      "name": "MRS. DIG",
+      "lines": 7
+     },
+     {
+      "name": "MUSH",
+      "lines": 5
+     },
+     {
+      "name": "O'DOGH",
+      "lines": 5
+     }
+    ]
+   }
+  },
+  {
+   "name": "four times is not enough",
+   "layout": "mixed",
+   "raw": "Pel. Good day.\n\nArth. Good day.\n\nPel. Rain?\n\nArth. Rain.\n\nPel. Again?\n\nArth. Again.\n\nPel. Well.\n\nArth. Well.",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "Pel. Good day."
+     },
+     {
+      "kind": "open",
+      "text": "Arth. Good day."
+     },
+     {
+      "kind": "open",
+      "text": "Pel. Rain?"
+     },
+     {
+      "kind": "open",
+      "text": "Arth. Rain."
+     },
+     {
+      "kind": "open",
+      "text": "Pel. Again?"
+     },
+     {
+      "kind": "open",
+      "text": "Arth. Again."
+     },
+     {
+      "kind": "open",
+      "text": "Pel. Well."
+     },
+     {
+      "kind": "open",
+      "text": "Arth. Well."
+     }
+    ],
+    "parts": []
+   }
+  },
+  {
+   "name": "common words and Mr. are not parts",
+   "layout": "mixed",
+   "raw": "Yes. I am.\n\nMr. Pell is out.\n\nYes. He is.\n\nMr. Pell is in.\n\nYes. I know.\n\nMr. Pell is late.\n\nYes. Always.\n\nMr. Pell is early.\n\nYes. Never.\n\nMr. Pell is here.",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "Yes. I am."
+     },
+     {
+      "kind": "open",
+      "text": "Mr. Pell is out."
+     },
+     {
+      "kind": "open",
+      "text": "Yes. He is."
+     },
+     {
+      "kind": "open",
+      "text": "Mr. Pell is in."
+     },
+     {
+      "kind": "open",
+      "text": "Yes. I know."
+     },
+     {
+      "kind": "open",
+      "text": "Mr. Pell is late."
+     },
+     {
+      "kind": "open",
+      "text": "Yes. Always."
+     },
+     {
+      "kind": "open",
+      "text": "Mr. Pell is early."
+     },
+     {
+      "kind": "open",
+      "text": "Yes. Never."
+     },
+     {
+      "kind": "open",
+      "text": "Mr. Pell is here."
+     }
+    ],
+    "parts": []
+   }
+  },
+  {
+   "name": "a direction beside the name",
+   "layout": "mixed",
+   "raw": "Jaf. (aside) Fear not.\n\nPier. He comes.\n\nJaf. Where?\n\nPier. (pointing) There.\n\nJaf. I see no one.\n\nPier. Look again.\n\nJaf. Still no one.\n\nPier. Wait.\n\nJaf. Ah.\n\nPier. You see?",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "JAF",
+      "text": "(aside) Fear not.",
+      "label": "Jaf."
+     },
+     {
+      "kind": "speech",
+      "role": "PIER",
+      "text": "He comes.",
+      "label": "Pier."
+     },
+     {
+      "kind": "speech",
+      "role": "JAF",
+      "text": "Where?",
+      "label": "Jaf."
+     },
+     {
+      "kind": "speech",
+      "role": "PIER",
+      "text": "(pointing) There.",
+      "label": "Pier."
+     },
+     {
+      "kind": "speech",
+      "role": "JAF",
+      "text": "I see no one.",
+      "label": "Jaf."
+     },
+     {
+      "kind": "speech",
+      "role": "PIER",
+      "text": "Look again.",
+      "label": "Pier."
+     },
+     {
+      "kind": "speech",
+      "role": "JAF",
+      "text": "Still no one.",
+      "label": "Jaf."
+     },
+     {
+      "kind": "speech",
+      "role": "PIER",
+      "text": "Wait.",
+      "label": "Pier."
+     },
+     {
+      "kind": "speech",
+      "role": "JAF",
+      "text": "Ah.",
+      "label": "Jaf."
+     },
+     {
+      "kind": "speech",
+      "role": "PIER",
+      "text": "You see?",
+      "label": "Pier."
+     }
+    ],
+    "parts": [
+     {
+      "name": "JAF",
+      "lines": 5
+     },
+     {
+      "name": "PIER",
+      "lines": 5
+     }
+    ]
+   }
+  },
+  {
+   "name": "sound and music",
+   "layout": "cues",
+   "raw": "SOUND: A door, far off.\nMUSIC: Up, then under.\nSFX - RAIN\n(MUSIC)\nMUSIC UP AND OUT\nSound: wind\nNORA: Listen.\nGUS: To what?\nNORA: To that.\nGUS: I hear it.",
+   "want": {
+    "lines": [
+     {
+      "kind": "sound",
+      "text": "SOUND: A door, far off."
+     },
+     {
+      "kind": "music",
+      "text": "MUSIC: Up, then under."
+     },
+     {
+      "kind": "sound",
+      "text": "SFX - RAIN"
+     },
+     {
+      "kind": "music",
+      "text": "(MUSIC)"
+     },
+     {
+      "kind": "music",
+      "text": "MUSIC UP AND OUT"
+     },
+     {
+      "kind": "sound",
+      "text": "Sound: wind"
+     },
+     {
+      "kind": "speech",
+      "role": "NORA",
+      "text": "Listen.",
+      "label": "NORA:"
+     },
+     {
+      "kind": "speech",
+      "role": "GUS",
+      "text": "To what?",
+      "label": "GUS:"
+     },
+     {
+      "kind": "speech",
+      "role": "NORA",
+      "text": "To that.",
+      "label": "NORA:"
+     },
+     {
+      "kind": "speech",
+      "role": "GUS",
+      "text": "I hear it.",
+      "label": "GUS:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "NORA",
+      "lines": 2
+     },
+     {
+      "name": "GUS",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "a cue over two rows, and Music inside a speech",
+   "layout": "cues",
+   "raw": "SOUND: Feet on gravel, coming nearer,\nthen stopping.\n\nWALTER: I cannot play it.\nMusic is for other people.\nSOUND MAN: Ready when you are.\nWALTER: Not yet.\nSOUND MAN: Ready.",
+   "want": {
+    "lines": [
+     {
+      "kind": "sound",
+      "text": "SOUND: Feet on gravel, coming nearer,\nthen stopping."
+     },
+     {
+      "kind": "speech",
+      "role": "WALTER",
+      "text": "I cannot play it.\nMusic is for other people.",
+      "label": "WALTER:"
+     },
+     {
+      "kind": "speech",
+      "role": "SOUND MAN",
+      "text": "Ready when you are.",
+      "label": "SOUND MAN:"
+     },
+     {
+      "kind": "speech",
+      "role": "WALTER",
+      "text": "Not yet.",
+      "label": "WALTER:"
+     },
+     {
+      "kind": "speech",
+      "role": "SOUND MAN",
+      "text": "Ready.",
+      "label": "SOUND MAN:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "WALTER",
+      "lines": 2
+     },
+     {
+      "name": "SOUND MAN",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "headings",
+   "layout": "cues",
+   "raw": "ACT I\nSCENE 2. A field.\nThe wheat is high.\n\nPROLOGUE\n\nALF: Here?\nMEG: Here.\nALF: Sure?\nMEG: ACTUALLY, yes.\n\nEnd of Act One\n\nCURTAIN",
+   "want": {
+    "lines": [
+     {
+      "kind": "direction",
+      "text": "ACT I"
+     },
+     {
+      "kind": "direction",
+      "text": "SCENE 2. A field.\nThe wheat is high."
+     },
+     {
+      "kind": "direction",
+      "text": "PROLOGUE"
+     },
+     {
+      "kind": "speech",
+      "role": "ALF",
+      "text": "Here?",
+      "label": "ALF:"
+     },
+     {
+      "kind": "speech",
+      "role": "MEG",
+      "text": "Here.",
+      "label": "MEG:"
+     },
+     {
+      "kind": "speech",
+      "role": "ALF",
+      "text": "Sure?",
+      "label": "ALF:"
+     },
+     {
+      "kind": "speech",
+      "role": "MEG",
+      "text": "ACTUALLY, yes.",
+      "label": "MEG:"
+     },
+     {
+      "kind": "direction",
+      "text": "End of Act One"
+     },
+     {
+      "kind": "direction",
+      "text": "CURTAIN"
+     }
+    ],
+    "parts": [
+     {
+      "name": "ALF",
+      "lines": 2
+     },
+     {
+      "name": "MEG",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "directions in brackets over several rows",
+   "layout": "cues",
+   "raw": "(The lamp goes out, and for\na moment there is only the sea.)\n\nIDA: Again.\n\n[Enter JOSS, wet\n\nJOSS: It is raining.\n\n(It is not) he says\n\nIDA: Is it?\n\nJOSS: [laughing] No. [He shakes his hat.] Yes.",
+   "want": {
+    "lines": [
+     {
+      "kind": "direction",
+      "text": "(The lamp goes out, and for\na moment there is only the sea.)"
+     },
+     {
+      "kind": "speech",
+      "role": "IDA",
+      "text": "Again.",
+      "label": "IDA:"
+     },
+     {
+      "kind": "direction",
+      "text": "[Enter JOSS, wet"
+     },
+     {
+      "kind": "speech",
+      "role": "JOSS",
+      "text": "It is raining.",
+      "label": "JOSS:"
+     },
+     {
+      "kind": "open",
+      "text": "(It is not) he says"
+     },
+     {
+      "kind": "speech",
+      "role": "IDA",
+      "text": "Is it?",
+      "label": "IDA:"
+     },
+     {
+      "kind": "speech",
+      "role": "JOSS",
+      "text": "[laughing] No. [He shakes his hat.] Yes.",
+      "label": "JOSS:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "IDA",
+      "lines": 2
+     },
+     {
+      "name": "JOSS",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "entrances and exits",
+   "layout": "cues",
+   "raw": "Enter a Messenger.\n\nKING. Speak.\n\nMESSENGER. I have forgotten.\nExit\nAnd now I remember.\n\nKING. Enter again, then.\n\nExeunt all but the King.\n\nMESSENGER. Enter, he says.\n\nEnter, my friend, and be warm.",
+   "want": {
+    "lines": [
+     {
+      "kind": "direction",
+      "text": "Enter a Messenger."
+     },
+     {
+      "kind": "speech",
+      "role": "KING",
+      "text": "Speak.",
+      "label": "KING."
+     },
+     {
+      "kind": "speech",
+      "role": "MESSENGER",
+      "text": "I have forgotten.",
+      "label": "MESSENGER."
+     },
+     {
+      "kind": "direction",
+      "text": "Exit"
+     },
+     {
+      "kind": "speech",
+      "role": "MESSENGER",
+      "text": "And now I remember."
+     },
+     {
+      "kind": "speech",
+      "role": "KING",
+      "text": "Enter again, then.",
+      "label": "KING."
+     },
+     {
+      "kind": "direction",
+      "text": "Exeunt all but the King."
+     },
+     {
+      "kind": "speech",
+      "role": "MESSENGER",
+      "text": "Enter, he says.",
+      "label": "MESSENGER."
+     },
+     {
+      "kind": "open",
+      "text": "Enter, my friend, and be warm."
+     }
+    ],
+    "parts": [
+     {
+      "name": "KING",
+      "lines": 2
+     },
+     {
+      "name": "MESSENGER",
+      "lines": 3
+     }
+    ]
+   }
+  },
+  {
+   "name": "CRLF, BOM, tabs, curly quotes, dashes",
+   "layout": "text",
+   "raw": "\ufeffANNA:\t\u201cWell \u2014 well,\u201d she said.\r\nBEN: It\u2019s \u2018late\u2019\u2026\r\n\r\nANNA: So it is.\rBEN: So.\u2028ANNA: Yes.\u0085BEN: No.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "\u201cWell \u2014 well,\u201d she said.",
+      "label": "ANNA:"
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "It\u2019s \u2018late\u2019\u2026",
+      "label": "BEN:"
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "So it is.",
+      "label": "ANNA:"
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "So.",
+      "label": "BEN:"
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Yes.",
+      "label": "ANNA:"
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "No.",
+      "label": "BEN:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "ANNA",
+      "lines": 3
+     },
+     {
+      "name": "BEN",
+      "lines": 3
+     }
+    ]
+   }
+  },
+  {
+   "name": "NFC: a name typed with combining accents is one part",
+   "layout": "text",
+   "raw": "RENE\u0301E: Bonjour.\nGIL: Bonjour.\nREN\u00c9E: \u00c7a va?\nGIL: Cafe\u0301, s\u2019il te plai\u0302t.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "REN\u00c9E",
+      "text": "Bonjour.",
+      "label": "REN\u00c9E:"
+     },
+     {
+      "kind": "speech",
+      "role": "GIL",
+      "text": "Bonjour.",
+      "label": "GIL:"
+     },
+     {
+      "kind": "speech",
+      "role": "REN\u00c9E",
+      "text": "\u00c7a va?",
+      "label": "REN\u00c9E:"
+     },
+     {
+      "kind": "speech",
+      "role": "GIL",
+      "text": "Caf\u00e9, s\u2019il te pla\u00eet.",
+      "label": "GIL:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "REN\u00c9E",
+      "lines": 2
+     },
+     {
+      "name": "GIL",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "emoji, joined emoji, a skin tone, a flag",
+   "layout": "text",
+   "raw": "ZO\u00cb: I brought \ud83c\udf4e\ud83c\udf4f.\nMAX: \ud83d\udc69\u200d\ud83d\udc69\u200d\ud83d\udc67 came too \ud83d\udc4d\ud83c\udffd.\nZO\u00cb: \ud83c\uddfa\ud83c\uddf8!\nMAX: e\u0301\u0323 and \u2708\ufe0f.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ZO\u00cb",
+      "text": "I brought \ud83c\udf4e\ud83c\udf4f.",
+      "label": "ZO\u00cb:"
+     },
+     {
+      "kind": "speech",
+      "role": "MAX",
+      "text": "\ud83d\udc69\u200d\ud83d\udc69\u200d\ud83d\udc67 came too \ud83d\udc4d\ud83c\udffd.",
+      "label": "MAX:"
+     },
+     {
+      "kind": "speech",
+      "role": "ZO\u00cb",
+      "text": "\ud83c\uddfa\ud83c\uddf8!",
+      "label": "ZO\u00cb:"
+     },
+     {
+      "kind": "speech",
+      "role": "MAX",
+      "text": "\u1eb9\u0301 and \u2708\ufe0f.",
+      "label": "MAX:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "ZO\u00cb",
+      "lines": 2
+     },
+     {
+      "name": "MAX",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "other alphabets",
+   "layout": "text",
+   "raw": "\u0413\u0410\u041c\u041b\u0415\u0422: \u0411\u044b\u0442\u044c \u0438\u043b\u0438 \u043d\u0435 \u0431\u044b\u0442\u044c.\n\u041e\u0424\u0415\u041b\u0418\u042f: \u041c\u0438\u043b\u043e\u0440\u0434!\n\u0413\u0410\u041c\u041b\u0415\u0422: \u0410?\n\u041e\u0424\u0415\u041b\u0418\u042f: \u041d\u0438\u0447\u0435\u0433\u043e.\n\u674e\u56db\uff1a\u4f60\u597d\u3002\n\u5f20\u4e09\uff1a\u4f60\u597d\u3002\n\u674e\u56db\uff1a\u518d\u89c1\u3002\n\u5f20\u4e09\uff1a\u518d\u89c1\u3002",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "\u0413\u0410\u041c\u041b\u0415\u0422",
+      "text": "\u0411\u044b\u0442\u044c \u0438\u043b\u0438 \u043d\u0435 \u0431\u044b\u0442\u044c.",
+      "label": "\u0413\u0410\u041c\u041b\u0415\u0422:"
+     },
+     {
+      "kind": "speech",
+      "role": "\u041e\u0424\u0415\u041b\u0418\u042f",
+      "text": "\u041c\u0438\u043b\u043e\u0440\u0434!",
+      "label": "\u041e\u0424\u0415\u041b\u0418\u042f:"
+     },
+     {
+      "kind": "speech",
+      "role": "\u0413\u0410\u041c\u041b\u0415\u0422",
+      "text": "\u0410?",
+      "label": "\u0413\u0410\u041c\u041b\u0415\u0422:"
+     },
+     {
+      "kind": "speech",
+      "role": "\u041e\u0424\u0415\u041b\u0418\u042f",
+      "text": "\u041d\u0438\u0447\u0435\u0433\u043e.",
+      "label": "\u041e\u0424\u0415\u041b\u0418\u042f:"
+     },
+     {
+      "kind": "speech",
+      "role": "\u674e\u56db",
+      "text": "\u4f60\u597d\u3002",
+      "label": "\u674e\u56db\uff1a"
+     },
+     {
+      "kind": "speech",
+      "role": "\u5f20\u4e09",
+      "text": "\u4f60\u597d\u3002",
+      "label": "\u5f20\u4e09\uff1a"
+     },
+     {
+      "kind": "speech",
+      "role": "\u674e\u56db",
+      "text": "\u518d\u89c1\u3002",
+      "label": "\u674e\u56db\uff1a"
+     },
+     {
+      "kind": "speech",
+      "role": "\u5f20\u4e09",
+      "text": "\u518d\u89c1\u3002",
+      "label": "\u5f20\u4e09\uff1a"
+     }
+    ],
+    "parts": [
+     {
+      "name": "\u0413\u0410\u041c\u041b\u0415\u0422",
+      "lines": 2
+     },
+     {
+      "name": "\u041e\u0424\u0415\u041b\u0418\u042f",
+      "lines": 2
+     },
+     {
+      "name": "\u674e\u56db",
+      "lines": 2
+     },
+     {
+      "name": "\u5f20\u4e09",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "zero-width and control characters dropped, an underscore blank kept",
+   "layout": "text",
+   "raw": "KIM:\u200b My name\u00ad is ____ .\nLEE: snake_case, _really_, ** and **bold**.\nKIM: * * *\nLEE: \u0007Ok\u2060ay.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "KIM",
+      "text": "My name is ____ .",
+      "label": "KIM:"
+     },
+     {
+      "kind": "speech",
+      "role": "LEE",
+      "text": "snake_case, really,  and bold.",
+      "label": "LEE:"
+     },
+     {
+      "kind": "speech",
+      "role": "KIM",
+      "text": "* * *",
+      "label": "KIM:"
+     },
+     {
+      "kind": "speech",
+      "role": "LEE",
+      "text": "Okay.",
+      "label": "LEE:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "KIM",
+      "lines": 2
+     },
+     {
+      "name": "LEE",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "prose has no parts",
+   "layout": "text",
+   "raw": "It was a bright cold day, and the clocks were striking.\nNobody had wound them.\n\nShe went to the window: there was no one there.\n\nLater, much later, she came back.",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "It was a bright cold day, and the clocks were striking.\nNobody had wound them."
+     },
+     {
+      "kind": "open",
+      "text": "She went to the window: there was no one there."
+     },
+     {
+      "kind": "open",
+      "text": "Later, much later, she came back."
+     }
+    ],
+    "parts": []
+   }
+  },
+  {
+   "name": "nothing",
+   "layout": "text",
+   "raw": " \n\t\n\u00a0",
+   "want": {
+    "lines": [],
+    "parts": []
+   }
+  },
+  {
+   "name": "a name too long, and one with five words",
+   "layout": "text",
+   "raw": "THE EXTRAORDINARILY LONG NAMED MAN: Hello.\nTHE EXTRAORDINARILY LONG NAMED MAN: Hello.\nA MAN OF THE TOWN: Hello.\nA MAN OF THE TOWN: Hello.\nA MAN OF TOWN: Hello.\nA MAN OF TOWN: Hello.",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "THE EXTRAORDINARILY LONG NAMED MAN: Hello.\nTHE EXTRAORDINARILY LONG NAMED MAN: Hello.\nA MAN OF THE TOWN: Hello.\nA MAN OF THE TOWN: Hello."
+     },
+     {
+      "kind": "speech",
+      "role": "A MAN OF TOWN",
+      "text": "Hello.",
+      "label": "A MAN OF TOWN:"
+     },
+     {
+      "kind": "speech",
+      "role": "A MAN OF TOWN",
+      "text": "Hello.",
+      "label": "A MAN OF TOWN:"
+     }
+    ],
+    "parts": [
+     {
+      "name": "A MAN OF TOWN",
+      "lines": 2
+     }
+    ]
+   }
+  }
+ ],
+ "control": {
+  "name": "CONTROL: wrong on purpose",
+  "layout": "colon",
+  "raw": "ANNA: One.\nBEN: Two.\nANNA: Three.\nBEN: Four.",
+  "want": {
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "One.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Two.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Three.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Four.",
+     "label": "BEN:"
+    }
+   ],
+   "parts": [
+    {
+     "name": "ANNA",
+     "lines": 3
+    },
+    {
+     "name": "BEN",
+     "lines": 1
+    }
+   ]
+  }
+ }
+}
