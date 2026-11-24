@@ -1,0 +1,4207 @@
+{
+ "about": "Own scripts (R4, Decision 088.3). Run by js/own-core.test.js, and by the Swift and Kotlin ports. Offsets are UTF-16 code units of a line's text. `control` is wrong on purpose: a test that does not find it wrong is not comparing.",
+ "sequences": [
+  {
+   "name": "assign a line with no part, then undo",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "assign",
+     "line": 2,
+     "to": {
+      "role": "anna"
+     }
+    },
+    {
+     "op": "undo"
+    },
+    {
+     "op": "assign",
+     "line": 2,
+     "to": {
+      "role": " Ben. "
+     }
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     null
+    ],
+    "letters": {},
+    "undo": 1,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": null,
+      "kind": "speech",
+      "role": "BEN",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": null,
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": null,
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "assign to direction, sound, music and back to no part",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "assign",
+     "line": 1,
+     "to": "direction"
+    },
+    {
+     "op": "assign",
+     "line": 3,
+     "to": "sound"
+    },
+    {
+     "op": "assign",
+     "line": 4,
+     "to": "music"
+    },
+    {
+     "op": "assign",
+     "line": 5,
+     "to": "open"
+    },
+    {
+     "op": "assign",
+     "line": 5,
+     "to": "open"
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "letters": {},
+    "undo": 4,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "direction",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": null,
+      "kind": "open",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": null,
+      "kind": "sound",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": null,
+      "kind": "music",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": null,
+      "kind": "open",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "a name the app cannot keep is refused",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "assign",
+     "line": 2,
+     "to": {
+      "role": " . "
+     }
+    },
+    {
+     "op": "assign",
+     "line": 2,
+     "to": {
+      "role": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+     }
+    },
+    {
+     "op": "assign",
+     "line": 2,
+     "to": "nothing"
+    },
+    {
+     "op": "assign",
+     "line": 9,
+     "to": "direction"
+    }
+   ],
+   "want": {
+    "refusals": [
+     "empty",
+     "too_long",
+     "bad_kind",
+     "no_such_line"
+    ],
+    "letters": {},
+    "undo": 0,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": null,
+      "kind": "open",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": null,
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": null,
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "split before done gives no id",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "split",
+     "line": 1,
+     "at": 17
+    }
+   ],
+   "want": {
+    "refusals": [
+     null
+    ],
+    "letters": {},
+    "undo": 1,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there?",
+      "label": "ANNA:"
+     },
+     {
+      "k": 6,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "I heard (listening) a step."
+     },
+     {
+      "k": 2,
+      "id": null,
+      "kind": "open",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": null,
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": null,
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "split where nothing would be left is refused",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "split",
+     "line": 1,
+     "at": 0
+    },
+    {
+     "op": "split",
+     "line": 1,
+     "at": 99
+    },
+    {
+     "op": "split",
+     "line": 2,
+     "at": 19
+    }
+   ],
+   "want": {
+    "refusals": [
+     "empty",
+     "empty",
+     "empty"
+    ],
+    "letters": {},
+    "undo": 0,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": null,
+      "kind": "open",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": null,
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": null,
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "split inside a direction goes before it",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "split",
+     "line": 1,
+     "at": 30
+    }
+   ],
+   "want": {
+    "refusals": [
+     null
+    ],
+    "letters": {},
+    "undo": 1,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard",
+      "label": "ANNA:"
+     },
+     {
+      "k": 6,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "(listening) a step."
+     },
+     {
+      "k": 2,
+      "id": null,
+      "kind": "open",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": null,
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": null,
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "ids once, then letters; a letter is never used twice",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "done"
+    },
+    {
+     "op": "split",
+     "line": 1,
+     "at": 17
+    },
+    {
+     "op": "split",
+     "line": 1,
+     "at": 3
+    },
+    {
+     "op": "undo"
+    },
+    {
+     "op": "split",
+     "line": 1,
+     "at": 10
+    },
+    {
+     "op": "leaveOut",
+     "line": 6
+    },
+    {
+     "op": "split",
+     "line": 1,
+     "at": 3
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "letters": {
+     "L0001": 4
+    },
+    "undo": 4,
+    "lines": [
+     {
+      "k": 1,
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is",
+      "label": "ANNA:"
+     },
+     {
+      "k": 9,
+      "id": "L0001d",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "anyone"
+     },
+     {
+      "k": 8,
+      "id": "L0001c",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "there?"
+     },
+     {
+      "k": 2,
+      "id": "L0002",
+      "kind": "direction",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": "L0003",
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": "L0004",
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": "L0005",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "a split of a split takes the first line\u2019s letters",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "done"
+    },
+    {
+     "op": "split",
+     "line": 1,
+     "at": 17
+    },
+    {
+     "op": "split",
+     "line": 6,
+     "at": 8
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     null
+    ],
+    "letters": {
+     "L0001": 2
+    },
+    "undo": 2,
+    "lines": [
+     {
+      "k": 1,
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there?",
+      "label": "ANNA:"
+     },
+     {
+      "k": 6,
+      "id": "L0001a",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "I heard"
+     },
+     {
+      "k": 7,
+      "id": "L0001b",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "(listening) a step."
+     },
+     {
+      "k": 2,
+      "id": "L0002",
+      "kind": "direction",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": "L0003",
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": "L0004",
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": "L0005",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "add: at the top, after a line, refused when empty",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "done"
+    },
+    {
+     "op": "add",
+     "after": 0,
+     "kind": "direction",
+     "text": "Night."
+    },
+    {
+     "op": "add",
+     "after": 0,
+     "kind": "music",
+     "text": "Low."
+    },
+    {
+     "op": "add",
+     "after": 3,
+     "kind": "speech",
+     "role": "ben",
+     "text": " Truly. "
+    },
+    {
+     "op": "add",
+     "after": 3,
+     "kind": "speech",
+     "role": "ben",
+     "text": " \n "
+    },
+    {
+     "op": "add",
+     "after": 77,
+     "kind": "sound",
+     "text": "x"
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     null,
+     null,
+     "empty",
+     "no_such_line"
+    ],
+    "letters": {
+     "L0000": 2,
+     "L0003": 1
+    },
+    "undo": 3,
+    "lines": [
+     {
+      "k": 7,
+      "id": "L0000b",
+      "kind": "music",
+      "text": "Low."
+     },
+     {
+      "k": 6,
+      "id": "L0000a",
+      "kind": "direction",
+      "text": "Night."
+     },
+     {
+      "k": 1,
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": "L0002",
+      "kind": "direction",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": "L0003",
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 8,
+      "id": "L0003a",
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Truly."
+     },
+     {
+      "k": 4,
+      "id": "L0004",
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": "L0005",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "done twice gives no new ids",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "done"
+    },
+    {
+     "op": "done"
+    },
+    {
+     "op": "undo"
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     "nothing_to_undo"
+    ],
+    "letters": {},
+    "undo": 0,
+    "lines": [
+     {
+      "k": 1,
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": "L0002",
+      "kind": "direction",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": "L0003",
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": "L0004",
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": "L0005",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "done keeps No part for a transcript",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "done",
+     "keepOpen": true
+    },
+    {
+     "op": "done"
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null
+    ],
+    "letters": {},
+    "undo": 0,
+    "lines": [
+     {
+      "k": 1,
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": "L0002",
+      "kind": "direction",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": "L0003",
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": "L0004",
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": "L0005",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "join to the line above, the first line refused",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "join",
+     "line": 1
+    },
+    {
+     "op": "join",
+     "line": 2
+    },
+    {
+     "op": "undo"
+    },
+    {
+     "op": "done"
+    },
+    {
+     "op": "join",
+     "line": 2
+    },
+    {
+     "op": "split",
+     "line": 1,
+     "at": 45
+    }
+   ],
+   "want": {
+    "refusals": [
+     "no_line_above",
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "letters": {
+     "L0001": 1
+    },
+    "undo": 2,
+    "lines": [
+     {
+      "k": 1,
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 6,
+      "id": "L0001a",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": "L0003",
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": "L0004",
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": "L0005",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "joined verse keeps its rows",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "A",
+     "text": "One row\nTwo rows"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "Three"
+    }
+   ],
+   "steps": [
+    {
+     "op": "join",
+     "line": 2
+    }
+   ],
+   "want": {
+    "refusals": [
+     null
+    ],
+    "letters": {},
+    "undo": 1,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "speech",
+      "role": "A",
+      "text": "One row\nTwo rows\nThree"
+     }
+    ]
+   }
+  },
+  {
+   "name": "edit words: normalized, empty refused, unchanged is no step",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "words",
+     "line": 3,
+     "text": "\ufeff Only  me,\r\nhonest. "
+    },
+    {
+     "op": "words",
+     "line": 3,
+     "text": "  "
+    },
+    {
+     "op": "words",
+     "line": 3,
+     "text": "Only  me,\nhonest."
+    },
+    {
+     "op": "undo"
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     "empty",
+     null,
+     null
+    ],
+    "letters": {},
+    "undo": 0,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": null,
+      "kind": "open",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": null,
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": null,
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "rename a part, and join two into one",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "rename",
+     "part": "ANNA",
+     "to": "Annie"
+    },
+    {
+     "op": "rename",
+     "part": "BEN",
+     "to": "annie"
+    },
+    {
+     "op": "rename",
+     "part": "BEN",
+     "to": "X"
+    },
+    {
+     "op": "rename",
+     "part": "ANNIE",
+     "to": "ANNIE"
+    },
+    {
+     "op": "rename",
+     "part": "ANNIE",
+     "to": ""
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     "no_such_part",
+     null,
+     "empty"
+    ],
+    "letters": {},
+    "undo": 2,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNIE",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": null,
+      "kind": "open",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNIE",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": null,
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNIE",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "not a part: the printed name goes back to the words",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "LISTEN",
+     "text": "I told you.",
+     "label": "Listen:"
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "When?",
+     "label": "BEN:"
+    },
+    {
+     "kind": "speech",
+     "role": "LISTEN",
+     "text": "Again.",
+     "label": "Listen:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "notPart",
+     "part": "LISTEN"
+    },
+    {
+     "op": "join",
+     "line": 3
+    },
+    {
+     "op": "notPart",
+     "part": "NOBODY"
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     "no_such_part"
+    ],
+    "letters": {},
+    "undo": 2,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "open",
+      "text": "Listen: I told you."
+     },
+     {
+      "k": 2,
+      "id": null,
+      "kind": "speech",
+      "role": "BEN",
+      "text": "When? Listen: Again.",
+      "label": "BEN:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "a line with a take: words only",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "done"
+    },
+    {
+     "op": "assign",
+     "line": 1,
+     "to": {
+      "role": "BEN"
+     },
+     "env": {
+      "takes": [
+       "L0001"
+      ]
+     }
+    },
+    {
+     "op": "split",
+     "line": 1,
+     "at": 17,
+     "env": {
+      "takes": [
+       "L0001"
+      ]
+     }
+    },
+    {
+     "op": "join",
+     "line": 2,
+     "env": {
+      "takes": [
+       "L0001"
+      ]
+     }
+    },
+    {
+     "op": "join",
+     "line": 1,
+     "env": {
+      "takes": [
+       "L0001"
+      ]
+     }
+    },
+    {
+     "op": "leaveOut",
+     "line": 1,
+     "env": {
+      "takes": [
+       "L0001"
+      ]
+     }
+    },
+    {
+     "op": "rename",
+     "part": "ANNA",
+     "to": "ANN",
+     "env": {
+      "takes": [
+       "L0005"
+      ]
+     }
+    },
+    {
+     "op": "notPart",
+     "part": "ANNA",
+     "env": {
+      "takes": [
+       "L0005"
+      ]
+     }
+    },
+    {
+     "op": "words",
+     "line": 1,
+     "text": "Is anyone there?",
+     "env": {
+      "takes": [
+       "L0001"
+      ]
+     }
+    },
+    {
+     "op": "add",
+     "after": 1,
+     "kind": "direction",
+     "text": "A pause.",
+     "env": {
+      "takes": [
+       "L0001"
+      ]
+     }
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     "line_has_take",
+     "line_has_take",
+     "line_has_take",
+     "line_has_take",
+     "line_has_take",
+     "part_has_take",
+     "part_has_take",
+     null,
+     null
+    ],
+    "letters": {
+     "L0001": 1
+    },
+    "undo": 2,
+    "lines": [
+     {
+      "k": 1,
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there?",
+      "label": "ANNA:"
+     },
+     {
+      "k": 6,
+      "id": "L0001a",
+      "kind": "direction",
+      "text": "A pause."
+     },
+     {
+      "k": 2,
+      "id": "L0002",
+      "kind": "direction",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": "L0003",
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": "L0004",
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": "L0005",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "shared is frozen",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "done"
+    },
+    {
+     "op": "words",
+     "line": 1,
+     "text": "No.",
+     "env": {
+      "shared": true
+     }
+    },
+    {
+     "op": "undo",
+     "env": {
+      "shared": true
+     }
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     "shared",
+     "shared"
+    ],
+    "letters": {},
+    "undo": 0,
+    "lines": [
+     {
+      "k": 1,
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": "L0002",
+      "kind": "direction",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": "L0003",
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": "L0004",
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": "L0005",
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "undo to the start, then nothing",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "assign",
+     "line": 2,
+     "to": "direction"
+    },
+    {
+     "op": "leaveOut",
+     "line": 3
+    },
+    {
+     "op": "undo"
+    },
+    {
+     "op": "undo"
+    },
+    {
+     "op": "undo"
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     null,
+     null,
+     "nothing_to_undo"
+    ],
+    "letters": {},
+    "undo": 0,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": null,
+      "kind": "open",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": null,
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": null,
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unknown step",
+   "lines": [
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "kind": "open",
+     "role": null,
+     "text": "It came from below."
+    },
+    {
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "kind": "sound",
+     "role": null,
+     "text": "SOUND: A door."
+    },
+    {
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ],
+   "steps": [
+    {
+     "op": "dance",
+     "line": 1
+    }
+   ],
+   "want": {
+    "refusals": [
+     "no_such_op"
+    ],
+    "letters": {},
+    "undo": 0,
+    "lines": [
+     {
+      "k": 1,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone there? I heard (listening) a step.",
+      "label": "ANNA:"
+     },
+     {
+      "k": 2,
+      "id": null,
+      "kind": "open",
+      "text": "It came from below."
+     },
+     {
+      "k": 3,
+      "id": null,
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN:"
+     },
+     {
+      "k": 4,
+      "id": null,
+      "kind": "sound",
+      "text": "SOUND: A door."
+     },
+     {
+      "k": 5,
+      "id": null,
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA:"
+     }
+    ]
+   }
+  }
+ ],
+ "cut": [
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": -1,
+   "want": -1
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 0,
+   "want": -1
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 1,
+   "want": 1
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 2,
+   "want": 1
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 3,
+   "want": 1
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 4,
+   "want": 1
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 5,
+   "want": 1
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 6,
+   "want": 6
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 7,
+   "want": 7
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 8,
+   "want": 8
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 11,
+   "want": 11
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 12,
+   "want": 11
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 13,
+   "want": 13
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 14,
+   "want": 14
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 15,
+   "want": 14
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 16,
+   "want": 14
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 17,
+   "want": 14
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 21,
+   "want": 21
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 22,
+   "want": 22
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 23,
+   "want": 22
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 24,
+   "want": 22
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 25,
+   "want": 22
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 26,
+   "want": 26
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 27,
+   "want": 26
+  },
+  {
+   "text": "a\ud83d\udc69\u200d\ud83d\udc67b cafe\u0301 \ud83d\udc4d\ud83c\udffd ok \ud83c\uddfa\ud83c\uddf8\ud83c\udde8\ud83c\udde6 end",
+   "at": 28,
+   "want": 26
+  },
+  {
+   "text": "(softly) Come in.",
+   "at": 3,
+   "want": 8
+  },
+  {
+   "text": "(softly) Come in.",
+   "at": 9,
+   "want": 9
+  },
+  {
+   "text": "Come (softly) in.",
+   "at": 8,
+   "want": 5
+  },
+  {
+   "text": "Come (softly)",
+   "at": 8,
+   "want": 5
+  },
+  {
+   "text": "One two",
+   "at": 3,
+   "want": 3
+  },
+  {
+   "text": "One two",
+   "at": 4,
+   "want": 4
+  },
+  {
+   "text": "One ",
+   "at": 3,
+   "want": -1
+  },
+  {
+   "text": "a",
+   "at": 1,
+   "want": -1
+  }
+ ],
+ "wordsChanged": [
+  {
+   "before": "Is it late?",
+   "after": "Is it late!",
+   "want": false
+  },
+  {
+   "before": "Is it late?",
+   "after": "is it LATE",
+   "want": false
+  },
+  {
+   "before": "Is it late?",
+   "after": "Is it later?",
+   "want": true
+  },
+  {
+   "before": "dont",
+   "after": "don\u2019t",
+   "want": false
+  },
+  {
+   "before": "a\u2014b",
+   "after": "a b",
+   "want": false
+  },
+  {
+   "before": "a b",
+   "after": "ab",
+   "want": true
+  },
+  {
+   "before": "(softly) Go.",
+   "after": "(loudly) Go.",
+   "want": false
+  },
+  {
+   "before": "Go (softly).",
+   "after": "Go.",
+   "want": false
+  },
+  {
+   "before": "caf\u00e9",
+   "after": "cafe",
+   "want": true
+  },
+  {
+   "before": "",
+   "after": "x",
+   "want": true
+  }
+ ],
+ "nearest": [
+  {
+   "roles": "A.B",
+   "at": 1,
+   "want": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "roles": "AA.BA",
+   "at": 2,
+   "want": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "roles": ".",
+   "at": 0,
+   "want": []
+  },
+  {
+   "roles": "..A",
+   "at": 0,
+   "want": [
+    "A"
+   ]
+  },
+  {
+   "roles": "A..",
+   "at": 2,
+   "want": [
+    "A"
+   ]
+  },
+  {
+   "roles": "ABC.",
+   "at": 3,
+   "want": [
+    "C",
+    "B"
+   ]
+  },
+  {
+   "roles": "A.A.B",
+   "at": 1,
+   "want": [
+    "A",
+    "B"
+   ]
+  }
+ ],
+ "letters": {
+  "splits": 30,
+  "text": "w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 w31",
+  "want": [
+   "L0001",
+   "L0001ad",
+   "L0001ac",
+   "L0001ab",
+   "L0001aa",
+   "L0001z",
+   "L0001y",
+   "L0001x",
+   "L0001w",
+   "L0001v",
+   "L0001u",
+   "L0001t",
+   "L0001s",
+   "L0001r",
+   "L0001q",
+   "L0001p",
+   "L0001o",
+   "L0001n",
+   "L0001m",
+   "L0001l",
+   "L0001k",
+   "L0001j",
+   "L0001i",
+   "L0001h",
+   "L0001g",
+   "L0001f",
+   "L0001e",
+   "L0001d",
+   "L0001c",
+   "L0001b",
+   "L0001a"
+  ]
+ },
+ "canonical": [
+  {
+   "lines": [
+    {
+     "id": "L0001",
+     "kind": "speech",
+     "role": "A/B",
+     "parts": [
+      {
+       "say": "He said \"no\" \\ and / then\nleft\tquietly."
+      },
+      {
+       "direction": "\u00e9 \u2014 \ud83d\ude00"
+      }
+     ]
+    },
+    {
+     "source": "SOUND: <b>&amp;</b> \u007f",
+     "kind": "sound",
+     "id": "L0002"
+    }
+   ],
+   "json": "[{\"id\":\"L0001\",\"kind\":\"speech\",\"parts\":[{\"say\":\"He said \\\"no\\\" \\\\ and / then\\nleft\\tquietly.\"},{\"direction\":\"\u00e9 \u2014 \ud83d\ude00\"}],\"role\":\"A/B\"},{\"id\":\"L0002\",\"kind\":\"sound\",\"source\":\"SOUND: <b>&amp;</b> \u007f\"}]",
+   "revision": "cb04dd2f4231"
+  },
+  {
+   "lines": [
+    {
+     "id": "L0001",
+     "kind": "direction",
+     "source": ""
+    }
+   ],
+   "json": "[{\"id\":\"L0001\",\"kind\":\"direction\",\"source\":\"\"}]",
+   "revision": "e2fc2eb1b7fc"
+  },
+  {
+   "lines": [],
+   "json": "[]",
+   "revision": "4f53cda18c2b"
+  }
+ ],
+ "scripts": [
+  {
+   "name": "a short radio script",
+   "raw": "ANNA: Is anyone there? (She knocks.)\n\nBEN: Only me.\n\nSOUND: A door.\n\nMUSIC: Low.\n\nACT TWO\n\nANNA: [inside] Then who is singing?\n\nBEN: The pipes.\n\nAnd they went on singing.",
+   "title": "  The Pipes ",
+   "steps": [],
+   "want": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "refusal": null
+  },
+  {
+   "name": "verse and a joined paragraph",
+   "raw": "GEORGE.\nBut when we saw\nOur sunshine made thy spring\n\nAnd more.\n\nGEORGE.\nSo be it.",
+   "title": "Verse",
+   "steps": [
+    {
+     "op": "join",
+     "line": 2
+    }
+   ],
+   "want": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "53da9f475a6b",
+    "kind": "own",
+    "title": "Verse",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "GEORGE",
+      "lines": 2,
+      "words": 14
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "GEORGE",
+      "parts": [
+       {
+        "say": "But when we saw\nOur sunshine made thy spring\nAnd more."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "GEORGE",
+      "parts": [
+       {
+        "say": "So be it."
+       }
+      ]
+     }
+    ]
+   },
+   "refusal": null
+  },
+  {
+   "name": "an accent and an emoji",
+   "raw": "REN\u00c9E: \ud83c\udf4e?\nGIL: Oui.\nREN\u00c9E: Non.\nGIL: Si.",
+   "title": "\u00c9t\u00e9 \ud83c\udf1e",
+   "steps": [],
+   "want": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "90b53c789fcb",
+    "kind": "own",
+    "title": "\u00c9t\u00e9 \ud83c\udf1e",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "REN\u00c9E",
+      "lines": 2,
+      "words": 2
+     },
+     {
+      "name": "GIL",
+      "lines": 2,
+      "words": 2
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "REN\u00c9E",
+      "parts": [
+       {
+        "say": "\ud83c\udf4e?"
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "GIL",
+      "parts": [
+       {
+        "say": "Oui."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "speech",
+      "role": "REN\u00c9E",
+      "parts": [
+       {
+        "say": "Non."
+       }
+      ]
+     },
+     {
+      "id": "L0004",
+      "kind": "speech",
+      "role": "GIL",
+      "parts": [
+       {
+        "say": "Si."
+       }
+      ]
+     }
+    ]
+   },
+   "refusal": null
+  }
+ ],
+ "refusals": [
+  {
+   "name": "a catalog id",
+   "script": {
+    "id": "gut-27357",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "bad_id"
+  },
+  {
+   "name": "a capital in the id",
+   "script": {
+    "id": "OWN-3F2B8C1E-5A7D-4E90-8B21-0C9D7E6F5A43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "bad_id"
+  },
+  {
+   "name": "no title",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "  ",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "no_title"
+  },
+  {
+   "name": "a title of 301",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "title_too_long"
+  },
+  {
+   "name": "no lines",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": []
+   },
+   "want": "no_lines"
+  },
+  {
+   "name": "an id twice",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "bad_line_id"
+  },
+  {
+   "name": "a bad line id",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L1",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "bad_line_id"
+  },
+  {
+   "name": "a capital letter after an id",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001A",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "bad_line_id"
+  },
+  {
+   "name": "a part in lower case",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "anna",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "bad_part"
+  },
+  {
+   "name": "a part of 41",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "bad_part"
+  },
+  {
+   "name": "an unknown piece",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "mic": "off"
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "bad_line"
+  },
+  {
+   "name": "no pieces",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": []
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "bad_line"
+  },
+  {
+   "name": "an open line",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "open",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "bad_line"
+  },
+  {
+   "name": "an empty cue",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": ""
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "bad_line"
+  },
+  {
+   "name": "no speech",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": "no_parts"
+  },
+  {
+   "name": "good",
+   "script": {
+    "id": "own-3f2b8c1e-5a7d-4e90-8b21-0c9d7e6f5a43",
+    "revision": "0bea09f62d19",
+    "kind": "own",
+    "title": "The Pipes",
+    "authors": [],
+    "source": {
+     "name": "Added by you",
+     "url": ""
+    },
+    "rights": {
+     "bucket": "own",
+     "evidence": []
+    },
+    "roles": [
+     {
+      "name": "ANNA",
+      "lines": 2,
+      "words": 7
+     },
+     {
+      "name": "BEN",
+      "lines": 2,
+      "words": 4
+     }
+    ],
+    "lines": [
+     {
+      "id": "L0001",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "say": "Is anyone there?"
+       },
+       {
+        "direction": "She knocks."
+       }
+      ]
+     },
+     {
+      "id": "L0002",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "Only me."
+       }
+      ]
+     },
+     {
+      "id": "L0003",
+      "kind": "sound",
+      "source": "SOUND: A door."
+     },
+     {
+      "id": "L0004",
+      "kind": "music",
+      "source": "MUSIC: Low."
+     },
+     {
+      "id": "L0005",
+      "kind": "direction",
+      "source": "ACT TWO"
+     },
+     {
+      "id": "L0006",
+      "kind": "speech",
+      "role": "ANNA",
+      "parts": [
+       {
+        "direction": "inside"
+       },
+       {
+        "say": "Then who is singing?"
+       }
+      ]
+     },
+     {
+      "id": "L0007",
+      "kind": "speech",
+      "role": "BEN",
+      "parts": [
+       {
+        "say": "The pipes."
+       }
+      ]
+     },
+     {
+      "id": "L0008",
+      "kind": "direction",
+      "source": "And they went on singing."
+     }
+    ]
+   },
+   "want": null
+  }
+ ],
+ "control": {
+  "name": "CONTROL: wrong on purpose",
+  "lines": [
+   {
+    "kind": "speech",
+    "role": "ANNA",
+    "text": "Is anyone there? I heard (listening) a step.",
+    "label": "ANNA:"
+   },
+   {
+    "kind": "open",
+    "role": null,
+    "text": "It came from below."
+   },
+   {
+    "kind": "speech",
+    "role": "BEN",
+    "text": "Only me.",
+    "label": "BEN:"
+   },
+   {
+    "kind": "sound",
+    "role": null,
+    "text": "SOUND: A door."
+   },
+   {
+    "kind": "speech",
+    "role": "ANNA",
+    "text": "Then who is singing?",
+    "label": "ANNA:"
+   }
+  ],
+  "steps": [
+   {
+    "op": "assign",
+    "line": 2,
+    "to": {
+     "role": "anna"
+    }
+   },
+   {
+    "op": "undo"
+   },
+   {
+    "op": "assign",
+    "line": 2,
+    "to": {
+     "role": " Ben. "
+    }
+   }
+  ],
+  "want": {
+   "refusals": [
+    null,
+    "shared",
+    null
+   ],
+   "letters": {},
+   "undo": 1,
+   "lines": [
+    {
+     "k": 1,
+     "id": null,
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Is anyone there? I heard (listening) a step.",
+     "label": "ANNA:"
+    },
+    {
+     "k": 2,
+     "id": null,
+     "kind": "speech",
+     "role": "BEN",
+     "text": "It came from below."
+    },
+    {
+     "k": 3,
+     "id": null,
+     "kind": "speech",
+     "role": "BEN",
+     "text": "Only me.",
+     "label": "BEN:"
+    },
+    {
+     "k": 4,
+     "id": null,
+     "kind": "sound",
+     "text": "SOUND: A door."
+    },
+    {
+     "k": 5,
+     "id": null,
+     "kind": "speech",
+     "role": "ANNA",
+     "text": "Then who is singing?",
+     "label": "ANNA:"
+    }
+   ]
+  }
+ }
+}
