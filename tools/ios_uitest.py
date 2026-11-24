@@ -44,6 +44,9 @@ from pathlib import Path
 
 os.environ.setdefault("DEVELOPER_DIR", "/Applications/Xcode.app/Contents/Developer")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import pyneeds  # noqa: E402
+
+pyneeds.need("PIL")
 import app_config  # noqa: E402
 import apple_device as ad  # noqa: E402
 import bench  # noqa: E402

@@ -10,6 +10,8 @@ Env:    ASC_KEY_ID, ASC_ISSUER_ID, and the .p8 from the login Keychain via tools
         ~/Library/MobileDevice/Provisioning Profiles/.
 """
 import sys, os, time, json, base64, urllib.request, urllib.error, urllib.parse
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import pyneeds; pyneeds.need("jwt")
 import jwt
 
 PROFILE_TYPE = {"ios": "IOS_APP_STORE", "tvos": "TVOS_APP_STORE", "mac": "MAC_APP_STORE"}

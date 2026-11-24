@@ -7,7 +7,11 @@ an open iPhone Duo has that display off.
 import sys
 from pathlib import Path
 
-from PIL import Image
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import pyneeds  # noqa: E402
+
+pyneeds.need("PIL")
+from PIL import Image  # noqa: E402
 
 TOLERANCE = 6      # per channel, from the dominant color
 SHARE = 0.99       # fraction of pixels within TOLERANCE that makes a frame blind
