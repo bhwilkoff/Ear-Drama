@@ -43,7 +43,7 @@ TITLE_RX = re.compile(r"^[A-Za-z][A-Za-z' ]{6,38}[A-Za-z]$")
 NAME_RX = re.compile(r"^[A-Za-z][A-Za-z' &.-]{2,38}[A-Za-z.]$")
 
 FIELDS = ("long", "longTitle", "series", "seriesName", "short", "shortTitle",
-          "rich", "bare", "noPicture", "longName")
+          "rich", "bare", "noPicture", "longName", "faced", "facedSeries")
 
 
 def fetch(dest=CACHE, url=RELEASE_URL, max_age=MAX_AGE_S):
@@ -107,6 +107,11 @@ def pick(db_path, seed):
 
     long_ = choose_episode(1500, 2100)
     short = choose_episode(60, 240, avoid={long_[2]})
+    pictured = {k for (k,) in db.execute("SELECT key FROM series WHERE picture IS NOT NULL")}
+    faced_pool = [p for p in _episode_pool(db, 1500, 2100) if p[2] in pictured and _unique_title(db, p[1])]
+    if not faced_pool:
+        raise SystemExit("uitest_fixture: no episode of a series with a picture fits the shape checks")
+    faced = rng.choice(faced_pool)
     used = {long_[2], short[2]}
     rich = choose_series("rich", "picture IS NOT NULL AND about_text IS NOT NULL AND episodes >= 50", used)
     used.add(rich)
@@ -124,6 +129,7 @@ def pick(db_path, seed):
         "long": long_[0], "longTitle": long_[1], "series": long_[2], "seriesName": long_[3],
         "short": short[0], "shortTitle": short[1],
         "rich": rich, "bare": bare, "noPicture": no_pic, "longName": long_name,
+        "faced": faced[0], "facedSeries": faced[3],
     }
 
 
