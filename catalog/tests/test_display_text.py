@@ -326,6 +326,34 @@ check("initials with the name's digit, a year, a number", DT.episode_text("SAK7 
 check("a partial date note keeps its year", DT.episode_text("The Sixth Button (xx-xx-1946)", "The Haunting Hour"), "The Sixth Button (1946)")
 check("a shelf code behind a file note still recurs", DT.recurring_tags(["The Krotons (FH) (iPod Audiobook)", "The Invasion (FH) (iPod Audiobook)",
       "The Moonbase (FH)"]), {"FH"})
+# Coordinator review of N13 (2026-11-23): a valid date code composes rather than withholds; never a fragment; a leading
+# warning keeps the "(partial)" convention.
+check("a valid date code composes the dated title", DT.decide_episode("Fred Allen - 391025", "The Fred Allen Show", None, None)[:3],
+      ("The Fred Allen Show, October 25, 1939", "composed", ["series.name", "episodes.title (date code)"]))
+check("a valid eight-digit code composes too", DT.decide_episode("NY World's Fair Opening 19390430", "NY World's Fair Opening", None, None)[0],
+      "NY World's Fair Opening, April 30, 1939")
+check("control: a code with a zero month or day stays withheld", DT.decide_episode("AFRTS Charlie Tuna 800100", "Charlie Tuna", None, None)[3],
+      "no_readable_title_and_no_date_or_number")
+check("control: no February 29 in 1991", DT.decide_episode("AFRTS Charlie Tuna 910229", "Charlie Tuna", None, None)[3],
+      "no_readable_title_and_no_date_or_number")
+check("control: a code outside the series' run is not its date", DT.decide_episode("Fred Allen - 391025", "The Fred Allen Show", None, None,
+      run=("1945-01-01", "1949-12-31"))[3], "no_readable_title_and_no_date_or_number")
+check("control: the record's own air date wins", DT.decide_episode("Fred Allen - 391025", "The Fred Allen Show", "1939-10-26", None)[0],
+      "The Fred Allen Show, October 26, 1939")
+check("a clause an ordinal starts is no title: the dated title", DT.decide_episode("Fred Waring 470507 1st song is It's So Nice to Be Your Neighbor",
+      "The Fred Waring Show", None, None)[0], "The Fred Waring Show, May 7, 1947")
+check("one short word is no title: the old title stays when nothing composes", DT.decide_episode("AFRTS Charlie Tuna 820000 Torr", "Charlie Tuna",
+      None, None)[0], "AFRTS Charlie Tuna 820000 Torr")
+check("one short word is no title: dated when the code is a date", DT.decide_episode("AFRTS Charlie Tuna 770503 Son", "Charlie Tuna", None, None)[0],
+      "Charlie Tuna, May 3, 1977")
+check("control: one word an episode number names stays", DT.decide_episode("A Cavalcade Of Kings xx-xx-xx (44) Anne", "A Cavalcade of Kings",
+      None, 44)[0], "Anne")
+check("a warning that is all the slots leave rides on the dated title", DT.decide_episode("Fred Allen - 360115 1st half", "The Fred Allen Show",
+      None, None)[0], "The Fred Allen Show, January 15, 1936 (1st half)")
+check("control: a date the slots would leave in front keeps the slots", DT.episode_text("Quiet, Please #087 02-13-49 VALENTINE", "Quiet Please"),
+      "Quiet, Please #087 02-13-49 VALENTINE")
+check("a leading warning keeps the convention", DT.episode_text("Cisco Kid 5XXXXX PARTIAL SHOWRUSTLER", "The Cisco Kid"), "SHOWRUSTLER (partial)")
+check("control: Partial inside a title stays", DT.episode_text("Cisco Kid 5XXXXX The Partial Eclipse", "The Cisco Kid"), "The Partial Eclipse")
 check("control: a year alone after the name is not a slot", DT.episode_text("Suspense 1945 Election Night", "Suspense"), "Suspense 1945 Election Night")
 check("control: a bare unpadded number after the name stays", DT.episode_text("Big Town 22 Skidoo Street", "Big Town"), "Big Town 22 Skidoo Street")
 check("control: a part number after a title stays", DT.episode_text("The Devil Tracks of Devonshire (2)", "Strange As It Seems"),

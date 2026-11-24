@@ -300,6 +300,15 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             if got and not DT.series_withheld(got, sk, sk in own_key):
                 recovered[sk] = {"from": shown_name.get(sk), "to": got}
                 shown_name[sk] = PL.polish_name(got) or got
+    # N13: a series' known run, from its registry dates and its broadcasts together, bounds a file name's date code.
+    series_run = {}
+    cols = {r[1] for r in s.execute("PRAGMA table_info(series)")}
+    spans = [c for c in (("first_date", "last_date"), ("first_broadcast", "last_broadcast")) if set(c) <= cols]
+    for c in spans:
+        for k, a, b in s.execute(f"SELECT key, {c[0]}, {c[1]} FROM series"):
+            if a and b:
+                lo, hi = series_run.get(k, (a, b))
+                series_run[k] = (min(lo, a), max(hi, b))
     withheld = {"series": {}, "episodes": {}}
     composed = {}
     bags = {}
@@ -314,12 +323,13 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                 withheld["episodes"][eid] = why
             continue
         tags = DT.recurring_tags([display[e] for e, _a, _n, _t in by_series_eps[sk]])
+        run = series_run.get(sk)
         for eid, air, num, _t in by_series_eps[sk]:
             why = DT.episode_out_of_scope(display[eid])
             if why:
                 withheld["episodes"][eid] = why
                 continue
-            title, src, fields, why = DT.decide_episode(display[eid], shown_name.get(sk) or names.get(sk), air, num, tags)
+            title, src, fields, why = DT.decide_episode(display[eid], shown_name.get(sk) or names.get(sk), air, num, tags, run)
             if why:
                 withheld["episodes"][eid] = why
             else:

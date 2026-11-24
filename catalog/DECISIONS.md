@@ -1560,9 +1560,16 @@ record's own residue or takes words from another copy of the same broadcast; non
 **How to apply**: `display_text.file_slots`, `copy_notes`, `restore_cut_from_copy`, `polish._GLUED_LOWER`; the
 same-day pass in `build_projection` lists each restore in `display_text.json` (`restored`, `"by": "same-day copy"`).
 Fixtures and controls in `tests/test_display_text.py` and `tests/test_display_fields.py`, each rule seen failing on
-the old code. MEASURED on catalog-2026-11-21 (two full dry runs, old code against new, same Release): 1,894 of 73,636 episode
-titles changed (1,077 cleaned from the source, 817 composed from series name and number or date), 27 withheld (date-
-code file names with no date or number: Charlie Tuna, Fred Allen, "Burns and Allen xx-xx-xx Unknown1"), 1 folded as a
-copy ("The Silver Clippe" into its same-day broadcast), 3 newly served. Titles with an xx date 370 to 25, with xxx
-380 to 62, with a bracketed number 346 to 23. No new word in any source title except the two same-day restores
-("Clipper", "Corregidor") and the split glued words.
+the old code. Revised the same day on review: a valid date code in the slots ("Fred Allen - 391025", YYMMDD read in the 1900s as
+otr_parse reads it, or YYYYMMDD, a real calendar day inside the series' known run when one is recorded) composes the
+title with the existing composer when the record has no air date, its field recorded as "episodes.title (date code)";
+a code that is no day ("740000", "800100", "910229") does not. What the slots leave is never a fragment: a lone
+number or ordinal, a clause an ordinal starts ("1st song is ..."), or one word of four letters or fewer with no
+episode number ("Torr") falls back to the dated title, else the old title is kept. A warning the slots leave alone
+("1st half") rides on the composed title in brackets; one that leads ("PARTIAL SHOWRUSTLER") moves to the end as
+"(partial)". Slots that would leave a date in front ("#087 02-13-49 VALENTINE") stay. MEASURED on catalog-2026-11-21
+(two full dry runs, old code against new, same Release): 1,875 of 73,636 episode titles changed (836 composed), 9
+withheld (no valid date or number: three "Burns and Allen xx-xx-xx UnknownN", five Charlie Tuna codes 032282, 800100
+twice, 840000, 910229, and "Shady Acres Ranch - xx-xx-49"), 1 folded as a copy ("The Silver Clippe"), 4 newly served.
+Titles with an xx date 370 to 25, with xxx 380 to 62, with a bracketed number 346 to 24. No new word in a source title
+but the two same-day restores ("Clipper", "Corregidor") and the split glued words.
