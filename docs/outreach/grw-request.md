@@ -1,31 +1,32 @@
 # A request to the Generic Radio Workshop (draft for the owner to send)
 
-Decision 067: ask before any Generic Radio Workshop transcription is used. The
-owner sends this from their own address; edit freely. Nothing ships from GRW's
-text until they answer yes.
+Decision 067: ask before any Generic Radio Workshop transcription is used.
+Decision 088 (2026-11-24): any script can be recorded; showing the Workshop's
+transcription text still waits for their answer.
+
+Sent through genericradio.com/contact (a form: name, email, comments; no email
+address is listed). The same words are in the owner's Gmail drafts
+(ben@learningischange.com). Updated 2026-11-24, from the Workshop's own
+copyright page: recording is offered for any script, publishing only with
+rights evidence; read along is built.
 
 ---
 
-Sent through genericradio.com/contact (the Workshop lists no email address).
-The draft is in the owner's Gmail (ben@learningischange.com), 2026-11-09.
-
-**Subject:** Permission to show GRW script transcriptions alongside old-time radio recordings
+**Subject:** Asking before we use your transcriptions: reading and performing old radio scripts
 
 Hello,
 
-I run Ear Drama (eardrama.org), a free, ad-free app for listening to old-time radio from the Internet Archive, on the web, iPhone, iPad, Mac, Apple TV and Android.
+I run Ear Drama (eardrama.org), a free app with no ads for listening to old-time radio from the Internet Archive and for making new audio dramas from old scripts. It runs on the web, iPhone, iPad, Mac, Apple TV and Android.
 
-Your transcriptions are the best source of radio scripts anywhere. About 600 of the episodes in our catalog match a script on genericradio.com, and today the app simply links to your page for each one, credited to the Workshop.
+About 600 of the episodes in our catalog match a script in your library. Today the app links to your page for each one, with the Workshop named. I would like to do more, and I am asking before doing anything.
 
-I'd like to go one step further, and I wanted to ask before doing anything:
+First, reading along. The app can show a script while a drama plays and follow the line being spoken. I would like to show your transcription beside the original broadcast, so people, and students especially, can follow the words, the cues and who is speaking.
 
-1. Read along. We are building a way to read a script while the episode plays, with the current line following the voices, so listeners (and students especially) can see the words, the cues and who is speaking.
+Second, performing. In Ear Drama, families, classes and friends cast a script among themselves and record it, one part at a time or together. I would like them to be able to do that with the scripts you have transcribed. I read your copyright page, and your hope that performing keeps these shows alive is ours too. A recording stays on the person's own device, or with the people they invite. The app offers to publish one only when the script's own rights can be documented, and your permission would not be treated as clearing the script itself.
 
-2. Record together. The app lets families, classes and friends record a play together, one part at a time, from a script.
+On every script we would credit the Generic Radio Workshop, and the transcriber where you name one, and link to your page. A script comes out of the app when its owner asks. If you know of owners who want to be asked first, as you describe for The War of the Worlds and The Shadow, tell us and we will leave those scripts out.
 
-For both, we would show your transcription inside the app, credit the Generic Radio Workshop and the transcriber on every script, and link back to your page. We understand you make no ownership claim on the underlying scripts, so we would only offer recording for scripts whose rights we can document separately; your permission is about your transcription work, which we want to respect.
-
-May we use your transcriptions this way? If you would rather we keep linking to your site only, or want conditions (a list you approve, a particular credit line, anything else), we will follow them. We will not show your text in the app without your yes.
+May we use your transcriptions for either of these, or both? If you would rather we only link to you, or would like conditions (a list you approve, a credit line, a limit on how much we copy), we will follow them. We will not show your text in the app without your yes.
 
 Thank you for the years of work behind the Workshop.
 
