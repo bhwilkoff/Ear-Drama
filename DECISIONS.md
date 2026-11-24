@@ -949,6 +949,10 @@ for the room. New client states or words for a take are changed in §12.11 first
 2. **Radio**: every matched radio script. All 1,371 in hand are Generic Radio Workshop transcriptions. The ruling settles recording; whether Ear Drama may show the Workshop's transcription text without its answer (Decision 067, the draft request) is asked of the owner and is not assumed.
 3. **Anything else**: a person may bring the words they want to record. The design comes before the code (BACKLOG-LOOP B18).
 
+4. **Shared own scripts** (owner 2026-11-24: *"Yes, a shared script can be kept on our server."*): the text is kept for that production's people only and goes with it.
+5. **Publishing a script you wrote** (same day: *"yes, we can accept new scripts but we would have to make sure that they don't violate copyright (i.e., perform a title and content search for existing plays)"*): 13 and over, never in a class, a declaration in the owner's words, and a search of title and content against every existing work the pipeline can read before anything uploads. A match holds the publish and goes to the owner; finding none is recorded as what was searched, never as proof the words are new. Refused until that search exists and has been seen to catch a planted copy.
+6. **Reports** (same day: *"As long as I get a notification via email, I will respond to them (either a direct email or github notification email will work)."*): an hourly workflow on the owner's OIDC route opens one GitHub issue assigned to the owner when reports wait, stating only how many. Sharing own scripts opens once a planted report has produced that email.
+
 **Why**: the owner, 2026-11-24: *"All radio and regular play scripts should be able to be re-recorded. You should be able to record your own version of anything you want with your own casting."* It completes 068's "You should be able to re-record anything that has a script."
 
 **How to apply**: never hide Record behind a rights bucket; put the check on Publish, and test that a production of an unevidenced script has no Publish and the Worker refuses the job. A take-down removes a script from recording as it removes a recording.
