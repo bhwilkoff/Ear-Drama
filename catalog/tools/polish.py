@@ -158,6 +158,50 @@ _CLIPPED_LEAD = re.compile(r"^clipped\s+(?=\S)")
 _COMBINED_NOTE = re.compile(r"\s*\(\s*combines all dates\s*\)", re.I)
 
 
+# B12 (catalog DECISIONS 042): a roman numeral an upload's title case wrote as a word ("Henry Iii", "Part Ii"). Only
+# I, V, X and L up to 89, two letters or more, and only where the word before makes it a number: a word that takes a
+# number, a regnal name, or any capitalized name when the numeral ends the title or a part of it or is three letters
+# or more ("Rocky Iii and the Dead Mans Chest").
+_ROMAN = re.compile(r"^(?=[ivxl]{2})(?:xl|l?x{0,3})(?:ix|iv|v?i{0,3})$")
+_ROMAN_TOKEN = re.compile(r"(?<=\S)(?P<sep>\.?\s+)(?P<num>[IVXLivxl][ivxl]+)(?![\w'\-])")
+NUMBER_TAKERS = {"part", "pt", "vol", "volume", "chapter", "chap", "ch", "act", "book", "no", "number", "section",
+                 "scene", "episode", "ep", "canto", "phase", "round", "war", "psalm", "op", "opus", "movement",
+                 "symphony", "reel", "side"}
+REGNAL = {"henry", "richard", "edward", "george", "william", "charles", "james", "louis", "elizabeth", "mary", "john",
+          "pius", "leo", "gregory", "napoleon", "peter", "catherine", "frederick", "philip", "alexander", "nicholas",
+          "ivan", "ramses", "rameses", "innocent", "clement", "benedict", "urban", "paul", "ferdinand", "gustav",
+          "gustavus", "wilhelm", "friedrich", "victor", "umberto", "alfonso", "constantine", "otto", "stephen", "david",
+          "malcolm", "robert", "harold", "olaf", "haakon", "christian", "frederik", "carol", "ptolemy", "antiochus"}
+ROMAN_WORDS = {"vi", "xi", "li", "xl", "liv", "ix"}   # a name or a size as often as a number: only after a number-taker
+
+
+def roman_numerals(t):
+    """A roman numeral cased as a word set in capitals ("Henry Iii" -> "Henry III", "Part Ii" -> "Part II"), only where
+    the word before makes it a numeral; "I" alone, "Mix", "Civil", "Dim" and a placeholder ("Xx-Xx") are never read."""
+    if not t:
+        return t
+
+    def fix(m):
+        num = m.group("num")
+        if num.isupper() or not _ROMAN.match(num.casefold()):
+            return m.group(0)
+        before = re.findall(r"[A-Za-z][\w']*", t[:m.start()])
+        prev = before[-1] if before else ""
+        low = prev.casefold()
+        end = re.match(r"\s*(?:$|[,:;)\]]|[-–—]\s|\()", t[m.end():]) is not None
+        if not num.strip("Xx"):
+            ok = False   # "xx", "Xxx": an upload's placeholder ("ep xx")
+        elif (low in NUMBER_TAKERS and (prev[:1].isupper() or prev.islower())) or (low in REGNAL and prev[:1].isupper()):
+            ok = True
+        elif num.casefold() in ROMAN_WORDS:
+            ok = False
+        else:
+            ok = (end or len(num) >= 3) and prev[:1].isupper() and low not in SMALL and len(prev) > 1
+        return m.group("sep") + num.upper() if ok else m.group(0)
+
+    return _ROMAN_TOKEN.sub(fix, t)
+
+
 def polish_title(t):
     """The shown title with the upload habits undone, or None when nothing readable is left."""
     t = _clean(t)
@@ -170,7 +214,7 @@ def polish_title(t):
     m = _INVERTED.match(t)
     if m and len(m.group("head").split()) >= 2:
         t = f"{m.group('art')} {m.group('head')}{m.group('tail')}"
-    return small_words(_contractions(t))
+    return small_words(roman_numerals(_contractions(t)))
 
 
 def apostrophe_from(title, witnesses):

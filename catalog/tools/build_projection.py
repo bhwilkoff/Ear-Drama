@@ -246,6 +246,14 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         got = PL.polish_title(DT.cut_title(display[eid]))
         got = PL.apostrophe_from(got, witnessed.get(eid)) if got else got
         display[eid] = got or ""
+    # B12 (DECISIONS 042): a "-0" the episode's own file name ends with is the file's, not the title's; a king's
+    # numeral is spelled as the episode's own file name spells it ("Mary 1" with a file "Mary I").
+    files = {}
+    for eid, f in s.execute("SELECT episode_id, file FROM recordings ORDER BY episode_id, rank"):
+        if eid in display:
+            files.setdefault(eid, []).append(f)
+    for eid in sorted(files):
+        display[eid] = DT.numeral_from_files(DT.strip_file_zero(display[eid], files[eid]), files[eid])
     # P-12 (DECISIONS 033): a title an upload cut off is restored from a witness of the same episode, else
     # decide_episode composes or withholds it.
     restored = {}
@@ -335,7 +343,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             else:
                 if src == "composed":
                     composed[eid] = {"title": title, "fields": fields}
-                display[eid] = PL.small_words(title)
+                display[eid] = PL.small_words(PL.roman_numerals(TI.recase_shout(title, words)))
     served -= set(withheld["episodes"])
     # P-12 (DECISIONS 033): a grab bag is judged on what is served, the same test the publish's guard runs: a series
     # whose other files a rights or scope rule withheld may be left a bag ("Christmas": two collections' singles).

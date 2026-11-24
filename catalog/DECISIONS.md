@@ -1573,3 +1573,42 @@ withheld (no valid date or number: three "Burns and Allen xx-xx-xx UnknownN", fi
 twice, 840000, 910229, and "Shady Acres Ranch - xx-xx-49"), 1 folded as a copy ("The Silver Clippe"), 4 newly served.
 Titles with an xx date 370 to 25, with xxx 380 to 62, with a bracketed number 346 to 24. No new word in a source title
 but the two same-day restores ("Clipper", "Corregidor") and the split glued words.
+
+## 042 — A king's numeral as the record spells it, a shouted title only in words the catalog writes, a file's "-0" (B12)
+
+*Date: 2026-11-23*
+
+**Rule**: three repairs, each from the record's own words. (1) A roman numeral an upload's title case wrote as a
+word ("Henry Iii", "Part Ii", "Rocky Iii and the Dead Mans Chest") is set in capitals when it is I, V, X and L up to
+89, two letters or more, and the word before makes it a number: a word that takes one (Part, Vol., Chapter, Act, Book,
+No, War, Side ...), a regnal name (Henry, Mary, George ...), or any capitalized name when the numeral ends the title or
+a part of it, or is three letters or more. "I" alone, "Mix", "Civil", "Dim", "Mild", a placeholder ("ep xx", "Xx-Xx")
+and Vi, Xi, Li, Xl, Liv, Ix after an ordinary name ("Aunt Vi", "Chang Li") are never read. A regnal name followed by a
+digit or by numeral letters split one by one ("Mary 1", "Henry V I I I", from a glued file name split letter by letter)
+takes the numeral the episode's own file name spells for the same value ("Mary I.mp3", "Henry VIII Part 1.mp3"); with
+no such file it stays ("Richard 1": its files say "Richard 1"). (2) A title whose every letter outside brackets is a
+capital once the slots are gone ("Cisco Kid 5XXXXX CUP OF JUSTICE" -> "Cup of Justice") is recased only when every word
+has proof: a mixed-case title in the catalog writes it with a lowercase letter (its own form kept, "McGee"), or it is
+four letters or fewer and the catalog writes it in capitals at least as often as not ("AFRS", "YMCA", "TV"), or three
+letters with no vowel ("JFK", "RB"). One word without proof leaves the whole title as it was ("SILVERTON SWINDLE":
+"Silverton" is written in capitals only inside shouted titles; "RESCUE OF RUSTY SIL": a cut word, which 041 restores
+only from a same-day copy). A bracketed note keeps its case ("(R)", "(FD)"); letters glued to a number are a suffix
+("10TH" -> "10th"); "vs." is lower case. No word is split or added. The all-capitals rule in `titles._recase` now also
+keeps such an acronym ("MTV", "SRP"). (3) A "-0" at the end of a title, after a letter or bracket, goes when one of the
+episode's own files ends with the title's last word and "-0" ("... BEAU GESTE-0.mp3", a collection's file naming); a
+"-0" no file carries, a cut date ("1968-01-0") and one after a number ("Lighthouse 12-0") stay.
+
+**Why**: the owner's display-text ruling (025): no raw upload text on screen, and a title may be composed or repaired
+only from the record's own data. The N13 pass (2026-11-23) saw "Henry Iii" and the all-capitals Cisco Kid and Escape
+titles on screens. The shouted titles had escaped `titles._recase` because a file name's slots ("Cisco Kid 5XXXXX",
+"Escape 48-06-06") held the lowercase letters until `decide_episode` removed them. Recasing a word whose case the
+catalog never shows would be a guess ("POORAH", "AFVN"), so such a title keeps its capitals.
+
+**How to apply**: `polish.roman_numerals` (end of `polish_title`, and again after `decide_episode`),
+`display_text.numeral_from_files` and `strip_file_zero` (both fed the episode's recordings in `build_projection`),
+`titles.recase_shout` with `Words.forms`, after `decide_episode`. Fixtures and controls in `tests/test_display_fields.py`,
+`tests/test_titles.py` and `tests/test_display_text.py`, each rule seen failing on the old code. MEASURED on
+catalog-2026-11-21 (two full dry runs, HEAD against this change, same Release, 51/51 suites and the contract tests
+green): 258 of 73,630 episode titles changed and none withheld or added; shouted titles 216 to 41, titles ending "-0" 127
+to 6, numerals cased as words 8 to 0, numerals split letter by letter 21 to 0; two series names ("MTV Killed the Video
+Star", "Area Summerween VX 2 4 Air"). No letter in a changed title that the old title or the episode's file names lack.

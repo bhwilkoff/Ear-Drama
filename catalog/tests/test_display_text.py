@@ -392,5 +392,23 @@ check("control: another show's copy is no witness", DT.restore_cut_from_copy("Th
 check("control: a short cut is not restored", DT.restore_cut_from_copy("Clippe", "Superman",
       [("Menace to the Silver Clipper", "The Adventures of Superman")], words), None)
 
+# B12 (DECISIONS 042): a "-0" the episode's own file name ends with.
+check("a file's -0 tail goes", DT.strip_file_zero("(Redub) BEAU GESTE-0", ["Escape 48-06-06 (Redub) BEAU GESTE-0.mp3"]),
+      "(Redub) BEAU GESTE")
+check("control: a -0 no file carries stays", DT.strip_file_zero("BEAU GESTE-0", ["Escape_48-06-06_Beau_Geste.mp3"]), "BEAU GESTE-0")
+check("control: a cut date is not a -0 tail", DT.strip_file_zero("KLIK Radio Lai Khe. 1968-01-0", ["KLIK Radio Lai Khe. 1968-01-0.mp3"]),
+      "KLIK Radio Lai Khe. 1968-01-0")
+check("a king's number spelled as the file spells it", DT.numeral_from_files("Mary 1",
+      ["Cavalcade of Kings xx-xx-xx (31) Mary I.mp3", "ACavalcadeOfKingsXx-xx-xx31Mary1.mp3"]), "Mary I")
+check("a numeral split letter by letter, joined as the file spells it", DT.numeral_from_files("Henry V I I I Part 1",
+      ["Cavalcade of Kings xx-xx-xx (28) Henry VIII Part 1.mp3"]), "Henry VIII Part 1")
+check("control: Richard 1 with no file that spells a numeral stays", DT.numeral_from_files("Richard 1",
+      ["Cavalcade of Kings xx-xx-xx (12) Richard 1.mp3", "ACavalcadeOfKingsXx-xx-xx12Richard1.mp3"]), "Richard 1")
+check("control: a file with another value is no evidence", DT.numeral_from_files("Henry V I I I Part 1",
+      ["Henry VII Part 1.mp3"]), "Henry V I I I Part 1")
+check("control: Part 1 is not a king's number", DT.numeral_from_files("King John Part 1", ["King John Part I.mp3"]),
+      "King John Part 1")
+check("control: another title's -0 file is no evidence", DT.strip_file_zero("The Brute-0", ["Escape Beau Geste-0.mp3"]), "The Brute-0")
+
 print(f"{ran - failed}/{ran} passed")
 sys.exit(1 if failed else 0)

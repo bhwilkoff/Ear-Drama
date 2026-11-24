@@ -118,6 +118,7 @@ class Words:
                     forms.setdefault(w.casefold(), {}).setdefault(w, 0)
                     forms[w.casefold()][w] += 1
         self.case = {k: min(f.items(), key=lambda x: (-x[1], x[0]))[0] for k, f in forms.items()}
+        self.forms = forms
 
     def known(self, w):
         return self.uses.get(w.casefold(), 0) >= MIN_USES
@@ -278,19 +279,84 @@ def _strip_codes(t, series):
     return re.sub(r"\s{2,}", " ", t).strip()
 
 
-def _recase(t, words):
-    """An all-capitals title in the catalog's own case, its run-together words split when proved."""
-    first = True
-
+def _recase(t, words, first=True):
+    """An all-capitals title in the catalog's own case, its run-together words split when proved. A word of three
+    letters or fewer with no vowel ("RB", "WW") is an acronym and stays unless the catalog writes it otherwise."""
     def piece(m):
         nonlocal first
         w = m.group()
+        if _acronym(w, words):
+            first = False
+            return w
         parts = words.split(w) if len(w) >= MIN_SPLIT and not words.known(w) else None
         got = " ".join(words.cased(p, first and i == 0) for i, p in enumerate(parts or [w]))
         first = False
         return got
 
     return WORD.sub(piece, t)
+
+
+VOWEL = re.compile(r"[AEIOUY]", re.I)
+
+
+def _acronym(w, words):
+    """A capital word of three letters or fewer with no vowel ("RB", "NYC", "WW") the catalog never writes in mixed case."""
+    return w.isupper() and len(w) <= 3 and not re.search(r"[AEIOU]", w) and w.casefold() not in words.case
+
+
+def _shout_word(w, words, first):
+    """How a capital word of a shouted title is written, or None when the catalog gives no proof it is a word: a small
+    word (and "vs") in lower case; a word of four letters or fewer the catalog writes in capitals at least as often as
+    not, MIN_USES times ("AFRS", "YMCA") or with no vowel in three letters ("JFK"), kept; a word some mixed-case title
+    writes with a lowercase letter, in that form's case ("McGee") or capitalized; an acronym it never writes ("RB"),
+    kept. A capital form seen only in shouted titles ("SILVERTON") is no proof."""
+    k = w.casefold()
+    forms = getattr(words, "forms", {}).get(k, {})
+    lower = sorted((f for f in forms if re.search(r"[a-z]", f)), key=lambda f: (-forms[f], f))
+    caps, most = forms.get(w, 0), max((forms[f] for f in lower), default=0)
+    if (k in SMALL or k == "vs") and not first:
+        return k
+    if len(w) <= 4 and caps and caps >= most and (caps >= MIN_USES or (len(w) <= 3 and not re.search(r"[AEIOU]", w))):
+        return w
+    if lower:
+        f = lower[0]
+        f = f if re.search(r"[a-z][A-Z]|^[A-Z]['\u2019][A-Z]", f) else f[:1].upper() + f[1:].lower()
+        return f[:1].upper() + f[1:]
+    if _acronym(w, words) or (len(w) <= 4 and forms.get(w, 0) >= MIN_USES):
+        return w
+    if k in SMALL:
+        return k.capitalize()
+    return None
+
+
+def recase_shout(t, words):
+    """B12 (catalog DECISIONS 042): a title still in capitals once the file name's slots are gone ("Cisco Kid 5XXXXX
+    CUP OF JUSTICE" -> "Cup of Justice"). Read only when every letter outside brackets is a capital and every word has
+    proof in `_shout_word`; one word without it ("SILVERTON", "POORAH", "AFVN") leaves the whole title as it is. A
+    bracketed note keeps its case ("(R)", "(FD)"); letters glued to a number are a suffix ("10TH" -> "10th"). Never
+    adds a word and never splits one."""
+    if not t or words is None:
+        return t
+    parts = re.split(r"(\([^()]*\))", t)
+    outside = " ".join(p for p in parts if not p.startswith("("))
+    found = WORD.findall(outside)
+    if (len(re.sub(r"[^A-Za-z]", "", outside)) < 4 or re.search(r"[a-z]", outside) or not found
+            or any(_shout_word(w, words, False) is None for w in found)):
+        return t
+    out, first = [], True
+    for p in parts:
+        if p.startswith("(") or not LETTER.search(p):
+            out.append(p)
+            continue
+
+        def piece(m):
+            nonlocal first
+            w, glued = m.group(), m.start() > 0 and m.string[m.start() - 1].isdigit()
+            got = w.lower() if glued else _shout_word(w, words, first)
+            first = False
+            return got
+        out.append(WORD.sub(piece, p))
+    return "".join(out)
 
 
 def display_title(raw, series=None, words=None):

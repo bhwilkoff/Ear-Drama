@@ -15,6 +15,7 @@ import re
 
 import field_defects as FD
 import otr_parse as OP
+import polish as PL
 import text_defects as TD
 
 MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
@@ -580,6 +581,58 @@ def restore_cut_from_copy(title, series_name, copies, words):
                 return w.strip()
             i = f.find(t, i + 1)
     return None
+
+
+ZERO_TAIL = re.compile(r"(?<=[A-Za-z)])-0$")
+
+
+def strip_file_zero(title, files):
+    """B12 (catalog DECISIONS 042): a "-0" a file's name ends with ("... BEAU GESTE-0.mp3"), carried into the title, goes
+    when one of the episode's own files ends with the title's last word and "-0"; a "-0" no file carries stays."""
+    m = ZERO_TAIL.search(title or "")
+    if not m:
+        return title
+    last = _fold_words(title[:m.start()]).split()[-1:]
+    for f in files or ():
+        stem = re.sub(r"\.[A-Za-z0-9]{2,4}$", "", f or "")
+        if last and ZERO_TAIL.search(stem) and _fold_words(stem[:-2]).split()[-1:] == last:
+            return title[:m.start()].rstrip()
+    return title
+
+
+ROMAN_VALUES = {"I": 1, "V": 5, "X": 10, "L": 50}
+NUMERAL_SLOT = re.compile(r"\b([A-Z][a-z]+)\s+((?:[IVXL]\s){1,5}[IVXL]|[1-9]|[IVXL][ivxl]+)(?=\s|$|[,:;)])")
+
+
+def _roman_value(s):
+    s = s.upper()
+    if not re.fullmatch(r"(?:XL|L?X{0,3})(?:IX|IV|V?I{0,3})", s) or not s:
+        return None
+    v = [ROMAN_VALUES[c] for c in s]
+    return sum(-x if i + 1 < len(v) and x < v[i + 1] else x for i, x in enumerate(v))
+
+
+def numeral_from_files(title, files):
+    """B12 (catalog DECISIONS 042): a numeral after a name, spelled as the episode's own file name spells it: "Mary 1"
+    is "Mary I" when a file of it says "Mary I", "Henry V I I I" (a glued file name split letter by letter) is "Henry
+    VIII" when a file says "Henry VIII". The value must match; with no file that spells it, the title stays."""
+    if not title or not files:
+        return title
+
+    def fix(m):
+        name, num = m.group(1), m.group(2)
+        if name.casefold() not in PL.REGNAL:
+            return m.group(0)
+        value = int(num) if num.isdigit() else _roman_value(num.replace(" ", ""))
+        if not value:
+            return m.group(0)
+        for f in files:
+            for got in re.findall(r"(?<![A-Za-z])" + re.escape(name) + r"[\s_]?([IVXL]{1,6})(?![A-Za-z])", f or ""):
+                if _roman_value(got) == value and got != num:
+                    return f"{name} {got}"
+        return m.group(0)
+
+    return NUMERAL_SLOT.sub(fix, title)
 
 
 def cut_off(title):

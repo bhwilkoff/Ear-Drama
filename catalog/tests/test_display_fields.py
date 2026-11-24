@@ -98,6 +98,23 @@ check("control: a comma and a name are not an inverted article", t("Smith, Brown
 check("control: a number in parentheses is the source's own", t("1932 (01) Search For Robert Danforth"), "1932 (01) Search for Robert Danforth")
 check("control: a clean title is untouched", t("Sorry, Wrong Number"), "Sorry, Wrong Number")
 check("control: Series 1 Episode 10 is untouched", t("Series 1 Episode 10 Journey Up the Nile"), "Series 1 Episode 10 Journey Up the Nile")
+# B12 (DECISIONS 042): a roman numeral an upload's title case wrote as a word, only where the word before makes it one.
+check("roman: a regnal numeral", t("Henry Iii"), "Henry III")
+check("roman: a regnal numeral inside a title", t("Henry Viii and His Wives"), "Henry VIII and His Wives")
+check("roman: after Part", t("The Long Night, Part Ii"), "The Long Night, Part II")
+check("roman: after Vol.", t("Stories Vol. Iv"), "Stories Vol. IV")
+check("roman: a capitalized name ending the title", t("Rocky Ii"), "Rocky II")
+check("roman: Henry Vi is a king, not a name", t("King Henry Vi"), "King Henry VI")
+check("control: Mix, Civil, Dim and Mild are words", t("Mix It Up in the Civil War on a Dim Mild Night"),
+      "Mix It Up in the Civil War on a Dim Mild Night")
+check("control: I is a pronoun", t("I Was a Communist for the FBI"), "I Was a Communist for the FBI")
+check("control: a numeral-shaped word inside a title stays", t("The Man Who Was Ii Years"), "The Man Who Was Ii Years")
+check("control: Vi as a name stays", t("Aunt Vi Comes to Town"), "Aunt Vi Comes to Town")
+check("roman: three letters after a name inside a title", t("Rocky Iii and the Dead Mans Chest"), "Rocky III and the Dead Mans Chest")
+check("control: an episode placeholder is not a numeral", t("Lightning Jim ep xx The Hornets Nest"), "Lightning Jim ep xx The Hornets Nest")
+check("control: Li after a name stays", t("Life and Loves of Li"), "Life and Loves of Li")
+check("control: a placeholder date is not a numeral", PL.roman_numerals("Xx-Xx-Xxxx Corliss"), "Xx-Xx-Xxxx Corliss")
+check("control: Richard 1 keeps its number (no evidence for a numeral)", t("Richard 1"), "Richard 1")
 check("apostrophe from a source spelling", PL.apostrophe_from("Lets Call The Whole Thing Off", {"Let's Call the Whole Thing Off"}),
       "Let's Call the Whole Thing Off")
 check("apostrophe: two different spellings are not guessed", PL.apostrophe_from("Witchs Tale", {"Witch's Tale", "Witchs' Tale"}), "Witchs Tale")
