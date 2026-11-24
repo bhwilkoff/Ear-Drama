@@ -97,6 +97,7 @@ check("EP001 TARZANSFIRSTBIRTHDAY", "Tarzans First Birthday", words=W)
 check("BATTLEWITHTHEAPES", "Battle with the Apes", words=W)
 check("HALVERSON AT PERRY'S OFFICE (OTR)", "Halverson at Perry's Office", words=W)   # a rip tag goes (P-6)
 check("INFERNO XXXI", "Inferno XXXI", words=W)
+check("SUMMER NIGHTS WW RB", "Summer Nights WW RB", words=W)            # B12: no vowel, three letters or fewer: an acronym
 # Controls: the refusals.
 check("SUMMERWEEN NIGHTS", "Summerween Nights", words=W)             # "summer we en": "en" is no SHORT word
 check("OVERTHEHILLRAINBOW", "Overthehillrainbow", words=W)           # no split into known words alone
@@ -111,6 +112,29 @@ same("split: two fewest-piece splits are refused", V.split("manslaughter"), None
 same("control: one fewest-piece split is taken", V.split("laughterman"), ["laughter", "man"])
 same("display_name: a series has no series to drop", display_name("01 The Hobbit"), "The Hobbit")
 
+# B12 (DECISIONS 042): a title still in capitals once the slots are gone.
+from titles import recase_shout
+C = Words(["A Cup of the Coffee", "No Justice for All", "The Swindle", "In Silverton Days", "The Beau Geste Rides",
+           "The FBI Story", "In the FBI", "Inside the FBI", "My Slash Mark", "Rusty Returns", "A Cup Final", "Justice Done"])
+same("shout: a whole title in capitals is recased", recase_shout("CUP OF JUSTICE", C), "Cup of Justice")
+same("shout: a bracketed note keeps its case", recase_shout("(Redub) BEAU GESTE", C), "(Redub) Beau Geste")
+same("shout: an acronym the catalog writes in capitals stays", recase_shout("THE FBI STORY", C), "The FBI Story")
+same("shout: a short word with no vowel stays", recase_shout("SLASH RB", C), "Slash RB")
+same("control: a mixed-case title is untouched", recase_shout("Cup of JUSTICE", C), "Cup of JUSTICE")
+same("control: a word of four letters with no vowel is a code, not a word", recase_shout("XKCD PLNT", C), "XKCD PLNT")
+same("control: a cut word the catalog never spells leaves the title as it is", recase_shout("RUSTY SIL", C), "RUSTY SIL")
+same("control: a code the catalog never spells leaves the title as it is", recase_shout("AFVN - LSD PSA", C), "AFVN - LSD PSA")
+C2 = Words(["A Cup of the Coffee", "The Street Gym", "Cisco Kid SILVERTON SWINDLE", "The Swindle Again"])
+same("shout: letters glued to a number are a suffix", recase_shout("10TH STREET GYM", C2), "10th Street Gym")
+same("control: a capital form seen only in a shouted title is no proof", recase_shout("THE SILVERTON SWINDLE", C2),
+     "THE SILVERTON SWINDLE")
+same("shout: the same title once a mixed-case title spells the word", recase_shout("THE SILVERTON SWINDLE",
+     Words(["A Cup of the Coffee", "Cisco Kid SILVERTON SWINDLE", "The Swindle Again", "In Silverton"])), "The Silverton Swindle")
+C3 = Words(["The AFRS Show", "From AFRS Tapes", "On AFRS", "Ever Afrs", "The Misfortune Isle", "Kid vs. Savinni", "For Larry Kid"])
+same("shout: an acronym written in capitals more often than not stays", recase_shout("AFRS- MISFORTUNE ISLE", C3),
+     "AFRS- Misfortune Isle")
+same("shout: vs stays lower case", recase_shout("LARRY VS. SAVINNI", C3), "Larry vs. Savinni")
+same("control: no vocabulary, no change", recase_shout("CUP OF JUSTICE", None), "CUP OF JUSTICE")
 # The order a client lists a series' episodes in.
 reading = [("r1", None, None, "01 - Mrs. Hudson"), ("r2", None, None, "02 - Baker Street"),
            ("r3", None, None, "03 - Athelney Jones")]
