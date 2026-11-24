@@ -87,9 +87,10 @@ def crash_logs(udid):
 
 
 def collect_tests(node, out):
-    """Flatten `xcresulttool get test-results tests` into (name, result) leaves."""
+    """Flatten `xcresulttool get test-results tests` into (Class/test(), result) leaves. The
+    bare name is not an id: LayoutSweepUITests and TabSmokeUITests both have testHome()."""
     if node.get("nodeType") == "Test Case":
-        out.append((node.get("name", "?"), node.get("result", "?")))
+        out.append((node.get("nodeIdentifier") or node.get("name", "?"), node.get("result", "?")))
     for c in node.get("children", []) or []:
         collect_tests(c, out)
 
@@ -102,6 +103,11 @@ def export_shots(bundle, dest):
     if r.returncode != 0:
         print(f"[uitest] attachment export failed: {r.stderr[-300:]}")
         return {}
+    return read_manifest(dest)
+
+
+def read_manifest(dest):
+    """{test id: [(human name, exported file)]} from an exported attachments manifest."""
     names = {}
     mf = dest / "manifest.json"
     if mf.is_file():
@@ -144,9 +150,10 @@ def main():
 
 
 def xcodebuild(action, udid, a, log, extra, fixture=None):
-    cmd = ["xcodebuild", action, "-project", str(REPO / "EarDrama.xcodeproj"),
+    # The owner's Mac is shared with their own work and other agents: low priority, four jobs.
+    cmd = ["nice", "-n", "15", "xcodebuild", action, "-project", str(REPO / "EarDrama.xcodeproj"),
            "-scheme", SCHEME, "-destination", f"id={udid}", "-derivedDataPath", str(DERIVED),
-           f"DEVELOPMENT_TEAM={TEAM}", "-allowProvisioningUpdates"] + extra
+           "-jobs", "4", f"DEVELOPMENT_TEAM={TEAM}", "-allowProvisioningUpdates"] + extra
     seed = a.catalog_seed or os.environ.get("CATALOG_SEED_PATH")
     if seed:
         cmd.append(f"CATALOG_SEED_PATH={seed}")
@@ -271,9 +278,10 @@ class DisplaySampler(threading.Thread):
             wait = self.period
 
 
-def overlay_check(outdir_shots, shots):
+def overlay_check(outdir_shots, shots, ocr=None):
     """OCR every exported frame. Returns {test id: [failure lines]}, with key None for
-    frames the instrument could not read (blind, never a pass)."""
+    frames the instrument could not read (blind, never a pass). `ocr` is a seam for tests."""
+    ocr = ocr or dh.ocr
     frames = [(tid, outdir_shots / f) for tid, items in shots.items() for _, f in items
               if f.lower().endswith(".png")]
     bad = {}
@@ -288,19 +296,69 @@ def overlay_check(outdir_shots, shots):
     frames = [(t, p) for t, p in frames if p not in blind]
     if not frames:
         return bad
-    got = dh.ocr([(0, p) for _, p in frames])
+    got = ocr([(0, p) for _, p in frames])
     for tid, p in frames:
         d = got.get(p.name)   # ScreenOCR keys its output by file name
         if d is None:   # one retry alone: a batch once hit a passing Vision engine error
-            d = dh.ocr([(0, p)]).get(p.name)
+            d = ocr([(0, p)]).get(p.name)
         if d is None:
             bad.setdefault(None, []).append(f"{tid}: {p.name} unreadable by OCR")
             continue
         text = " ".join(e.get("text", "") for e in d.get("allText") or [])
         m = re.search(app_config.SYSTEM_OVERLAY_RX, text, re.I)
         if m:
-            bad.setdefault(tid, []).append(f"{p.name} shows a system overlay ({m.group(0)!r})")
+            bad.setdefault(tid, []).append(f"{p.name} {OVERLAY_TAG} ({m.group(0)!r})")
     return bad
+
+
+TEST_START_RX = re.compile(r"^Test Case '-\[\w+\.(\w+) (\w+)\]' started\.", re.M)
+OVERLAY_TAG = "shows a system overlay"
+
+
+def test_order(log_text):
+    """[Class/test(), ...] in the order xcodebuild ran them (the result bundle sorts by name)."""
+    return [f"{c}/{m}()" for c, m in TEST_START_RX.findall(log_text)]
+
+
+def verdicts(tests, overlays, dropped, order=()):
+    """Report lines for every test, and whether all of them passed. `overlays` is keyed by
+    Class/test() as the attachments manifest names it. Once a frame shows a system overlay
+    (Screen Time's Time Limit), every test that ran after it is BLIND: XCUITest's queries match
+    through the overlay, so their passes and failures say nothing about the app."""
+    lines, ok_all = [], True
+    pos = {t: i for i, t in enumerate(order)}
+    covered = [(pos[t], t, h) for t, v in overlays.items() if t in pos for h in v if OVERLAY_TAG in h]
+    first = min(covered) if covered else None
+    later = 0
+    for tid, result in tests:
+        hits = overlays.get(tid, [])
+        drop = dropped.get(tid[:-2] if tid.endswith("()") else tid)
+        good = result == "Passed" and not hits
+        prev, ok_all = ok_all, ok_all and good
+        if first and pos.get(tid, -1) > first[0]:
+            later += 1
+            lines.append(f"BLIND {tid} ({result}): system_overlay: ran after {first[1]}'s frame showed a "
+                         "system overlay; XCUITest matched through it, so this result says nothing")
+            ok_all = False
+            continue
+        if result == "Skipped" and not hits:
+            ok_all = prev
+            lines.append(f"SKIP {tid}")
+            continue
+        if drop and not good:
+            lines.append(f"BLIND {tid} ({result}): launch_dropped at '{drop}': XCTest ended the "
+                         "running app and the device started no new one (CoreDevice 10004). No app "
+                         "process ran, so this tests nothing and is not an app exit (LOOP-PLAN P8); "
+                         "device diagnostics are in the result bundle")
+            continue
+        lines.append(f"{'PASS' if good else 'FAIL'} {tid} ({result})")
+        for h in hits:
+            lines.append(f"  FAIL frame: {h} — XCUITest matched through it; this pass proves nothing")
+    if first:
+        lines.append(f"DEVICE BLOCKED: a system overlay covered the app from {first[1]} on ({first[2]}); "
+                     f"{later} later tests are BLIND. Lift the Screen Time limit for "
+                     f"{app_config.APPLE_APP_NAME} on the device (or dismiss the alert) and run again.")
+    return lines, ok_all
 
 
 def run(entry, udid, a, outdir, bundle):
@@ -354,20 +412,11 @@ def run(entry, udid, a, outdir, bundle):
             ok_all = False
         overlays = overlay_check(outdir / "attachments" / bundle.stem, shots)
         dropped = dict(dropped_launches(log.read_text(errors="replace")) if log.exists() else [])
-        for name, result in tests:
-            hits = [v for tid, v in overlays.items() if tid and tid.split("/")[-1] == name]
-            drop = next((s for tid, s in dropped.items() if tid.split("/")[-1] == name.rstrip("()")), None)
-            good = result == "Passed" and not hits
-            ok_all &= good
-            if drop and not good:
-                print(f"BLIND {name} ({result}): launch_dropped at '{drop}': XCTest ended the "
-                      "running app and the device started no new one (CoreDevice 10004). No app "
-                      "process ran, so this tests nothing and is not an app exit (LOOP-PLAN P8); "
-                      "device diagnostics are in the result bundle")
-                continue
-            print(f"{'PASS' if good else 'FAIL'} {name} ({result})")
-            for h in (x for v in hits for x in v):
-                print(f"  FAIL frame: {h} — XCUITest matched through it; this pass proves nothing")
+        order = test_order(log.read_text(errors="replace")) if log.exists() else []
+        lines, good_all = verdicts(tests, overlays, dropped, order)
+        ok_all &= good_all
+        for line in lines:
+            print(line)
         for line in overlays.get(None, []):
             print(f"FAIL frame_check_blind: {line}")
             ok_all = False

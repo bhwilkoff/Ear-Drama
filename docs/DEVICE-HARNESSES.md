@@ -418,6 +418,13 @@ open items from the live catalog (the app fetches it on first launch), not
 the clean-only seed; a fixture missing from the catalog fails with the
 verb it could not find.
 
+Results and frames are keyed `Class/test()` (LayoutSweepUITests and
+TabSmokeUITests share method names). Once a frame shows a system overlay
+(`SYSTEM_OVERLAY_RX`: Screen Time's Time Limit, an alert), every test that
+ran after it, in the log's order, is BLIND, and one `DEVICE BLOCKED` line
+says the device needs the limit lifted (`tools/test_ios_uitest_frames.py`).
+Both xcodebuild steps run under `nice -n 15` with `-jobs 4`.
+
 `ios_run.py`'s anchor (`IOS_ANCHOR_RX` in `tools/app_config.py`) accepts the
 tab bar (Browse, Stations and Library together) OR the full-screen player's
 chrome ("Sleep" plus a "-14:57" remaining time), so a player-sheet frame
