@@ -256,7 +256,7 @@ shared code only after the core five are complete.
 |---|---|---|---|
 | CarPlay | 🚧 builds | Continue, Stations, Browse, Downloads tabs (R17); Continue and Downloads play | Runs only once Apple grants the carplay-audio entitlement (Needs Ben) |
 | watchOS | 🚧 builds | Continue, "Waiting on the phone" | watchOS 11 floor (pairs with iOS 18); not embedded in the phone app yet |
-| Android Auto | 🚧 builds | Continue, Stations, Browse, Downloads (R17); Continue and Downloads list episodes that play through the phone's queue; Stations and Browse are empty folders | Every release with car support waits on Google's car review: internal or closed track only; no search, no art; Assistant voice (VC-1) not done |
+| Android Auto | 🚧 built and browsed on a Pixel | Continue, Stations, Browse, Downloads (R17), search, spoken requests, resume, art | Browsed 2026-11-24 on the Pixel 8a by a media browser client (`CarBrowseProbeTest`); not seen in a car or the Desktop Head Unit. Every release with car support waits on Google's car review: internal or closed track only |
 | Android TV / Fire TV | 🚧 builds | Home, D-pad focus on the first row; Now Playing card in the background (TV-NP) | Banner art is a placeholder for the owner |
 | Wear OS | 🚧 builds | Continue, "Waiting on the phone" | minSdk 30 (Wear OS 3); needs its own versionCode before upload |
 | webOS / Tizen | 🚧 builds (.ipk, .wgt) | Listen, D-pad focus on the first card; remote media keys; Back that walks history | Placeholder art; the .wgt was signed with the Archive Watch Samsung profile until Ear Drama has its own |
@@ -379,7 +379,7 @@ iOS app resized (`macos-platform-patterns`).
 | Predictive back | 🚧 enabled in the manifest | iOS swipe-back is fixed-animation |
 | Media3 notification and lock-screen controls | 🚧 | The MediaSession service |
 | Adaptive icon with a monochrome layer | 🚧 | The ring microphone on the icon red, with its own monochrome silhouette (`tools/render-app-icon.py`); not yet seen on a device |
-| Android Auto library tree | 🚧 four tabs (`CarLibrary`, audited 2026-11-23): Continue (this device's in-progress episodes) and Downloads (finished downloads, newest first) list playable episodes, each starting the phone's queue (`onSetMediaItems`, `takeQueue`); Stations and Browse are empty folders; no search (`onSearch` not implemented), no art; a slow catalog yields an empty list within 8 s (DR-3); `CarLibraryTest` | The Media3 library service the car browses. Gap: two of the four tabs draw empty in the car; filling or hiding them is a car-review release, an owner call. No car or Desktop Head Unit pass on record |
+| Android Auto library tree | 🚧 four tabs (`CarLibrary`; owner 2026-11-24 "Fill in spaces on Android auto"): Continue; Stations (the app's own stations through `LiveRadio`, tuned at the clock's position, seen at 500 s in); Browse (Shows you follow, Popular, Genres, By length; a long show opens its seasons); Downloads; `onSearch`, spoken requests and `onPlaybackResumption`; art by `CarArtProvider` (served picture, else the drawn label, offline too); every folder answers within 8 s or with one text row; `CarLibraryTest`, `CarStationsTest`, `CarArtTest` | Genres is five levels deep (no published depth limit found). Downloads with entries, a followed show, a car and the Head Unit not seen. CarPlay's Stations and Browse are still placeholders |
 
 ---
 

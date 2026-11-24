@@ -105,7 +105,7 @@ in the daytime (back about 21:00, so device work on it goes first).
   title cut off 16; volumes: 500 segments with no printed title, 69 volumes by several authors. Recover by layout
   family, never by loosening the clean gate; monologues (one role) are recordable. Dry run, read a sample of each
   family against its source text, then publish. Client suites run.
-- [ ] **B17 Android Auto.** Stations and Browse filled, search, art; CarLibraryTest; the Desktop Head Unit if it
+- [x] **B17 Android Auto** (built, browsed on the Pixel 2026-11-24; left: a car; **B17b CarPlay** the same on Apple, behind the entitlement). Stations and Browse filled, search, art; CarLibraryTest; the Desktop Head Unit if it
   can run without an emulator. Internal track only until Google's car review.
 - [ ] **B18 Record anything (088.3): design first (Opus, learning-orientation-design).** Bring your own script
   (paste, file, share sheet); an episode's automatic transcript as a starting script the person casts line by
@@ -252,3 +252,4 @@ GRW request sent or not.
 - 2026-11-24 14:55: **R4-0 live**: site rows, D1 0012, Worker c92c52f2. Two library plays opened rooms on the live Worker, a
   tampered cast is 422 cast_mismatch, an unknown id 422 not_castable; 533 Worker tests, 29 web suites. B15 merged
   (592fa7a8): 571 Apple tests, 16 design rules; frames read by the main thread found B15b's faults.
+- 2026-11-24 15:25: B17 merged (Android Auto tabs, search, art, voice; unit suite + lintRelease 0). Next build-heavy slot: ship after B15b.
