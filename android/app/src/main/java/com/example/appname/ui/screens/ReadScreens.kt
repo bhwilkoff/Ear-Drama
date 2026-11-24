@@ -598,24 +598,25 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
         )
     }
     if (choosing) {
-        val scripts by produceScripts()
+        val rows by produceRows()
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { choosing = false },
             title = { Text("Start a reading") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    scripts.forEach { s ->
+                    rows.forEach { row ->
                         TextButton(onClick = {
                             choosing = false
                             scope.launch {
                                 try {
+                                    val s = container.plays.script(row.id) ?: throw IllegalStateException("not_castable")
                                     val prod: ReadProductionInfo = wire.classProduction(id, s.id, s.revision, s.lines.map { it.id to it.part.raw })
                                     val session = ReadSession(container.readWire, scope)
                                     session.open(ReadClass.openingBody(s, classId = id, productionId = prod.id), teacher = true)
                                     session.state.value.code?.let { ReadHandover.hold(session); onOpenRoom(it) }
                                 } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }
                             }
-                        }) { Text(s.title) }
+                        }) { Text(row.title) }
                     }
                 }
             },
@@ -624,12 +625,13 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
     }
 }
 
+/** The published library's plays (the bundle's when it cannot be reached): the choices for a class reading. */
 @Composable
-private fun produceScripts(): androidx.compose.runtime.State<List<PlayScript>> {
+private fun produceRows(): androidx.compose.runtime.State<List<com.example.appname.plays.PlayRow>> {
     val container = LocalAppContainer.current
     return androidx.compose.runtime.produceState(emptyList()) {
-        container.plays.load()
-        value = (container.plays.state.value as? com.example.appname.plays.PlaysLibrary.State.Ready)?.scripts.orEmpty()
+        container.plays.loadRows()
+        value = (container.plays.rows.value as? com.example.appname.plays.PlayLibraryFeed.Rows.Ready)?.rows.orEmpty()
     }
 }
 

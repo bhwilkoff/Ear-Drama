@@ -580,6 +580,14 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         }
     }
 
+    /** [episodes] for a list the app chose for the listener (a published shelf): a broadcast marked `no_recommend` is left out. */
+    suspend fun recommendableEpisodes(ids: List<String>): List<EpisodeRow> = read {
+        ids.mapNotNull { id ->
+            queryRaw("SELECT $EPISODE_COLUMNS$EPISODE_FROM WHERE e.id = ?$RECOMMEND_AND", listOf(resolve(id)), ::episodeRow)
+                .firstOrNull()
+        }
+    }
+
     // --- Search ---
 
     /**

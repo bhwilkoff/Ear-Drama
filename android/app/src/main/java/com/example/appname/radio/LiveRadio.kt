@@ -48,17 +48,37 @@ class LiveRadio(
         start(slots, details)
     }
 
-    private fun start(slots: List<RadioSlot>, details: Map<String, EpisodeDetail>) {
+    /** A car's tune-in: the same listening, but the first play is handed back for the media session to set. */
+    fun tuneInForCar(evening: RadioEvening): LiveListening.Action.Play? {
+        stop()
+        _day.value = evening.day
+        return start(evening.day.slots, evening.details, handBack = true)
+    }
+
+    fun tuneInForCar(station: Station, slots: List<RadioSlot>, details: Map<String, EpisodeDetail>): LiveListening.Action.Play? {
+        stop()
+        _station.value = station.genre
+        return start(slots, details, handBack = true)
+    }
+
+    private fun start(
+        slots: List<RadioSlot>,
+        details: Map<String, EpisodeDetail>,
+        handBack: Boolean = false,
+    ): LiveListening.Action.Play? {
         this.details = details
         listening = LiveListening(slots, details.mapValues { (_, d) -> d.defaultLength })
-        tick()
-        if (listening == null) return
+        var handed: LiveListening.Action.Play? = null
+        val first = listening?.tick(now())
+        if (handBack && first is LiveListening.Action.Play) handed = first else if (first != null) apply(first)
+        if (listening == null) return handed
         loop = scope.launch {
             while (isActive) {
                 delay(1_000)
                 tick()
             }
         }
+        return handed
     }
 
     /** Ends listening live; the audio keeps whatever state it is in. */

@@ -299,7 +299,7 @@ private fun OpeningPage(opening: List<OpeningSpeech>, whole: PlayScript?, lit: I
                     Box(Modifier.width(3.dp).fillMaxHeight().background(hue))
                     Column(Modifier.weight(1f)) {
                         Text(speech.name, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(speech.text, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Text(speech.text, style = MaterialTheme.typography.bodyMedium, maxLines = if (speech.verse) 8 else 3, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
