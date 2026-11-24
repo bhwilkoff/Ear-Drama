@@ -21,6 +21,7 @@ import Foundation
 ///   sets it on every launch); the next launch without it puts the person's own lists back
 /// - APP_RESET_PRODUCTIONS=1: this device's productions (Record, Yours) are deleted before the stores open
 ///   (the App Review recording starts from none)
+/// - APP_UITEST_SESSION=1: a UI test's launch (every one); the set-aside lists wait for a launch without it.
 /// - APP_EMPTY_LIBRARY=1: Library drawn as a new listener's, for its empty
 ///   state (fakes the lists, never clears them)
 ///
@@ -66,6 +67,7 @@ struct LaunchDoors: Sendable, Equatable {
     var forceOffline = false
     var emptyLibrary = false
     var resetUserState = false
+    var uitestSession = false
     var resetProductions = false
     var reader: String?
     var readerDoor = ReaderDoor()
@@ -100,6 +102,7 @@ struct LaunchDoors: Sendable, Equatable {
             forceOffline: environment["APP_FORCE_OFFLINE"] == "1",
             emptyLibrary: environment["APP_EMPTY_LIBRARY"] == "1",
             resetUserState: environment["APP_RESET_USER_STATE"] == "1",
+            uitestSession: environment["APP_UITEST_SESSION"] == "1",
             resetProductions: environment["APP_RESET_PRODUCTIONS"] == "1",
             reader: environment["APP_READER"],
             readerDoor: ReaderDoor(line: environment["APP_READER_LINE"], part: environment["APP_READER_PART"],
@@ -145,11 +148,13 @@ struct LaunchDoors: Sendable, Equatable {
         return true
     }
 
-    /// The first launch without the reset door puts the set-aside lists back and drops what the tests left.
-    /// Runs in every build, so a Release build installed over a test run restores them too.
+    /// The first launch outside a UI test puts the set-aside lists back and drops what the tests left. A test's
+    /// own relaunch (APP_UITEST_SESSION, set on every test launch) keeps the test's lists, since tests check that
+    /// a follow or a queue survives a relaunch. Runs in every build, so a Release build installed over a test run
+    /// restores them too.
     @discardableResult
     static func restoreUserStateIfSetAside(_ doors: LaunchDoors = .current, defaults: UserDefaults = .standard) -> Bool {
-        guard !doors.resetUserState, defaults.bool(forKey: setAsideTaken) else { return false }
+        guard !doors.resetUserState, !doors.uitestSession, defaults.bool(forKey: setAsideTaken) else { return false }
         let all = defaults.dictionaryRepresentation()
         for key in all.keys where userStatePrefixes.contains(where: key.hasPrefix) { defaults.removeObject(forKey: key) }
         for (key, value) in all where key.hasPrefix(setAsidePrefix) && key != setAsideTaken {

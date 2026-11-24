@@ -43,7 +43,7 @@ final class AppReviewTourUITests: DeviceTestCase {
         sleep(3)
         mark("launch")
         app = XCUIApplication()
-        app.launchEnvironment = ["APP_MUTE": "1", "APP_SKIP_ONBOARD": "1", "APP_DOOR_SECONDS": "900"]
+        app.launchEnvironment = ["APP_MUTE": "1", "APP_SKIP_ONBOARD": "1", "APP_DOOR_SECONDS": "900", "APP_UITEST_SESSION": "1"]
         app.launch()
         sleep(5)
         dump(app, "home")

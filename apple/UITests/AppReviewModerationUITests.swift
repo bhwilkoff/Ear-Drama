@@ -26,7 +26,7 @@ final class AppReviewModerationUITests: DeviceTestCase {
 
     private func plainLaunch() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment = ["APP_MUTE": "1", "APP_SKIP_ONBOARD": "1", "APP_DOOR_SECONDS": "900"]
+        app.launchEnvironment = ["APP_MUTE": "1", "APP_SKIP_ONBOARD": "1", "APP_DOOR_SECONDS": "900", "APP_UITEST_SESSION": "1"]
         app.launch()
         return app
     }

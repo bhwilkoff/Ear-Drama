@@ -30,7 +30,7 @@ import XCTest
 
     func launch(_ env: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment = ["APP_MUTE": "1", "APP_SKIP_ONBOARD": "1"]
+        app.launchEnvironment = ["APP_MUTE": "1", "APP_SKIP_ONBOARD": "1", "APP_UITEST_SESSION": "1"]
             .merging(launchedOnce ? [:] : ["APP_RESET_USER_STATE": "1"]) { $1 }
             .merging(env) { $1 }
         launchedOnce = true

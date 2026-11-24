@@ -60,6 +60,10 @@ struct EmptyStateTests {
         defaults.set("test", forKey: "listeningHistory.v1")
         #expect(LaunchDoors.resetUserStateIfAsked(on, defaults: defaults))
         defaults.set("test", forKey: "listeningHistory.v1")
+        // A test's own relaunch keeps the test's lists (a follow must survive it).
+        let relaunch = LaunchDoors.from(environment: ["APP_UITEST_SESSION": "1"], arguments: [])
+        #expect(!LaunchDoors.restoreUserStateIfSetAside(relaunch, defaults: defaults))
+        #expect(defaults.string(forKey: "listeningHistory.v1") == "test")
         #expect(LaunchDoors.restoreUserStateIfSetAside(off, defaults: defaults))
         #expect(defaults.string(forKey: "listeningQueue.v1") == "mine")
         #expect(defaults.string(forKey: "followedSeries.v1") == "mine")
