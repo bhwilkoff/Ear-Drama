@@ -91,10 +91,15 @@ scripts should be able to be re-recorded. You should be able to record your own 
 with your own casting. No need for a day switched on stations." This repo only. iPhone 12: Screen Time is off
 in the daytime (back about 21:00, so device work on it goes first).
 
-- [ ] **B15 Devices while they are free.** Tools: `/usr/bin/python3` has jwt and Pillow, Homebrew's lost them in
+- [x] **B15 Devices while they are free** (592fa7a8; follow-ups B15b). Tools: `/usr/bin/python3` has jwt and Pillow, Homebrew's lost them in
   the 2026-11-24 cleanup; make asc_release/ios_uitest say so or find one that works. Then the Duo Record indent
   and a frame of every screen changed since 11-16 open and closed; iPhone 12: the six rewritten tests, ShowArt,
   SiteLinks; fix the Follow button off center and the landscape rows under the mini player, with frames.
+- [ ] **B15b Faults read in B15's frames** (every platform, fixed or n/a): Duo episode page, the Automatic transcript
+  card's square top corners; iPhone landscape Browse, the pinned header and filters leave a 200 px band of tiles;
+  series board, a thin strip of board beside a picture that nearly fills it; Today's Scene runs verse together as
+  prose; unseen on the Duo: closed, Library Making, a play page. With it the R4-0 follow-ups on Apple and Android
+  (class picker reads the library; words for `script_not_publishable`; the bundle tried when the library is newer).
 - [ ] **B16 Every cleared play records (088.1).** 803 of 1,722 parse clean. Held: unclassified over 5% 269,
   format unrecognized 200, fewer than two castable roles 124, mostly set aside 121, role only before the play 25,
   title cut off 16; volumes: 500 segments with no printed title, 69 volumes by several authors. Recover by layout
@@ -244,3 +249,6 @@ GRW request sent or not.
   iOS and macOS 1.0.137 WAITING_FOR_REVIEW since 2026-11-16 (nothing missing in Connect; tvOS approved 11-18).
 - 2026-11-24 14:20: R4 design merged. B16 had no source texts on disk (24 of 1,721); rsync of the cleared texts running into
   catalog/.cache. R4-0 (manifest covers the library) started. B15 device agent still running.
+- 2026-11-24 14:55: **R4-0 live**: site rows, D1 0012, Worker c92c52f2. Two library plays opened rooms on the live Worker, a
+  tampered cast is 422 cast_mismatch, an unknown id 422 not_castable; 533 Worker tests, 29 web suites. B15 merged
+  (592fa7a8): 571 Apple tests, 16 design rules; frames read by the main thread found B15b's faults.
