@@ -95,11 +95,16 @@ in the daytime (back about 21:00, so device work on it goes first).
   the 2026-11-24 cleanup; make asc_release/ios_uitest say so or find one that works. Then the Duo Record indent
   and a frame of every screen changed since 11-16 open and closed; iPhone 12: the six rewritten tests, ShowArt,
   SiteLinks; fix the Follow button off center and the landscape rows under the mini player, with frames.
-- [ ] **B15b Faults read in B15's frames** (every platform, fixed or n/a): Duo episode page, the Automatic transcript
+- [x] **B15b Faults read (merged 2026-11-24; left: B15c)** read in B15's frames** (every platform, fixed or n/a): Duo episode page, the Automatic transcript
   card's square top corners; iPhone landscape Browse, the pinned header and filters leave a 200 px band of tiles;
   series board, a thin strip of board beside a picture that nearly fills it; Today's Scene runs verse together as
   prose; unseen on the Duo: closed, Library Making, a play page. With it the R4-0 follow-ups on Apple and Android
   (class picker reads the library; words for `script_not_publishable`; the bundle tried when the library is newer).
+- [ ] **B15c Left from B15b.** Apple `ReadScreenBody` and tvOS `SharedPlaysScreen` read only bundled plays (a library
+  play's room does not draw): Android and web checked too. Android: the 85% board rule (`ItemLead.kt` `window`). Library's
+  "Synced 4:04 PM" shows a past day's time with no date (Duo, 3:14 PM): every platform. `web_fit_home.py` fails by
+  day ("no On the air block", ten day-history failures on unmodified HEAD): make it deterministic. Catalog: gut-49993-1
+  (and the scene pool) lost its verse breaks; `opening_of` flattens breaks. Duo closed and portrait unseen.
 - [ ] **B16 Every cleared play records (088.1).** 803 of 1,722 parse clean. Held: unclassified over 5% 269,
   format unrecognized 200, fewer than two castable roles 124, mostly set aside 121, role only before the play 25,
   title cut off 16; volumes: 500 segments with no printed title, 69 volumes by several authors. Recover by layout
@@ -254,3 +259,4 @@ GRW request sent or not.
   (592fa7a8): 571 Apple tests, 16 design rules; frames read by the main thread found B15b's faults.
 - 2026-11-24 15:25: B17 merged (Android Auto tabs, search, art, voice; unit suite + lintRelease 0). Next build-heavy slot: ship after B15b.
 - 2026-11-24 15:45: R4-1 JavaScript core + goldens merged (98.5% radio, 97.2% stage words to the right part; 8-word overlap check with cached radio scripts: none). Kotlin port running; Swift port and R4-2 web wait for B15b. B16 running with all 1,721 texts.
+- 2026-11-24 16:20: B15b merged (576 Apple tests, 30 web suites, 12 frames read). 1.0.169 (170) bumped for TestFlight + Play internal.
