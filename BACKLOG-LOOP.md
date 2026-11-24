@@ -76,7 +76,7 @@ Mechanics:
 - [ ] **B13 Device follow-ups** (Pixel door, TV foot done 2026-11-23; left: Duo indent, class review needs sign-in). Duo Record "Plays" indent (when the Duo is home); Apple class review screen;
   Pixel empty-library door frame; Apple TV foot alignment frame.
 
-- [ ] **B14 From the tap-tier run.** Harness: tools/ios_uitest.py matches overlay frames by bare method name
+- [x] **B14 From the tap-tier run** (cadfa92a; left: Follow button off center, iPhone landscape rows under the mini player, ShowArt test likely stale, Gutenberg inline residue in 3 plays, AppReviewModeration env; stale UI tests compiled, not yet run on a device). Harness: tools/ios_uitest.py matches overlay frames by bare method name
   (key on Class/test), keeps running behind a Screen Time overlay (stop and mark BLIND), no nice/-jobs. Stale
   tests to rewrite for today's screens: Detail x2 (person tiles; Recordings row), Queue (direction B empty side),
   Ink on iPhone (iPad only), LayoutSweep testCreate, Navigation testHomeThenBrowse. Real UI defects: Follow
@@ -167,3 +167,8 @@ store words; radio-script rights rule; GRW request.
 - 2026-11-23 22:45, tick 19: B14 agent committed its four items and is running the Gutenberg plays harvest
   (rsync 5,094 files, 505 MB, network-bound). Disk 97% (15 GB free, was 27 GB at 15:00): removed 4 orphaned
   Ear Drama DerivedData folders (1 GB). Remaining growth is not this loop's build folders; avoid disk-heavy work.
+- 2026-11-23 23:40, tick 20: B14 merged (cadfa92a): harness keys frames on Class/test and marks every test after
+  a system overlay BLIND with one DEVICE BLOCKED line (10/10 fixture tests, replay of tonight's bundle right);
+  6 stale UI tests rewritten (compiled; iPhone under Screen Time); Android foot Voices + About icons (Pixel
+  frame read); plays parser drops "[Illustration]" lines keeping line ids (122 plays, 89,178 lines unchanged,
+  493 marker lines dropped). Catalog publish dispatched. Disk 96% (17 GB free).
