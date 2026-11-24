@@ -253,3 +253,4 @@ GRW request sent or not.
   tampered cast is 422 cast_mismatch, an unknown id 422 not_castable; 533 Worker tests, 29 web suites. B15 merged
   (592fa7a8): 571 Apple tests, 16 design rules; frames read by the main thread found B15b's faults.
 - 2026-11-24 15:25: B17 merged (Android Auto tabs, search, art, voice; unit suite + lintRelease 0). Next build-heavy slot: ship after B15b.
+- 2026-11-24 15:45: R4-1 JavaScript core + goldens merged (98.5% radio, 97.2% stage words to the right part; 8-word overlap check with cached radio scripts: none). Kotlin port running; Swift port and R4-2 web wait for B15b. B16 running with all 1,721 texts.
