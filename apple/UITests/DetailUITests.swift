@@ -22,19 +22,21 @@ final class DetailUITests: DeviceTestCase {
 
     func testVersionsListsEveryCopy() throws {
         let app = try open(Multi.id)
-        // R11d (D3-3): the copies are the "Recordings" section; "Versions" is gone, and a stale
-        // name made this test skip instead of fail (2026-10-30).
-        let header = app.staticTexts["Recordings"]
-        scrollTo(app, header)
-        guard header.exists else { throw XCTSkip("\(Multi.id) has one recording in this catalog") }
-        app.scrollUp()
-        XCTAssertTrue(header.exists, "Recordings header still on screen")
-        shot(app, "01-versions")
+        // The copies are one "Recordings  N  >" row that opens the list in place (a DisclosureGroup).
+        let row = app.descendants(matching: .any).matching(identifier: "recordings-disclosure").firstMatch
+        scrollTo(app, row)
+        guard row.exists else { throw XCTSkip("\(Multi.id) has one recording in this catalog") }
+        shot(app, "01-recordings-row")
+        row.tap()
+        sleep(1)
+        for _ in 0..<3 where row.exists && row.frame.minY > app.frame.height * 0.35 { app.scrollUp() }
+        XCTAssertTrue(row.exists, "the Recordings row stays on screen while its list is open")
+        shot(app, "02-recordings-open")
         let floor = app.frame.height - 140
         let copies = app.buttons.allElementsBoundByIndex.filter {
-            $0.frame.minY > header.frame.maxY && $0.frame.maxY < floor
+            $0.frame.minY >= row.frame.maxY - 1 && $0.frame.maxY < floor && $0.frame.height > 30
         }
-        XCTAssertGreaterThanOrEqual(copies.count, 2, "two or more copies listed under Recordings")
+        XCTAssertGreaterThanOrEqual(copies.count, 2, "two or more copies listed once Recordings opens")
         XCTAssertEqual(app.state, .runningForeground)
     }
 
@@ -52,8 +54,14 @@ final class DetailUITests: DeviceTestCase {
         shot(app, "01-credit")
         credit.tap()
         XCTAssertTrue(app.navigationBars[Multi.person].waitForExistence(timeout: 15), "person page titled with the name")
-        // A row's own Play: on a phone rows are List cells, on a tablet a two-across grid (R11g).
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Play '")).firstMatch.waitForExistence(timeout: 10), "their episodes listed")
+        // Under the head board their shows stand as tiles (one per show, its episode count as the value),
+        // then each show's episodes as rows with their own Play, below the fold on a phone.
+        let tile = app.buttons.matching(NSPredicate(format: "value CONTAINS 'episode'")).firstMatch
+        XCTAssertTrue(tile.waitForExistence(timeout: 10), "their shows as tiles")
         shot(app, "02-person")
+        let play = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Play '")).firstMatch
+        scrollTo(app, play)
+        XCTAssertTrue(play.exists, "their episodes listed under the tiles")
+        shot(app, "03-person-episodes")
     }
 }

@@ -22,7 +22,9 @@ import androidx.compose.material3.ListItem
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.outlined.Info
 import com.example.appname.ui.tvFocusMark
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -211,7 +213,7 @@ fun LibraryScreen(
                 if (voices != null) {
                     voicesAt[0] = n
                     item(key = VOICES_KEY) {
-                        DisclosureRow("Voices", voicesState(voices.first), voicesOpen) { voicesOpen = !voicesOpen }
+                        DisclosureRow("Voices", voicesState(voices.first), voicesOpen, Icons.Filled.GraphicEq) { voicesOpen = !voicesOpen }
                     }
                     n++
                     if (voicesOpen) voicesItems(voices.first, voices.second, header = false)
@@ -229,7 +231,7 @@ fun LibraryScreen(
                         )
                     }
                 }
-                item(key = "about") { DisclosureRow("About Ear Drama", null, aboutOpen) { aboutOpen = !aboutOpen } }
+                item(key = "about") { DisclosureRow("About Ear Drama", null, aboutOpen, Icons.Outlined.Info) { aboutOpen = !aboutOpen } }
                 if (aboutOpen) siteLinksItem()
             }
         }

@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.appname.ui.LoadableContent
@@ -298,9 +299,10 @@ fun PlayProductionsScreen(scriptId: String, onBack: () -> Unit, onOpenProduction
 
 /** A foot row that opens its content in place. */
 @Composable
-fun DisclosureRow(label: String, state: String?, open: Boolean, onToggle: () -> Unit) {
+fun DisclosureRow(label: String, state: String?, open: Boolean, icon: ImageVector? = null, onToggle: () -> Unit) {
     ListItem(
         modifier = Modifier.fillMaxWidth().tvFocusMark().clickable(onClickLabel = if (open) "Hide $label" else "Show $label", onClick = onToggle),
+        leadingContent = icon?.let { { Icon(it, contentDescription = null) } },
         headlineContent = { Text(label) },
         supportingContent = if (state != null && !open) ({ Text(state) }) else null,
         trailingContent = { Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null) },

@@ -163,6 +163,10 @@ ENTRANCE = re.compile(r"^\s*_?(Enter|Re-?enter|Exit|Exeunt|Manet|Flourish|Sennet
                       r"Thunder|Curtain|Scene|Act)\b", re.I)
 DIR_SPAN = re.compile(r"\[[^\]]*\]|\([^)]*\)|(?<![A-Za-z0-9])_[^_\n]+_(?![A-Za-z0-9])")
 DIR_SPAN_BRACKETS = re.compile(r"\[[^\]]*\]|\([^)]*\)")
+# Where the book printed a picture ("[Illustration]", "[Illustration: caption]"): not a word of the play.
+ILLUSTRATION_PART = re.compile(r"_?Illustrations?(?:\s+omitted\.?|\s*[:.\-][^\]]*)?_?", re.I)
+# A caption that runs over a blank line leaves its first paragraph unclosed ("[Illustration: THE POWER OF DARKNESS.").
+ILLUSTRATION_ONLY = re.compile(r"(?:\s*_?\[\s*%s\s*(?:\]_?|$))+\s*" % ILLUSTRATION_PART.pattern, re.I)
 
 
 def clean_html(raw):
@@ -925,7 +929,7 @@ def parse(raw, kind, title=None):
         _title_block_is_not_a_speech(raw, items, title)
         _one_speaker_one_role(items)
     lines, roles, unclassified = [], collections.OrderedDict(), []
-    sections, pending, numbered, letters = [], [], 0, 0
+    sections, pending, numbered, letters, pictures = [], [], 0, 0, 0
     for it in items:
         if it["kind"] == "heading" and section_level(it["source"]):
             pending.append(it["source"])
@@ -933,6 +937,11 @@ def parse(raw, kind, title=None):
             continue
         if it["kind"] == "other":
             unclassified.append(it["source"])
+            continue
+        if it["kind"] != "speech" and ILLUSTRATION_ONLY.fullmatch(it["source"]):
+            # its id (or its letter) stays used, so the lines after keep theirs
+            numbered, letters = (numbered, letters + 1) if it.get("split") else (numbered + 1, 0)
+            pictures += 1
             continue
         if it.get("split"):
             letters += 1
@@ -944,7 +953,8 @@ def parse(raw, kind, title=None):
         sections.extend({"line": lid, "source": src} for src in pending)
         pending = []
         if it["kind"] == "speech":
-            parts = (it.get("lead") or []) + split_parts(it["text"], italic=kind == "stage")
+            parts = [p for p in (it.get("lead") or []) + split_parts(it["text"], italic=kind == "stage")
+                     if "say" in p or not ILLUSTRATION_PART.fullmatch(next(iter(p.values())).strip())]
             em = [k for k, p in enumerate(parts) if p.pop("_em", False)]
             r = roles.setdefault(it["role"], {"name": it["role"], "lines": 0, "words": 0})
             r["lines"] += 1
@@ -953,7 +963,7 @@ def parse(raw, kind, title=None):
                           **({"em": em} if em else {})})
         else:
             lines.append({"id": lid, "kind": it["kind"], "role": None, "source": it["source"]})
-    blocks = len(lines) + len(unclassified)
+    blocks = len(lines) + len(unclassified) + pictures  # a marker was a placed block: the share judged before it went
     castable = [r for r in roles.values() if r["lines"] >= CASTABLE_LINES]
     big = [r["name"] for r in castable]
     aliases = [r["name"] for r in roles.values() if r["lines"] <= 2 and "(COMMERCIAL " not in r["name"] and any(

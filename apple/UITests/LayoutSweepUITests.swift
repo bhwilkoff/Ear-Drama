@@ -62,8 +62,8 @@ final class LayoutSweepUITests: DeviceTestCase {
     func testLongTitleSeries() { sweep(tab("browse", ["APP_START_ITEM": Fixture.longName]), "series-long-title") }
 
     /// Record (Decision 075: the plays are tiles on the Record tab), a play, Record This, the cast sheet and
-    /// the recorder in its three modes. Nothing is
-    /// recorded: the Record button is never pressed. The production made here is deleted again.
+    /// a taken part's studio gate. Nothing is recorded: Start Recording is never pressed. The production
+    /// made here is deleted again.
     func testCreate() {
         let app = tab("record")
         sweep(app, "create-record", pages: 3)
@@ -78,17 +78,25 @@ final class LayoutSweepUITests: DeviceTestCase {
         XCTAssertTrue(start.waitForExistence(timeout: 5), "Record This")
         start.tap(); sleep(3)
         sweep(app, "create-cast", pages: 6)
-        for _ in 0..<6 { app.scrollDown() }
-        let record = app.buttons["Record"].firstMatch
-        if record.waitForExistence(timeout: 3) {
-            record.tap(); sleep(3)
-            shot(app, "create-recorder-run")
-            for mode in ["Line by line", "Step", "Run through"] where app.buttons[mode].exists {
-                app.buttons[mode].tap(); sleep(2)
-                shot(app, "create-recorder-\(mode)")
-            }
-            app.navigationBars.buttons.firstMatch.tap(); sleep(2)
-        }
+        // A part is taken from its card ("Take part", then a name in the alert), which opens the script reader
+        // with the studio dock at its gate ("Start Recording", or the account a second production needs). Start
+        // is never pressed: the microphone is asked for there, and nothing is recorded. Close returns to the
+        // production. (A bare "Record" query matched the Record tab and left the production, 2026-11-23.)
+        let take = app.buttons["Take part"].firstMatch
+        for _ in 0..<6 where !(take.exists && take.isHittable) { app.scrollUp() }
+        XCTAssertTrue(take.waitForExistence(timeout: 5) && take.isHittable, "Take part on a part's card")
+        take.tap()
+        let name = app.alerts.textFields.firstMatch
+        if name.waitForExistence(timeout: 3) { name.tap(); name.typeText("Sweep") }
+        let confirm = app.alerts.buttons["Take Part"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 3), "the Take this part alert")
+        confirm.tap(); sleep(3)
+        XCTAssertTrue(app.descendants(matching: .any)["studio-gate"].waitForExistence(timeout: 15),
+                      "the studio opens at its gate")
+        shot(app, "create-studio-gate")
+        let close = app.buttons["Close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 3), "Close on the reader")
+        close.tap(); sleep(2)
         for _ in 0..<12 where !app.buttons["Delete Production"].isHittable { app.scrollUp() }
         if app.buttons["Delete Production"].isHittable {
             app.buttons["Delete Production"].tap()

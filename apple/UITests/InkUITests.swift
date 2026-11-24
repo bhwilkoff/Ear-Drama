@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 /// Pencil ink in the script reader (Decision 076 S5), on an iPad. A Pencil cannot be driven, so the DEBUG door
@@ -22,7 +23,9 @@ final class InkUITests: DeviceTestCase {
         mid.press(forDuration: 0.05, thenDragTo: end)
     }
 
-    func testInkFollowsItsLine() {
+    func testInkFollowsItsLine() throws {
+        // Ink is the Pencil's, and the Pencil is an iPad's: an iPhone's reader has no Ink button.
+        guard UIDevice.current.userInterfaceIdiom == .pad else { throw XCTSkip("Ink is iPad and Pencil only") }
         let app = open(["APP_READER_RESET_MARKS": "1", "APP_READER_INK": "1", "APP_READER_INK_FINGER": "1"])
         XCTAssertTrue(pager(app).waitForExistence(timeout: 20), "the reader opened")
         sleep(3)

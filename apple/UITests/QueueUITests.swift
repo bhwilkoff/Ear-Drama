@@ -45,7 +45,8 @@ final class QueueUITests: DeviceTestCase {
         XCTAssertGreaterThan(row(app, Fixture.longTitle).frame.minY, before, "row moved down")
         shot(app, "03-moved-down")
 
-        // Restore: remove both; the section's caption takes the last one's place.
+        // Restore: remove both. Library direction B: a part with nothing in it is absent, so Up next goes,
+        // and a Listening side with nothing at all says "Nothing played yet" with Browse.
         for title in [Fixture.longTitle, Fixture.shortTitle] {
             row(app, title).swipeLeft()
             let remove = app.buttons["Remove from queue"]
@@ -53,7 +54,13 @@ final class QueueUITests: DeviceTestCase {
             remove.tap(); sleep(1)
         }
         shot(app, "04-removed")
-        XCTAssertTrue(app.staticTexts["Episodes you add play in this order, after the one that is playing."]
-            .waitForExistence(timeout: 5), "queue emptied: the section says what it would hold")
+        XCTAssertTrue(app.staticTexts["Up next"].waitForNonExistence(timeout: 5), "queue emptied: Up next is absent")
+        let others = ["Shows you follow", "History", "Downloads"].filter {
+            app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", $0)).firstMatch.exists
+        }
+        if others.isEmpty {
+            XCTAssertTrue(app.staticTexts["Nothing played yet"].waitForExistence(timeout: 5),
+                          "nothing left on the Listening side: it says so")
+        }
     }
 }
