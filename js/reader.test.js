@@ -286,6 +286,11 @@ test('the page: a speech run into another is attributed to its speaker; cues get
   eq(lay.speeches[1].name && [lay.speeches[1].name.text, lay.speeches[1].name.at], ['GRACE', 20], 'the printed name, at its offset');
   eq(lay.speeches[1].rows[0].runs.map(r => [r.text, r.said]), [['reflecting', false], ['Never mind why.', true]], 'the label period is not drawn');
   ok(!lay.verse, 'a run-in break is not verse');
+  // A person's own script (PLAYS-DESIGN §13): brackets they typed are directions, never drawn as words said.
+  const typed = { id: 'L1', kind: 'speech', role: 'ANNA', parts: [{ say: 'Words of my own' }, { direction: 'she laughs' }, { say: 'instead.' }] };
+  const asides = (opts) => R.layoutOf(typed, ['ANNA'], opts).speeches[0].rows.flatMap(rw => rw.runs).filter(r => !r.said).map(r => r.text.trim());
+  eq(asides({ emphasis: false }), ['she laughs'], 'an own script\'s bracketed words stay a direction');
+  eq(asides(), [], 'control: a catalog text\'s short italic run is the speaker\'s emphasis');
   const radio = R.layoutOf({ id: 'L2', kind: 'speech', role: 'HANCOCK', parts: [{ direction: 'sound of gavel' }, { say: 'Order!' }, { sound: 'knock' }, { say: 'Come in.' }] }, ['HANCOCK']);
   eq(radio.speeches[0].rows.map(r => r.cue), [true, false, true, false], 'a sound piece and a sound-of aside are cue rows');
   const block = R.layoutOf({ id: 'L3', kind: 'direction', source: '[_Exeunt._]' }, []);

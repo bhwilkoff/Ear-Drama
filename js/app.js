@@ -40,13 +40,13 @@
   const $ = (id) => document.getElementById(id);
   /* Views are named by their section ids in index.html (view-listen is Home, view-series Browse,
      view-radio Stations); the URL and the nav use the section names. */
-  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'record', 'plays', 'reader', 'readroom', 'class', 'invite', 'drama', 'search', 'library'];
+  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'record', 'own', 'plays', 'reader', 'readroom', 'class', 'invite', 'drama', 'search', 'library'];
   const VIEW_OF = { home: 'listen', browse: 'series', stations: 'radio', surprise: 'surprise', record: 'record', search: 'search',
                     library: 'library', invite: 'invite' };
   /* Decision 075: five sections. Stations and Surprise are pages Home opens, so they light Home;
      a play and a production light Record. */
   const TAB_OF = { listen: 'home', series: 'browse', show: 'browse', episode: 'browse', person: 'browse', radio: 'home',
-                   surprise: 'home', record: 'record', plays: 'record', reader: 'record', readroom: 'record', class: 'library', invite: 'record', drama: 'browse', search: 'search', library: 'library' };
+                   surprise: 'home', record: 'record', own: 'record', plays: 'record', reader: 'record', readroom: 'record', class: 'library', invite: 'record', drama: 'browse', search: 'search', library: 'library' };
   /** Older names (Decisions 068, 075): an old ?view= opens the new section, and the address is rewritten. */
   const RENAMED = { listen: 'home', series: 'browse', radio: 'stations', plays: 'record' };
   const PAGE = 60;
@@ -560,6 +560,7 @@
     if (p.get('class')) return { view: 'class', p };
     if (p.get('read')) return { view: 'reader', id: p.get('read'), p };
     if (p.get('production') || p.get('play')) return { view: 'plays', p };
+    if ((p.get('script') || '').startsWith('own-') || (p.get('view') === 'record' && p.get('add'))) return { view: 'own', p };
     const old = p.get('view');
     const playsInBrowse = old === 'browse' && p.get('kind') === 'plays';
     if (RENAMED[old] || playsInBrowse) {
@@ -580,6 +581,9 @@
     stopScene();
     // The reader (WEB-DESIGN §4.16) takes the whole height: the tab bar and sidebar step aside.
     document.body.classList.toggle('reading', r.view === 'reader');
+    // Adding and correcting a script (§4.21) are full-height too; the sidebar stays.
+    document.body.classList.toggle('scripting', r.view === 'own');
+    if (r.view !== 'own') OwnUI.leave();
     if (r.view !== 'reader' && r.view !== 'readroom') Reader.close();
     if (r.view !== 'readroom') ReadUI.pause();
     if (r.view !== 'class') ClassUI.leave();
@@ -593,7 +597,7 @@
     });
     if (r.view !== 'plays' && r.view !== 'invite' && r.view !== 'drama') PlaysUI.leave();
     ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode, person: renderPerson,
-       radio: renderRadio, surprise: renderSurprise, record: renderRecord, plays: renderPlays, reader: renderReader, readroom: (r) => ReadUI.render(r, playsHelpers), class: (r) => ClassUI.render(r, playsHelpers), invite: renderInvite, drama: renderDrama, search: renderSearch,
+       radio: renderRadio, surprise: renderSurprise, record: renderRecord, own: (r) => OwnUI.render(r, playsHelpers), plays: renderPlays, reader: renderReader, readroom: (r) => ReadUI.render(r, playsHelpers), class: (r) => ClassUI.render(r, playsHelpers), invite: renderInvite, drama: renderDrama, search: renderSearch,
        library: renderLibrary })[r.view](r);
     if (!firstRoute) {
       $('main-content').scrollTop = 0;
@@ -1103,11 +1107,13 @@
     const yoursList = el('div');
     const yours = el('section', { class: 'block', 'aria-labelledby': 'yours-h' },
       el('h2', { class: 'section-header', id: 'yours-h' }, 'Yours'), yoursList);
+    const ownBox = el('div');
+    OwnUI.yours(playsHelpers).then((sec) => { if (sec) ownBox.replaceChildren(sec); }).catch((e) => console.error(e));
     const todayBox = el('div');
     const playsBox = el('div');
     const madeBox = el('div');
     const classBox = el('div');
-    body.replaceChildren(yours, todayBox, playsBox, classBox, madeBox);
+    body.replaceChildren(yours, ownBox, todayBox, playsBox, classBox, madeBox);
     PlaysUI.renderMine(yoursList, playsHelpers, { classes: false, onEmpty: () => yours.remove() });
     PlaysUI.classDoor(classBox, playsHelpers).catch(e => console.error('class door', e));
 
@@ -2192,17 +2198,18 @@
     if (!words.length) { body.replaceChildren(); return; }
     body.replaceChildren(stateBox('loading'));
     try {
-      const [series, numbers, scripts, people, aired, saidAll] = await Promise.all([API.searchSeries(q),
+      const [series, numbers, scripts, people, aired, saidAll, mine] = await Promise.all([API.searchSeries(q),
         API.searchEpisodeNumbers(q), onTV() ? [] : castable(), API.searchPeople(q), API.searchAired(q),
-        API.searchSaidNumbers(q)]);
+        API.searchSaidNumbers(q), onTV() ? [] : OwnUI.matching(words).catch((e) => { console.error(e); return []; })]);
       if (seq !== searchSeq) return;
       const plays = scriptsMatching(scripts, words);
       const titled = new Set(numbers);
       const said = saidAll.filter(n => !titled.has(n));
       body.replaceChildren();
+      const addOwn = !plays.length && !mine.length && !onTV() ? el('div', { class: 'actions' }, OwnUI.addLink(playsHelpers, 'btn')) : null;
       if (!series.total && !people.total && !numbers.length && !plays.length && !(aired && aired.rows.length)
-          && !said.length) {
-        body.append(stateBox('empty', { text: `No matches for “${q.trim()}”.` }));
+          && !said.length && !mine.length) {
+        body.append(stateBox('empty', { text: `No matches for “${q.trim()}”.` }), ...[addOwn].filter(Boolean));
         return;
       }
       if (series.total) {
@@ -2222,6 +2229,12 @@
           el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'rp-h' }, 'Plays'),
             el('span', { class: 'caption' }, plural(plays.length, 'play', 'plays'))),
           el('ul', { class: 'series-list' }, plays.map(playRow))));
+      }
+      if (mine.length) {
+        body.append(el('section', { class: 'block', 'aria-labelledby': 'ro-h' },
+          el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'ro-h' }, 'Your scripts'),
+            el('span', { class: 'caption' }, plural(mine.length, 'script', 'scripts'))),
+          el('ul', { class: 'series-list' }, mine.map(row => OwnUI.scriptRow(row, playsHelpers)))));
       }
       if (aired && aired.rows.length) {
         const { byKey } = await API.seriesIndex();
@@ -2265,6 +2278,7 @@
         body.append(pagedEpisodes('rt-h', API.transcriptLabel, said.length,
           (from, to) => API.searchDocs(said.slice(from, to)), byKey, seq, q, 10, (ep, row) => quoteInto(ep, row, heard)));
       }
+      if (addOwn) body.append(addOwn);
     } catch (err) {
       if (seq !== searchSeq) return;
       console.error(err);
@@ -2337,7 +2351,7 @@
      PLAYS (js/plays-ui.js draws them with these helpers)
   ================================================================ */
 
-  const playsHelpers = { el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine, showTile, share, openingWindow, heroCredit };
+  const playsHelpers = { inApp, playWindow: (s) => pictureWindow(playArt(s), 48), el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine, showTile, share, openingWindow, heroCredit };
   function renderPlays(r) {
     PlaysUI.render(r, playsHelpers);
   }
@@ -2399,6 +2413,7 @@
       body.replaceChildren(stateBox(problem(err), { retry: () => renderReader(r) }));
     });
   }
+  OwnUI.dropOn($('view-record'), playsHelpers);
   function renderInvite() {
     setTitle('Invitation');
     PlaysUI.renderInvite($('invite-body'), playsHelpers);
@@ -2506,7 +2521,9 @@
       let productions = [];
       try { const s = PlayStore.open(); await s.load(); productions = s.productions; } catch { /* no ear dramas to list */ }
       const marks = typeof MarksCore !== 'undefined' ? (() => { try { return MarksCore.exportRows(localStorage); } catch { return []; } })() : [];
-      return DataExport.build(Store, productions, Date.now(), marks);
+      let scripts = [];
+      try { scripts = await OwnScripts.shared().exportRows(); } catch (e) { console.error(e); }
+      return DataExport.build(Store, productions, Date.now(), marks, scripts);
     };
     row.replaceChildren(
       el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {

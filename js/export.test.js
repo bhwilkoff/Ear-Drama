@@ -37,6 +37,10 @@ assert.deepStrictEqual(data.queue.map(q => [q.position, q.episode]), [[1, 'a|3']
 assert.deepStrictEqual(data.takes[0].takes.map(t => [t.id, t.chosen]), [['t1', true], ['t2', false]]);
 assert.deepStrictEqual(data.marks, marks, 'the script marks travel as given (MarksCore.exportRows)');
 
+const scripts = [{ id: 'own-1', title: 'Mine', source: 'Added by you', created: '2026-11-24T12:00:00.000Z', done: true, lines: [] }];
+assert.deepStrictEqual(DataExport.build(Store, [], 0, [], scripts).scripts, scripts, 'the scripts the person added travel as given (OwnScripts.exportRows)');
+assert.deepStrictEqual(data.scripts, [], 'none is an empty list');
+
 const csv = DataExport.historyCsv(data).split('\r\n');
 assert.strictEqual(csv[0], 'episode,title,seriesName,airDate,listenedAt,positionSeconds,durationSeconds');
 assert.ok(csv[2].includes('"One, with a comma"'), 'a comma is quoted');

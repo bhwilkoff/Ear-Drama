@@ -1304,13 +1304,14 @@ web app follows today.
      of space."; Next with no title puts the focus there with "Add a title."
   3. **The parts page**: Back, the title (a button that renames the script) over its count, Undo, Done. Under
      it the strip ("2 lines have no part", Next), absent when there are none; the parts as chips, largest first,
-     four on a phone then "N more", and **+ Part**. The script is the reader's speaker-over-speech page (§4.16
+     four on a phone and eight from 860 px, then "N more", and **+ Part**. The script is the reader's speaker-over-speech page (§4.16
      item 3, `Reader.drawLine`); a No part line is a dashed box in the warning color with its two nearest
      speakers, Direction and More.
   4. **Drawn by window**: the lines stand in blocks of fifty, each `content-visibility: auto`, so the
      browser lays out and paints only those near the screen while every line stays in the page for find and
-     for a screen reader; a step redraws only the lines it changed. (The plays grid avoids it for its
-     subgrid, §4.15; nothing here shares rows.) Gate: a step on 1,700 lines under 100 ms.
+     for a screen reader; a step redraws only the lines it changed. While a
+     sheet is open (the page behind is inert) the far blocks rest, `hidden`: opening one on a Pixel 8a went from 300 ms to 85. (The plays grid avoids it for its
+     subgrid, §4.15; nothing here shares rows.) Gate: no step on a 1,700-line play redraws more than a tenth of its lines.
   5. **The line sheet**: one native `<dialog>`, at the foot on a phone, centered from 860 px: the words with the
      cut, the parts (the line's own, its nearest, **All parts** with a field for a new one), Direction, Sound; Split
      here, Join to line above, Edit words, Leave out. The cut is a slider over the words: a tap

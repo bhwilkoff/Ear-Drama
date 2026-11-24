@@ -2055,3 +2055,95 @@ body.read-screen .tabbar, body.read-screen .sidebar, body.read-screen .site-foot
 .parts-part { margin-bottom: var(--space-3); }
 .parts-line { display: grid; grid-template-columns: 1fr; gap: var(--space-1); }
 @media (min-width: 640px) { .parts-line { grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--space-3); } }
+
+/* ---- Adding and correcting a script (WEB-DESIGN §4.21, Decision 088.3): the reader's bar grammar, full height ---- */
+body.scripting .tabbar { display: none; }
+body.scripting #main-content { overflow: hidden; }
+body.scripting .site-footer { display: none; }
+#own-body { height: 100%; }
+#own-body > .state { padding: var(--space-6) var(--space-4); }
+.os { height: 100%; display: flex; flex-direction: column; min-width: 0; background: var(--color-background); }
+.os-bar { min-height: 56px; padding: 0 var(--space-2); }
+.os-next { flex: none; }
+.os-drop { outline: 2px dashed var(--color-link); outline-offset: -6px; }
+/* The text */
+.os-add { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-1); width: 100%; max-width: 760px; margin: 0 auto;
+  padding: var(--space-4) var(--space-4) var(--space-3); overflow-y: auto; }
+.os-text-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-2); }
+.os-ways { display: flex; flex-wrap: wrap; justify-content: flex-end; }
+.os-ways .btn { padding: 0 var(--space-2); white-space: nowrap; }
+.os-text { flex: 1; min-height: 160px; padding: var(--space-3); line-height: 1.5; resize: none; font-family: inherit; color: inherit; }
+.os-foot { flex: none; min-height: 40px; padding: var(--space-2) var(--space-4); border-top: 1px solid var(--color-border); text-align: center; }
+.os-foot p { margin: 0; }
+.os-count { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 var(--space-2); }
+.os-count .tabular { font-size: inherit; }
+.os-count > :empty { display: none; }
+.os-count > :not(:empty) + :not(:empty)::before { content: "· "; }
+.os-count { gap: 0 0.35em; }
+/* The parts page */
+.os-title-btn { display: block; width: 100%; min-height: var(--tap); padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.os-title-btn > span { display: block; }
+.os-title-btn:hover .rd-title { text-decoration: underline; }
+.os-problem { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-4);
+  background: var(--color-error-surface); color: var(--color-error); }
+.os-strip { flex: none; border-bottom: 1px solid var(--color-border); }
+.os-strip-in { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); max-width: 760px; margin: 0 auto; padding: 2px var(--space-4); }
+.os-strip-t { margin: 0; color: var(--color-warning); }
+.os-strip-next { margin-right: calc(-1 * var(--space-4)); }
+.os-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.os-page { max-width: 760px; margin: 0 auto; padding: var(--space-4) var(--space-4) 40vh; }
+.os-chips, .os-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.os-chips { margin-bottom: var(--space-4); }
+.os-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: var(--tap); padding: 0 var(--space-3); border: 1px solid var(--color-border);
+  border-radius: 22px; background: var(--color-background); color: var(--color-text); font-size: var(--type-body-size); text-align: left; cursor: pointer; }
+.os-chip .body-strong { overflow-wrap: anywhere; }
+.os-chip:hover { background: var(--color-surface-alt); }
+.os-chip[aria-pressed="true"] { border-color: var(--color-text); box-shadow: inset 0 0 0 1px var(--color-text); }
+.os-plain, .os-n { color: var(--color-text-muted); }
+.os-chip svg { width: 18px; height: 18px; fill: currentColor; }
+.os-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--hue); }
+/* Drawn by window: fifty lines a block, laid out and painted only near the screen, always in the page. */
+.os-block { content-visibility: auto; contain-intrinsic-size: auto 3600px; }
+.os-block.os-far { content-visibility: hidden; }
+.os-list { line-height: 1.5; }
+.os-line { position: relative; margin: 0 calc(-1 * var(--space-2)); padding: 6px var(--space-2); min-height: var(--tap); border-radius: var(--radius-control); cursor: pointer; }
+.os-line:hover { background: var(--color-surface); }
+.os-line:focus-visible { outline-offset: -2px; }
+.os-line .rd-sp, .os-line .rd-line { margin-bottom: 0; }
+.os-line .rd-headline { margin: 0.6em 0 0; }
+.os-open { margin: var(--space-2) 0; padding: 2px var(--space-3) var(--space-3); border: 1px dashed var(--color-warning); border-radius: var(--radius-control); }
+.os-open .os-acts { margin-top: var(--space-1); }
+.os-nopart { display: block; color: var(--color-warning); font-weight: var(--type-body-strong-weight); }
+.os-words { display: block; overflow-wrap: break-word; }
+.os-verse { white-space: pre-line; }
+/* The sheets: at the foot on a phone, centered from 860 px. */
+.os-sheet { width: 100%; max-width: 100%; max-height: 85vh; margin: auto 0 0; padding: 0; border: 0; border-radius: 16px 16px 0 0;
+  background: var(--color-background); color: var(--color-text); overflow-y: auto; }
+.os-sheet::backdrop { background: var(--color-text); opacity: 0.4; }
+.os-sheet-in { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); }
+.os-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.os-sheet-head .section-header { margin: 0; overflow-wrap: anywhere; }
+.os-sheet-head .icon-btn { margin: 0 calc(-1 * var(--space-2)) 0 auto; }
+.os-sheet-top { margin-bottom: calc(-1 * var(--space-3)); }
+.os-part-h { color: var(--hue); }
+.os-cutline { margin: 0; overflow-wrap: break-word; line-height: 1.9; max-height: 34vh; overflow-y: auto; border-radius: var(--radius-control); }
+.os-cutline[role="slider"] { cursor: text; touch-action: pan-y; }
+.os-cut { display: inline-block; width: 3px; height: 1.4em; margin: 0 2px; vertical-align: -0.3em; border-radius: 2px; background: var(--color-link); }
+.os-four { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.os-four .btn { padding: 0 var(--space-2); text-align: center; line-height: 1.2; }
+.os-edit { min-height: 160px; max-height: 50vh; padding: var(--space-3); line-height: 1.5; font-family: inherit; color: inherit; resize: vertical; }
+.os-form { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+.os-form-row { display: flex; gap: var(--space-2); }
+.os-form-row .field-input { flex: 1 1 auto; min-width: 0; }
+.os-form-row .btn { flex: none; }
+.os-lab, .os-form p, .os-sheet-in > p.refusal { margin: 0; }
+.os-more:empty { display: none; }
+@media (min-width: 860px) {
+  .os-sheet { width: 560px; max-height: 80vh; margin: auto; border: 1px solid var(--color-border); border-radius: var(--radius-card); }
+  .os-sheet.os-small { width: 440px; }
+  .os-sheet-in { padding: var(--space-4) var(--space-6) var(--space-6); }
+}
+/* An own script's page, and its way in. */
+.os-own { margin-top: var(--space-2); }
+.os-own p { margin: 0 0 2px; }
+.os-add-link svg { width: 20px; height: 20px; fill: currentColor; }
