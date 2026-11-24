@@ -4,8 +4,9 @@ Decision 067: ask before any Generic Radio Workshop transcription is used.
 Decision 088 (2026-11-24): any script can be recorded; showing the Workshop's
 transcription text still waits for their answer.
 
-Sent through genericradio.com/contact (a form: name, email, comments; no email
-address is listed). The same words are in the owner's Gmail drafts
+Sent by email to Larry Groebe, lgroebe@genericradio.com (the owner address his
+Project Audion podcast feed publishes; the genericradio.com/contact form's captcha
+fails, 2026-11-24). The same words are in the owner's Gmail drafts
 (ben@learningischange.com). Updated 2026-11-24, from the Workshop's own
 copyright page: recording is offered for any script, publishing only with
 rights evidence; read along is built.
@@ -14,7 +15,7 @@ rights evidence; read along is built.
 
 **Subject:** Asking before we use your transcriptions: reading and performing old radio scripts
 
-Hello,
+Hello Larry,
 
 I run Ear Drama (eardrama.org), a free app with no ads for listening to old-time radio from the Internet Archive and for making new audio dramas from old scripts. It runs on the web, iPhone, iPad, Mac, Apple TV and Android.
 
