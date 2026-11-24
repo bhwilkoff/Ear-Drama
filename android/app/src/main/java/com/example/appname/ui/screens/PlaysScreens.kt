@@ -87,7 +87,6 @@ import com.example.appname.plays.StudioOpen
 import com.example.appname.plays.PlayScript
 import com.example.appname.plays.PlayLibraryFeed
 import com.example.appname.plays.PlayRow
-import com.example.appname.plays.PlaysLibrary
 import com.example.appname.plays.PlaysShare
 import com.example.appname.plays.Production
 import com.example.appname.plays.ReadAlong
@@ -140,17 +139,6 @@ import com.example.appname.ui.PlayPageHead
 // Surprise, and the person's productions are Library's Ear dramas. A TV records
 // nothing (PLAYS-DESIGN §2), so there none of these is offered.
 
-/** The castable plays, or none on a TV. */
-@Composable
-fun rememberCastablePlays(): List<PlayScript> {
-    val television = LocalIsTelevision.current
-    val plays = LocalAppContainer.current.plays
-    val state by plays.state.collectAsState()
-    LaunchedEffect(television) { if (!television) plays.load() }
-    if (television) return emptyList()
-    return (state as? PlaysLibrary.State.Ready)?.scripts.orEmpty()
-}
-
 /** The library's play rows (the whole published library, else the bundle's), or none on a TV. */
 @Composable
 fun rememberCastableRows(): List<PlayRow> {
@@ -163,7 +151,7 @@ fun rememberCastableRows(): List<PlayRow> {
 }
 
 /** Word-prefix, as every search here (§3.4): each typed word begins a word of the title or author. */
-fun playsMatching(scripts: List<PlayScript>, query: String): List<PlayScript> {
+fun <T : PlayListing> playsMatching(scripts: List<T>, query: String): List<T> {
     fun words(text: String) = text.lowercase().split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotEmpty() }
     val typed = words(query)
     if (typed.isEmpty()) return emptyList()
@@ -175,8 +163,8 @@ fun playsMatching(scripts: List<PlayScript>, query: String): List<PlayScript> {
 
 /** A play as a list row: its title, then author and part count; it opens the play's page. */
 @Composable
-fun PlayListItem(script: PlayScript, onOpen: () -> Unit) {
-    val speaking = script.castParts.count { it.id.isSpeaking }
+fun PlayListItem(script: PlayListing, onOpen: () -> Unit) {
+    val speaking = script.voices
     GrammarRow(
         title = script.title,
         visual = { m -> PictureWindow(null, script.title, PLAY_BOARD, m) },

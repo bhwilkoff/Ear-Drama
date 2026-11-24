@@ -53,7 +53,10 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
     suspend fun loadRows() = feed.loadRows()
 
     /** One play's whole script: the library's file, else the bundle's; null when neither has it, an error when it could not be fetched. */
-    suspend fun script(id: String): PlayScript? = feed.script(id)
+    suspend fun script(id: String, revision: String? = null): PlayScript? = feed.script(id, revision)
+
+    /** The same, as a screen's state: ready, or the words for why not. */
+    suspend fun resolve(id: String, revision: String?): ScriptLoad = LibraryScripts.resolve(feed, id, revision)
 
     /** A play's published phonemes for the downloaded voices; null for a held play or with no published index. */
     suspend fun phonemes(id: String): String? = feed.phonemes(id)

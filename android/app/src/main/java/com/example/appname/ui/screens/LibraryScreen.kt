@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.outlined.Info
 import com.example.appname.ui.tvFocusMark
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -162,7 +164,8 @@ fun LibraryScreen(
             listState.animateScrollToItem(voicesAt[0])
         }
     }
-    Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
+    val bar = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    Scaffold(modifier = Modifier.nestedScroll(bar.nestedScrollConnection), topBar = { TopAppBar(title = { Text("Library") }, scrollBehavior = bar) }) { padding ->
         LoadableContent(lists, Modifier.padding(padding)) { stored ->
             val library = if (emptied) LibraryLists(emptyList(), emptyList(), emptyList(), emptyList()) else stored
             val up = remember(library) { LibraryModel.upNext(library.inProgress, library.queued) }

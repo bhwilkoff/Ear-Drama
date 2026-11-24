@@ -72,7 +72,7 @@ fun SearchScreen(
         delay(250)
         settled = query.trim()
     }
-    val allPlays = rememberCastablePlays()
+    val allPlays = rememberCastableRows()
     val plays = remember(settled, allPlays) { playsMatching(allPlays, settled) }
     val results by rememberCatalogQuery(settled) { db ->
         if (settled.isEmpty()) SearchResults(emptyList(), emptyList()) else db.search(settled)

@@ -36,7 +36,8 @@ import androidx.compose.ui.unit.dp
 import com.example.appname.data.EpisodeDetail
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.SeriesRow
-import com.example.appname.plays.PlayScript
+import com.example.appname.plays.PlayLibraryFeed
+import com.example.appname.plays.PlayRow
 import com.example.appname.radio.RadioClock
 import com.example.appname.radio.TonightDay
 import com.example.appname.ui.CenteredBox
@@ -68,8 +69,9 @@ fun SurpriseScreen(onBack: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenSc
     val container = LocalAppContainer.current
     val dbVersion by container.catalog.dbVersion.collectAsState()
     var draw by rememberSaveable { mutableIntStateOf(0) }
-    val scripts = rememberCastablePlays()
-    val script: PlayScript? = remember(draw, scripts) { scripts.randomOrNull() }
+    val rowState = rememberPlayRows()
+    val scripts = if (com.example.appname.ui.LocalIsTelevision.current) emptyList() else (rowState as? PlayLibraryFeed.Rows.Ready)?.rows.orEmpty()
+    val script: PlayRow? = remember(draw, scripts) { scripts.randomOrNull() }
     val picks by produceState<Picks?>(null, draw, dbVersion) {
         value = null
         val db = container.catalog.awaitDb()
@@ -101,7 +103,7 @@ fun SurpriseScreen(onBack: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenSc
         },
     ) { padding ->
         val p = picks
-        if (p == null) {
+        if (p == null || rowState == PlayLibraryFeed.Rows.Loading) {
             CenteredBox(Modifier.padding(padding)) {
                 CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
             }

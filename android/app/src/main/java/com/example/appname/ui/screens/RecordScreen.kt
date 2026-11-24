@@ -16,6 +16,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -94,7 +96,8 @@ fun RecordScreen(
     val haptics = rememberHaptics()
     val scope = rememberCoroutineScope()
     val reads = !LocalIsTelevision.current
-    Scaffold(topBar = { TopAppBar(title = { Text("Record") }) }) { padding ->
+    val bar = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    Scaffold(modifier = Modifier.nestedScroll(bar.nestedScrollConnection), topBar = { TopAppBar(title = { Text("Record") }, scrollBehavior = bar) }) { padding ->
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val (cols, tileWidth) = tileLayout(maxWidth)
             LazyVerticalGrid(

@@ -90,31 +90,44 @@ class PlayLibraryFeed(
 
     private fun cache(name: String): File? = cacheDir?.let { File(it, name) }
 
-    /** One play's whole script: the library's file when the index lists it, else the bundle's; null when neither has it. */
-    suspend fun script(id: String): PlayScript? {
+    /**
+     * One play's whole script: the library's file when the index lists it, else the bundle's. With a [revision], only
+     * that revision (the library's file, this device's kept copy, else the bundle's, which may be the older one): null
+     * when none is it though another is, which the caller says as "This play has changed". Null too when no one has the
+     * play; throws the fetch's error when the library could not be reached and the bundle does not hold it.
+     */
+    suspend fun script(id: String, revision: String? = null): PlayScript? {
         loadRows()
         val row = (_rows.value as? Rows.Ready)?.rows?.firstOrNull { it.id == id }
         var failure: Exception? = null
+        var found: PlayScript? = null
+        var kept: PlayScript? = null
         if (row != null && row.path.isNotEmpty()) {
             val file = cache("scripts/$id.json")
-            val kept = runCatching { if (file != null && file.exists()) decode(file.readText(), id) else null }.getOrNull()
-            if (kept != null && kept.revision == row.revision) return kept
-            try {
-                val text = transport.get(row.path)
-                val found = text?.let { withContext(Dispatchers.Default) { decode(it, id) } }
-                if (found != null) {
-                    if (file != null) runCatching { file.apply { parentFile?.mkdirs() }.writeText(text) }
-                    return found
+            kept = runCatching { if (file != null && file.exists()) decode(file.readText(), id) else null }.getOrNull()
+            if (kept != null && kept.revision == row.revision) {
+                found = kept
+            } else {
+                try {
+                    val text = transport.get(row.path)
+                    found = text?.let { withContext(Dispatchers.Default) { decode(it, id) } }
+                    if (found != null && file != null) runCatching { file.apply { parentFile?.mkdirs() }.writeText(text!!) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    failure = e
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                failure = e
             }
-            if (kept != null) return kept
         }
-        val bundled = runCatching { bundle() }.getOrDefault(emptyList()).firstOrNull { it.id == id }
-        if (bundled != null) return bundled
+        val floor = runCatching { bundle() }.getOrDefault(emptyList()).firstOrNull { it.id == id }
+        val have = listOfNotNull(found, kept, floor)
+        if (revision != null) {
+            have.firstOrNull { it.revision == revision }?.let { return it }
+            if (have.isNotEmpty()) return null
+        } else {
+            have.firstOrNull()?.let { return it }
+        }
+        if (failure == null && (_rows.value as? Rows.Ready)?.published != true) failure = IOException("The play library could not be read.")
         if (failure != null) throw failure
         return null
     }

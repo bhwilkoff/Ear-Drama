@@ -946,10 +946,23 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   loaded (`MiniPlayer`, `ui/screens/Player.kt`): a progress line, title,
   series (or the problem, in the error color), and Play or Pause; a tap
   opens the player.
-- **§5.3 The player is a `ModalBottomSheet`**: series, title (a link to
+- **§5.3 The player is a `ModalBottomSheet`, two panes at 860 dp**: series, title (a link to
   Detail), date, any problem, the position slider with elapsed and
   remaining, back 15, a 72 dp Play, forward 30, then speed, the
   transcript, and the sleep timer as `DropdownMenu`s, and "Up next".
+  *Amended* (B21; Decision 080, owner 2026-11-16, Q2: *"Two panes"*; the
+  twin of iOS-DESIGN §5.3 and §5.9): when the window is 860 dp wide or more
+  (a tablet, an open foldable; `ReaderMath.SPREAD_MIN`, the reader's and
+  the studio's own switch) the sheet takes the window's width and holds two
+  panes side by side: the player as the primary, **Up next** as the secondary
+  (`PlayerQueuePane`), a list read from the engine's own queue
+  (`NowPlaying.upNext`: the arc's next parts, then the person's queue; never
+  a new data path), each row its title and show, a tap playing it. The
+  "Up next:" line is the phone's and is left out when the pane is up. The
+  pane is chosen by the window's width as it stands, inside the same sheet, so
+  a fold, an unfold or a rotation changes the layout and never dismisses the
+  player. Not built here, said in PARITY: reordering by drag in place, and the
+  live lineup while listening live (the engine has no lineup to read).
 - **§5.4 The player's numbers are DECISIONS 062's** (`PlayerNumbers`):
   the sleep fade is 10 s, speeds are 0.75, 1, 1.25, 1.5, and 2, progress
   saves every 5 s and on pause, and resuming after an interruption (audio
