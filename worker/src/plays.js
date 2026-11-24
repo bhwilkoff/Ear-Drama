@@ -45,7 +45,7 @@ import {
   silentRefusal,
   statusOf,
 } from "./plays-relay.js";
-import MANIFEST from "./castable-manifest.json";
+import { castable, isPublishable, madeFrom } from "./plays-castable.js";
 import { extOf, fileName, iaConfigured, sendFile } from "./plays-archive.js";
 import { assignmentRows, classHandlers, putAssignments, review, reviewsFor, rosterFor, seatsOf } from "./plays-seats.js";
 import { deleteClassRoute, deleteProductionRoute, deletesOn, exportClass, schoolYearEnd, setEndDate, touchClass } from "./plays-retention.js";
@@ -247,22 +247,22 @@ export function creditedMakers(chosen) {
 export async function createProduction(auth, request, env, now, classId = null) {
   const { body, error } = await readJson(request, 2 * 1024 * 1024);
   if (error) return error;
-  const entry = typeof body.script_id === "string" && Object.hasOwn(MANIFEST.scripts, body.script_id) ? MANIFEST.scripts[body.script_id] : null;
-  if (!entry) return problem(422, "not_castable");
-  if (body.script_revision !== entry.revision) return problem(409, "revision_mismatch", entry.revision);
   const cast = parseCast(body.cast);
   if (!cast) return problem(400, "bad_request", "cast is [{ id, part }] in script order");
-  if ((await castHash(cast)) !== entry.cast) return problem(422, "cast_mismatch");
   const refusal = nameRefusal(body.display_name);
   if (refusal) return problem(422, refusal);
+  const found = await castable(env, body.script_id, body.script_revision);
+  if (found.refusal) return found.refusal;
+  const { row } = found;
+  if ((await castHash(cast)) !== row.cast) return problem(422, "cast_mismatch");
   const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM play_productions WHERE user_id = ?1").bind(auth.userId).first();
   if (count.n >= MAX_PRODUCTIONS) return problem(409, "too_many_productions");
 
   const id = crypto.randomUUID().toUpperCase();
   await env.DB.batch([
     env.DB.prepare(
-      "INSERT INTO play_productions (id, user_id, script_id, script_revision, title, cast_sheet, created_at, updated_at, class_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?8)",
-    ).bind(id, auth.userId, body.script_id, entry.revision, entry.title, JSON.stringify(cast), now, classId),
+      "INSERT INTO play_productions (id, user_id, script_id, script_revision, title, cast_sheet, created_at, updated_at, class_id, script_row) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?8, ?9)",
+    ).bind(id, auth.userId, row.id, row.revision, row.title, JSON.stringify(cast), now, classId, JSON.stringify(row)),
     env.DB.prepare("INSERT INTO play_members (production_id, user_id, display_name, joined_at) VALUES (?1, ?2, ?3, ?4)").bind(
       id,
       auth.userId,
@@ -698,6 +698,7 @@ async function publish(auth, request, env, p, now) {
   if (!iaConfigured(env)) return problem(503, "publishing_unavailable");
   const job = await env.DB.prepare("SELECT status, take_ids, created_at FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first();
   if (job && job.status !== "failed") return json({ status: job.status, take_ids: JSON.parse(job.take_ids), created_at: job.created_at });
+  if (!isPublishable(madeFrom(p))) return problem(422, "script_not_publishable");
   let confirmed = null;
   if (p.class_id) {
     const refusal = await classPublishRefusal(request, env, p);

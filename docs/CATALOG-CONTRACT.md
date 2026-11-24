@@ -935,6 +935,13 @@ offline floor.
   phoneme files) and the phoneme half of `check_play_library.check_library`; a library is packed, unpacked and
   shipped only with phonemes for at least 80% of its plays (`MIN_PHONEME_SHARE`).
 
+- `castable/<id>.json` (R4-0): what the Worker checks a production, class production or read room
+  against, `{format: 1, id, revision, title, cast, lines, source, rights, publishable}`, `cast` the
+  SHA-256 of the cast sheet (`docs/WORKER.md` "Castable only"). Not in the archive: the site build
+  derives it from `scripts/` as it deploys them (`worker/tools/castable-manifest.mjs --library`) and
+  fails when the two differ. For the Worker; no client reads it. MEASURED 2026-11-24: 803 rows, 332
+  bytes each, 270 KB, 1.5 s.
+
 A client may show a play from the index alone (title, voices, minutes) and fetches
 `scripts/<id>.json` only to cast it. The guard is `catalog/tests/test_play_library.py`: shape
 and cross-file consistency of the real artifact when built, a fixture build always, and

@@ -330,6 +330,7 @@ test('the archive.org job is told truthfully: waiting, linked, or failed with th
   eq(at({ status: 'queued' }).kind, 'waiting', 'a quiet line');
   eq(at({ status: 'published', url: 'https://archive.org/details/eardrama-x' }), { kind: 'published', text: 'On archive.org', url: 'https://archive.org/details/eardrama-x' }, 'published links the item');
   eq(at({ status: 'failed', reason: 'archive.org refused the file (403)' }), { kind: 'failed', text: 'archive.org refused the file (403)' }, 'the Worker\'s reason, verbatim');
+  eq(at({ status: 'failed', reason: 'script_not_publishable' }), { kind: 'failed', text: 'This play cannot be published.' }, 'a script that may not be published, in words');
   eq(S.canPublishAgain(record({ archive: { status: 'failed' } }), ME), true, 'the director publishes again after a failure');
   eq(S.canPublishAgain(record({ archive: { status: 'failed' } }), THEM), false, 'a member does not');
   eq(S.canPublishAgain(record({ archive: { status: 'published' } }), ME), false, 'not once published');

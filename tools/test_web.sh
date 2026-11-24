@@ -9,7 +9,7 @@
 # from worker/src/room-protocol.js (join, leave, drift, handoff, an ended
 # room, the core golden-checked against the protocol), the label (its golden specs, shared with Swift and
 # Kotlin, and a mutant that must fail them), reading together (the read room's client golden-checked against
-# worker/test/read-golden.json with a mutant, the socket and its polling fallback against a stub Worker, the casting board), and two checks a browser
+# worker/test/read-golden.json with a mutant, the socket and its polling fallback against a stub Worker, the casting board), the library's castable manifest (built from the library it names, its drift caught by name), and two checks a browser
 # will not show you. Each suite runs the SHIPPED files, so a test can never
 # drift from what actually runs.
 #
@@ -48,6 +48,7 @@ DEFAULT_SUITES="js/api.test.js
   tools/test_design_tokens.mjs
   tools/test_no_edge_stripes.mjs
   tools/test_sw.mjs
+  tools/test_castable_manifest.mjs
   tools/test_deep_links.mjs"
 
 fail=0

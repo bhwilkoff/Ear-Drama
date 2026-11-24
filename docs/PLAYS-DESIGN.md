@@ -1185,9 +1185,9 @@ record's fields, and the schema are in `docs/WORKER.md`, "Shared plays".
 - **Castable only** (§8 rule 1). A production names a script id, its
   revision, and its cast sheet: every line id with its part, in script order,
   exactly as `linePart` gives it. The Worker holds a manifest of each castable
-  script's revision, title, and the SHA-256 of its cast sheet, rebuilt from
-  `catalog/plays/castable-scripts.json` by `worker/tools/castable-manifest.mjs`;
-  a test fails when the two disagree. So a client cannot invent a castable
+  script's revision, title, and the SHA-256 of its cast sheet: the bundle's, and one row a play
+  published beside the library and built with it (R4-0; `docs/WORKER.md` "Castable only"), so every
+  play of the library can be shared, cast by a class, and read together. So a client cannot invent a castable
   script, and the Worker never holds the text of one.
 - **The record is production.json**, merged line by line from every member's
   takes, with the field names the apps already decode (§6). Room tone and

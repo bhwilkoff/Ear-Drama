@@ -31,7 +31,7 @@
  */
 
 import { DurableObject } from "cloudflare:workers";
-import MANIFEST from "./castable-manifest.json";
+import { castable, madeFrom } from "./plays-castable.js";
 import { castHash } from "./plays-manifest.js";
 import { parseCast } from "./plays-relay.js";
 import { json, problem, readJson, limited } from "./http.js";
@@ -195,12 +195,10 @@ function relayOf(room) {
 async function createInput(request, env) {
   const { body, error } = await readJson(request, 1024 * 1024);
   if (error) return { response: error };
-  const entry = typeof body.script_id === "string" && Object.hasOwn(MANIFEST.scripts, body.script_id) ? MANIFEST.scripts[body.script_id] : null;
-  if (!entry) return { response: problem(422, "not_castable") };
-  if (body.script_revision !== entry.revision) return { response: problem(409, "revision_mismatch", entry.revision) };
   const cast = parseCast(body.cast);
   if (!cast) return { response: problem(400, "bad_request", "cast") };
-  if ((await castHash(cast)) !== entry.cast) return { response: problem(422, "cast_mismatch") };
+  // A production's room opens at the production's own revision, whatever the library holds now.
+  let made = null;
   if (body.kind === "class") {
     // A class room is its teacher's: the account that owns the class opens it.
     const auth = await authenticate(request, env);
@@ -211,22 +209,27 @@ async function createInput(request, env) {
     // The roster and the casting are the class's own (T2), never the request's.
     body.seats = (await seatsOf(env, body.class_id)).map((s) => ({ id: s.id, label: s.label }));
     if (body.production_id !== undefined) {
-      const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT class_id, script_id FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
+      const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT class_id, script_id, script_revision, script_row FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
       if (!p || p.class_id !== body.class_id || p.script_id !== body.script_id) return { response: problem(404, "no_such_production") };
       body.assignments = await assignmentRows(env, body.production_id);
+      made = madeFrom(p);
     }
   }
   if (body.kind !== "class" && body.production_id !== undefined) {
     // An adult production's room is its director's: only they attach one, so no stranger writes takes into a production (§12.11).
     const auth = await authenticate(request, env);
     if (auth.error) return { response: auth.error };
-    const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT user_id, class_id, script_id FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
+    const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT user_id, class_id, script_id, script_revision, script_row FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
     if (!p || p.class_id || p.user_id !== auth.userId || p.script_id !== body.script_id) return { response: problem(404, "no_such_production") };
+    made = madeFrom(p);
   }
+  const found = await castable(env, body.script_id, body.script_revision, made);
+  if (found.refusal) return { response: found.refusal };
+  if ((await castHash(cast)) !== found.row.cast) return { response: problem(422, "cast_mismatch") };
   const input = {
     kind: body.kind,
     script_id: body.script_id,
-    script_revision: entry.revision,
+    script_revision: found.row.revision,
     mode: body.mode,
     production_id: body.production_id,
     class_id: body.class_id,

@@ -4,7 +4,7 @@ import worker from "../src/index.js";
 import { call, env, installProviderKeys, signIn } from "./helpers.js";
 import relaySource from "../src/plays-relay.js?raw";
 import MANIFEST from "../src/castable-manifest.json";
-import { manifestFor } from "../src/plays-manifest.js";
+import { CASTABLE_BUCKETS, FORMAT, KEPT_REVISIONS, ROW_FORMAT, manifestFor, validRow } from "../src/plays-manifest.js";
 import { CLAIM_TTL_MS, DIRECTIONS, SOUND, isSpeaking } from "../src/plays-relay.js";
 import { CONSENT_TEXT, CONSENT_VERSION, MAX_TAKES_PER_LINE, consentApproved, normalizeClassCode } from "../src/plays.js";
 import { nameRefusal } from "../src/plays-names.js";
@@ -78,7 +78,39 @@ const runSweep = async () => {
 
 describe("the castable manifest (PLAYS-DESIGN §8 rule 1)", () => {
   it("matches the catalog's castable file; rebuild it with node tools/castable-manifest.mjs", async () => {
-    expect(await manifestFor(catalog)).toEqual(MANIFEST);
+    expect(await manifestFor(catalog, MANIFEST), "the bundle changed: run node worker/tools/castable-manifest.mjs and deploy the Worker").toEqual(MANIFEST);
+  });
+
+  it("holds only whole rows, each revision once, and every bundled play may be published", () => {
+    for (const [id, rows] of Object.entries(MANIFEST.scripts)) {
+      for (const row of rows) expect(validRow({ format: ROW_FORMAT, id, ...row }, id), id).toEqual({ format: ROW_FORMAT, id, ...row });
+      expect(new Set(rows.map((r) => r.revision)).size, id).toBe(rows.length);
+      expect(rows[0].publishable, id).toBe(true);
+    }
+  });
+
+  it("a rebuild keeps the revisions it held, newest first and bounded, while the play is in the bundle", async () => {
+    const script = (revision, role) => ({
+      id: "gut-1",
+      revision,
+      title: "T",
+      source: { url: "https://example.org/1" },
+      rights: { bucket: CASTABLE_BUCKETS[0], evidence: [{ claim: "c", src: "s" }] },
+      lines: [{ id: "L1", kind: "speech", role }],
+    });
+    const a = await manifestFor({ format: 1, scripts: [script("a".repeat(12), "ANNA")] });
+    expect(a.format).toBe(FORMAT);
+    const b = await manifestFor({ format: 1, scripts: [script("b".repeat(12), "BEN")] }, a);
+    expect(b.scripts["gut-1"].map((r) => r.revision[0])).toEqual(["b", "a"]);
+    expect(b.scripts["gut-1"][1]).toEqual(a.scripts["gut-1"][0]);
+    expect(b.scripts["gut-1"][0].cast).not.toBe(b.scripts["gut-1"][1].cast);
+    expect(await manifestFor({ format: 1, scripts: [script("b".repeat(12), "BEN")] }, b)).toEqual(b);
+    let m = b;
+    for (const r of "cdef0123") m = await manifestFor({ format: 1, scripts: [script(r.repeat(12), "C")] }, m);
+    expect(m.scripts["gut-1"].length).toBe(KEPT_REVISIONS);
+    expect((await manifestFor({ format: 1, scripts: [] }, m)).scripts).toEqual({});
+    const own = await manifestFor({ format: 1, scripts: [{ ...script("a".repeat(12), "X"), rights: { bucket: "own", evidence: [] } }] });
+    expect(own.scripts["gut-1"][0].publishable).toBe(false);
   });
 
   it("CONTROL: a production is made from a manifest script, its revision, and its cast sheet", async () => {
@@ -101,6 +133,8 @@ describe("the castable manifest (PLAYS-DESIGN §8 rule 1)", () => {
 
   it("refuses another revision, and names the current one", async () => {
     const s = await person("rev");
+    vi.restoreAllMocks();
+    installProviderKeys({ extra: () => new Response(null, { status: 404 }) }); // the library does not hold it at this revision
     const r = await call("POST", "/v1/plays/productions", { token: s.access_token, body: createBody({ script_revision: "000000000000" }) });
     expect(r.status).toBe(409);
     expect(await r.json()).toEqual({ error: "revision_mismatch", detail: script.revision });

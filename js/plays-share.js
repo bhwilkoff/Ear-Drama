@@ -210,7 +210,7 @@ const PlaysShare = (() => {
     const a = rec && rec.archive;
     if (!a) return null;
     if (a.status === 'published') return { kind: 'published', text: 'On archive.org', url: a.url || null };
-    if (a.status === 'failed') return { kind: 'failed', text: a.reason || 'Publishing failed.' };
+    if (a.status === 'failed') return { kind: 'failed', text: LINES[a.reason] || a.reason || 'Publishing failed.' };
     return { kind: 'waiting', text: a.status === 'uploading' ? 'Uploading to archive.org' : 'Queued for archive.org' };
   }
   /** Publish again, after a failure: the director's agreement stands, so the Worker is asked again. */
@@ -373,6 +373,7 @@ const PlaysShare = (() => {
     revision_mismatch: 'This play has changed since it was cast.',
     not_castable: 'This play cannot be shared.',
     cast_mismatch: 'This play cannot be shared.',
+    script_not_publishable: 'This play cannot be published.',
     production_full: 'This production is full.',
     too_many_productions: 'You have too many shared productions.',
     too_many_takes: 'This line has too many takes.',

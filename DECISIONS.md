@@ -124,7 +124,13 @@ payment method (research 08c Q8), so the take store waits on the owner. The
 Worker never takes a client's word for what is castable.
 
 **How to apply**: run `node worker/tools/castable-manifest.mjs` after every
-castable rebuild (a test fails when the two drift). New consent words need a new
+rebuild of the bundled scripts (a test fails when the two drift); the library's
+rows need nothing (amended 2026-11-24, R4-0: the manifest held the bundle's 15 of
+803 plays. The Worker now reads one play's row from our own site when something is
+made from it, and the row is kept with the production. The other design, all 803
+rows in the Worker, measured 283 KB (65 KB gzip, about 2.4 ms at start-up): it fits
+the free plan, but needs a Worker deploy for every library refresh, the step that
+had been forgotten). New consent words need a new
 `CONSENT_VERSION`; the words are the owner's, approved 2026-10-29 ("Let's refine
 the text and use it", then "Yes. Change the first line. It should all make sense
 as one coherent approval."), version `cc0-2026-10-29`, verbatim:

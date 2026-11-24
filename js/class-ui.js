@@ -286,18 +286,17 @@ const ClassUI = (() => {
     });
     const sel = h.el('select', { class: 'field-input', 'aria-label': 'Pick a play' }, h.el('option', { value: '' }, 'Pick a play'));
     const make = h.el('button', { type: 'submit', class: productions.length ? 'btn' : 'btn btn-primary', disabled: true }, 'Make');
-    let scripts = [];
-    API.castableScripts().then((list) => {
-      scripts = list;
-      sel.append(...list.slice().sort((a, b) => (a.title < b.title ? -1 : 1)).map((s) => h.el('option', { value: s.id }, s.title)));
+    API.playLibrary().then((rows) => {
+      sel.append(...C.pickList(rows).map((x) => h.el('option', { value: x.id }, x.label)));
     }).catch((err) => { console.error(err); line.textContent = say(err); });
     sel.addEventListener('change', () => { make.disabled = offline || !sel.value; });
     const form = h.el('form', { class: 'take-form', onsubmit: async (e) => {
       e.preventDefault();
-      const script = scripts.find((s) => s.id === sel.value);
-      if (!script) return;
+      if (!sel.value) return;
       make.disabled = true; line.textContent = '';
       try {
+        const script = await API.playScript(sel.value);
+        if (!script) throw { code: 'not_castable' };
         await API.plays.classProduction(cls.id, { script_id: script.id, script_revision: script.revision, cast: script.lines.map((l) => ({ id: l.id, part: C.linePart(l) })) });
         redraw();
       } catch (err) { console.error(err); line.textContent = say(err); make.disabled = false; }

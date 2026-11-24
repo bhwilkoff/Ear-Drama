@@ -9,7 +9,8 @@
 # (catalog/tests/test_play_library.py, test_play_phonemes.py with the phoneme env's python) -> pack ->
 # upload `plays-library-YYYY-MM-DD.tar.xz` to the rolling `plays-library` Release -> check the Release's own
 # size and sha256 against the file. tools/assemble_site.sh downloads the newest asset at the next site build
-# (tools/fetch_play_library.py), so a refresh reaches the site on the next deploy, with no workflow edit.
+# (tools/fetch_play_library.py), so a refresh reaches the site on the next deploy, with no workflow edit, and the
+# castable manifest (what can be shared, read together, or cast) is made from it there: no Worker deploy.
 #
 # It never overwrites: a same-day rebuild uploads as -2, -3 (docs/CI-FLEET.md: `gh release upload --clobber`
 # deletes before it uploads, and a failed upload loses the asset). Nothing is uploaded unless every step before
@@ -50,6 +51,8 @@ name="plays-library-$day.tar.xz"; n=1
 while printf '%s\n' "$existing" | grep -qx "$name"; do n=$((n + 1)); name="plays-library-$day-$n.tar.xz"; done
 python3 tools/play_library_archive.py pack out/plays-library "$work/$name" || die "pack failed"
 python3 tools/play_library_archive.py unpack "$work/$name" "$work/check" || die "the packed archive does not unpack clean"
+# The site build makes the castable manifest from this archive; a play the Worker would refuse stops here, not there.
+node "$ROOT/worker/tools/castable-manifest.mjs" --library "$work/check" || die "the castable manifest does not build from it"
 echo "packed $name: $(wc -c < "$work/$name" | tr -d ' ') bytes"
 [ "$upload" = 1 ] || { cp "$work/$name" "$ROOT/$name"; echo "--no-upload: left $ROOT/$name"; exit 0; }
 

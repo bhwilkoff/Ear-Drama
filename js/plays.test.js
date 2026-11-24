@@ -639,6 +639,28 @@ test('a play\'s voices and minutes, and their bands (WEB-DESIGN §4.15)', () => 
   eq(C.voiceBand({ roles: Array.from({ length: 11 }, () => ({ words: 1 })) }), '11+', 'eleven and up');
 });
 
+test('a class picks from the whole library: by name, one title told apart by author, then length (WEB-DESIGN §4.19)', () => {
+  const rows = [
+    { id: 'gut-2', title: 'The Robbers', sort_name: 'robbers', authors: ['A. Player'] },
+    { id: 'gut-3', title: 'Ghosts', sort_name: 'ghosts', authors: ['Henrik Ibsen'] },
+    { id: 'gut-1', title: 'The Robbers', sort_name: 'robbers', authors: ['Friedrich Schiller'] },
+    { id: 'gut-5', title: 'Belinda', sort_name: 'belinda', authors: ['A. A. Milne'], minutes: 90 },
+    { id: 'gut-4', title: 'Belinda', sort_name: 'belinda', authors: ['A. A. Milne'], minutes: 84 },
+    { id: 'gut-6', title: 'Anon', authors: [] },
+  ];
+  eq(C.pickList(rows), [
+    { id: 'gut-6', label: 'Anon' },
+    { id: 'gut-4', label: 'Belinda, A. A. Milne, about 84 min' },
+    { id: 'gut-5', label: 'Belinda, A. A. Milne, about 90 min' },
+    { id: 'gut-3', label: 'Ghosts' },
+    { id: 'gut-1', label: 'The Robbers, Friedrich Schiller' },
+    { id: 'gut-2', label: 'The Robbers, A. Player' },
+  ], 'the list');
+  eq(C.pickList([]), [], 'an empty library');
+  const page = fs.readFileSync(path.join(__dirname, 'class-ui.js'), 'utf8');
+  ok(/API\.playLibrary\(\)\.then\(\(rows\) => \{\s*sel\.append\(\.\.\.C\.pickList\(rows\)/.test(page) && !page.includes('castableScripts'), 'the class page reads the library, never the bundle alone');
+});
+
 /** A store whose every write is counted, over a production half recorded. */
 async function halfRecorded() {
   const script = fixtureScript();

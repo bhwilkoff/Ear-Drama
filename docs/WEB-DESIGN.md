@@ -1231,7 +1231,8 @@ web app follows today.
      "No names yet.", and the textarea is the one action.
   5. **Plays**: each class production with its progress per seat ("12 of 15 lines recorded",
      approved and again counts; counts only, never a ranking) and **Cast** (the casting board);
-     under them **Pick a play** (a native select of the castable plays) and **Make**.
+     under them **Pick a play** (a native select of the play library by name, `PlaysCore.pickList`: a
+     title two plays share carries its author, then its length) and **Make**.
   6. **The casting board** (`?class={id}&cast={production id}`): the seats as draggable chips
      with their totals (lines, words; tabular), then the parts largest first, each row the part
      name in its hue, its facts (lines, words, scenes, longest speech) and a native `<select>` of
