@@ -153,6 +153,13 @@ The only shapes; a new one needs a new rule.
 - **§3.4 Detail**: a scroll view of the header, an action row, the
   credits, and the rights line (§4.4).
 - **§3.5 Full-screen cover**: Now Playing and the transcript reader only.
+- **§3.6 Share is a QR code sheet** (BACKLOG-LOOP B9, 2026-11-23; §8 promised it; tvOS has no
+  share sheet). An episode's action row carries **Share** (`qrcode`), last. It opens a system
+  `.sheet`: a QR code of the episode's https twin (`SiteLinks.episode`, the address every other
+  platform's share carries, made by `ShareCode` with CoreImage's `CIQRCodeGenerator`) on a white
+  plate, then the title, the address as words without its scheme, and **Done**, the sheet's one
+  control. Menu dismisses it like any sheet. No other words: a phone in the room scans it. The
+  series page has no Share on the TV until the PARITY row for sharing a series asks for one.
 
 ## §4 Surfaces
 
@@ -196,8 +203,8 @@ The only shapes; a new one needs a new rule.
   last, so down moves season to season and across moves through one.
 - **§4.4 Episode detail** (`EpisodeScreen_tvOS`) is the series name as the kicker, the
   title at page-title size, the facts line (date, network, sponsor,
-  length), then an action row in one focus section: Play, Add to queue, and
-  "Automatic transcript" when the gate passed. Under the hero, its own focus section, **the
+  length), then an action row in one focus section: Play, Add to queue,
+  "Automatic transcript" when the gate passed, and Share (§3.6). Under the hero, its own focus section, **the
   show**: a wide card with the show's picture, genre and network, name, years, episode count and
   star, opening the series page (owner, 2026-11-09: episodes felt "totally disconnected from any
   recurring show"; it replaced a "Show" button that named nothing). Then the offline warning,
@@ -440,8 +447,7 @@ The only shapes; a new one needs a new rule.
 ## §8 Values
 
 The rights line, the transcript label, and volume leveling are as in
-§1.8, never reworded. Share on the TV is a QR code when that row lands
-(PARITY §5).
+§1.8, never reworded. Share on the TV is a QR code of the https twin (§3.6).
 
 ## §9 Parity and what is planned here
 
@@ -503,11 +509,9 @@ The rights line, the transcript label, and volume leveling are as in
   the queue rule, the resume and "played" windows, the untitled
   fallback, and seasons as sections. The player's numbers are Decision
   062's, named once in `PlayerNumbers` (`docs/iOS-DESIGN.md` §5.7).
-- **Share is not built**: §8's QR code of the https twin
-  (`SiteLinks.episode`) waits on its PARITY row.
 
 Closed 2026-10-23: a way back to Now Playing (§5.4), Versions on Detail
-(§4.4), and the 29 pt caption floor (§7.1).
+(§4.4), and the 29 pt caption floor (§7.1). Closed 2026-11-23: Share as a QR code (§3.6).
 
 **E1 rules (2026-10-30, D4 review).** The player row carries Add to queue (`player-queue`). Share is deliberately absent: tvOS has no share sheet. Export is absent for the same reason (docs/EXPORT.md); the data exports from a phone. Stations after the evening ends: the Tonight card reads "Ended at ..." and "Replay from the start", and pressing it plays the first playable slot and opens Now Playing.
 
