@@ -164,3 +164,6 @@ store words; radio-script rights rule; GRW request.
   tests (B14). Web in real Chrome on the Pixel PASS (10 screens, no sideways scroll). Pixel empty-library door
   PASS, owner's Up next intact after. Apple TV foot leading-aligned PASS. Class review BLIND (needs sign-in).
   PARITY e4b44c28: 6 web cells and 2 iOS cells to done with today's evidence. No set-aside keys left on iPhone 12.
+- 2026-11-23 22:45, tick 19: B14 agent committed its four items and is running the Gutenberg plays harvest
+  (rsync 5,094 files, 505 MB, network-bound). Disk 97% (15 GB free, was 27 GB at 15:00): removed 4 orphaned
+  Ear Drama DerivedData folders (1 GB). Remaining growth is not this loop's build folders; avoid disk-heavy work.
