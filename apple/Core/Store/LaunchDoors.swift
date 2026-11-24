@@ -11,6 +11,8 @@ import Foundation
 ///   still open (plays is Record). The TV has no Record: it opens Home.
 /// - APP_START_ITEM: a series key or an episode id, pushed on that tab
 /// - APP_AUTOPLAY=1: play APP_START_ITEM and show the player
+/// - APP_MINI_PLAYER=1: with APP_AUTOPLAY, the item plays under the screen: its page is not pushed and the player
+///   stays closed, for frames of the mini player
 /// - APP_SLEEP_MENU=1: open the sleep timer's choices on the player
 /// - APP_MUTE=1 (or the `-APP_MUTE` launch argument): the player is muted
 /// - APP_FORCE_OFFLINE=1: the offline state, for a screenshot (fakes the
@@ -52,6 +54,11 @@ import Foundation
 /// - APP_SCROLL_Y=<points> (iOS): scrolls the page on screen that far down APP_SCROLL_DELAY seconds after launch
 ///   (default 6), for frames of the open iPhone Duo below the first screen (ScrollDoor_iOS)
 ///
+/// - APP_START_PLAY=<script id>: open that play's own page on Record (iOS and macOS). It only opens the page: no
+///   production is made (APP_PRODUCTION makes one)
+/// - APP_LIBRARY_SIDE=making | listening: Library drawn on that side; the side the person last chose is not written
+/// - APP_LANDSCAPE=1 (iOS): asks the scene for landscape, for frames of a phone nobody can turn (ScrollDoor_iOS)
+///
 /// - APP_DOOR_FILE (Mac): commands read from a file while the app runs (DoorFile_macOS)
 ///
 /// DEBUG-only: in a Release build `current` is always empty, so every door is a
@@ -61,6 +68,7 @@ struct LaunchDoors: Sendable, Equatable {
     var startTab: String?
     var startItem: String?
     var autoplay = false
+    var miniPlayer = false
     var sleepMenu = false
     var mute = false
     var doorSeconds: Int?
@@ -72,6 +80,9 @@ struct LaunchDoors: Sendable, Equatable {
     var reader: String?
     var readerDoor = ReaderDoor()
     var production: String?
+    var play: String?
+    var librarySide: String?
+    var landscape = false
     var picker: String?
     var along: String?
     var readRoom: String?
@@ -96,6 +107,7 @@ struct LaunchDoors: Sendable, Equatable {
             startTab: environment["APP_START_TAB"],
             startItem: environment["APP_START_ITEM"],
             autoplay: environment["APP_AUTOPLAY"] == "1",
+            miniPlayer: environment["APP_MINI_PLAYER"] == "1",
             sleepMenu: environment["APP_SLEEP_MENU"] == "1",
             mute: environment["APP_MUTE"] == "1" || arguments.contains("-APP_MUTE"),
             doorSeconds: environment["APP_DOOR_SECONDS"].flatMap { Int($0) },
@@ -116,6 +128,9 @@ struct LaunchDoors: Sendable, Equatable {
                                    inkFinger: environment["APP_READER_INK_FINGER"] == "1",
                                    inkDemo: environment["APP_READER_INK_DEMO"] == "1"),
             production: environment["APP_PRODUCTION"],
+            play: environment["APP_START_PLAY"].flatMap { $0.isEmpty ? nil : $0 },
+            librarySide: environment["APP_LIBRARY_SIDE"].flatMap { ["making", "listening"].contains($0) ? $0 : nil },
+            landscape: environment["APP_LANDSCAPE"] == "1",
             picker: environment["APP_PICKER"],
             along: environment["APP_START_ALONG"].flatMap { $0.isEmpty ? nil : $0 },
             readRoom: environment["APP_START_READ_ROOM"].flatMap { $0.isEmpty ? nil : $0 },

@@ -22,7 +22,8 @@ Negative controls (each seen to fail 2026-11-19): in js/app.js heroArt return `{
 'label' }` for the label -> "the head art is a blank box"; drop the `API.uploadTagged` branch of the episode
 title -> "raw upload title in the head" (episode-raw); give the recordings `details` `open: true` -> "the
 recordings disclosure is open on load"; change `>= 2` to `>= 1` in API.galleryOf -> "a pictures row with
-fewer than 2" (series-gallery1).
+fewer than 2" (series-gallery1); set the g-head-hero .g-shaped width back to min(100%, 400px * a) -> "a 39 px
+strip of board beside the head picture" (series-nearfill, 2026-11-24).
 """
 import json, os, re, subprocess, sys, tempfile, time
 
@@ -49,6 +50,10 @@ def item_routes():
     rows = sorted(idx['rows'], key=lambda r: (-(r[F['downloads']] or 0), r[F['key']]))
     pic = next(r for r in rows if r[F['picture']] and r[F['picture']][1] and r[F['picture']][2])
     nopic = next(r for r in rows if not r[F['picture']] and r[F['first']])
+    # A picture the 400 px cap leaves just short of a 343 px board (375 px window): 0.85 to 1 of its width.
+    near = next((r for r in rows if r[F['picture']] and r[F['picture']][1] and r[F['picture']][2]
+                 and 0.86 * 343 < 400 * r[F['picture']][1] / r[F['picture']][2] < 0.99 * 343
+                 and min(r[F['picture']][1:3]) >= 160), None)
     ser = get(f"series/{urllib.parse.quote(nopic[F['key']])}.json")
     EF = {k: i for i, k in enumerate(ser['fields'])}
     ep = next(e for e in ser['episodes'] if e[EF['date']] and len(e[EF['date']]) == 10)
@@ -70,6 +75,7 @@ def item_routes():
     W = (375, 1440)
     last = lambda name: re.escape(name.split()[-1])
     return [('series-picture', f'?series={q(k)}&mute=1', last(pic[F['name']]), '.g-head-hero', W, {}),
+            *([('series-nearfill', f"?series={q(near[F['key']])}&mute=1", last(near[F['name']]), '.g-head-hero', W, {})] if near else []),
             ('series-label', f"?series={q(nopic[F['key']])}&mute=1", last(nopic[F['name']]), '.g-head-hero svg.lb', W, {}),
             ('series-gallery2', f'?series={q(k)}&mute=1', last(pic[F['name']]), '.g-gallery', W, gal(2)),
             ('series-gallery1', f'?series={q(k)}&mute=1', last(pic[F['name']]), '.g-head-hero', (375,), gal(1)),
@@ -145,6 +151,12 @@ JS = r"""(async () => {
     if (!box || box.width < 40 || box.height < 40 || !drew) bad.push('the head art is a blank box');
     const h1 = hero.querySelector('h1');
     if (h1 && API.uploadTagged(h1.textContent)) bad.push('raw upload title in the head: ' + h1.textContent.slice(0, 40));
+  }
+  // B15b (6.4g rule 2): a picture over the words never leaves a strip of board under 15 %% of its width beside it.
+  const shaped = hero && hero.querySelector('.g-head-art > .g-shaped'), words = hero && hero.querySelector('.g-head-text');
+  if (shaped && words && words.getBoundingClientRect().top >= shaped.getBoundingClientRect().bottom - 1) {
+    const w = shaped.getBoundingClientRect().width, b = hero.clientWidth;
+    if (w < b - 1 && w >= 0.85 * b) bad.push(`a ${(b - w).toFixed(0)} px strip of board beside the head picture`);
   }
   view.querySelectorAll('details.recordings').forEach(d => { if (d.open) bad.push('the recordings disclosure is open on load'); });
   if (view.querySelector('.versions') && !view.querySelector('details.recordings .versions')) bad.push('recordings outside their disclosure');

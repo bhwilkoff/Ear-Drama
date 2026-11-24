@@ -218,7 +218,7 @@ struct ReadStartButton: View {
     @State private var busy = false
 
     var body: some View {
-        Button("Read Together") {
+        Button {
             busy = true
             failure = nil
             Task {
@@ -229,7 +229,10 @@ struct ReadStartButton: View {
                     if let code = session.code { ReadHandover.hold(session); app.push(Route.readRoom(code)) }
                 } catch let f as ReadFailure { failure = ReadCore.refusal(f.code) } catch { failure = ReadCore.refusal("error") }
             }
+        } label: {
+            ActionLabel(title: "Read Together", systemImage: "person.2")
         }
+        .pageAction()
         .disabled(busy)
         if let failure { Label(failure, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError) }
     }
@@ -271,6 +274,7 @@ struct ClassPageScreen: View {
     @State private var paste = ""
     @State private var showCode = false
     @State private var choosing = false
+    @State private var pickQuery = ""
     @State private var starting = false
     @State private var inbox: ClassInbox?
     @State private var waiting: [ClassReviewItem] = []
@@ -486,18 +490,21 @@ struct ClassPageScreen: View {
 
     private var playPicker: some View {
         NavigationStack {
-            List(CastableLibrary.load()?.scripts ?? [], id: \.id) { script in
-                Button(script.title) { choosing = false; start(script) }
+            List(PlayBrowse.pickList(plays.rows).filter { pickQuery.isEmpty || $0.label.localizedStandardContains(pickQuery) }) { pick in
+                Button(pick.label) { choosing = false; start(pick.id) }
             }
+            .searchable(text: $pickQuery)
+            .task { await plays.load() }
             .navigationTitle("Start a Reading")
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { choosing = false } } }
         }
     }
 
     /// The class's production for this play (made on first use), then a class room over its casting.
-    private func start(_ script: PlayScript) {
+    private func start(_ scriptID: String) {
         Task {
             do {
+                guard let script = try await plays.script(id: scriptID) else { failure = ReadCore.refusal("not_castable"); return }
                 let prod = try await wire.classProduction(id, scriptID: script.id, revision: script.revision, cast: PlaysShare.castSheet(script))
                 let session = ReadSession.system()
                 try await session.open(ReadOpening.body(script, classID: id, productionID: prod.id), teacher: true)

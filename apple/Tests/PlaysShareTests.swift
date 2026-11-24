@@ -262,6 +262,8 @@ struct PlaysSharePendingTests {
         #expect(PlaysShare.archiveLine(rec) == .published(URL(string: "https://archive.org/details/eardrama-p1")))
         rec.archive = .init(status: "failed", reason: "archive.org refused the file (403)")
         #expect(PlaysShare.archiveLine(rec) == .failed("archive.org refused the file (403)"))
+        rec.archive = .init(status: "failed", reason: "script_not_publishable")
+        #expect(PlaysShare.archiveLine(rec) == .failed("This play cannot be published."), "a script that may not be published, in words")
         #expect(PlaysShare.canPublishAgain(rec, me))
         #expect(!PlaysShare.canPublishAgain(rec, "user-bo"))
         rec.archive = .init(status: "published")
@@ -473,7 +475,7 @@ private struct NoNetwork: Error {}
 
 /// A library whose bundle is empty and whose site serves `gut-share`: the play a shared production is made from
 /// exists only in the published library.
-private func libraryOnly(revision: String = "r1") -> PlaysLibrary {
+private func libraryOnly(revision: String = "r1", bundled: [PlayScript] = []) -> PlaysLibrary {
     let script = shareScript(revision: revision)
     let file = try! JSONEncoder().encode(CastableLibrary(format: 1, scripts: [script]))
     let index = Data(#"{"format":1,"count":1,"plays":[{"id":"gut-share","revision":"\#(revision)","title":"Shared Fixture","kind":"radio","authors":[],"voices":2,"roles":2,"cast":[3,2],"lines":6,"words":10,"minutes":1,"path":"scripts/gut-share.json"}]}"#.utf8)
@@ -486,7 +488,7 @@ private func libraryOnly(revision: String = "r1") -> PlaysLibrary {
                             default: throw NoNetwork()
                             }
                         },
-                        cache: dir.appending(path: "Cache"), bundled: { CastableLibrary(format: 1, scripts: []) })
+                        cache: dir.appending(path: "Cache"), bundled: { CastableLibrary(format: 1, scripts: bundled) })
 }
 
 struct PlaysShareLibraryOnlyTests {
@@ -514,6 +516,15 @@ struct PlaysShareLibraryOnlyTests {
         #expect(made != nil)
     }
 
+    /// As the web and Android do: the library's file may be newer than the revision a production was cast from, and the
+    /// bundle may hold that one. Seen failing 2026-11-24 on the old `script(id:revision:)` (nil for r1).
+    @Test func theBundleIsTriedWhenTheLibraryHoldsANewerRevision() async throws {
+        let lib = libraryOnly(revision: "r2", bundled: [shareScript(revision: "r1")])
+        #expect(await lib.script(id: "gut-share", revision: "r2")?.revision == "r2", "the library's own revision")
+        #expect(await lib.script(id: "gut-share", revision: "r1")?.revision == "r1", "the bundle's")
+        #expect(await lib.script(id: "gut-share", revision: "r9") == nil, "neither's")
+    }
+
     @Test func aRevisionTheLibraryLacksIsStillRefused() async throws {
         let lib = libraryOnly()
         let stub = StubWorker(mollyIsMine())
@@ -531,6 +542,7 @@ struct PlaysShareLineTests {
     @Test func eachRefusalIsTheWebsLine() {
         #expect(PlaysShare.line(PlaysRefusal.code("storage_not_configured")) == "Uploads are off.")
         #expect(PlaysShare.line(PlaysRefusal.code("not_open")) == "This part is taken.")
+        #expect(PlaysShare.line(PlaysRefusal.code("script_not_publishable", status: 422)) == "This play cannot be published.")
         #expect(PlaysShare.line(PlaysRefusal.code("another_part_is_recording", detail: "role:MOLLY")) == "MOLLY is still recording.")
         #expect(PlaysShare.line(PlaysRefusal.code("another_part_is_recording", detail: "sound")) == "Sound effects is still recording.")
         #expect(PlaysShare.line(PlaysRefusal.code("lines_missing", count: 1)) == "1 line still needs a take.")

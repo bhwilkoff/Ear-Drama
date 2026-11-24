@@ -309,6 +309,13 @@ const ReaderCore = (() => {
     return { verse, speeches };
   }
 
+  /** A verse speech's printed lines, said words only (cues and asides left out); null for prose or a run-in speaker. */
+  function verseRows(line, roles) {
+    const lay = layoutOf(line, roles || []);
+    if (!lay.verse || lay.speeches.length !== 1) return null;
+    return lay.speeches[0].rows.filter(r => !r.cue).map(r => r.runs.filter(x => x.said).map(x => x.text.trim()).join(' ')).filter(Boolean);
+  }
+
   /** The last words of a speech a cue is heard on: from the last sentence break, at most the whole text. */
   function cueTail(text) {
     const t = String(text || '');
@@ -555,5 +562,5 @@ const ReaderCore = (() => {
   }
 
   return { spoken, word, textWords, phonemeWordStarts, kokoroWords, phonemeWordCount, ALONG_SPEEDS, alongSpeed, speedLabel, savedSpeed, saveSpeed, alongLine, alongLineAt, dramaPlan, dramaListen, alongFollow, alongPanel, closeTo, myLineStep, SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageContaining, pageCount, lineAtPage,
-           spreadStart, turn, swipeTurn, tapZone, keyTurn, pageLabel, remember, runsOf, spaceBetween, isVerse, layoutOf, cueTail };
+           spreadStart, turn, swipeTurn, tapZone, keyTurn, pageLabel, remember, runsOf, spaceBetween, isVerse, layoutOf, verseRows, cueTail };
 })();

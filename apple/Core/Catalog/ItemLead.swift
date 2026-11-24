@@ -43,10 +43,21 @@ nonisolated enum ItemLead {
     static let column: CGFloat = 320
     static let uprightHeight: CGFloat = 400
 
+    /// A picture its height cap would leave at this share of the board's width or more spans the board instead
+    /// (WEB-DESIGN §6.4g rule 2): under 15% of board beside a picture reads as a mistake (This Is Your FBI, 13 pt).
+    static let nearFill: CGFloat = 0.85
+
+    /// A picture over the words, at most `cap` tall, unless the cap would leave a thin strip of board beside it.
+    private static func over(_ aspect: CGFloat, cap: CGFloat, width: CGFloat) -> CGSize {
+        let w = min(width, cap * aspect)
+        return w >= nearFill * width ? CGSize(width: width, height: width / aspect) : CGSize(width: w, height: w / aspect)
+    }
+
     /// The window's frame inside a board `width` wide: a label is a square (the column's width on a phone, 320 beside
     /// the words); a picture keeps its own shape. A wide one is a plate over the words at the board's full width, at
     /// most 360 tall (440 beside); an upright or square one stands in the window's place, at most 400 tall and 320
-    /// wide beside the words. The picture is never cropped.
+    /// wide beside the words. A cap that leaves a strip of board under 15% of its width is lifted (`over`). The picture
+    /// is never cropped.
     static func window(art: Artwork?, width: CGFloat) -> (size: CGSize, plate: Bool) {
         let beside = width >= besideFrom
         guard let art = shown(art), let a = art.aspectRatio else {
@@ -54,10 +65,10 @@ nonisolated enum ItemLead {
             return (CGSize(width: side, height: side), false)
         }
         if art.isWide {
-            let h = min(width / a, beside ? 440 : 360)
-            return (CGSize(width: h * a, height: h), true)
+            return (over(a, cap: beside ? 440 : 360, width: width), true)
         }
-        let h = min(uprightHeight, (beside ? min(column, width) : width) / a)
+        if !beside { return (over(a, cap: uprightHeight, width: width), false) }
+        let h = min(uprightHeight, min(column, width) / a)
         return (CGSize(width: h * a, height: h), false)
     }
 

@@ -252,6 +252,9 @@ struct SeriesBrowseScreen: View {
     @State private var fieldHeight: CGFloat = 0
     @State private var sideRowHeight: CGFloat = 0
     @State private var scope: BrowseScope = .shows
+    #if os(iOS)
+    @Environment(\.verticalSizeClass) private var heightClass
+    #endif
 
     private struct Filter: Hashable {
         let genre: String?, network: String?, decade: Int?, sort: SeriesSort, generation: Int
@@ -292,6 +295,19 @@ struct SeriesBrowseScreen: View {
 
     private func browseList(_ proxy: ScrollViewProxy) -> some View {
         List {
+            // A short window (a phone on its side) has no room for a pinned bar: the controls scroll with the tiles
+            // (iOS-DESIGN §4.2).
+            if controlsScroll {
+                Section {
+                    controls
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+                #if os(iOS)
+                .listSectionSpacing(Spacing.s2)
+                #endif
+            }
             if scope == .dramas {
                 FinishedBrowse()
                     .gridRow()
@@ -317,6 +333,8 @@ struct SeriesBrowseScreen: View {
             }
         }
         #if os(iOS)
+        // The pinned controls already stand off the list; the grouped List's own 35 pt on top of them read as a hole.
+        .contentMargins(.top, Spacing.s2, for: .scrollContent)
         .modifier(SectionIndex(visible: sort == .name))
         .overlay(alignment: .trailing) {
             if #unavailable(iOS 26), sort == .name, let series {
@@ -328,19 +346,7 @@ struct SeriesBrowseScreen: View {
             }
         }
         #endif
-        .modifier(TopBar {
-            VStack(spacing: 0) {
-                Picker("Browse", selection: $scope) {
-                    ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .pageBarPadding()
-                .padding(.vertical, Spacing.s2)
-                .accessibilityIdentifier("browse-scope")
-                if scope == .shows { chips }
-            }
-        })
+        .modifier(TopBar { if !controlsScroll { controls } })
         .navigationTitle("Browse")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
@@ -375,6 +381,30 @@ struct SeriesBrowseScreen: View {
         }
         .onChange(of: PageKey(genre: genre, network: network, decade: decade, sort: sort,
                               hasScript: hasScript, singles: singles)) { shown = BrowseScreenPage.size }
+    }
+
+    private var controlsScroll: Bool {
+        #if os(iOS)
+        heightClass == .compact
+        #else
+        false
+        #endif
+    }
+
+    /// The scope and the filter chips: pinned under the title, or the list's first row in a short window.
+    private var controls: some View {
+        VStack(spacing: 0) {
+            Picker("Browse", selection: $scope) {
+                ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            // In the list the row already stands on the box edge (§3.6b); the chips start on the words edge.
+            .modifier(WidthPadding(compact: controlsScroll ? 0 : Spacing.s4, regular: controlsScroll ? 0 : Spacing.s6))
+            .padding(.vertical, Spacing.s2)
+            .accessibilityIdentifier("browse-scope")
+            if scope == .shows { chips }
+        }
     }
 
     private func itemsOf(_ all: [SeriesRow]) -> [Item] {
@@ -433,7 +463,7 @@ struct SeriesBrowseScreen: View {
         let field = ShowLine.decadeField(shownSeries(fieldBase).filter { ShowLine.isShow($0.episodeCount) }
             .map { (genre: $0.genre, first: $0.firstDate) })
         let plan = BrowseLayout.plan(width: columnWidth, decades: field.decades.count, tileMin: ShowTile.defaultWidth)
-        VStack(alignment: .leading, spacing: Spacing.s4) {
+        VStack(alignment: .leading, spacing: 0) {
             // The column's width is read from a view that holds no content and every part below is
             // sized from it, so nothing drawn can make the body wider than the column.
             Color.clear
@@ -588,7 +618,7 @@ struct SeriesBrowseScreen: View {
             .padding(.horizontal, Spacing.s3)
             .padding(.vertical, Spacing.s1)
             .foregroundStyle(on ? Color.brandOnSecondary : Color.brandText)
-            .background(on ? Color.brandSecondary : Color.brandSurface, in: Capsule())
+            .background(on ? Color.brandSecondary : Color.brandSurfaceAlt, in: Capsule())
     }
 }
 
@@ -838,6 +868,12 @@ struct EpisodeScreen: View {
         let genre = show?.genre ?? episode.seriesGenre
         let onAir = Grammar.onAirOf(detail.credits)
         let downloadState = downloads.record(for: episode.id)?.state
+        let offline = !catalog.isOnline && downloadState != .downloaded
+        #if os(macOS)
+        let transcript = false
+        #else
+        let transcript = episode.transcriptURL != nil
+        #endif
         return PageBody(measure: 960) {
             PageSection {
                 ItemHeadBoard(kicker: ItemKicker.show(episode.seriesName, key: episode.seriesKey),
@@ -890,34 +926,43 @@ struct EpisodeScreen: View {
                     ReadScriptControl(access: access)
                         .gridRow(.words, top: 0)
                 }
-                if downloadState != nil { DownloadControl(detail: detail) }
-                #if !os(macOS)
-                if episode.transcriptURL != nil {
-                    Button {
-                        transcriptOpen = true
-                    } label: {
-                        Label(Transcript.label, systemImage: "text.quote")
+            }
+
+            // Filled rows are a section of their own (iOS-DESIGN §3.6h): under clear rows the card has no top corners.
+            if downloadState != nil || transcript || offline || (isCurrent && player.errorMessage != nil) {
+                PageSection {
+                    if downloadState != nil { DownloadControl(detail: detail) }
+                    #if !os(macOS)
+                    if transcript {
+                        Button {
+                            transcriptOpen = true
+                        } label: {
+                            Label(Transcript.label, systemImage: "text.quote")
+                        }
                     }
-                }
-                #endif
-                if !catalog.isOnline && downloads.record(for: episode.id)?.state != .downloaded { OfflineNotice() }
-                if isCurrent, let message = player.errorMessage {
-                    Label(message, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(Color.semanticError)
+                    #endif
+                    if offline { OfflineNotice() }
+                    if isCurrent, let message = player.errorMessage {
+                        Label(message, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(Color.semanticError)
+                    }
                 }
             }
 
             if lead != nil {
-                PageSection {
-                    NavigationLink(value: Route.series(episode.seriesKey)) {
-                        GrammarRow(visual: .window(lead, name: episode.seriesName, genre: genre), title: episode.seriesName, sub: showFacts)
-                    }
-                    .playRowLink()
-                    .pageRow()
-                    PictureCredit(arts: [lead], slot: 48)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                let showRow = NavigationLink(value: Route.series(episode.seriesKey)) {
+                    GrammarRow(visual: .window(lead, name: episode.seriesName, genre: genre), title: episode.seriesName, sub: showFacts)
                 }
+                .playRowLink()
+                .pageRow()
+                #if os(macOS)
+                PageSection {
+                    showRow
+                    PictureCredit(arts: [lead], slot: 48)
+                }
+                #else
+                Section { showRow } footer: { PictureCredit(arts: [lead], slot: 48) }
+                #endif
             }
 
             if !onAir.isEmpty {
@@ -1306,12 +1351,17 @@ struct LibraryScreen: View {
     @Environment(AppStore.self) private var app
     @Environment(FollowedSeries.self) private var follows
     @AppStorage(LibrarySide.storageKey) private var sideName = LibrarySide.listening.rawValue
+    /// APP_LIBRARY_SIDE (DEBUG only): the side drawn until the person picks one; the stored choice is not written.
+    @State private var doorSide = LaunchDoors.current.librarySide.map(\.capitalized)
     @State private var inProgress: [EpisodeRow]?
     @State private var queued: [EpisodeRow] = []
     @State private var following: [SeriesRow] = []
     @State private var voicesOpen = false
 
-    private var side: LibrarySide { LibrarySide(rawValue: sideName) ?? .listening }
+    private var side: LibrarySide { LibrarySide(rawValue: doorSide ?? sideName) ?? .listening }
+    private var sideChoice: Binding<String> {
+        Binding(get: { side.rawValue }, set: { doorSide = nil; sideName = $0 })
+    }
 
     var body: some View {
         Group {
@@ -1322,13 +1372,12 @@ struct LibraryScreen: View {
                         CatalogUnavailableView()
                     }
                     Section {
-                        Picker("Library", selection: $sideName) {
+                        Picker("Library", selection: sideChoice) {
                             ForEach(LibrarySide.allCases) { Text($0.rawValue).tag($0.rawValue) }
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                        .gridRow()
                     }
                     switch side {
                     case .listening: listening(inProgress)

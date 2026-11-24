@@ -41,6 +41,8 @@ struct ScenePage: View {
     let hue: (PartID) -> Color
     var current: String?
     var lines = 3
+    /// Drawn as a page with its own ground and edge; a play's window is already the page (`PlayOpeningWindow`).
+    var framed = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s2) {
@@ -56,7 +58,7 @@ struct ScenePage: View {
                             #else
                             .font(TypeRamp.caption.weight(.semibold))
                             #endif
-                        Text(verbatim: speech.text)
+                        SaidText(speech: speech)
                             .font(TypeRamp.body)
                             .lineLimit(lines)
                             .multilineTextAlignment(.leading)
@@ -73,9 +75,56 @@ struct ScenePage: View {
         .padding(.horizontal, Spacing.s4)
         .padding(.vertical, Spacing.s3)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.printGround, in: RoundedRectangle(cornerRadius: 4))
-        .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(Color.printEdge, lineWidth: 1) }
+        .background(framed ? Color.printGround : .clear, in: RoundedRectangle(cornerRadius: 4))
+        .overlay { if framed { RoundedRectangle(cornerRadius: 4).strokeBorder(Color.printEdge, lineWidth: 1) } }
         .accessibilityLabel("The opening")
+    }
+}
+
+/// An opening speech's words: prose as one run, verse a line to a printed line, the part of a line that turns over
+/// indented so it never reads as a line of its own (PLAYS-DESIGN §2.7 rule 10).
+struct SaidText: View {
+    let speech: OpeningSpeech
+
+    var body: some View {
+        if let verse = speech.verse {
+            Text(verbatim: "").verseLines(verse)
+                .textRenderer(TurnedLines())
+                .padding(.trailing, TurnedLines.indent)
+        } else {
+            Text(verbatim: speech.text)
+        }
+    }
+}
+
+/// Marks the word a printed verse line begins with.
+private struct VerseLineStart: TextAttribute {}
+
+private extension Text {
+    /// The lines as one `Text`, each line's first word marked so the renderer can tell it from a turned-over part.
+    func verseLines(_ rows: [String]) -> Text {
+        var out = self
+        for (i, row) in rows.enumerated() {
+            let word = String(row.prefix { !$0.isWhitespace })
+            let rest = Text(verbatim: String(row.dropFirst(word.count)) + (i + 1 < rows.count ? "\n" : ""))
+            out = Text("\(out)\(Text(verbatim: word).customAttribute(VerseLineStart()))\(rest)")
+        }
+        return out
+    }
+}
+
+/// Draws a laid-out line that no printed line begins moved in by an em: the turned-over part of the line above. The
+/// room it moves into is the text's trailing padding.
+private struct TurnedLines: TextRenderer {
+    static let indent: CGFloat = 16
+    var displayPadding: EdgeInsets { EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: Self.indent) }
+
+    func draw(layout: Text.Layout, in context: inout GraphicsContext) {
+        for line in layout {
+            var copy = context
+            if line.first?[VerseLineStart.self] == nil { copy.translateBy(x: Self.indent, y: 0) }
+            copy.draw(line)
+        }
     }
 }
 

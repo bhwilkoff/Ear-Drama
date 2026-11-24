@@ -111,6 +111,8 @@ final class AppStore {
     var readerDoor: ReaderDoor?
     /// A launch door's play: its cast sheet opens (DEBUG doors only).
     var productionDoor: String?
+    /// APP_START_PLAY: the play whose own page opens on Record (DEBUG doors only).
+    var playDoor: String?
 
     /// APP_START_ALONG: the finished drama whose page presses Listen once it has loaded; the page clears it.
     var alongDoor: String?
@@ -282,11 +284,12 @@ final class AppStore {
         if doors.mute { isMuted = true }
         if let tab = doors.startTab { post(.tab(tab)) }
         if let item = doors.startItem {
-            post(.item(item))
+            if !doors.miniPlayer { post(.item(item)) }
             if doors.autoplay { post(.play(item)) }
         }
-        if doors.autoplay { isPlayerPresented = true }
+        if doors.autoplay && !doors.miniPlayer { isPlayerPresented = true }
         if doors.sleepMenu { isSleepMenuPresented = true }
+        playDoor = doors.play
         productionDoor = doors.production
         if let room = doors.readRoom, let code = ReadCore.normalizeCode(room) {
             post(.readRoom(code, screen: doors.readScreen))

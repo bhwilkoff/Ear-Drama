@@ -156,7 +156,13 @@ web app follows today.
      print ground: the play's first four speeches, each its role's name
      (caption, strong) over its said words (at most three lines), a 3 px
      rule in the part's hue at its left (`PlaysCore.partHue`). The words are
-     the play's own (`PlaysCore.openingOf`); no caption, no blurb. Then one
+     the play's own (`PlaysCore.openingOf`); no caption, no blurb. Wherever an
+     opening is drawn (here, a play tile's window, a play page's head), **verse
+     keeps its printed lines**, a turned-over part indented, and prose keeps
+     none (B15b, 2026-11-24): the reader's own detection (`ReaderCore.verseRows`,
+     `isVerse`; PLAYS-DESIGN §2.7 rule 10), never a second one; the voice is
+     still given the words in one piece. A text whose breaks were lost before
+     the app sees it is prose everywhere, the reader included. Then one
      button row: **Try a line** (ink, the microphone icon) begins a
      production for the voice that answers (the second speaker of the
      opening, else the second part, `Studio.begin`, which reuses this
@@ -1831,7 +1837,12 @@ web app follows today.
      height from the projection: wide (over `API.wideAspect`, 1.15) is a plate over the words at every
      width, full board width, at most 360 px tall on a phone and 440 from 600 px, sitting at the
      board's start when the cap binds; upright or square stands in the window's place at most 400 px
-     tall (and at most 320 wide from 600 px). Never cropped, never barred, graded as everywhere (the
+     tall (and at most 320 wide from 600 px). **A picture over the words that its cap would leave at
+     85% of the board's width or more spans the board instead** (B15b, 2026-11-24: This Is Your FBI left
+     a 13 pt strip of board on an iPhone 12, which reads as a mistake): the cap is lifted, at most by
+     1/0.85, and nothing is cropped; under 85% it stands at the board's start as before, the board
+     plainly beside it. `ItemLead.nearFill` (Apple, golden cases in `ItemLeadTests`), the
+     `.g-head-hero .g-shaped` width here (`tools/web_fit_pages.py` series-nearfill). Never cropped, never barred, graded as everywhere (the
      same picture as Home's hero). Its credit, when its license asks, is the line under the board. A
      picture with no published size or a short side under 160 px is not shown; one that fails to load
      gives way to the label.

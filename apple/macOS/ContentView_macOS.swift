@@ -62,6 +62,12 @@ struct ContentView_macOS: View {
             player.togglePlayPause()
             return .handled
         }
+        .task(id: store.playDoor) {
+            guard let id = store.playDoor else { return }
+            store.playDoor = nil
+            store.selectedTab = .record
+            store.push(PlayRoute.script(id))
+        }
         .task(id: store.productionDoor) {
             guard let id = store.productionDoor else { return }
             store.productionDoor = nil

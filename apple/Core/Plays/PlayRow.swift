@@ -85,7 +85,7 @@ nonisolated struct PlayRow: Codable, Hashable, Sendable, Identifiable, PlayListi
         indexMinutes = script.minutes
         rights = Rights(bucket: script.rights.bucket, evidence: script.rights.evidence)
         source = script.source
-        openingIndex = script.opening(n: 2).map { Speech(role: $0.name, text: $0.text) }
+        openingIndex = script.opening(n: 2).map { Speech(role: $0.name, text: $0.verse?.joined(separator: "\n") ?? $0.text) }
     }
 
     var voices: Int { indexVoices ?? 0 }

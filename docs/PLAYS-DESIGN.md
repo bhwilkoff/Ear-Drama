@@ -291,7 +291,8 @@ macOS-DESIGN §4.7, ANDROID-DESIGN §4.17; tvOS-DESIGN §4.13 is a read-along pa
    - **Verse keeps its lines**: a speech is verse when every row after a printed break starts
      with a capital and its rows are not mostly 60 characters or longer; one row per printed
      line with a turnover indent, a printed indent kept; prose breaks reflow as spaces. Never
-     one verse row alone at a page's foot or head.
+     one verse row alone at a page's foot or head. An opening drawn outside the reader (Today's
+     Scene, a play's window) uses this detection (`verseRows`) and keeps the same lines.
    - **A direction inside a speech**: italic, muted, in upright parentheses the page adds (never
      in the text). A short italic piece between said words that run on in lowercase is the
      speaker's emphasis and is drawn as said.

@@ -30,8 +30,15 @@ struct ContentView_iOS: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
+        .modifier(PlayerAccessory())
         .modifier(HapticFeedback_iOS())
         .modifier(PlayerPresenter())
+        .task(id: store.playDoor) {
+            guard let id = store.playDoor else { return }
+            store.playDoor = nil
+            store.selectedTab = .record
+            store.push(PlayRoute.script(id))
+        }
         .task(id: store.productionDoor) {
             guard let id = store.productionDoor else { return }
             store.productionDoor = nil
@@ -91,27 +98,58 @@ private struct PlayerPresenter: ViewModifier {
     }
 }
 
-/// The mini player sits inside each tab's stack, above the tab bar, on every
-/// supported iOS. (The iOS 26 tab accessory would change the TabView's identity
-/// when playback starts and reset every tab's stack.) The offline line sits
-/// above it (iOS-DESIGN §7.2).
+/// The mini player as the tab bar's own accessory on iOS 26.1 and later (iOS-DESIGN §5.2): the system places it, gives
+/// it the glass and the scroll-edge fade, and insets every scroll view for it. `isEnabled` keeps the TabView's identity
+/// when playback starts, which the 26.0 form did not (§10.1). In a short window (a phone on its side) the tab bar
+/// minimizes on a scroll down and the accessory joins it in one row.
+private struct PlayerAccessory: ViewModifier {
+    @Environment(AudioPlayer.self) private var player
+    @Environment(\.verticalSizeClass) private var height
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.1, *) {
+            content
+                .tabViewBottomAccessory(isEnabled: player.item != nil) { MiniPlayerAccessory_iOS() }
+                .tabBarMinimizeBehavior(height == .compact ? .onScrollDown : .automatic)
+        } else {
+            content
+        }
+    }
+}
+
+/// Before iOS 26.1 the mini player sits inside each tab's stack, above the tab bar (the 26.0 accessory would change the
+/// TabView's identity when playback starts and reset every tab's stack). The offline line sits here on every iOS
+/// (iOS-DESIGN §7.2).
 private struct MiniPlayerInset: ViewModifier {
     @Environment(AudioPlayer.self) private var player
     @Environment(CatalogStore.self) private var catalog
 
     @State private var barHeight: CGFloat = 0
 
+    /// The bar's height where it is drawn here; a card's breathing room above the accessory, which the system already
+    /// insets for; else the system's own.
+    private var bottomMargin: CGFloat? {
+        if barHeight > 0 { return MiniPlayerInsetRule.scrollMargin(barHeight: barHeight) }
+        return player.item != nil ? Spacing.s3 : nil
+    }
+
+    /// The player draws here only where the tab bar cannot carry it.
+    private var playerHere: Bool {
+        if #available(iOS 26.1, *) { return false }
+        return player.item != nil
+    }
+
     /// The inset alone left the last rows of every list under the bar (iPhone 12, 2026-10-31: Library's
     /// Take-down row and Stations' schedule line could not be scrolled into view), so the bar's measured
     /// height is also the scroll views' bottom margin.
     func body(content: Content) -> some View {
         content
-            .contentMargins(.bottom, MiniPlayerInsetRule.scrollMargin(barHeight: barHeight), for: .scrollContent)
+            .contentMargins(.bottom, bottomMargin, for: .scrollContent)
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if player.item != nil || !catalog.isOnline {
+                if playerHere || !catalog.isOnline {
                     VStack(spacing: 0) {
                         OfflineLine()
-                        if player.item != nil {
+                        if playerHere {
                             MiniPlayer_iOS()
                                 .padding(.vertical, Spacing.s2)
                         }

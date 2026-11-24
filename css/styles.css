@@ -564,8 +564,10 @@ a.g-field-cell:hover { background: var(--color-surface-alt); }
 .g-head-hero { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0; overflow: hidden; }
 .g-head-art { display: block; min-width: 0; }
 .g-head-hero .g-head-art > .g-window { width: 100%; border-radius: 0; }
-.g-head-hero .g-head-art > .g-shaped { width: min(100%, calc(400px * var(--a))); }
-.g-head-hero[data-shape="wide"] .g-head-art > .g-shaped { width: min(100%, calc(360px * var(--a))); }
+/* A cap that would leave a strip of board under 15% of its width is lifted (6.4g rule 2): the second
+   term of max() is huge exactly when the capped width reaches 85% of the board. */
+.g-head-hero .g-head-art > .g-shaped { --cap: calc(400px * var(--a)); width: min(100%, max(var(--cap), (var(--cap) - 85%) * 9999)); }
+.g-head-hero[data-shape="wide"] .g-head-art > .g-shaped { --cap: calc(360px * var(--a)); }
 .g-head-hero > .g-head-text { padding: var(--space-4) var(--space-4) 0; }
 .g-head-hero > .g-head-strip { width: calc(100% - 2 * var(--space-4)); margin: var(--space-3) var(--space-4) var(--space-4); }
 .g-head-hero > .g-head-text:last-child { padding-bottom: var(--space-4); }
@@ -584,7 +586,7 @@ a.g-field-cell:hover { background: var(--color-surface-alt); }
   .g-head-hero > .g-head-text:last-child { padding-bottom: var(--space-6); }
   .g-head-hero > .g-head-strip { width: calc(100% - 2 * var(--space-6)); margin: var(--space-3) var(--space-6) var(--space-6); align-self: end; }
   .g-head-hero:not([data-shape="wide"]) > .g-head-strip { grid-column: 2; }
-  .g-head-hero[data-shape="wide"] .g-head-art > .g-shaped { width: min(100%, calc(440px * var(--a))); }
+  .g-head-hero[data-shape="wide"] .g-head-art > .g-shaped { --cap: calc(440px * var(--a)); width: min(100%, max(var(--cap), (var(--cap) - 85%) * 9999)); }
   .g-head-hero .g-head-art > .g-window.g-round { width: 288px; margin: var(--space-4); }
 }
 @media (min-width: 1024px) { .g-head-hero .g-head-name[data-step="1"] { font-size: var(--type-page-title-size); } }
@@ -1427,6 +1429,7 @@ html.tv .lib-voices { display: none; }
 .pl-scene-sp::before { content: ""; position: absolute; left: 0; top: 3px; bottom: 3px; width: 3px; border-radius: 2px; background: var(--hue); }
 .pl-scene-who { display: block; font-weight: var(--type-body-strong-weight); font-size: var(--type-caption-size); letter-spacing: 0.04em; }
 .pl-scene-said { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.pl-verse-row { display: block; padding-left: 1em; text-indent: -1em; }
 .pl-scene-now { background: var(--color-surface-alt); border-radius: 2px; }
 @supports (color: color-mix(in srgb, red 50%, blue)) { .pl-scene-now { background: color-mix(in srgb, var(--hue) 14%, transparent); } }
 .pl-scene-actions { flex-wrap: nowrap; margin: var(--space-3) 0 0; padding-top: 0; }
