@@ -117,3 +117,6 @@ store words; radio-script rights rule; GRW request.
   b377a936. B8 (N13 titles) running; dry run before any publish.
 - 2026-11-23 17:30, tick 10: CI red "Apple design rules" at 54150de1: my b377a936 TV alignment edit broke a
   negative control's match string; fixed b90c7f4d (15/15). Guardrail added. B8 still running.
+- 2026-11-23 18:00, tick 11: B8 first pass (d653e01e, unmerged): 1,894 titles cleaned, 51/51 dry run green, but
+  it withheld 27 previously served episodes whose file names carry valid date codes (World's Fair 1939, Fred
+  Allen) and left fragments ("1st", "Torr"); sent back to compose from valid dates and guard fragments.
