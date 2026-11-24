@@ -28,6 +28,7 @@ from app_config import *  # app identity + calibrated thresholds
 import argparse
 import hashlib
 import json
+import net_retry
 import os
 import pathlib
 import sys
@@ -67,7 +68,7 @@ def call(path, method="GET", body=None, raw_ok=False):
         headers={"Authorization": f"Bearer {TOK}",
                  "Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req) as r:
+        with net_retry.urlopen(req) as r:
             text = r.read().decode()
             return json.loads(text) if text else {}
     except urllib.error.HTTPError as e:
@@ -82,7 +83,7 @@ def upload_bytes(op, data):
                                  data=data[op["offset"]:op["offset"] + op["length"]])
     for h in op.get("requestHeaders", []):
         req.add_header(h["name"], h["value"])
-    with urllib.request.urlopen(req) as r:
+    with net_retry.urlopen(req) as r:
         r.read()
 
 

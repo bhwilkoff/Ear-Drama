@@ -15,6 +15,7 @@ xcodebuild to sign). The generated .p12/.cer live under build/ (gitignored).
 import sys, os, time, json, base64, subprocess, tempfile, urllib.request, urllib.error
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import pyneeds; pyneeds.need("jwt")
+import net_retry
 import jwt
 
 TYPE = {"distribution": "DISTRIBUTION", "mac_installer": "MAC_INSTALLER_DISTRIBUTION"}
@@ -36,7 +37,7 @@ def api(method, path, body=None):
     req = urllib.request.Request("https://api.appstoreconnect.apple.com" + path, data=data,
             headers={"Authorization": f"Bearer {token()}", "Content-Type": "application/json"}, method=method)
     try:
-        r = urllib.request.urlopen(req, timeout=30)
+        r = net_retry.urlopen(req, timeout=30)
         return json.load(r) if r.length != 0 else {}
     except urllib.error.HTTPError as e:
         raise SystemExit(f"ASC API {method} {path} -> {e.code}: {e.read().decode()[:400]}")
