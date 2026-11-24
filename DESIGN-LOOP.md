@@ -365,7 +365,9 @@ the main thread reads the frames before anything merges. Left: N5, N7 to N10, N1
   Now Playing artwork on a short Android screen.
 
 ### E. Records
-- [ ] **N9 Parity audit.** PARITY shows 7 iPhone ✅ against a 50-test tap tier, and row "Background
+- [x] **N9 Parity audit** (2026-11-23, BACKLOG-LOOP B10: 12 cells promoted on named device runs, 4 ✅ without
+  evidence demoted, 1 row added, 1 orphan row moved into its table, 1 unclosed row fixed; Background play names
+  the 2026-11-01 background-audio check, lock screen still O1). PARITY shows 7 iPhone ✅ against a 50-test tap tier, and row "Background
   play" still says not seen on a device. Promote what the tap tier proves, nothing more.
 - [x] **N10 Housekeeping** (2026-11-23: .wrangler/ ignored; 187 merged agent branches and 11 clean merged worktrees removed). Add `.wrangler/` to `.gitignore`. Prune 100 `worktree-agent-*` branches and
   10 worktrees (2.6 GB; one is locked), reading each first: two show commits off main, but D3-3 landed
