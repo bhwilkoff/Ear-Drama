@@ -39,6 +39,8 @@ Mechanics:
   (lists set aside and restored); on 2026-11-23 it erased the owner's lists on the iPhone 12 and Duo.
 - Real devices only, never simulators. Muted; ask before anything audible. Never sleep a device, never
   kill the owner's running app. Check the device lease.
+- After any Apple screen edit run `python3 tools/test_apple_design_rules.py` (its negative controls match
+  source text; b377a936 broke one and CI caught it at 54150de1).
 - Store cadence: after a verified Apple or Android merge, bump, then dispatch
   `appstore-build-x27.yml` (platform=all, submit=false) and `play-release.yml` (track=internal).
 
@@ -113,3 +115,5 @@ store words; radio-script rights rule; GRW request.
   bar; both 3/3 identical on iPhone 12 (build 167, lists set aside). N12: tools/uitest_fixture.py picks shows by
   shape per run, seeded and logged. iPhone 12 Library empty after restore: expected, its lists were erased before
   b377a936. B8 (N13 titles) running; dry run before any publish.
+- 2026-11-23 17:30, tick 10: CI red "Apple design rules" at 54150de1: my b377a936 TV alignment edit broke a
+  negative control's match string; fixed b90c7f4d (15/15). Guardrail added. B8 still running.
