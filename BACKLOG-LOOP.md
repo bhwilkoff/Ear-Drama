@@ -178,3 +178,23 @@ store words; radio-script rights rule; GRW request.
   rewritten tests, Follow centering + landscape mini-player rows to fix with evidence); Duo home (Record indent);
   a signed-in teacher (class review); owner calls (Android Auto empty tabs, Kokoro re-export, Cloudflare
   analytics token). Restart with /loop Read BACKLOG-LOOP.md and run the next tick.
+- 2026-11-24 (owner stopped the loop; resume notes):
+  - **TestFlight 1.0.168 (169) did not ship** on the first try. Run 45341105789 was dispatched before the bump
+    was pushed, so it built 6b44ca36 (build 168, already uploaded) and refused. Redispatched from main
+    (be52506a, build 169): run 45405162430. Play internal 1.0.168 succeeded (versionCode 15), as did the
+    plays-library publish (45339119092). First thing on return: `gh run view 45405162430`. If green, 1.0.168
+    is on TestFlight. If red, read the "Archive + sign + upload" step.
+  - **Disk cleanup with owner approval: 21 GB to 50 GB free.**
+    - Removed: 6 clean agent worktrees and their merged branches, all build/dd-*, build/ship-mac,
+      build/uitest-dd, build/ipad-dbg, build/uitest-fixture, the Android build folders, all of
+      ~/Library/Developer/Xcode/DerivedData, the Gradle build cache, the CoreDevice install-delta cache,
+      the pip/uv/npm/Homebrew caches, and build/qa before 2026-11-23.
+    - The first Apple and Android builds will be cold (slower). `brew cleanup` also autoremoved 28 orphan
+      libraries; ffmpeg, tesseract, ocrmypdf and idevice_id still run.
+    - Kept: 7 worktrees with edits or unmerged commits (a43512d9, a9d0a55f, aaca8e45, ad5fd672, add47159,
+      ae2bffba, af0729c1). Review them before deleting. Also kept build/qa/ios-uitest-2026-11-23,
+      build/store-shots and build/store-video.
+  - **To restart:** `/loop Read BACKLOG-LOOP.md and run the next tick`, once the iPhone 12 Screen Time limit
+    is lifted, the Duo is home, or the owner answers one of "Waiting on the owner". Start with CI
+    (`gh run list --limit 10`). Never run the tap tier or APP_RESET_* doors on a build without b377a936 and
+    7ecdd3d8.

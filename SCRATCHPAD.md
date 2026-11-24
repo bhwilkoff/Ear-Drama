@@ -41,7 +41,7 @@
      for radio scripts is the owner's call.
   15. **Ask the Generic Radio Workshop** before any GRW script is used (the
      owner sends it; a draft is in `docs/outreach/grw-request.md`).
-- **Status (2026-11-23, 23:35)**: main is 1.0.168 (169), on TestFlight and Play internal. The backlog loop
+- **Status (2026-11-24)**: main is 1.0.168 (169). It is on Play internal; TestFlight was redispatched (run 45405162430) after the first run built the pre-bump commit. Loop stopped by the owner; resume notes are at the end of `BACKLOG-LOOP.md` State. Disk cleaned to 50 GB free (2026-11-24). The backlog loop
   (`BACKLOG-LOOP.md`) ran B1-B14: Apple Export row, Android seek stall, Worker deploy (DO alarm loop fixed),
   relay free-plan rules on every stack, web voice labels, device passes, class-room silence (bench), tap-tier
   harness, two catalog title passes (2,133 titles), Apple TV Share QR, parity audit, Gutenberg illustration
