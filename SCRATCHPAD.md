@@ -41,13 +41,13 @@
      for radio scripts is the owner's call.
   15. **Ask the Generic Radio Workshop** before any GRW script is used (the
      owner sends it; a draft is in `docs/outreach/grw-request.md`).
-- **Status (2026-11-23)**: main is 1.0.165 (TestFlight 166 on iPhone/iPad, Mac, Apple TV; Play internal
-  versionCode 12). Today: Apple Kokoro shipped; read along rewritten on every platform (word heard,
-  self-turning pages, speed); Library direction B everywhere (Decision 087); Android voices named by
-  their sound; a read room alarm loop that hit the Cloudflare Durable Object limit fixed and deployed
-  (cc301d92). Work now runs from `BACKLOG-LOOP.md` (all documented work; guardrails keep other sessions'
-  cleanup). Not verified: Apple TV shared dramas shelf, new-user Library on Duo and Pixel, read-along
-  controls pressed on Apple, the Export menu opened by hand.
+- **Status (2026-11-23, 23:35)**: main is 1.0.168 (169), on TestFlight and Play internal. The backlog loop
+  (`BACKLOG-LOOP.md`) ran B1-B14: Apple Export row, Android seek stall, Worker deploy (DO alarm loop fixed),
+  relay free-plan rules on every stack, web voice labels, device passes, class-room silence (bench), tap-tier
+  harness, two catalog title passes (2,133 titles), Apple TV Share QR, parity audit, Gutenberg illustration
+  markers. Stopped waiting on the owner: iPhone 12 Screen Time limit, the Duo, a signed-in teacher, and the
+  owner calls listed in BACKLOG-LOOP "Waiting on the owner". The tap tier's reset door erased the owner's lists
+  on the iPhone 12 (not signed in: unrecoverable) and Duo before b377a936/7ecdd3d8 fixed it.
 - **Catalog now**: published 2026-11-03 from the daily schedule; 6,794 series served, 1,708 with five
   or more episodes. Research database and caches: `catalog/README.md`.
 - **Open infrastructure**: `workflow-health.yml` and `retry-infra-failures.yml` run on schedule and

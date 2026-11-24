@@ -172,3 +172,9 @@ store words; radio-script rights rule; GRW request.
   6 stale UI tests rewritten (compiled; iPhone under Screen Time); Android foot Voices + About icons (Pixel
   frame read); plays parser drops "[Illustration]" lines keeping line ids (122 plays, 89,178 lines unchanged,
   493 marker lines dropped). Catalog publish dispatched. Disk 96% (17 GB free).
+- 2026-11-23 23:35, tick 21 (loop stopped): CI green at cadfa92a; 1.0.168 (169) bumped (d48214d4), TestFlight
+  45341105789 + Play internal 45341109592 dispatched; plays-library publish running. Everything left needs the
+  owner or a blocked device: iPhone 12 Screen Time limit (then re-run the tap tier: ShowArt, SiteLinks, the 6
+  rewritten tests, Follow centering + landscape mini-player rows to fix with evidence); Duo home (Record indent);
+  a signed-in teacher (class review); owner calls (Android Auto empty tabs, Kokoro re-export, Cloudflare
+  analytics token). Restart with /loop Read BACKLOG-LOOP.md and run the next tick.
