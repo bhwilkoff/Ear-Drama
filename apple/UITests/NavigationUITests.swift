@@ -110,8 +110,18 @@ final class NavigationUITests: DeviceTestCase {
 
     func testHomeThenBrowseKeepsEachTabsStack() throws {
         let app = launch(["APP_START_TAB": "home", "APP_DOOR_SECONDS": "600"])
-        XCTAssertTrue(tiles(app).firstMatch.waitForExistence(timeout: 30), "home tiles")
-        guard let a = firstHittable(app) ?? tiles(app).allElementsBoundByIndex.first(where: { $0.isHittable }) else { return XCTFail("no home tile") }
+        // Home leads with On the air, the dial and the doors (Decision 081); its tiles are the episode tiles of
+        // "Start a show" below them. A tile's body opens the episode; its corner Play is never pressed.
+        let homeTiles = app.descendants(matching: .any).matching(identifier: "episode-tile")
+        XCTAssertTrue(app.descendants(matching: .any)["home-dial"].waitForExistence(timeout: 30)
+                      || homeTiles.firstMatch.waitForExistence(timeout: 5), "Home drew")
+        var found: XCUIElement?
+        for _ in 0..<10 {
+            found = homeTiles.allElementsBoundByIndex.first(where: { onScreen(app, $0) })
+            if found != nil { break }
+            app.scrollUp()
+        }
+        guard let a = found else { return XCTFail("no home tile") }
         let aName = name(a)
         a.tap()
         settle(app, from: "Ear Drama")
