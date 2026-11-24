@@ -49,12 +49,21 @@ class PlaybackService : MediaLibraryService() {
         super.onCreate()
         val container = (application as AppNameApplication).container
         val engine = container.playback
+        val carStations = CarStations(
+            tonight = { container.api.tonight() },
+            stations = { container.api.stations() },
+            db = { container.catalog.awaitDb() },
+            live = container.live,
+        )
         val library = CarLibrary(
             inProgressIds = { container.user.inProgress().map { it.episodeId } },
             rows = { ids -> container.catalog.awaitDb()?.episodes(ids) ?: emptyList() },
             downloadedIds = {
                 container.downloads.sortedRecords.filter { it.state == DownloadRecord.State.Downloaded }.map { it.episodeId }
             },
+            db = { container.catalog.awaitDb() },
+            followed = { container.user.followed() },
+            stations = { carStations.list() },
         )
         val open = PendingIntent.getActivity(
             this,
@@ -72,7 +81,7 @@ class PlaybackService : MediaLibraryService() {
             .setDisplayName("Forward 30 seconds")
             .setSlots(CommandButton.SLOT_FORWARD)
             .build()
-        session = MediaLibrarySession.Builder(this, engine.player, LibraryCallback(library, engine))
+        session = MediaLibrarySession.Builder(this, engine.player, LibraryCallback(library, engine, carStations, "$packageName.carart"))
             .setSessionActivity(open)
             .setMediaButtonPreferences(listOf(back, forward))
             .build()
@@ -107,6 +116,8 @@ class PlaybackService : MediaLibraryService() {
     private inner class LibraryCallback(
         private val library: CarLibrary,
         private val engine: PlaybackEngine,
+        private val carStations: CarStations,
+        private val art: String,
     ) : MediaLibrarySession.Callback {
 
         override fun onGetLibraryRoot(
@@ -114,7 +125,7 @@ class PlaybackService : MediaLibraryService() {
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?,
         ): ListenableFuture<LibraryResult<MediaItem>> =
-            Futures.immediateFuture(LibraryResult.ofItem(library.root.toMediaItem(), params))
+            Futures.immediateFuture(LibraryResult.ofItem(library.root.toMediaItem(art), params))
 
         override fun onGetChildren(
             session: MediaLibrarySession,
@@ -128,7 +139,7 @@ class PlaybackService : MediaLibraryService() {
             if (children == null) {
                 LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
             } else {
-                LibraryResult.ofItemList(children.map { it.toMediaItem() }, params)
+                LibraryResult.ofItemList(children.map { it.toMediaItem(art) }, params)
             }
         }
 
@@ -137,11 +148,49 @@ class PlaybackService : MediaLibraryService() {
             browser: MediaSession.ControllerInfo,
             mediaId: String,
         ): ListenableFuture<LibraryResult<MediaItem>> = future {
-            library.item(mediaId)?.let { LibraryResult.ofItem(it.toMediaItem(), null) }
+            library.item(mediaId)?.let { LibraryResult.ofItem(it.toMediaItem(art), null) }
                 ?: LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
         }
 
-        /** The car's play request: the same queue the phone's Play button builds (R3), resumed where it stopped. */
+        /** A media button or a car's resume with nothing loaded: where the listener left off. */
+        @OptIn(UnstableApi::class)
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            isForPlayback: Boolean,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = future {
+            val id = library.resumeTarget() ?: throw UnsupportedOperationException("Nothing in progress")
+            val queue = engine.takeQueue(id) ?: throw UnsupportedOperationException("Not in the catalog: $id")
+            MediaSession.MediaItemsWithStartPosition(queue.items, 0, queue.startPositionMs)
+        }
+
+        override fun onSearch(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<Void>> = future {
+            val count = library.search(query).count { it.playable || it.browsable }
+            session.notifySearchResultChanged(browser, query, count, params)
+            LibraryResult.ofVoid()
+        }
+
+        override fun onGetSearchResult(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = future {
+            LibraryResult.ofItemList(library.search(query, page, pageSize).map { it.toMediaItem(art) }, params)
+        }
+
+        /**
+         * The car's play request: a station tunes in at the clock's position (the app's live listening); an
+         * episode builds the same queue the phone's Play button builds (R3), resumed where it stopped; a
+         * spoken request (no id, a search query) plays what [CarLibrary.voiceTarget] finds.
+         */
         @OptIn(UnstableApi::class)
         override fun onSetMediaItems(
             mediaSession: MediaSession,
@@ -150,9 +199,18 @@ class PlaybackService : MediaLibraryService() {
             startIndex: Int,
             startPositionMs: Long,
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = future {
-            val id = mediaItems.getOrNull(startIndex.coerceAtLeast(0))?.mediaId
-                ?: throw UnsupportedOperationException("No episode to play")
-            val queue = engine.takeQueue(id) ?: throw UnsupportedOperationException("Not in the catalog: $id")
+            val asked = mediaItems.getOrNull(startIndex.coerceAtLeast(0))
+            var id = asked?.mediaId.orEmpty()
+            if (id.isBlank()) {
+                id = library.voiceTarget(asked?.requestMetadata?.searchQuery)
+                    ?: throw UnsupportedOperationException("Nothing to play")
+            }
+            val queue = if (CarLibrary.isStation(id)) {
+                val tuned = carStations.tune(id) ?: throw UnsupportedOperationException("Nothing is on that station now")
+                engine.takeQueue(tuned.episodeId, startMs = tuned.startMs, queue = false)
+            } else {
+                engine.takeQueue(id)
+            } ?: throw UnsupportedOperationException("Not in the catalog: $id")
             MediaSession.MediaItemsWithStartPosition(queue.items, 0, queue.startPositionMs)
         }
     }

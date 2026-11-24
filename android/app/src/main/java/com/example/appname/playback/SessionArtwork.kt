@@ -22,8 +22,10 @@ object SessionArtwork {
         return builder.setArtworkData(labelPng(context, row), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
     }
 
-    fun labelPng(context: Context, row: EpisodeRow, side: Int = 512): ByteArray {
-        val bitmap = labelBitmap(context, row.labelItem(), side).asAndroidBitmap()
+    fun labelPng(context: Context, row: EpisodeRow, side: Int = 512): ByteArray = labelPng(context, row.labelItem(), side)
+
+    fun labelPng(context: Context, item: com.example.appname.data.LabelItem, side: Int = 512): ByteArray {
+        val bitmap = labelBitmap(context, item, side).asAndroidBitmap()
         return ByteArrayOutputStream().use { out ->
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             out.toByteArray()

@@ -127,6 +127,13 @@
                 tools:node="remove"/>
         </provider>
 
+        <!-- Android Auto reads an item's picture through a content address, never a web one (CarArtProvider). -->
+        <provider
+            android:name=".playback.CarArtProvider"
+            android:authorities="${applicationId}.carart"
+            android:exported="true"
+            tools:ignore="ExportedContentProvider"/>
+
         <!-- A finished play's mix.m4a, shared through the share sheet only when the person exports it. -->
         <provider
             android:name="androidx.core.content.FileProvider"
