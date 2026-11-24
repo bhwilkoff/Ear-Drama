@@ -163,6 +163,10 @@ ENTRANCE = re.compile(r"^\s*_?(Enter|Re-?enter|Exit|Exeunt|Manet|Flourish|Sennet
                       r"Thunder|Curtain|Scene|Act)\b", re.I)
 DIR_SPAN = re.compile(r"\[[^\]]*\]|\([^)]*\)|(?<![A-Za-z0-9])_[^_\n]+_(?![A-Za-z0-9])")
 DIR_SPAN_BRACKETS = re.compile(r"\[[^\]]*\]|\([^)]*\)")
+# Where the book printed a picture ("[Illustration]", "[Illustration: caption]"): not a word of the play.
+ILLUSTRATION_PART = re.compile(r"_?Illustrations?(?:\s+omitted\.?|\s*[:.\-][^\]]*)?_?", re.I)
+# A caption that runs over a blank line leaves its first paragraph unclosed ("[Illustration: THE POWER OF DARKNESS.").
+ILLUSTRATION_ONLY = re.compile(r"(?:\s*_?\[\s*%s\s*(?:\]_?|$))+\s*" % ILLUSTRATION_PART.pattern, re.I)
 
 
 def clean_html(raw):
@@ -934,6 +938,10 @@ def parse(raw, kind, title=None):
         if it["kind"] == "other":
             unclassified.append(it["source"])
             continue
+        if it["kind"] != "speech" and ILLUSTRATION_ONLY.fullmatch(it["source"]):
+            if not it.get("split"):
+                numbered, letters = numbered + 1, 0  # its id stays used, so the lines after keep theirs
+            continue
         if it.get("split"):
             letters += 1
             lid = f"L{numbered:04d}{_letters(letters)}"
@@ -944,7 +952,8 @@ def parse(raw, kind, title=None):
         sections.extend({"line": lid, "source": src} for src in pending)
         pending = []
         if it["kind"] == "speech":
-            parts = (it.get("lead") or []) + split_parts(it["text"], italic=kind == "stage")
+            parts = [p for p in (it.get("lead") or []) + split_parts(it["text"], italic=kind == "stage")
+                     if "say" in p or not ILLUSTRATION_PART.fullmatch(next(iter(p.values())).strip())]
             em = [k for k, p in enumerate(parts) if p.pop("_em", False)]
             r = roles.setdefault(it["role"], {"name": it["role"], "lines": 0, "words": 0})
             r["lines"] += 1

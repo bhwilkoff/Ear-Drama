@@ -800,6 +800,30 @@ def a_direction_keeps_its_italic_marks_balanced():
 
 
 @case
+def a_gutenberg_illustration_marker_is_never_a_line_and_takes_no_ids_from_the_lines_after():
+    # real shape: gut-20989-5 opened with a direction line "[Illustration]", which the reader showed as
+    # "Illustration"; it marks where the book printed a picture, and is not a word of the play
+    marks = ["[Illustration]", "_[Illustration: THE KING ENTERS]_", "ROY. Come with me. [Illustration] Now.",
+             "JACK (_rising_). Go.", "[ILLUSTRATION: A ROOM.]\n\n[Illustration]", "GRACE. The end.",
+             "[Illustration: THE POWER OF DARKNESS. ACT I.", "GRACE. Again.", "[illustration omitted]", "ROY. Last."]
+    stand_in = [m.replace("[Illustration]", "[He sits.]").replace("[Illustration: THE KING ENTERS]", "[Exit.]")
+                .replace("[ILLUSTRATION: A ROOM.]", "[A room.]").replace("[Illustration: THE POWER OF DARKNESS. ACT I.", "[A curtain.").replace("[illustration omitted]", "[Dark.]")
+                for m in marks]
+    r, before = P.parse(_stage_play(marks), "stage"), P.parse(_stage_play(stand_in), "stage")
+    for l in r["lines"]:
+        assert "llustration" not in l["source"].lower() or l["kind"] == "speech", l
+        for p in l.get("parts") or []:
+            assert "llustration" not in next(iter(p.values())).lower(), l
+    assert _speech(r, "ROY. Come with")["parts"] == [{"say": "Come with me."}, {"say": "Now."}], \
+        _speech(r, "ROY. Come with")["parts"]
+    kept = {l["source"]: l["id"] for l in r["lines"]}
+    for l in before["lines"]:
+        if l["source"] in kept:
+            assert kept[l["source"]] == l["id"], (l["source"], kept[l["source"]], l["id"])
+    assert len(before["lines"]) - len(r["lines"]) == 6, (len(before["lines"]), len(r["lines"]))
+
+
+@case
 def a_heading_with_more_on_its_line_is_a_direction_not_a_speaker():
     # real shapes: gut-35242 "FOURTH SCENE. A haymow. ...", gut-35342 "TABLEAU II. A Saloon ...", gut-63198 "TABLEAU."
     r = P.parse(_stage_play(["FOURTH SCENE. A haymow. Melchior lies on his back in the fresh hay.", "GRACE. Hello.",
