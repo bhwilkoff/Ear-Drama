@@ -137,6 +137,8 @@ struct FinishedDramaScreen: View {
     @State private var missing: String?
     @State private var listen = FinishedListen()
     @State private var canFollow = false
+    /// The play's script: the bundle's at once, else the published library's when it arrives.
+    @State private var script: PlayScript?
     @Environment(\.openURL) private var openURL
     #if os(iOS) || os(macOS)
     @Environment(\.openWindow) private var openWindow
@@ -161,8 +163,13 @@ struct FinishedDramaScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .task(id: id) { await read() }
-        .task(id: play?.archiveURL) {
-            guard let play, let script = FinishedTiles.script(for: play) else { canFollow = false; return }
+        .task(id: play?.scriptID) {
+            guard let play else { return }
+            script = FinishedTiles.script(for: play)
+            if script == nil { script = (try? await LibraryScripts.script(id: play.scriptID)) ?? nil }
+        }
+        .task(id: "\(play?.archiveURL ?? "")#\(script?.revision ?? "")") {
+            guard let play, let script else { canFollow = false; return }
             #if DEBUG
             canFollow = FinishedTiles.rehearsal(play.id) != nil ? true : await FinishedListen.canFollow(play, script: script)
             #else
@@ -192,8 +199,7 @@ struct FinishedDramaScreen: View {
     }
 
     private func page(_ play: FinishedPlay) -> some View {
-        let script = FinishedTiles.script(for: play)
-        return ScrollView {
+        ScrollView {
             VStack(alignment: .leading, spacing: Spacing.s4) {
                 #if os(tvOS)
                 HeadBoard(kicker: script.map { "Ear drama \u{00B7} \($0.kind == "radio" ? "Radio play" : "Stage play")" } ?? "Ear drama",
@@ -268,7 +274,7 @@ struct FinishedDramaScreen: View {
         player.pause()
         listen.muted = app.isMuted
         #if DEBUG && os(tvOS)
-        if FinishedTiles.rehearsal(play.id) != nil, let script = FinishedTiles.script(for: play) {
+        if FinishedTiles.rehearsal(play.id) != nil, let script {
             listen.rehearse(script)
             return
         }
@@ -276,7 +282,7 @@ struct FinishedDramaScreen: View {
         #if os(tvOS)
         // The TV's panel follows the files at the read-along's speed; the phone and Mac follow in the reader.
         listen.speed = ReadAlong.savedSpeed()
-        await listen.start(archiveURL: play.archiveURL, script: canFollow ? FinishedTiles.script(for: play) : nil, revision: play.scriptRevision)
+        await listen.start(archiveURL: play.archiveURL, script: canFollow ? script : nil, revision: play.scriptRevision)
         #else
         await listen.start(archiveURL: play.archiveURL)
         #endif
