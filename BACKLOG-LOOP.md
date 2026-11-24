@@ -101,7 +101,8 @@ in the daytime (back about 21:00, so device work on it goes first).
   prose; unseen on the Duo: closed, Library Making, a play page. With it the R4-0 follow-ups on Apple and Android
   (class picker reads the library; words for `script_not_publishable`; the bundle tried when the library is newer).
 - [ ] **B15c Left from B15b.** Apple rooms and shared screens of library plays: done (`LibraryScripts.swift`; seen on Ben
-  Bedroom, gut-3012); left: `FinishedTiles.script(for:)`, tvOS Surprise, and Android and web checked for the same. Android: the 85% board rule (`ItemLead.kt` `window`). The sync line
+  Bedroom, gut-3012); left: `FinishedTiles.script(for:)`, tvOS Surprise. Android done (library scripts by revision, 85% rule, opening tiles,
+  landscape bars; two-pane queue built, unseen: no tablet). The sync line
   names the day on Apple (done; web and Android already did). `web_fit_home.py` fails by
   day ("no On the air block", ten day-history failures on unmodified HEAD): make it deterministic. Catalog: gut-49993-1
   (and the scene pool) lost its verse breaks; `opening_of` flattens breaks. Duo closed and portrait unseen.
@@ -266,3 +267,4 @@ GRW request sent or not.
   license as "No part" lines (cut at the `*** START/END OF` markers in the grammar, goldens on three stacks; "Leave out
   everything above / below"); the web's play-page opening window clips a fourth speaker's name at 768 and 1440. Swift and
   Kotlin `layoutOf` need the own-script directions rule in R4-6/7.
+- 2026-11-24 17:15: B15c Android merged (two mutants caught by the main thread; frames read: gut-3012 in a room on the Pixel and the Google TV). Tiles showed "BETWEEN" and "YOUNG OFF" as speakers: sent to B16. Not seen: a stub take across a rotation, Browse and Library in landscape after the fix.
