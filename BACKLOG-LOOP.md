@@ -68,17 +68,25 @@ Mechanics:
 - [x] **B9 PARITY gaps** (e71aa5f7; Android Auto Stations and Browse are empty folders in the car: owner call, car review). Apple TV share as a QR code; Android Auto library tree beyond the stub.
 - [x] **B10 Parity audit (N9)** (c0eb3c07). Every shipped feature a row, every cell honest; last, after B1-B9.
 
-- [ ] **B11 Follow-ups from the audit.** A full iPhone 12 tap-tier run on a build with 7ecdd3d8 (lists set
+- [x] **B11 Follow-ups from the audit** (e4b44c28; iPhone tap tier partly BLIND behind Screen Time). A full iPhone 12 tap-tier run on a build with 7ecdd3d8 (lists set
   aside and kept across a test's relaunch) to settle the pre-redesign iOS cells (SiteLinks via About, ShowArt,
   Browse, Detail/Person); a real-browser web pass (Safari on the Mac, Chrome on the Pixel) for web cells.
 - [x] **B12 Catalog follow-ups** (6aefa199, publish dispatched). Roman numerals cased as words ("Henry Iii" -> "Henry III"); all-caps titles
   (Cisco Kid, Escape) only where certain (acronyms kept). Dry run first.
-- [ ] **B13 Device follow-ups.** Duo Record "Plays" indent (when the Duo is home); Apple class review screen;
+- [ ] **B13 Device follow-ups** (Pixel door, TV foot done 2026-11-23; left: Duo indent, class review needs sign-in). Duo Record "Plays" indent (when the Duo is home); Apple class review screen;
   Pixel empty-library door frame; Apple TV foot alignment frame.
+
+- [ ] **B14 From the tap-tier run.** Harness: tools/ios_uitest.py matches overlay frames by bare method name
+  (key on Class/test), keeps running behind a Screen Time overlay (stop and mark BLIND), no nice/-jobs. Stale
+  tests to rewrite for today's screens: Detail x2 (person tiles; Recordings row), Queue (direction B empty side),
+  Ink on iPhone (iPad only), LayoutSweep testCreate, Navigation testHomeThenBrowse. Real UI defects: Follow
+  button content off center (LayoutSweep testActionRowsAreCentered); iPhone landscape rows straddle the mini
+  player. Android Library foot: Voices and About lack leading icons. Web reader: Gutenberg "[Illustration]"
+  residue line (gut-20989-5). AppReviewModeration needs APPREVIEW_INVITE env.
 
 ## Waiting on the owner (never blocks the loop)
 
-Android Auto: fill or hide the empty Stations and Browse tabs (needs a car-review release). 
+iPhone 12 Screen Time limit on Ear Drama (came on 21:00 2026-11-23; blinds the tap tier). Android Auto: fill or hide the empty Stations and Browse tabs (needs a car-review release). 
 Kokoro re-export for Android and web word marks; a read-only Cloudflare analytics token for a usage
 check; N5 Stations day switcher (ask first); SCHOOL_CONSENT_POLICY; OPERATOR_TOKEN; H1-H4 sessions;
 store words; radio-script rights rule; GRW request.
@@ -151,3 +159,8 @@ store words; radio-script rights rule; GRW request.
   or king (Henry III, Mary I from its own file name), shouted titles recased only with catalog proof per word
   (216 -> 41 left), "-0" tails stripped only when the episode's own file ends that way; 51/51 dry run. Publish
   dispatched. B11 + B13 device verification running in one agent (Duo excluded). Android CI rerun in progress.
+- 2026-11-23 21:20, tick 18: B11/B13 device pass. iPhone 12 tap tier 68 tests: 25 pass / 30 fail before 21:00,
+  12 BLIND after Screen Time's Time Limit covered Ear Drama (ShowArt, SiteLinks included); most fails are stale
+  tests (B14). Web in real Chrome on the Pixel PASS (10 screens, no sideways scroll). Pixel empty-library door
+  PASS, owner's Up next intact after. Apple TV foot leading-aligned PASS. Class review BLIND (needs sign-in).
+  PARITY e4b44c28: 6 web cells and 2 iOS cells to done with today's evidence. No set-aside keys left on iPhone 12.
