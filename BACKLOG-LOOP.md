@@ -66,7 +66,15 @@ Mechanics:
   tier draws its shows from the data, not the same two.
 - [x] **B8 Catalog** (bb506cf8, publish dispatched; follow-up: roman numerals cased "Iii", all-caps Cisco Kid/Escape titles, pre-existing). N13 remaining raw titles: `tools/catalog_dryrun.sh` on real data first.
 - [x] **B9 PARITY gaps** (e71aa5f7; Android Auto Stations and Browse are empty folders in the car: owner call, car review). Apple TV share as a QR code; Android Auto library tree beyond the stub.
-- [ ] **B10 Parity audit (N9).** Every shipped feature a row, every cell honest; last, after B1-B9.
+- [x] **B10 Parity audit (N9)** (c0eb3c07). Every shipped feature a row, every cell honest; last, after B1-B9.
+
+- [ ] **B11 Follow-ups from the audit.** A full iPhone 12 tap-tier run on a build with 7ecdd3d8 (lists set
+  aside and kept across a test's relaunch) to settle the pre-redesign iOS cells (SiteLinks via About, ShowArt,
+  Browse, Detail/Person); a real-browser web pass (Safari on the Mac, Chrome on the Pixel) for web cells.
+- [ ] **B12 Catalog follow-ups.** Roman numerals cased as words ("Henry Iii" -> "Henry III"); all-caps titles
+  (Cisco Kid, Escape) only where certain (acronyms kept). Dry run first.
+- [ ] **B13 Device follow-ups.** Duo Record "Plays" indent (when the Duo is home); Apple class review screen;
+  Pixel empty-library door frame; Apple TV foot alignment frame.
 
 ## Waiting on the owner (never blocks the loop)
 
@@ -128,3 +136,10 @@ store words; radio-script rights rule; GRW request.
   frame read on Ben Bedroom, QR decodes to https://eardrama.org/episode/suspense%7C1948-11-18; 571 Apple tests,
   16/16 design rules. Android Auto audit: Continue + Downloads work, Stations + Browse empty (PARITY honest).
   Catalog publish running. B10 parity audit running. Follow-ups: roman numerals "Iii" and all-caps titles.
+- 2026-11-23 18:40, tick 14: B10 merged (c0eb3c07): 12 cells promoted with cited device evidence, 4 demoted,
+  ~15 reasons added, 1 row added, 2 malformed rows fixed. FollowUITests asserted Home (pre-075): rewritten for
+  Library; its first iPhone run exposed that the set-aside restore ran on a test's own relaunch -> fixed
+  7ecdd3d8 (APP_UITEST_SESSION on every test launch), then PASS on the iPhone 12 (frame read). Seen on device in
+  that run: Export one row, no Edit on empty Library. Catalog publish with the N13 titles: success. 1.0.167
+  (168) bumped (b24b92eb), TestFlight 45306026587 + Play 45306031466 dispatched. iPhone 12 is not signed in:
+  its lists erased this afternoon had no server copy.
