@@ -143,3 +143,7 @@ store words; radio-script rights rule; GRW request.
   that run: Export one row, no Edit on empty Library. Catalog publish with the N13 titles: success. 1.0.167
   (168) bumped (b24b92eb), TestFlight 45306026587 + Play 45306031466 dispatched. iPhone 12 is not signed in:
   its lists erased this afternoon had no server copy.
+- 2026-11-23 19:08, tick 15: TestFlight 1.0.167 (168) and Play internal: success. Android Build red at b24b92eb:
+  Robolectric's MavenArtifactFetcher could not download android-all (infra, every Robolectric class); rerun of
+  failed jobs started. If it recurs, check whether f1a29bfb's cache cleanup drops Robolectric's jars (report to
+  the owner; don't edit the other session's workflow change without them). B12 running.
