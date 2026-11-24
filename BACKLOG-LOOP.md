@@ -111,7 +111,8 @@ in the daytime (back about 21:00, so device work on it goes first).
   (with the report issue workflow, 088.6) and R4-5. §9 answered by the owner 2026-11-24 (088.4-6). **R4-9**: publishing
   a script you wrote, after a title and content search (088.5): design the search first (library texts, cached radio
   scripts and transcripts, Catalog of Copyright Entries and renewals, Open Library and copyright.gov titles), run in
-  Actions, a planted copy must be caught.
+  Actions, a planted copy must be caught. The declaration (R4-9) and the privacy phrase (R4 §7.8) are researched and
+  written by the loop, sources in Decision 088; no owner approval (2026-11-24).
 - [ ] **B19 Radio scripts (088.2).** Waits on the owner's answer about the Workshop's text; the parser and match
   (616 served episodes) are ready. Recording open, Publish closed without evidence.
 - [ ] **B20 Seen on a device.** 57 PARITY rows say a part was never seen, heard or run: Mac windows (owner away
@@ -128,7 +129,7 @@ in the daytime (back about 21:00, so device work on it goes first).
 
 ## Waiting on the owner (never blocks the loop)
 
-**B19**: the Workshop's answer (request drafted to Larry Groebe, owner sends). The declaration's words for R4-9, and the privacy-page words for shared scripts (R4 §7.8). Kokoro re-export for Android and web word marks; a read-only Cloudflare analytics token for a usage
+**B19**: the Workshop's answer (request drafted to Larry Groebe, owner sends). Kokoro re-export for Android and web word marks; a read-only Cloudflare analytics token for a usage
 check; SCHOOL_CONSENT_POLICY; OPERATOR_TOKEN; H1-H4 sessions;
 GRW request sent or not.
 

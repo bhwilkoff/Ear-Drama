@@ -615,8 +615,8 @@ path they go by; with that person's account; on a take-down or the owner's remov
 Web, Apple, Android | IndexedDB; app storage | Until the person deletes them; never
 sent unless they share |". Privacy page, "Making plays with other people", first
 bullet, after "the script": ", which is the text itself when someone in it added
-their own". These are published policy words: the owner approves them before the
-build ships.
+their own". The owner left this phrase to research (2026-11-24); no approval is needed
+before the build ships.
 
 ---
 
