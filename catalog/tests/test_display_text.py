@@ -282,5 +282,115 @@ check("a given name's possessive before a wedding", DT.episode_text("Princess El
 check("control: a surname and s stays", DT.episode_text("The Joneses Wedding", "Royal Occasions"), "The Joneses Wedding")
 check("control: a given name and s before a verb stays", DT.episode_text("Marys Cried Wolf", "Royal Occasions"), "Marys Cried Wolf")
 
+# N13 (2026-11-23): the file name's slots in front of a title (the series' name or a run of its words, a date with xx
+# where the uploader did not know it, a date code, an episode number), each with its control.
+check("series, xx date, number: the title after them", DT.episode_text("Eb and Zeb 33-xx-xx (120) Missing Boots Discovered", "Eb and Zeb"),
+      "Missing Boots Discovered")
+check("a run of the series' words, xx date, number", DT.episode_text("And Zeb 33-xx-xx (115) Maj. Barnes Makes a Profit", "Eb and Zeb"),
+      "Maj. Barnes Makes a Profit")
+check("the start of a long name, xx date, (xxx)", DT.episode_text("Buck Rogers Xx-xx-xx (xxx) Willie Is Lost, Then Found Underground",
+      "Buck Rogers in the 25th Century"), "Willie Is Lost, Then Found Underground")
+check("a placeholder date in front, the name, a padded number", DT.episode_text("195X-XX-XX Europe Confidential 031 Blackmailed Spy Affair",
+      "Europe Confidential"), "Blackmailed Spy Affair")
+check("a six-digit date code and a number, then a dash", DT.episode_text("Bold Venture 510716 (17) - Death At The Wedding (aka Frame-up)",
+      "Bold Venture"), "Death At The Wedding (aka Frame-up)")
+check("the show's fuller name, a date code, a number: nothing left", DT.episode_text("Mary Noble, Backstage Wife 50-0524 (3920)", "Backstage Wife"), "")
+check("nothing left but the slots: composed from the record's number", DT.decide_episode("Life of Mary Sothern 19xx-xx-xx (33)",
+      "The Life of Mary Sothern", None, 33)[:2], ("The Life of Mary Sothern, episode 33", "composed"))
+check("a generic rest: composed from the slot's own number", DT.decide_episode("Buck Rogers Xx-xx-xx (733) Episode 733",
+      "Buck Rogers in the 25th Century", None, None)[:2], ("Buck Rogers in the 25th Century, episode 733", "composed"))
+check("a lead year and number: the year kept", DT.episode_text("1932 (17) The Treasure Hunt", "The World Adventurer's Club"), "The Treasure Hunt (1932)")
+check("a lead index and number", DT.episode_text("102 (101) The Past Is Always Present", "The Zero Hour"), "The Past Is Always Present")
+check("a lead date code and number", DT.episode_text("461009 (29) It Happened Tomorrow", "Academy Award Theater"), "It Happened Tomorrow")
+check("a placeholder number with its bracket", DT.episode_text("xxx) Four Fatal Jugglers", "ABC Mystery Time"), "Four Fatal Jugglers")
+check("a lead number in brackets", DT.episode_text("(05) A Galahad of the Dominion", "The Secret of Dominion"), "A Galahad of the Dominion")
+check("a lead XXX", DT.episode_text("XXX Dinner at a Restaurant", "Archie Andrews"), "Dinner at a Restaurant")
+check("a placeholder date code after the number", DT.episode_text("This Is the Story 011 4xxxxx Thomas Wolfe", "This Is the Story"), "Thomas Wolfe")
+check("a bitrate tail goes, then the slots compose", DT.decide_episode("Night Transmissions #14 64 kbs", "Night Transmissions", None, None)[:2],
+      ("Night Transmissions, episode 14", "composed"))
+check("control: a padded number glued to a time is no slot", DT.episode_text("Glenn Perry Remarks on the Normandy Invasion, 08:1944",
+      "Glenn Perry Remarks on the Normandy Invasion August"), "Glenn Perry Remarks on the Normandy Invasion, 08:1944")
+check("a doubt about the date code goes with it", DT.episode_text("My Friend Irma 540119(poss) Irma & Kay Both Out of Jobs", "My Friend Irma"),
+      "Irma & Kay Both Out of Jobs")
+check("control: a note where the title would start leaves the title alone", DT.episode_text("Cecil and Sally #0771 (damaged disc) incomplete",
+      "Cecil and Sally"), "Cecil and Sally #0771 (damaged disc) incomplete")
+check("control: a running time inside keeps a file name a file name", DT.decide_episode("Lux 461230 54m52s 553afrs Crack Up POBrienLBari",
+      "Lux Radio Theater", None, None)[3], "no_readable_title_and_no_date_or_number")
+check("a spaced number sign", DT.decide_episode("Night Transmissions # 45 64 kbs", "Night Transmissions", None, None)[:2],
+      ("Night Transmissions, episode 45", "composed"))
+check("a placeholder date, then a lead number", DT.episode_text("87-xx-xx (11) The Outsider", "Tales from the Shadows"), "The Outsider")
+check("a placeholder date code alone", DT.episode_text("52xxxx The Case of the Hidden Money Killer", "Mr District Attorney"),
+      "The Case of the Hidden Money Killer")
+check("initials with the name's digit, a year, a number", DT.episode_text("SAK7 1939 (50) Narcotics Smuggled", "Secret Agent K7"),
+      "Narcotics Smuggled (1939)")
+check("a partial date note keeps its year", DT.episode_text("The Sixth Button (xx-xx-1946)", "The Haunting Hour"), "The Sixth Button (1946)")
+check("a shelf code behind a file note still recurs", DT.recurring_tags(["The Krotons (FH) (iPod Audiobook)", "The Invasion (FH) (iPod Audiobook)",
+      "The Moonbase (FH)"]), {"FH"})
+# Coordinator review of N13 (2026-11-23): a valid date code composes rather than withholds; never a fragment; a leading
+# warning keeps the "(partial)" convention.
+check("a valid date code composes the dated title", DT.decide_episode("Fred Allen - 391025", "The Fred Allen Show", None, None)[:3],
+      ("The Fred Allen Show, October 25, 1939", "composed", ["series.name", "episodes.title (date code)"]))
+check("a valid eight-digit code composes too", DT.decide_episode("NY World's Fair Opening 19390430", "NY World's Fair Opening", None, None)[0],
+      "NY World's Fair Opening, April 30, 1939")
+check("control: a code with a zero month or day stays withheld", DT.decide_episode("AFRTS Charlie Tuna 800100", "Charlie Tuna", None, None)[3],
+      "no_readable_title_and_no_date_or_number")
+check("control: no February 29 in 1991", DT.decide_episode("AFRTS Charlie Tuna 910229", "Charlie Tuna", None, None)[3],
+      "no_readable_title_and_no_date_or_number")
+check("control: a code outside the series' run is not its date", DT.decide_episode("Fred Allen - 391025", "The Fred Allen Show", None, None,
+      run=("1945-01-01", "1949-12-31"))[3], "no_readable_title_and_no_date_or_number")
+check("control: the record's own air date wins", DT.decide_episode("Fred Allen - 391025", "The Fred Allen Show", "1939-10-26", None)[0],
+      "The Fred Allen Show, October 26, 1939")
+check("a clause an ordinal starts is no title: the dated title", DT.decide_episode("Fred Waring 470507 1st song is It's So Nice to Be Your Neighbor",
+      "The Fred Waring Show", None, None)[0], "The Fred Waring Show, May 7, 1947")
+check("one short word is no title: the old title stays when nothing composes", DT.decide_episode("AFRTS Charlie Tuna 820000 Torr", "Charlie Tuna",
+      None, None)[0], "AFRTS Charlie Tuna 820000 Torr")
+check("one short word is no title: dated when the code is a date", DT.decide_episode("AFRTS Charlie Tuna 770503 Son", "Charlie Tuna", None, None)[0],
+      "Charlie Tuna, May 3, 1977")
+check("control: one word an episode number names stays", DT.decide_episode("A Cavalcade Of Kings xx-xx-xx (44) Anne", "A Cavalcade of Kings",
+      None, 44)[0], "Anne")
+check("a warning that is all the slots leave rides on the dated title", DT.decide_episode("Fred Allen - 360115 1st half", "The Fred Allen Show",
+      None, None)[0], "The Fred Allen Show, January 15, 1936 (1st half)")
+check("control: a date the slots would leave in front keeps the slots", DT.episode_text("Quiet, Please #087 02-13-49 VALENTINE", "Quiet Please"),
+      "Quiet, Please #087 02-13-49 VALENTINE")
+check("a leading warning keeps the convention", DT.episode_text("Cisco Kid 5XXXXX PARTIAL SHOWRUSTLER", "The Cisco Kid"), "SHOWRUSTLER (partial)")
+check("control: Partial inside a title stays", DT.episode_text("Cisco Kid 5XXXXX The Partial Eclipse", "The Cisco Kid"), "The Partial Eclipse")
+check("control: a year alone after the name is not a slot", DT.episode_text("Suspense 1945 Election Night", "Suspense"), "Suspense 1945 Election Night")
+check("control: a bare unpadded number after the name stays", DT.episode_text("Big Town 22 Skidoo Street", "Big Town"), "Big Town 22 Skidoo Street")
+check("control: a part number after a title stays", DT.episode_text("The Devil Tracks of Devonshire (2)", "Strange As It Seems"),
+      "The Devil Tracks of Devonshire (2)")
+check("control: another show's name before slots stays", DT.episode_text("Gunsmoke 33-xx-xx (12) The Lodger", "Suspense"),
+      "Gunsmoke 33-xx-xx (12) The Lodger")
+# A note about the file's condition or the upload, not the program; a warning a listener needs (partial) stays.
+check("a condition note goes", DT.episode_text("Martians Never Die (poor quality audio)", "Tales of Tomorrow"), "Martians Never Die")
+check("a date-approximate note goes", DT.episode_text("Gusher James (date approximate)", "Night Beat"), "Gusher James")
+check("a rip note goes", DT.episode_text("Hair of the Dog (WebRip)", "Afternoon Drama"), "Hair of the Dog")
+check("a muffled note goes, then the slots compose", DT.decide_episode("Perry Mason #2225 (MUFFLED)", "Perry Mason", None, None)[:2],
+      ("Perry Mason, episode 2225", "composed"))
+check("control: a partial note is a warning and stays", DT.episode_text("Yankees at Braves World Series Game 6 (Partial)", "Yankees"),
+      "Yankees at Braves World Series Game 6 (Partial)")
+check("a running time with a space goes", DT.episode_text("Rede auf dem Wiener Heldenplatz (8m 39s)", "Reden"), "Rede auf dem Wiener Heldenplatz")
+check("a running time in minutes goes", DT.episode_text("Beulah the Author (15m.)", "Beulah"), "Beulah the Author")
+check("a running time in words goes", DT.episode_text("Dover and the Smoking Gun (45 min)", "Dover"), "Dover and the Smoking Gun")
+check("control: minutes that are the title stay", DT.episode_text("The Last 15 Minutes", "Suspense"), "The Last 15 Minutes")
+check("a website in front goes", DT.episode_text("FreeOTRShows.com - El Capitan (1897)", "Sousa's Band"), "El Capitan (1897)")
+check("a website at the end goes", DT.episode_text("War Bonds Appeal from www.nakedgord.org", "Orson Welles"), "War Bonds Appeal")
+check("an audition note keeps its kind", DT.episode_text("Mark Dillon Goes To Gough Eye (second audion starring Howard Culver)", "Gunsmoke"),
+      "Mark Dillon Goes To Gough Eye (audition)")
+check("control: a named audition note stays", DT.episode_text("Milford Brooks III (Dick Powell Audition)", "Yours Truly Johnny Dollar"),
+      "Milford Brooks III (Dick Powell Audition)")
+check("control: a project named Audion stays", DT.episode_text("Witness on the West-Bound Train (Project Audion 2023)", "Suspense"),
+      "Witness on the West-Bound Train (Project Audion 2023)")
+# A title cut mid-word, restored from another copy of the same broadcast: the same day, a show sharing a name word, the
+# cut word one the catalog never uses and the copy's word one it does.
+words = {"menace", "to", "the", "silver", "clipper", "shadow", "shadows", "of", "doubt"}
+check("a cut word restored from a same-day copy", DT.restore_cut_from_copy("The Silver Clippe", "Superman",
+      [("Menace to the Silver Clipper", "The Adventures of Superman")], words), "Menace to the Silver Clipper")
+check("control: a whole word is not a cut", DT.restore_cut_from_copy("The Shadow", "Suspense",
+      [("The Shadows of Doubt", "Suspense")], words), None)
+check("control: another show's copy is no witness", DT.restore_cut_from_copy("The Silver Clippe", "Gunsmoke",
+      [("Menace to the Silver Clipper", "The Adventures of Superman")], words), None)
+check("control: a short cut is not restored", DT.restore_cut_from_copy("Clippe", "Superman",
+      [("Menace to the Silver Clipper", "The Adventures of Superman")], words), None)
+
 print(f"{ran - failed}/{ran} passed")
 sys.exit(1 if failed else 0)

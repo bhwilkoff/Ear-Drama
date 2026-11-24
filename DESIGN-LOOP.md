@@ -355,7 +355,12 @@ the main thread reads the frames before anything merges. Left: N5, N7 to N10, N1
 - [ ] **N13 Remaining raw titles, a further catalog pass (run tools/catalog_dryrun.sh first).** Seen on
   screens 2026-11-04: "Tarzans First Birthday", "Battle WithThe Apes", "Production 2", "CGS #055...",
   "GG Season 05", "Rc Superman", "(DM)", "The Silver Clippe", "(second audion...)", "1943-xx-xx RRGO...",
-  "(Combines all dates)". Also unchecked: Mac row hover and keyboard; Ear dramas filled on Apple TV; a
+  "(Combines all dates)". Titles done 2026-11-23 (B8; catalog DECISIONS 041): batch 2 had already fixed nine of
+  the eleven; "The Silver Clippe" is now a copy of "Menace to the Silver Clipper" (same day) and the audition note
+  is "(audition)". Classes behind them (file-name slots, notes about the file, glued small words, cut words a
+  same-day copy completes): 1,875 titles changed, 9 withheld, measured by two dry runs on catalog-2026-11-21 (revised on review:
+  valid date codes compose, no fragments, warnings in brackets).
+  Left by rule: "(WSJ)" (call-letter shaped), uncertain apostrophes ("Bessies Vacation"). Also unchecked: Mac row hover and keyboard; Ear dramas filled on Apple TV; a
   filled Queue on Apple TV; Pixel Now Playing frame; Create on every device (needs sign-in, O2);
   Now Playing artwork on a short Android screen.
 

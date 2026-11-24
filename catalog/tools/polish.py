@@ -152,6 +152,7 @@ def _clean(t, name=False):
 # P-10 (owner 2026-11-09): a small word glued to the next ("Battle WithThe Apes", "TheIdeal"), a recording-condition
 # note ("Hippo clipped", "Army Life (end clipped)", "clippe" cut off), an uploader's "(Combines all dates)".
 _GLUED_SMALL = re.compile(r"\b(The|With|And|Of|In|On|At|To|For|From)(?=(?:The|A|An|[A-Z][a-z]{2,})\b)")
+_GLUED_LOWER = re.compile(r"(?<=\s)(the|with|and|of|in|on|at|to|for|from|aka)(?=[A-Z][a-z]{2,}\b)")   # "Called toTestify" (N13)
 _CLIPPED = re.compile(r"(?:\s*\((?:(?:start|end)\s+)?clipped\)|,?\s+(?:(?:start|end)\s+)?clipp(?:ed?)?)\s*$")
 _CLIPPED_LEAD = re.compile(r"^clipped\s+(?=\S)")
 _COMBINED_NOTE = re.compile(r"\s*\(\s*combines all dates\s*\)", re.I)
@@ -163,7 +164,7 @@ def polish_title(t):
     if not t:
         return None
     t = _COMBINED_NOTE.sub("", _CLIPPED_LEAD.sub("", _CLIPPED.sub("", t)))
-    t = _GLUED_SMALL.sub(r"\1 ", t).strip()
+    t = _GLUED_LOWER.sub(r"\1 ", _GLUED_SMALL.sub(r"\1 ", t)).strip()
     if not t:
         return None
     m = _INVERTED.match(t)
