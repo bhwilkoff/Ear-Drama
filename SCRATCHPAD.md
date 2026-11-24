@@ -33,12 +33,6 @@
      Through out of order. Eleven stage plays ship; no radio play parses clean yet.
   13. **Store words** (`docs/store/LISTING-DRAFT.md`): approve or edit the App
      Store and Play text (category: Entertainment, decided).
-  16. **Which radio scripts may people re-record?** (Decision 068, batch R,
-     2026-10-24) 616 served radio episodes match a GRW transcription, but 0 are
-     castable: GRW's consent alone opens none, because 1,360 of 1,371 scripts
-     carry no rights evidence of their own (10 are government work with no
-     author on record, 1 is registered with its renewal unsearched). A rule
-     for radio scripts is the owner's call.
   15. **Ask the Generic Radio Workshop** before any GRW script is used (the
      owner sends it; a draft is in `docs/outreach/grw-request.md`).
 - **Status (2026-11-24)**: main is 1.0.168 (169). It is on Play internal; TestFlight was redispatched (run 45405162430) after the first run built the pre-bump commit. Loop stopped by the owner; resume notes are at the end of `BACKLOG-LOOP.md` State. Disk cleaned to 50 GB free (2026-11-24). The backlog loop
@@ -101,6 +95,7 @@ the entry retire when circumstances change).
 | Reading-level labels, or casting suggested by ability | It labels children; the casting board shows the script's facts and the teacher decides (082, owner rule 2026-10-23 on invented ratings) | never, unless the owner reopens it |
 | Leaderboards, fluency scores, or ranking readers | Ranks children and scores performances (PLAYS-DESIGN §8 rule 6; `learner-experience-design` §5) | never, unless the owner reopens it |
 | Every phone speaking stand-ins in sync in a read room | Needs sub-100 ms timing between devices and fills a room with competing voices; only the screen speaks, between takes (082) | a bench measurement shows clock alignment under 50 ms on every platform and teachers ask for it |
+| A day switcher on Stations | Owner 2026-11-24: "No need for a day switched on stations. If you want to listen to anything else, the whole database is right there." | the owner reopens it |
 | The exquisite-corpse relay (each person hears only the line before theirs) | Hides the play from its performers, failing "does it deepen understanding" (R3c §3.5, §7) | a writing exercise, not a reading one, is proposed with its own learning test |
 
 ---

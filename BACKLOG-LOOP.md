@@ -84,12 +84,46 @@ Mechanics:
   player. Android Library foot: Voices and About lack leading icons. Web reader: Gutenberg "[Illustration]"
   residue line (gut-20989-5). AppReviewModeration needs APPREVIEW_INVITE env.
 
+## Round 2 batches (2026-11-24; owner: "let's begin")
+
+Owner, 2026-11-24: "Fill in spaces on Android auto to make the app more robust. All radio and regular play
+scripts should be able to be re-recorded. You should be able to record your own version of anything you want
+with your own casting. No need for a day switched on stations." This repo only. iPhone 12: Screen Time is off
+in the daytime (back about 21:00, so device work on it goes first).
+
+- [ ] **B15 Devices while they are free.** Tools: `/usr/bin/python3` has jwt and Pillow, Homebrew's lost them in
+  the 2026-11-24 cleanup; make asc_release/ios_uitest say so or find one that works. Then the Duo Record indent
+  and a frame of every screen changed since 11-16 open and closed; iPhone 12: the six rewritten tests, ShowArt,
+  SiteLinks; fix the Follow button off center and the landscape rows under the mini player, with frames.
+- [ ] **B16 Every cleared play records (088.1).** 803 of 1,722 parse clean. Held: unclassified over 5% 269,
+  format unrecognized 200, fewer than two castable roles 124, mostly set aside 121, role only before the play 25,
+  title cut off 16; volumes: 500 segments with no printed title, 69 volumes by several authors. Recover by layout
+  family, never by loosening the clean gate; monologues (one role) are recordable. Dry run, read a sample of each
+  family against its source text, then publish. Client suites run.
+- [ ] **B17 Android Auto.** Stations and Browse filled, search, art; CarLibraryTest; the Desktop Head Unit if it
+  can run without an emulator. Internal track only until Google's car review.
+- [ ] **B18 Record anything (088.3): design first (Opus, learning-orientation-design).** Bring your own script
+  (paste, file, share sheet); an episode's automatic transcript as a starting script the person casts line by
+  line; what never publishes. Research, frames, binding docs, then web, Apple, Android.
+- [ ] **B19 Radio scripts (088.2).** Waits on the owner's answer about the Workshop's text; the parser and match
+  (616 served episodes) are ready. Recording open, Publish closed without evidence.
+- [ ] **B20 Seen on a device.** 57 PARITY rows say a part was never seen, heard or run: Mac windows (owner away
+  only), Apple TV, Google TV, reader and studio on the Pixel. Look, then fix or mark done with evidence.
+- [ ] **B21 Parity gaps.** Play tiles' opening speeches on Apple and Android; Now Playing beside the queue on wide
+  web and Android tablets; folding during a take on Android; the reader on Apple TV; Google sign-in on Apple TV
+  by the phone.
+- [ ] **B22 Catalog faults.** Last all-caps and uncertain titles; series under several names; Gutenberg residue
+  in three plays. Dry run first.
+- [ ] **B23 Next store version ready.** 1.0.137 carries none of classes, read rooms or relay. Before the next
+  submit: App Privacy label, age rating answers, review notes and demo recording match what the app now does.
+- [ ] **B24 Design review of what shipped.** Home, Record, reader on every device, against the owner's words.
+- [ ] **B25 Records.** SCRATCHPAD answered items; six old worktrees read, then removed.
+
 ## Waiting on the owner (never blocks the loop)
 
-iPhone 12 Screen Time limit on Ear Drama (came on 21:00 2026-11-23; blinds the tap tier). Android Auto: fill or hide the empty Stations and Browse tabs (needs a car-review release). 
-Kokoro re-export for Android and web word marks; a read-only Cloudflare analytics token for a usage
-check; N5 Stations day switcher (ask first); SCHOOL_CONSENT_POLICY; OPERATOR_TOKEN; H1-H4 sessions;
-store words; radio-script rights rule; GRW request.
+**B19**: may the app show the Workshop's transcriptions before they answer? Kokoro re-export for Android and web word marks; a read-only Cloudflare analytics token for a usage
+check; SCHOOL_CONSENT_POLICY; OPERATOR_TOKEN; H1-H4 sessions;
+GRW request sent or not.
 
 ## State
 
@@ -198,3 +232,5 @@ store words; radio-script rights rule; GRW request.
     is lifted, the Duo is home, or the owner answers one of "Waiting on the owner". Start with CI
     (`gh run list --limit 10`). Never run the tap tier or APP_RESET_* doors on a build without b377a936 and
     7ecdd3d8.
+- 2026-11-24 13:30: restarted by the owner with rulings (Decision 088); round 2 batches B15-B25. TestFlight 1.0.168 (169) is VALID.
+  iOS and macOS 1.0.137 WAITING_FOR_REVIEW since 2026-11-16 (nothing missing in Connect; tvOS approved 11-18).

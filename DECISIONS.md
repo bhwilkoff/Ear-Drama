@@ -939,3 +939,18 @@ for the room. New client states or words for a take are changed in §12.11 first
 
 **Who was in the room, who gains, who pays:** the owner chose, from three directions with frames; listeners gain a Library that opens on what they listen to and fits a phone screen when they are new; makers gain a side where their productions are grouped and the parts waiting on them lead; the cost is one tap to switch sides, and the class make and join forms moving to Record.
 
+---
+
+## 088: Any script can be recorded, with your own casting (owner 2026-11-24)
+
+**Rule**: the rights test never keeps a script from being **recorded**. A play or radio script the app can show is offered for recording; what a script's record lacks decides only what may be **published**. Publishing a production under CC0 (Decision 059, 073) still needs the script's own evidence, because the CC0 statement says the person may give the words away.
+
+1. **Stage plays**: every rights-cleared Gutenberg play. On 2026-11-24 the library held 803; about 760 more were held only because the parser could not read their layout. That is parser work, not a rights question.
+2. **Radio**: every matched radio script. All 1,371 in hand are Generic Radio Workshop transcriptions. The ruling settles recording; whether Ear Drama may show the Workshop's transcription text without its answer (Decision 067, the draft request) is asked of the owner and is not assumed.
+3. **Anything else**: a person may bring the words they want to record. The design comes before the code (BACKLOG-LOOP B18).
+
+**Why**: the owner, 2026-11-24: *"All radio and regular play scripts should be able to be re-recorded. You should be able to record your own version of anything you want with your own casting."* It completes 068's "You should be able to re-record anything that has a script."
+
+**How to apply**: never hide Record behind a rights bucket; put the check on Publish, and test that a production of an unevidenced script has no Publish and the Worker refuses the job. A take-down removes a script from recording as it removes a recording.
+
+**Supersedes**: 068's "Script rights rules stand" and 059's casting test as they apply to recording; both stand for publishing. SCRATCHPAD item 16 is answered.

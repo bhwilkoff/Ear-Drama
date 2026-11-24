@@ -317,7 +317,7 @@ the main thread reads the frames before anything merges. Left: N5, N7 to N10, N1
   the whole List draws as a popover pointing at the List on a regular width. Fixed for Block (People) and
   Delete Account by attaching the dialog to its button; still to check the same way: Downloads (Remove all,
   Remove series), PlaysScreens Delete production, SharedPlaysViews Remove line, StudioViews unused takes.
-- [ ] **N5 Stations day switcher: ask first.** `tonight.json` holds 15 days; no client lets a person
+- [x] **N5 Stations day switcher: declined (owner 2026-11-24).** `tonight.json` holds 15 days; no client lets a person
   pick another day. This came from an agent, not the owner: run `learning-orientation-design` and get
   a yes before building.
 
