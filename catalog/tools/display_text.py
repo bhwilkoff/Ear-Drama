@@ -168,7 +168,120 @@ TAIL_TAG = re.compile(r"\s*\(([A-Z]{1,4})\)$")
 BROADCASTERS = re.compile(r"^(?:[KW][A-Z]{2,3}|NBC|CBS|ABC|MBS|BBC|CBC|AFRS|AFRTS|AFN|RRG|DRF|TV|US|USA|UK|NYC)$")
 
 
-XX_LEAD = re.compile(r"^(?:xx[\s-]+)+(?=[A-Za-z]{2})", re.I)
+XX_LEAD = re.compile(r"^(?:x{2,4}[\s-]+)+(?=[A-Za-z]{2})", re.I)
+
+
+# N13 (2026-11-23): a file name's slots in front of a title. The series' name (or a run of its words, or its fuller
+# name ending in it), then a date with xx where the uploader did not know it ("33-xx-xx", "19xx-xx-xx", "195X-XX-XX"),
+# a date code ("510716", "50-0524"), and an episode number ("(120)", "(xxx)", "#2225", "031"). The slots restate the
+# series and the record's own date and number fields; a year the upload wrote in four digits is kept, as XX_DATE does.
+SLOT_XDATE = re.compile(r"(?:(?:19|20)?[\dX]{2}|XX)[-.](?:\d\d|XX)[-.](?:\d\d|XX)(?!\w)", re.I)
+SLOT_DATE = re.compile(r"(?:(?:(?:19|20)?[\dX]{2}|XX)[-.](?:\d\d|XX)[-.](?:\d\d|XX)|\d{1,2}x{4,5}|\d{6}|\d\d-\d{4}|(?:19|20)\d\d)(?!\w)", re.I)
+SLOT_NUM = re.compile(r"\((\d{1,4}|x{2,4})\)|#\s?(\d{1,4})(?!\w)|(\d{1,4})(?=\s|$)", re.I)
+SLOT_SEP = re.compile(r"\s*[-–:,]?\s*")
+LEAD_SLOT = re.compile(r"^(?:(\d{1,6})\s+)?\((\d{1,4}|x{2,4})\)\s*[-–:]?\s*(?=[A-Za-z])|^(x{2,4})\)\s*(?=[A-Za-z])"
+                       r"|^\d\dx{4}\s+(?:(\d{1,3})\s+)?(?=[A-Za-z])", re.I)
+# A note about the file, not the program: its sound, its rip, a cleaning, a date the uploader guessed, a running time.
+# A warning a listener needs before pressing play ("(partial)", "(incomplete)", "(no ending)") is not one of these.
+COPY_NOTE = re.compile(r"\s*\((?:(?:ai\s+)?cleaned|webrip|ipod audiobook|date approximate|approximate date|muffled|scratchy|"
+                       r"redub|pr snd|(?:poor|low|bad)(?: (?:quality|sound|audio))+|\d{2,3}\s?kbps?|(?:\d{1,2}h\s?)?\d{1,3}m\.?"
+                       r"(?:\s?\d{1,2}s)?|\d{1,3}\s?(?:mins?|minutes|secs?)\.?)\)|\s+\d{2,3}\s?kbp?s$", re.I)
+SITE_TAG = re.compile(r"^(?:www\.)?[A-Za-z0-9-]+\.(?:com|org|net)\s*[-–:]\s*|\s+(?:from|at|via)\s+(?:www\.)?[A-Za-z0-9-]+"
+                      r"\.(?:com|org|net)$", re.I)
+# "(second audion starring Howard Culver)": the cast is a credit, not the title; the note keeps only its kind.
+AUDITION_NOTE = re.compile(r"\s*\((?:(?:first|second|third|1st|2nd|3rd)\s+)?audi(?:ti)?on\s+(?:starring|with)\s+[^()]+\)$", re.I)
+
+
+PARTIAL_DATE_NOTE = re.compile(r"\((?:xx|\d\d)[-/.]xx[-/.]((?:19|20)\d\d)\)", re.I)   # "(xx-xx-1946)": its year is all it knows
+
+
+def copy_notes(title):
+    """The title without notes about the file (COPY_NOTE), an uploader's website, or a cast note on an audition; a
+    partial date note keeps its year."""
+    t = AUDITION_NOTE.sub(" (audition)", SITE_TAG.sub("", COPY_NOTE.sub("", title or "")))
+    t = PARTIAL_DATE_NOTE.sub(r"(\1)", t)
+    return re.sub(r"\s{2,}", " ", t).strip()
+
+
+def _name_run(words, series_name):
+    """True when `words` (tokens) are the series' name: a run of its own words holding one that is not small, or a
+    fuller name that ends in all of it ("Mary Noble, Backstage Wife" for Backstage Wife), which counts only before a
+    date slot ("Night of Suspense (2)" is a title)."""
+    name = name_tokens(series_name or "")
+    while words and words[0] in ("the", "a", "an"):
+        words = words[1:]
+    if not name or not words:
+        return False
+    n = len(words)
+    if n <= 2 and len(name) >= 2 and "".join(words) == "".join(w if w[0].isdigit() else w[0] for w in name):
+        return "run"   # "SAK7" for Secret Agent K7: the initials, a word with a digit kept whole
+    if any(tuple(name[i:i + n]) == tuple(words) for i in range(len(name) - n + 1)) and \
+            any(w not in SMALL_JOIN and not w.isdigit() for w in words):
+        return "run"
+    if n > len(name) and tuple(words[-len(name):]) == name and (len(name) >= 2 or len(name[0]) >= 4):
+        return "fuller"
+    return False
+
+
+def _year(slot):
+    m = re.match(r"((?:19|20)\d\d)(?!\d)", slot or "")
+    return m.group(1) if m else None
+
+
+def file_slots(title, series_name):
+    """(rest, number, year): the title with a file name's leading slots removed, the episode number a slot held (or
+    None) and a four-digit year a slot held (or None). A title with no such slots comes back unchanged."""
+    t = (title or "").strip()
+    if FILE_DURATION.search(t):
+        return t, None, None   # a ripper's running time inside: the whole string is a file name (composed or withheld)
+    m = LEAD_SLOT.match(t)
+    if m:
+        lead, num = m.group(1), m.group(2) or m.group(4)
+        year = _year(lead) if lead and len(lead) == 4 else None
+        return t[m.end():].strip(), int(num) if num and num.isdigit() else None, year
+    pos, year, lead_x = 0, None, False
+    m = SLOT_XDATE.match(t)
+    if m and "x" in m.group(0).lower():
+        lead_x, year, pos = True, _year(m.group(0)), m.end()
+        pos = SLOT_SEP.match(t, pos).end()
+    spans = [w for w in re.finditer(r"[^\s,]+", t[pos:])][:9]
+    for k in range(len(spans), 0, -1):
+        end = pos + spans[k - 1].end()
+        kind = _name_run(list(_tokens(t[pos:end])), series_name)
+        if not kind:
+            continue
+        p = SLOT_SEP.match(t, end).end()
+        d = SLOT_DATE.match(t, p)
+        if d and re.fullmatch(r"\d{2,4}[-.]\d\d[-.]\d\d", d.group(0)):
+            d = None   # a whole date is a fact: spell_iso_dates spells it or drops it against the air date
+        strong_date = bool(d) and ("x" in d.group(0).lower() or bool(re.fullmatch(r"\d{6}|\d\d-\d{4}", d.group(0))))
+        if d:
+            year = year or _year(d.group(0))
+            p = SLOT_SEP.match(t, d.end()).end()
+        n = SLOT_NUM.match(t, p)
+        number = None
+        if n:
+            bare = n.group(3)
+            if bare and not (bare.startswith("0") or strong_date or lead_x):
+                n = None
+            else:
+                v = n.group(1) or n.group(2) or bare
+                number = int(v) if v.isdigit() else None
+                p = n.end()
+                d2 = SLOT_DATE.match(t, SLOT_SEP.match(t, p).end())   # "#001 390508", "011 4xxxxx": a date code after
+                if d2 and ("x" in d2.group(0).lower() or re.fullmatch(r"\d{6}", d2.group(0))):
+                    p = d2.end()
+        if not (strong_date or lead_x or (n and kind == "run")):
+            continue
+        rest = t[SLOT_SEP.match(t, p).end():].lstrip(")").strip()
+        rest = re.sub(r"^\((?:poss|prob|approx)\.?\)\s*", "", rest, flags=re.I)   # a doubt about the date code, gone with it
+        if rest.startswith("("):
+            return t, None, None   # a note where the title should start ("(damaged disc) incomplete"): not a title
+        return rest[:1].upper() + rest[1:], number, year
+    if lead_x:
+        rest, number, y = file_slots(t[pos:], series_name)   # "87-xx-xx (11) The Outsider": the lead number after it
+        return rest, number, year or y
+    return t, None, None
 
 
 # Round 3 (owner 2026-11-20, "the individual item perspective"): classes of residue an upload left in a title.
@@ -242,7 +355,7 @@ def recurring_tags(titles):
     mark, not the program's words. A broadcaster's call letters or a network ("(NBC)", "(WOR)") is a fact, and stays."""
     seen = {}
     for t in titles:
-        m = TAIL_TAG.search(t or "")
+        m = TAIL_TAG.search(copy_notes(t))   # "(FH) (iPod Audiobook)": the code is last once the file note goes
         if m and not BROADCASTERS.match(m.group(1)):
             seen[m.group(1)] = seen.get(m.group(1), 0) + 1
     return {c for c, n in seen.items() if n >= 3}
@@ -367,10 +480,14 @@ def episode_text(shown, series_name, tags=()):
             parts = [p for p in re.split(r"\s*(?:\.|\s-\s|-)\s*", REEL_WORD.sub("", t).strip(" -.")) if p.strip()]
             rest = [p for p in parts if name_tokens(p) != name_tokens(series_name or "")]
             return rest[0].strip() if len(parts) == 2 and len(rest) == 1 and len(rest[0].split()) >= 2 else ""
+    t = copy_notes(t)
     m = XX_DATE.match(t)
     if m:
         t = f"{t[m.end():].strip()} ({m.group(1)})"
     t = XX_LEAD.sub("", t)
+    rest, _num, year = file_slots(t, series_name)
+    if rest != t:
+        t = f"{rest} ({year})" if rest and year else rest
     t = strip_catalog_code(t, series_name)
     t = strip_upload_label(t, series_name)
     t = strip_series_code(t, series_name)
@@ -410,6 +527,28 @@ def restore_cut(title, witnesses):
     return None
 
 
+def restore_cut_from_copy(title, series_name, copies, words):
+    """N13: a title cut mid-word ("The Silver Clippe") restored from another copy of the same broadcast: `copies` are
+    the (title, series name) of the other episodes aired the same day; one counts when its show shares a name word
+    with this one and its title holds every letter of this one from a word's start and goes on inside the last word.
+    The cut word must be one the catalog never uses (`words`: the words its titles use more than once), so a whole
+    word ("The Shadow" in "The Shadows of Doubt") is never taken for a cut. Returns the copy's title or None."""
+    t = _fold_words(title)
+    if len(t.replace(" ", "")) < 8 or len(t.split()) < 2 or t.split()[-1] in words:
+        return None
+    own = set(name_tokens(series_name or "")) - GENERIC_WORDS - SMALL_INITIAL
+    for w, other in sorted(copies or ()):
+        if not own & (set(name_tokens(other or "")) - GENERIC_WORDS - SMALL_INITIAL):
+            continue
+        f = _fold_words(w)
+        i = f.find(t)
+        while i >= 0:
+            if (i == 0 or f[i - 1] == " ") and i + len(t) < len(f) and f[i + len(t)] != " ":
+                return w.strip()
+            i = f.find(t, i + 1)
+    return None
+
+
 def cut_off(title):
     """True when a title ends on a dangling small word after three words or more ("... Awaits the Mayor a"): an
     upload cut it, and with no witness its words are not the title (025)."""
@@ -427,6 +566,8 @@ def decide_episode(shown, series_name, air_date, num, tags=()):
     """(title to show, source, fields, withheld reason): source is 'source' (the cleaned title) or 'composed'.
     A title that only repeats its series' name ("Louella Parsons" in Louella Parsons) is composed from the date or
     number when the record has one; with neither, the name is the work's own title and stays."""
+    if not num:
+        num = file_slots(XX_LEAD.sub("", copy_notes(shown)), series_name)[1]   # the number a file name's slot held
     shown = spell_iso_dates(strip_archive_code(strip_uploader_note(episode_text(shown, series_name, tags))), air_date)
     restates = bool(shown) and bool(series_name) and _norm(shown) == _norm(series_name)
     if lead_code(shown) and _norm(series_name).startswith(shown[:2].casefold()):

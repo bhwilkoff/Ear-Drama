@@ -1530,3 +1530,39 @@ for about one in two; the take-down path is the remedy for the rest, and the gal
 **How to apply**: a rule change here needs no re-harvest (`enrich_people_art`, `enrich_photo_archives` and
 `enrich_magazine_pages` class every file and record again from their own words); `tests/test_image_rule_040.py` holds
 a control for each rule, each seen to fail.
+
+
+## 041 — A file name's slots, notes about the file, and a cut word a same-day copy completes (N13)
+
+*Date: 2026-11-23*
+
+**Rule**: in front of an episode title, a file name's slots go: the series' name (a run of its words, its fuller
+name, or its initials with a digit it carries) followed by a date with xx where the uploader did not know it
+("33-xx-xx", "19xx-xx-xx", "195X-XX-XX", "46xxxx"), a date code ("510716", "50-0524") or an episode number ("(120)",
+"(xxx)", "#2225", "031"); and a lead number with no name ("1932 (17)", "xxx)", "(05)"). A year written in four digits
+is kept at the end, as `XX_DATE` already did; a number a slot held composes the title when nothing else is left and
+the record has none. Notes about the file go wherever they stand: cleaned, WebRip, iPod audiobook, date
+approximate, muffled, scratchy, poor quality, a bitrate, a running time with a space or in minutes; a cast note on
+an audition keeps only "(audition)". A warning ("partial", "incomplete", "no ending") stays. A lowercase small word
+glued to the next ("toTestify", "akaOne") is split. A title cut mid-word with no witness ("The Silver Clippe") takes
+the title of another copy of the same broadcast: aired the same day, a show sharing a name word, the cut word one no
+other title uses. Refused: a year alone after the name ("Suspense 1945 Election Night"), an unpadded bare number
+("Big Town 22 Skidoo Street"), a fuller name before a number only ("Night of Suspense (2)"), slots before a note
+("(damaged disc) incomplete"), anything with a ripper's running time inside (still a file name). Apostrophes stay
+batch 2's: a series' own spelling elsewhere was measured and is not certain ("The Goldbergs Everywhere", "Comanche
+Joe Carries Nitro"). A call-letter-shaped tag ("(WSJ)" on Father Knows Best) stays under `BROADCASTERS`.
+
+**Why**: the owner's display-text ruling (025, 2026-10-31) and the raw titles seen on screens 2026-11-04 (DESIGN-LOOP
+N13: "CGS #055", "GG Season 05", "(DM)", "1943-xx-xx RRGO", "The Silver Clippe", "(second audion ...)"). Batch 2
+had fixed most of the named ones; the classes behind them were still on about 1,900 titles. Every rule removes the
+record's own residue or takes words from another copy of the same broadcast; none writes a word.
+
+**How to apply**: `display_text.file_slots`, `copy_notes`, `restore_cut_from_copy`, `polish._GLUED_LOWER`; the
+same-day pass in `build_projection` lists each restore in `display_text.json` (`restored`, `"by": "same-day copy"`).
+Fixtures and controls in `tests/test_display_text.py` and `tests/test_display_fields.py`, each rule seen failing on
+the old code. MEASURED on catalog-2026-11-21 (two full dry runs, old code against new, same Release): 1,894 of 73,636 episode
+titles changed (1,077 cleaned from the source, 817 composed from series name and number or date), 27 withheld (date-
+code file names with no date or number: Charlie Tuna, Fred Allen, "Burns and Allen xx-xx-xx Unknown1"), 1 folded as a
+copy ("The Silver Clippe" into its same-day broadcast), 3 newly served. Titles with an xx date 370 to 25, with xxx
+380 to 62, with a bracketed number 346 to 23. No new word in any source title except the two same-day restores
+("Clipper", "Corregidor") and the split glued words.

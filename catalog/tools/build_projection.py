@@ -260,6 +260,26 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             if got:
                 restored[eid] = {"from": display[eid], "to": got}
                 display[eid] = got
+    # N13: a title cut mid-word with no witness is restored from another copy of the same broadcast (same day, a show
+    # sharing a name word), when the cut word is one no other title uses.
+    used = {}
+    for t in display.values():
+        for w in DT._fold_words(t).split():
+            used[w] = used.get(w, 0) + 1
+    used = {w for w, n in used.items() if n >= 2}
+    same_day = {}
+    for sk in sorted(by_series_eps):
+        for eid, air, _n, _t in by_series_eps[sk]:
+            if eid in display and air and DT.FULL_DATE.match(air):
+                same_day.setdefault(air, []).append((eid, shown_name.get(sk) or names.get(sk) or ""))
+    for air in sorted(same_day):
+        group = same_day[air]
+        for eid, sname in group if len(group) > 1 else ():
+            got = DT.restore_cut_from_copy(display[eid], sname, [(display[o], on) for o, on in group if o != eid], used)
+            got = PL.polish_title(got) if got else None
+            if got and got != display[eid]:
+                restored[eid] = {"from": display[eid], "to": got, "by": "same-day copy"}
+                display[eid] = got
     known = {}
     def learn(n):
         if n and " " in n.strip() and re.search(r"[A-Z]", n) and not DT.TD.series_defects(n):
