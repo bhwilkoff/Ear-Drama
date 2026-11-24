@@ -111,8 +111,17 @@
       </section>
 
       <section id="view-record" class="view" aria-labelledby="record-h" hidden>
-        <h1 id="record-h" class="view-heading" tabindex="-1">Record</h1>
+        <div class="block-head home-head">
+          <h1 id="record-h" class="view-heading" tabindex="-1">Record</h1>
+          <a class="btn btn-ghost home-surprise" href="?view=record&amp;add=1" id="record-add">
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="i-inline"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>Add a script</a>
+        </div>
         <div id="record-body"></div>
+      </section>
+
+      <section id="view-own" class="view view-reader" aria-labelledby="own-h" hidden>
+        <h1 id="own-h" class="sr-only" tabindex="-1">Add a script</h1>
+        <div id="own-body"></div>
       </section>
 
       <section id="view-reader" class="view view-reader" aria-labelledby="reader-h" hidden>
@@ -335,6 +344,8 @@
   <script src="js/remote-playback.js"></script>
   <script src="js/plays-core.js"></script>
   <script src="js/plays-store.js"></script>
+  <script src="js/own-core.js"></script>
+  <script src="js/own-store.js"></script>
   <script src="js/plays-share.js"></script>
   <script src="js/age-gate.js"></script>
   <script src="js/voice-cast.js"></script>
@@ -356,6 +367,7 @@
   <script src="js/parts-ui.js"></script>
   <script src="js/read-ui.js"></script>
   <script src="js/class-ui.js"></script>
+  <script src="js/own-ui.js"></script>
   <script src="js/marks-core.js"></script>
   <script src="js/marks.js"></script>
   <script src="js/studio-core.js"></script>

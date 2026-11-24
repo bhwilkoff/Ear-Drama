@@ -107,6 +107,7 @@ Not on the Worker: only "under 13 or not" is kept on the device (web `localStora
 | A class's takes, received on the teacher's device | Teacher's device | Same | **Until the teacher deletes them; this is where student voices live.** |
 | A student's own takes on the device that recorded them | Student's device (often a shared school device) | Same | Until deleted on that device. (Shared-device clearing, R3d D5, is not built: the owner's Q6) |
 | Seat key | Web: per tab; Apple, Android: memory only in a room (082c); Keychain or Keystore only when a student records at home (083) | | Tab or app run; home relay: until sent |
+| Scripts a person added, each with the text as pasted, and the text being added (Decision 088.3) | Web (Apple and Android with R4-6 and R4-7) | IndexedDB; app storage | Until the person deletes them (the text being added: until it becomes a script or is emptied); in the person's own export; never sent |
 | Sign-in session | Web: local storage and IndexedDB, encrypted; Apple: Keychain; Android: Keystore-held key | | Until sign-out or deletion |
 | Script marks and Pencil ink | Web, Apple, Android (ink: Apple) | Device | Until deleted; in the person's own export |
 | Synthetic stand-in voices (Kokoro model) | Downloaded model only | Device | The model is kept; a stand-in's audio is never stored (Decision 055) |

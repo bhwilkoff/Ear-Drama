@@ -243,9 +243,9 @@ const KokoroVoice = (() => {
   const available = () => !!(ready() && lab.allowed());
   /** Castable Kokoro voices now (none unless available). */
   const voices = () => castable({ enabled: !!(lab && lab.allowed()), ready: ready() });
-  /** Fetches a play's published phonemes, once, when the model is here. */
+  /** Fetches a play's published phonemes, once, when the model is here. An own script has none (PLAYS-DESIGN §13 item 8). */
   function prepare(script) {
-    if (ready() && shared && script && script.id) return shared.prepare(`${lab.phonemesBase}${script.id}.json`);
+    if (ready() && shared && script && script.id && script.kind !== 'own') return shared.prepare(`${lab.phonemesBase}${script.id}.json`);
     return Promise.resolve();
   }
   const model = () => (lab ? lab.model : null);

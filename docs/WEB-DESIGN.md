@@ -52,7 +52,8 @@ web app follows today.
 - **§3.1 Query routes, not hash routes.** `?view=home|browse|record|search|library`
   (Decision 075), and the two pages Home opens, `?view=stations` and
   `?view=surprise`; `?view=browse&genre=&decade=&network=&script=1&sort=`,
-  `?view=record&voices=&length=&kind=&sort=` (§4.15),
+  `?view=record&voices=&length=&kind=&sort=` (§4.15), `?view=record&add=1` and
+  `?script={own script id}&edit=parts` (§4.21, on this browser only: no path twin, no app link),
   `?series={key}&season=`, `?item={episode id}`, `?person={person id}&order=newest`
   (§4.14), `?view=search&q=`,
   `?view=library&side=listen|make&list=upnext|history|marks&productions={script id}&section=voices` (§4.7; the older `&tab=continue|queue|following|history|dramas` still opens, read as the side or list it became), the script reader (§4.16) `?read={script id}` with an
@@ -336,6 +337,8 @@ web app follows today.
   debounced 180 ms, series first, then people (§4.14, from
   `search/people/`, most episodes first, eight shown with the total), then
   plays (word-prefix on the title and author of `castable-scripts.json`),
+  then **Your scripts** (own scripts on this browser whose title matches, as Record's rows; a search
+  that finds no play and no own script offers **Add a script**, not on a TV),
   then "Aired {date}" when the query names an air date (contract §3.4,
   `search/dates/`, oldest first, narrowed by the other words), then
   episodes paged 30 at a time, then **Automatic transcript** (`search/said/`,
@@ -733,7 +736,9 @@ web app follows today.
   section in the nav, as Detail does.
 - **§4.15 Record** (`?view=record`, Decision 075; research R2 §3 Concept
   B, "Record tab"). The section for making an ear drama. Not on a TV.
-  Top to bottom:
+  The heading carries **Add a script** (`?view=record&add=1`, §4.21), a ghost
+  button with the plus icon, at its right, as Home's Surprise is; a text file
+  dropped on the page opens the same. Top to bottom:
   1. **Yours**: this browser's productions and the shared ones it has not
      opened (the rows Library's Making side groups by play, §4.7), newest first, each
      row its title and "N of M lines recorded", "Finished" or "Shared".
@@ -742,6 +747,10 @@ web app follows today.
      whenever the store loads, so "After Taps · 0 of 594" never appears,
      once or twice. Absent when there are none: the empty state is a real
      play, below, never a sentence about recording.
+  1a. **Your scripts** (Decision 088.3): own scripts on this browser, newest
+     first, each a 64 px row (the title block, the title, "N parts · N lines",
+     or "N lines have no part" while it is being corrected). Absent when none.
+     A row opens `?play=own-…`, or the parts page until it is Done.
   2. **Today's scene**: the same card as Home's (§4.2 item 7), with
      **Try a line**, **Hear it** and **Read**. (*Replaced* 2026-11-15:
      Today's play's board with Record this, Read and Parts.)
@@ -1281,6 +1290,46 @@ web app follows today.
   6. **States**: loading, error with Retry, "No parts yet." (a fact); offline shows the waiting state.
      Frames: `docs/research/design/img/t6/` (`node tools/relay_frames.mjs`), light and dark, 375 and 1440.
 
+- **§4.21 Adding a script** (`?view=record&add=1`, then `?script={id}&edit=parts`; PLAYS-DESIGN §13
+  binding; Decision 088.3). Code: `js/own-ui.js` (the pages), `js/own-store.js` (what is kept),
+  `js/own-core.js` (the grammar); tests `js/own.test.js`; frames and gate `tools/web_fit_own.py`. Not on a TV.
+  1. **The page** is full-height in the reader's bar grammar (§4.16 item 2): a way out, the title, one
+     primary action (Next, then Done). The tab bar steps aside on a phone (`body.scripting`); the sidebar stays.
+  2. **The text**: a Title field and a native `<textarea>`, **Paste** (`navigator.clipboard.readText`,
+     absent where the browser has none) and **Open a file** (`<input type=file
+     accept=".txt,.fountain,.md,text/plain">`); a drop on the page and a paste outside the fields are the
+     same. A file over text already there asks first ("Replace the text?"). The foot is one caption: the
+     count ("9 parts · 297 lines") and, once it is true, "Kept on this device". Refusals stand there:
+     "That file is too long.", "That is not a text file.", "That text is too long.", "This browser is out
+     of space."; Next with no title puts the focus there with "Add a title."
+  3. **The parts page**: Back, the title (a button that renames the script) over its count, Undo, Done. Under
+     it the strip ("2 lines have no part", Next), absent when there are none; the parts as chips, largest first,
+     four on a phone and eight from 860 px, then "N more", and **+ Part**. The script is the reader's speaker-over-speech page (§4.16
+     item 3, `Reader.drawLine`); a No part line is a dashed box in the warning color with its two nearest
+     speakers, Direction and More.
+  4. **Drawn by window**: the lines stand in blocks of fifty, each `content-visibility: auto`, so the
+     browser lays out and paints only those near the screen while every line stays in the page for find and
+     for a screen reader; a step redraws only the lines it changed. While a
+     sheet is open (the page behind is inert) the far blocks rest, `hidden`: opening one on a Pixel 8a went from 300 ms to 85. (The plays grid avoids it for its
+     subgrid, §4.15; nothing here shares rows.) Gate: no step on a 1,700-line play redraws more than a tenth of its lines.
+  5. **The line sheet**: one native `<dialog>`, at the foot on a phone, centered from 860 px: the words with the
+     cut, the parts (the line's own, its nearest, **All parts** with a field for a new one), Direction, Sound; Split
+     here, Join to line above, Edit words, Leave out. The cut is a slider over the words: a tap
+     between two words places it, Left and Right move it a word. A locked line keeps its words, "This line has
+     a take." and Edit words. Focus returns to the line.
+  6. **Keys**: the lines are one tab stop (Up and Down, Home and End, Enter opens); a No part line's chips join
+     the tab order when it is the current line; Control or Command-Z is Undo. The count and each step are announced.
+  7. **An own script's page** (`?play=own-…`) is the play's page (§4.10) with the kicker "Your script", its opening
+     as a page, Record this and Read, its Parts, then "Added by you · Kept on this device" and "This script can't be
+     published.", and Edit, Save as text, Delete (the browser's own confirmation). No Share and no Read together
+     here or on its productions (PLAYS-DESIGN §13).
+  8. **States**: loading is the spinner; a script not here is "This script is not in this browser."; a failed
+     read is "This did not load." with Try again; a script with every line left out says "No lines." with
+     Undo in reach. Nothing here needs the network. A write that fails says why above the page ("This browser is out of
+     space.", else "This browser could not save it.") with Try again, and the page keeps the work.
+  9. **Storage**: `ed-plays` version 2 adds the object store `scripts`; version 1's `files` is untouched. A tab still
+     open on version 1 keeps the new one out: "Close Ear Drama's other tabs." A connection now closes itself when a newer
+     page asks (`versionchange`). `navigator.storage.persist()` is asked when a script is first kept.
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
   scroll except Home's (Decision 075) and Library's, whose About Ear Drama row holds the same pages (Decision 087), and on each site page: Credits, Privacy, Take-down requests,
   Delete an account (§4.11).

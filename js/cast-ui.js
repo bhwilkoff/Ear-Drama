@@ -238,13 +238,15 @@ const CastUI = (() => {
   /** One caster per production (seeded from its play's cast) or per play (the reader). */
   function castFor({ script, production = null }) {
     const kokoro = typeof KokoroVoice !== 'undefined' ? KokoroVoice : null;
+    // An own script has no published phonemes: a Kokoro choice would read as a system voice (PLAYS-DESIGN §13 item 8).
+    const spoken = script.kind !== 'own';
     if (kokoro) kokoro.prepare(script);
     return V.caster({
       key: production ? V.productionKey(production) : V.scriptKey(script.id),
       seed: production ? V.scriptKey(script.id) : null,
       parts: C.castParts(script),
       // Every voice on this device; the defaults (Library > Voices) order the Default pool, downloaded first.
-      voices: () => { const h = hifi(); return [...(h ? h.voices() : []), ...StandInVoice.voices()]; },
+      voices: () => { const h = hifi(); return [...(h && spoken ? h.voices() : []), ...StandInVoice.voices()]; },
     });
   }
 

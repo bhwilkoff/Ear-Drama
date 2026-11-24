@@ -127,8 +127,10 @@ Every platform does the same seven things, in its own idiom.
    script" as a filter), in Search, and as a pick on Surprise. Its own
    page offers **Start an ear drama**, which opens this flow; later any
    episode whose record carries a usable script shows the same action.
-   Only scripts whose rights state is `castable` (§3) and whose parse is
-   clean are offered. Each shows its title, author, source, its number of
+   *Replaced, 2026-11-24 (Decision 088)*: every script the app can show is
+   offered for recording, and a person may bring one (§13); rights decide
+   only publishing. (It read "Only scripts whose rights state is `castable`
+   (§3) and whose parse is clean are offered.") Each shows its title, author, source, its number of
    parts, and its rights line with a link to the evidence. Nothing on it
    is written by a model. A play is marked only by facts from its record:
    its year when the record has one, its author (with their years), and its
@@ -1069,6 +1071,7 @@ no take.
 | Takes, one file per kept take, never overwritten | `Plays/<production>/takes/` as FLAC (if the floor OS cannot write FLAC, ALAC in CAF; to measure) | `filesDir/Plays/<production>/takes/` as 24-bit WAV (§4.5) | IndexedDB, `<production>/takes/`, 24-bit WAV, written with `add()` |
 | Room tone, per session | `Plays/<production>/roomtone/` | the same | IndexedDB, `<production>/roomtone/` |
 | The production record (parts, who took which part by the name they typed, what each take heard, the timeline) | `Plays/<production>/production.json` | the same | IndexedDB, `<production>/production.json`, the same fields |
+| A script the person added (§13): its castable shape, the working copy it is corrected in, and the text as pasted | ⏳ (R4-6) `Scripts/<id>/` | ⏳ (R4-7) `filesDir/Scripts/<id>/` | IndexedDB `ed-plays`, object store `scripts`, keys `scripts/<id>/script.json`, `doc.json` and `row.json`; the text being added, `scripts/draft.json` |
 | The rendered mix of a finished play | `Plays/<production>/mix.m4a`, rebuilt from the takes whenever they change | the same | IndexedDB, `<production>/mix.wav`; `navigator.storage.persist()` is asked when a play is cast |
 | Stand-in audio, transcripts of takes, analytics | Never stored | Never stored | Never stored |
 | Apple TV | Nothing: it records nothing and stores no plays in phase 1 (tvOS writes only to Caches) | | |
@@ -1116,8 +1119,10 @@ why it is open to everyone, children included (08c §6.2).
 
 ## §8. Rules (binding)
 
-1. A script is offered for casting only when `script_rights.judge` returns
-   `castable` and its parse is clean. A new kind of evidence is a new bucket
+1. A script is offered **for publishing** only when `script_rights.judge`
+   returns `castable` and its parse is clean (*Replaced, 2026-11-24, Decision
+   088*: it said "for casting"; every script the app can show is offered for
+   recording, §2.1). A new kind of evidence is a new bucket
    with a paired test and a broken control, never a list of ids.
 2. No model writes, rewrites, summarizes, or fills in a word of a script, a
    cast list, or a description. Stage directions are shown as printed.
@@ -1906,3 +1911,52 @@ and has no class page). Words are exactly these; a refusal is `ReadCore.refusal(
    `submitted` "A published play stays."
 10. **Never**: speaker identification, voice matching, or any analysis of a student's take (R3d T5); a birth year
     stored or sent; a notice by email (none is held).
+
+---
+
+## §13. Record anything (Decision 088.3; binding on every platform that records)
+
+The owner, 2026-11-24: *"You should be able to record your own version of
+anything you want with your own casting."* Research and frames:
+`docs/research/design/R4-record-anything.md`. Core: `js/own-core.js`
+(`R4-core-port-brief.md`). Built on the web, on the device only (R4-2); casting
+by ear is R4-3, sharing and classes are R4-4 and R4-5, and Apple and Android are
+R4-6 and R4-7. Until sharing is built, an own script and its productions offer no
+Share, no Read together, no Invite and no Publish: the buttons are absent, never
+dead.
+
+1. **An own script** is a script a person brought. It has the castable shape, an
+   id `own-<uuid>`, line ids given once and never reused, and the catalog's
+   revision formula. It is kept on the device (§6) and needs no account: adding,
+   reading, editing and the first production ask for none (Decision 079).
+2. **Add a script** (Record): a title and the text, pasted or opened from a plain
+   text file. The light grammar (R4 §2.2, golden cases in
+   `catalog/tests/golden/own_script_parse.json`) proposes parts; a paragraph it
+   cannot place is shown as **No part**. Every piece is a slice of the person's
+   text. The app never writes, completes, or corrects a word. The text being added
+   is kept as it is typed, so a closed page loses nothing.
+3. **The parts page** draws the script as the reader does. A line: give it to a
+   part, Direction, or Sound; Split here; Join to line above; Edit words; Leave
+   out. A part: rename; Join to; Not a part (its words go back, with no part). A
+   strip counts the lines with no part, and Next goes to the next one. Undo takes
+   back any step since the page opened. Done turns a line with no part into a
+   direction. Every step is kept as it is made; a script not yet Done is in Your
+   scripts and opens here.
+4. **After a take** on a line (a take in any production of the script, chosen or
+   not), its part and its boundaries are fixed: the line says **"This line has a
+   take."** and offers only Edit words. Its words may change, and a take recorded
+   before they did (more than punctuation) reads **Words changed** in the take
+   list. A part that holds such a line keeps its name.
+5. **A change to a script reaches its productions on this device** (they are one
+   text): each takes the new lines and revision, keeps its takes, and gains or
+   loses parts with them.
+6. **It never publishes.** "This script can't be published." stands on its page.
+   Export stays: a finished recording, the script as text (Save as text, readable
+   as Fountain), and `scripts[]` in Export my data.
+7. **Delete** asks: "Delete {title}?", and with productions "Delete {title}? Its
+   productions keep their copy." Its marks and voice choices go with it unless a
+   production is left to read them in.
+8. Kokoro voices are not offered for a script with no published phonemes; the
+   device's own voices are.
+9. Its kicker is **Your script** (`kind: "own"`), never Radio play or Stage play:
+   either would be a claim.

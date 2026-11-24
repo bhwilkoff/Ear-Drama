@@ -13,6 +13,7 @@
  *   {id}/roomtone/roomtone-{8}.wav
  *   {id}/mix.wav            the rendered mix of a finished play, rebuilt when its takes change
  *   {id}/share.json         phase 2 only: the Worker's production id and the consent version agreed to
+ * Version 2 (Decision 088.3) adds the object store `scripts`, the person's own scripts (js/own-store.js).
  * Audio is stored as ArrayBuffers, which every browser's IndexedDB keeps.
  * Writers take only microphone captures ({ samples, sampleRate }) or the
  * rendered mix; the device voice has no samples to give (js/plays-voice.js).
@@ -32,33 +33,58 @@ const PlayStore = (() => {
       },
       async put(path, value) { files.set(path, value); },
       async get(path) { return files.has(path) ? files.get(path) : null; },
+      async putAll(entries) { for (const [path, value] of entries) files.set(path, value); },
       async remove(path) { files.delete(path); },
       async removePrefix(prefix) { for (const k of [...files.keys()]) if (k.startsWith(prefix)) files.delete(k); },
       async keys(prefix = '') { return [...files.keys()].filter(k => k.startsWith(prefix)).sort(); },
     };
   }
 
-  function indexedDBBackend(name = 'ed-plays') {
-    let dbP = null;
-    function db() {
-      if (!dbP) {
-        dbP = new Promise((resolve, reject) => {
-          const req = indexedDB.open(name, 1);
-          req.onupgradeneeded = () => req.result.createObjectStore('files');
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
-        dbP.catch(() => { dbP = null; });
-      }
-      return dbP;
-    }
+  const VERSION = 2;
+  /** Each version's change, in order; none touches a store an earlier one made. */
+  function upgrade(db, from) {
+    if (from < 1) db.createObjectStore('files');
+    if (from < 2) db.createObjectStore('scripts');
+  }
+  /** One connection a database, shared by its object stores' backends. */
+  const connections = new Map();
+  function connect(name, idb) {
+    if (connections.has(name)) return connections.get(name);
+    const p = new Promise((resolve, reject) => {
+      const req = idb.open(name, VERSION);
+      let refused = false;
+      req.onupgradeneeded = (e) => upgrade(req.result, e.oldVersion);
+      // A tab still on an older version holds the upgrade back until it closes.
+      req.onblocked = () => {
+        refused = true;
+        const err = new Error('another tab is open on an older version');
+        err.kind = 'blocked';
+        reject(err);
+      };
+      req.onsuccess = () => {
+        const d = req.result;
+        if (refused) { d.close(); return; }
+        const gone = () => { if (connections.get(name) === p) connections.delete(name); };
+        d.onversionchange = () => { gone(); d.close(); };
+        d.onclose = gone;
+        resolve(d);
+      };
+      req.onerror = () => reject(req.error);
+    });
+    connections.set(name, p);
+    p.catch(() => { if (connections.get(name) === p) connections.delete(name); });
+    return p;
+  }
+
+  function indexedDBBackend(name = 'ed-plays', storeName = 'files', idb = indexedDB) {
+    const db = () => connect(name, idb);
     async function tx(mode, fn) {
       const d = await db();
       return new Promise((resolve, reject) => {
-        const t = d.transaction('files', mode);
+        const t = d.transaction(storeName, mode);
         let out;
         let failure = null;
-        const req = fn(t.objectStore('files'));
+        const req = fn(t.objectStore(storeName));
         if (req) {
           req.onsuccess = () => { out = req.result; };
           req.onerror = () => { failure = req.error; };
@@ -73,6 +99,8 @@ const PlayStore = (() => {
     return {
       add: (path, value) => tx('readwrite', s => s.add(value, path)),
       put: (path, value) => tx('readwrite', s => s.put(value, path)),
+      /** Every entry or none: one transaction. */
+      putAll: (entries) => tx('readwrite', s => { let req = null; for (const [path, value] of entries) req = s.put(value, path); return req; }),
       get: async (path) => { const v = await tx('readonly', s => s.get(path)); return v === undefined ? null : v; },
       remove: (path) => tx('readwrite', s => s.delete(path)),
       removePrefix: (prefix) => tx('readwrite', s => s.delete(range(prefix))),
@@ -210,6 +238,40 @@ const PlayStore = (() => {
         scripts.delete(id);
         shares.delete(id);
         writes.delete(id);
+      },
+
+      /** The lines of `scriptID` with a take in any production, read from what is kept (another tab may have recorded). */
+      async takenLines(scriptID) {
+        const out = new Set();
+        for (const p of await store.productionsOf(scriptID)) for (const t of p.takes || []) out.add(t.lineID);
+        return [...out];
+      },
+      async productionsOf(scriptID) {
+        const keys = (await backend.keys()).filter(k => /^[^/]+\/production\.json$/.test(k));
+        const all = await Promise.all(keys.map(async k => { try { return JSON.parse(await backend.get(k)); } catch { return null; } }));
+        return all.filter(p => p && p.scriptID === scriptID);
+      },
+
+      /**
+       * A changed own script reaches its productions here (PLAYS-DESIGN §13 item 5): each takes its lines
+       * and revision, keeps its takes, and gains or loses parts with them. A shared one keeps its own text.
+       */
+      async adopt(script) {
+        for (const found of await store.productionsOf(script.id)) {
+          if (shares.has(found.id)) continue;
+          await (writes.get(found.id) || Promise.resolve()).catch(() => {});
+          const p = JSON.parse(await backend.get(recordPath(found.id)));
+          const raw = await backend.get(scriptPath(p.id));
+          const was = raw ? JSON.parse(raw) : { lines: [] };
+          const parts = {};
+          for (const part of C.castParts(script)) parts[part.id] = p.parts[part.id] || { status: 'open' };
+          const next = { ...p, parts, title: script.title, scriptRevision: script.revision };
+          const ids = (s) => s.lines.map(l => l.id).join(' ');
+          if (ids(was) !== ids(script)) { next.listenedThrough = false; delete next.mixedFrom; }
+          await backend.putAll([[scriptPath(p.id), JSON.stringify(script)], [recordPath(p.id), C.stableStringify(next)]]);
+          scripts.delete(p.id);
+          productions = productions.map(x => (x.id === p.id ? next : x));
+        }
       },
 
       /** Every unchosen take (on `lineIDs` only, when given) and its file; returns how many went. */

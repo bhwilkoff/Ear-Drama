@@ -345,7 +345,9 @@ const PlaysUI = (() => {
     return h.headBoard({ series: { kind: 'play', voices: C.voicesOf(script), cast: C.castOf(script), name, genre: BOARD, picture, ...(art || {}) }, kicker, name, facts,
                          mark: fingerprint(script, 'g-head-strip pl-print-head'), ...(hero ? { hero: true, picture, ...(win ? { win } : {}) } : {}) });
   }
-  const kindOf = (script) => (script.kind === 'radio' ? 'Radio play' : 'Stage play');
+  const kindOf = (script) => (script.kind === 'own' ? 'Your script' : script.kind === 'radio' ? 'Radio play' : 'Stage play');
+  /** An own script or a production of one (PLAYS-DESIGN §13): no Share, no Read together, until R4-5. */
+  const isOwn = (script) => !!script && script.kind === 'own';
 
   /** The page's own heading gives way to the head board's. */
   function boardHeading(on) {
@@ -437,6 +439,7 @@ const PlaysUI = (() => {
     if (my !== token) return;
     if (!script) {
       $('plays-h').textContent = 'Ear drama';
+      if (/^own-/.test(id)) { OwnUI.notDone(body, h, id); return; }
       body.replaceChildren(h.stateBox('missing'));
       return;
     }
@@ -449,12 +452,12 @@ const PlaysUI = (() => {
       null, { hero: true, picture: lead });
     body.replaceChildren(...[board, h.heroCredit ? h.heroCredit(board, lead) : null].filter(Boolean),
       h.el('div', { class: 'actions actions-one actions-start ear-drama-only' }, startButton(script, h, { primary: true }), readLink(script.id),
-        typeof ReadUI !== 'undefined' ? ReadUI.startButton(script, h) : null),
+        typeof ReadUI !== 'undefined' && !isOwn(script) ? ReadUI.startButton(script, h) : null),
       h.el('section', { class: 'block' },
         h.el('h2', { class: 'section-header', id: 'play-parts-h' }, 'Parts'),
         h.el('ul', { class: 'pl-grid', 'aria-labelledby': 'play-parts-h' },
           C.castParts(script).map(part => partCard(script, part)))),
-      rightsLine(script));
+      isOwn(script) ? OwnUI.foot(script, h) : rightsLine(script));
     boardHeading(true);
   }
 
@@ -576,7 +579,7 @@ const PlaysUI = (() => {
       recording ? null : h.el('label', { class: 'pl-as', for: 'pl-performer' }, h.el('span', { class: 'body' }, 'Recording as'), performer),
       h.el('ul', { class: 'pl-grid', 'aria-label': 'Parts' }, cards),
       refusal,
-      shareBox(p, script, rerender),
+      isOwn(script) ? null : shareBox(p, script, rerender),
       manage].filter(Boolean));
     boardHeading(true);
   }

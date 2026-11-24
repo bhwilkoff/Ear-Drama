@@ -1183,6 +1183,8 @@ const API = (() => {
 
   /** One play's whole script: the library's `scripts/<id>.json` when the index lists it, else the bundle's; null when neither has it. */
   async function playScript(id, get = getJSON) {
+    // A person's own script is this device's (PLAYS-DESIGN §13): the one seam the reader, the studio and the pages go through.
+    if (typeof id === 'string' && id.startsWith('own-')) return typeof OwnScripts === 'undefined' ? null : OwnScripts.shared().script(id);
     let row = null;
     try { row = (await playLibrary(get)).find(p => p.id === id) || null; } catch { row = null; }
     if (row && Array.isArray(row.lines)) return row;

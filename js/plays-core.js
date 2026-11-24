@@ -195,7 +195,7 @@ const PlaysCore = (() => {
       if (l.kind !== 'speech') continue;
       const text = clean(spokenText(l));
       if (!text) continue;
-      const verse = reader ? reader.verseRows(l, (script.roles || []).map(r => r.name)) : null;
+      const verse = reader ? reader.verseRows(l, (script.roles || []).map(r => r.name), { emphasis: script.kind !== 'own' }) : null;
       out.push({ part: role(l.role || ''), name: l.role || '', text, id: l.id, verse: verse && rowsOf(verse) });
       if (out.length >= n) break;
     }
