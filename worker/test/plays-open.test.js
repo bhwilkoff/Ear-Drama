@@ -74,7 +74,7 @@ describe("an open invite is read without an account", () => {
     expect(r.status).toBe(200);
     const v = await r.json();
     expect(v).toMatchObject({ id: t.p.id, title: t.p.title, scriptID: script.id, scriptRevision: script.revision });
-    expect(v.source).toBe(MANIFEST.scripts[script.id].source);
+    expect(v.source).toBe(MANIFEST.scripts[script.id][0].source);
     const mine = Object.fromEntries(v.parts.map((x) => [x.id, x]));
     expect(mine[firstPart]).toMatchObject({ status: "done", performer: "Pat" });
     expect(mine[secondPart]).toMatchObject({ status: "recording", performer: "Zoë" });
@@ -290,7 +290,7 @@ describe("finished ear dramas are listed and credited", () => {
         script_id: script.id,
         script_revision: script.revision,
         title: f.p.title,
-        source: MANIFEST.scripts[script.id].source,
+        source: MANIFEST.scripts[script.id][0].source,
         credits: [
           { part: firstPart, name: "Pat" },
           { part: secondPart, name: "Zoë" },

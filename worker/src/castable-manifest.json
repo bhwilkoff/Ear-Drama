@@ -1,246 +1,291 @@
 {
- "format": 1,
+ "format": 2,
  "source_format": 1,
  "scripts": {
-  "gut-49295": {
-   "revision": "3a9dfe22694c",
-   "title": "After Taps",
-   "cast": "6052e27e03df7d1f5f318fd843fb428a4625437ef382e24154fd34564b892575",
-   "lines": 729,
-   "source": "https://www.gutenberg.org/ebooks/49295",
-   "rights": {
-    "bucket": "script_pd_published_age",
-    "evidence": [
-     {
-      "claim": "Copyright 1876 by GEORGE M. BAKER",
-      "src": "https://www.gutenberg.org/ebooks/49295"
-     }
-    ]
+  "gut-49295": [
+   {
+    "revision": "3a9dfe22694c",
+    "title": "After Taps",
+    "cast": "6052e27e03df7d1f5f318fd843fb428a4625437ef382e24154fd34564b892575",
+    "lines": 729,
+    "source": "https://www.gutenberg.org/ebooks/49295",
+    "rights": {
+     "bucket": "script_pd_published_age",
+     "evidence": [
+      {
+       "claim": "Copyright 1876 by GEORGE M. BAKER",
+       "src": "https://www.gutenberg.org/ebooks/49295"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-7364": {
-   "revision": "afac29828b33",
-   "title": "The Albany Depot",
-   "cast": "dccf767c0778c6237b441aea4f257e9da8b58b8b5aad09b8cd7f0aabdd279d80",
-   "lines": 166,
-   "source": "https://www.gutenberg.org/ebooks/7364",
-   "rights": {
-    "bucket": "script_pd_published_age",
-    "evidence": [
-     {
-      "claim": "Copyright, 1891, by HARPER & BROTHERS",
-      "src": "https://www.gutenberg.org/ebooks/7364"
-     }
-    ]
+  ],
+  "gut-7364": [
+   {
+    "revision": "afac29828b33",
+    "title": "The Albany Depot",
+    "cast": "dccf767c0778c6237b441aea4f257e9da8b58b8b5aad09b8cd7f0aabdd279d80",
+    "lines": 166,
+    "source": "https://www.gutenberg.org/ebooks/7364",
+    "rights": {
+     "bucket": "script_pd_published_age",
+     "evidence": [
+      {
+       "claim": "Copyright, 1891, by HARPER & BROTHERS",
+       "src": "https://www.gutenberg.org/ebooks/7364"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-28051": {
-   "revision": "d9d4b9af25a7",
-   "title": "Caesar Rodney's Ride",
-   "cast": "d84e8973eceaba4ef3e2c4d55302988d9552f5751a9e91e39c49ca4c2bbe4672",
-   "lines": 350,
-   "source": "https://www.gutenberg.org/ebooks/28051",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/28051.rdf"
-     }
-    ]
+  ],
+  "gut-28051": [
+   {
+    "revision": "d9d4b9af25a7",
+    "title": "Caesar Rodney's Ride",
+    "cast": "d84e8973eceaba4ef3e2c4d55302988d9552f5751a9e91e39c49ca4c2bbe4672",
+    "lines": 350,
+    "source": "https://www.gutenberg.org/ebooks/28051",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/28051.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-12039": {
-   "revision": "f722f8d57a39",
-   "title": "The Custom of the Country",
-   "cast": "98665b386c0d5955fb43196480de2e32d18bc2884ee3a3a025bbe9b46415d90f",
-   "lines": 977,
-   "source": "https://www.gutenberg.org/ebooks/12039",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/12039.rdf"
-     }
-    ]
+  ],
+  "gut-12039": [
+   {
+    "revision": "f722f8d57a39",
+    "title": "The Custom of the Country",
+    "cast": "98665b386c0d5955fb43196480de2e32d18bc2884ee3a3a025bbe9b46415d90f",
+    "lines": 977,
+    "source": "https://www.gutenberg.org/ebooks/12039",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/12039.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-2265": {
-   "revision": "a51232e16da7",
-   "title": "Hamlet",
-   "cast": "4573186f8af6f5b835a5553f14f746767860284ace98cfb8f9141e37a3dde9a3",
-   "lines": 1201,
-   "source": "https://www.gutenberg.org/ebooks/2265",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/2265.rdf"
-     }
-    ]
+  ],
+  "gut-2265": [
+   {
+    "revision": "a51232e16da7",
+    "title": "Hamlet",
+    "cast": "4573186f8af6f5b835a5553f14f746767860284ace98cfb8f9141e37a3dde9a3",
+    "lines": 1201,
+    "source": "https://www.gutenberg.org/ebooks/2265",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/2265.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-67583": {
-   "revision": "f3bc2f369d12",
-   "title": "The Jazz Singer",
-   "cast": "b9f35c2d5e437a28b7986cae8eacb01a8c85cab33e22fa2818b6f71d80977e14",
-   "lines": 994,
-   "source": "https://www.gutenberg.org/ebooks/67583",
-   "rights": {
-    "bucket": "script_pd_published_age",
-    "evidence": [
-     {
-      "claim": "Copyright, 1925, by",
-      "src": "https://www.gutenberg.org/ebooks/67583"
-     }
-    ]
+  ],
+  "gut-67583": [
+   {
+    "revision": "f3bc2f369d12",
+    "title": "The Jazz Singer",
+    "cast": "b9f35c2d5e437a28b7986cae8eacb01a8c85cab33e22fa2818b6f71d80977e14",
+    "lines": 994,
+    "source": "https://www.gutenberg.org/ebooks/67583",
+    "rights": {
+     "bucket": "script_pd_published_age",
+     "evidence": [
+      {
+       "claim": "Copyright, 1925, by",
+       "src": "https://www.gutenberg.org/ebooks/67583"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-1502": {
-   "revision": "378532c3f170",
-   "title": "King Henry VI, Part 3",
-   "cast": "6968e055678602cb447b3f3aa426fd82ba9623f93b7b07b01130083b31def721",
-   "lines": 986,
-   "source": "https://www.gutenberg.org/ebooks/1502",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/1502.rdf"
-     }
-    ]
+  ],
+  "gut-1502": [
+   {
+    "revision": "378532c3f170",
+    "title": "King Henry VI, Part 3",
+    "cast": "6968e055678602cb447b3f3aa426fd82ba9623f93b7b07b01130083b31def721",
+    "lines": 986,
+    "source": "https://www.gutenberg.org/ebooks/1502",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/1502.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-27357": {
-   "revision": "a2c815221279",
-   "title": "The Landing of the Pilgrims",
-   "cast": "bfa1c6e412043f1d9a6dc4842c18a0fe16781f14be3301a5705ce011f38981ac",
-   "lines": 294,
-   "source": "https://www.gutenberg.org/ebooks/27357",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/27357.rdf"
-     }
-    ]
+  ],
+  "gut-27357": [
+   {
+    "revision": "a2c815221279",
+    "title": "The Landing of the Pilgrims",
+    "cast": "bfa1c6e412043f1d9a6dc4842c18a0fe16781f14be3301a5705ce011f38981ac",
+    "lines": 294,
+    "source": "https://www.gutenberg.org/ebooks/27357",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/27357.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-5071": {
-   "revision": "731aac4167ab",
-   "title": "The Philanderer",
-   "cast": "7574040c3c177093f43efb7c08738cb130da9c4ce85e8d8745e3b00b058d58cc",
-   "lines": 895,
-   "source": "https://www.gutenberg.org/ebooks/5071",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/5071.rdf"
-     }
-    ]
+  ],
+  "gut-5071": [
+   {
+    "revision": "731aac4167ab",
+    "title": "The Philanderer",
+    "cast": "7574040c3c177093f43efb7c08738cb130da9c4ce85e8d8745e3b00b058d58cc",
+    "lines": 895,
+    "source": "https://www.gutenberg.org/ebooks/5071",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/5071.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-28527": {
-   "revision": "ac9a5a4ec189",
-   "title": "The Story of Nathan Hale",
-   "cast": "c2cb499bfed088f6a3f49adb97183c21153995bf0a158bc133b62da187c4a244",
-   "lines": 408,
-   "source": "https://www.gutenberg.org/ebooks/28527",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/28527.rdf"
-     }
-    ]
+  ],
+  "gut-28527": [
+   {
+    "revision": "ac9a5a4ec189",
+    "title": "The Story of Nathan Hale",
+    "cast": "c2cb499bfed088f6a3f49adb97183c21153995bf0a158bc133b62da187c4a244",
+    "lines": 408,
+    "source": "https://www.gutenberg.org/ebooks/28527",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/28527.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-47826": {
-   "revision": "e59dc8559b3a",
-   "title": "A Tender Attachment",
-   "cast": "1123a568e6f11febe2bb3b47ca412cef2254500af7c6446c6c7bf8cdbfc1afb3",
-   "lines": 297,
-   "source": "https://www.gutenberg.org/ebooks/47826",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/47826.rdf"
-     }
-    ]
+  ],
+  "gut-47826": [
+   {
+    "revision": "e59dc8559b3a",
+    "title": "A Tender Attachment",
+    "cast": "1123a568e6f11febe2bb3b47ca412cef2254500af7c6446c6c7bf8cdbfc1afb3",
+    "lines": 297,
+    "source": "https://www.gutenberg.org/ebooks/47826",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/47826.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-49916": {
-   "revision": "4fdf2e5ce556",
-   "title": "The Tenth Man",
-   "cast": "2c9855adf8b73ab933142d4dbbd94748bbe7ad157f90818d2debf7c8c3f4ff35",
-   "lines": 1720,
-   "source": "https://www.gutenberg.org/ebooks/49916",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/49916.rdf"
-     }
-    ]
+  ],
+  "gut-49916": [
+   {
+    "revision": "4fdf2e5ce556",
+    "title": "The Tenth Man",
+    "cast": "2c9855adf8b73ab933142d4dbbd94748bbe7ad157f90818d2debf7c8c3f4ff35",
+    "lines": 1720,
+    "source": "https://www.gutenberg.org/ebooks/49916",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/49916.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-54702": {
-   "revision": "7a45f443e5ff",
-   "title": "A Translation of Octavia, a Latin Tragedy",
-   "cast": "955382229ebc05ce25f56773fb0ba432ea89eeabc6f5593d9d930885d9a68561",
-   "lines": 148,
-   "source": "https://www.gutenberg.org/ebooks/54702",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/54702.rdf"
-     }
-    ]
+  ],
+  "gut-54702": [
+   {
+    "revision": "7a45f443e5ff",
+    "title": "A Translation of Octavia, a Latin Tragedy",
+    "cast": "955382229ebc05ce25f56773fb0ba432ea89eeabc6f5593d9d930885d9a68561",
+    "lines": 148,
+    "source": "https://www.gutenberg.org/ebooks/54702",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/54702.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-28511": {
-   "revision": "24fe31f4a4ff",
-   "title": "The Tree That Saved Connecticut",
-   "cast": "cb7d60268a9d393a9ce72dc528c7fdf46dbd610ed4419abe3d8202295deb7eea",
-   "lines": 355,
-   "source": "https://www.gutenberg.org/ebooks/28511",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/28511.rdf"
-     }
-    ]
+  ],
+  "gut-28511": [
+   {
+    "revision": "24fe31f4a4ff",
+    "title": "The Tree That Saved Connecticut",
+    "cast": "cb7d60268a9d393a9ce72dc528c7fdf46dbd610ed4419abe3d8202295deb7eea",
+    "lines": 355,
+    "source": "https://www.gutenberg.org/ebooks/28511",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/28511.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  },
-  "gut-76327": {
-   "revision": "dbd516cbe52c",
-   "title": "The true-born Irishman",
-   "cast": "5342877e894bcbfa6b6d478f08e683c7827457a0fe8af50c535288505f19a42b",
-   "lines": 548,
-   "source": "https://www.gutenberg.org/ebooks/76327",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/76327.rdf"
-     }
-    ]
+  ],
+  "gut-76327": [
+   {
+    "revision": "dbd516cbe52c",
+    "title": "The true-born Irishman",
+    "cast": "5342877e894bcbfa6b6d478f08e683c7827457a0fe8af50c535288505f19a42b",
+    "lines": 548,
+    "source": "https://www.gutenberg.org/ebooks/76327",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/76327.rdf"
+      }
+     ]
+    },
+    "publishable": true
    }
-  }
+  ]
  }
 }

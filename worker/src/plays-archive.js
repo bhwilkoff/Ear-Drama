@@ -34,7 +34,7 @@
 import { castParts } from "./plays-relay.js";
 import { MAX_TAKE_BYTES, takeStream } from "./plays-audio.js";
 import { json, problem } from "./http.js";
-import MANIFEST from "./castable-manifest.json";
+import { isPublishable, madeFrom } from "./plays-castable.js";
 
 export const IA_S3 = "https://s3.us.archive.org";
 export const IA_METADATA = "https://archive.org/metadata";
@@ -51,6 +51,9 @@ export const MAX_BACKOFF_MS = 12 * 60 * 60 * 1000;
 export const LEASE_MS = 10 * 60 * 1000;
 /** Ear Drama's own ceiling on one item, checked before anything is sent. */
 export const MAX_ITEM_BYTES = 20_000_000_000;
+
+/** A script's refusal, and the job's reason: no publishable manifest row (R4-0). There is no title-only item. */
+const NOT_PUBLISHABLE = "script_not_publishable";
 
 export const iaConfigured = (env) => !!(env.IA_S3_ACCESS_KEY && env.IA_S3_SECRET_KEY);
 
@@ -83,6 +86,12 @@ export function metaValue(v) {
   return /^[\x21-\x7e](?:[\x20-\x7e]*[\x21-\x7e])?$/.test(s) ? s : `uri(${encodeURIComponent(s)})`;
 }
 
+/** Who made the item, from the performers' chosen names. */
+const creditMeta = (credits) => ({
+  creator: [...new Set(credits.map((c) => c.name).filter(Boolean))],
+  credits: credits.map((c) => (c.name ? `${c.part}: ${c.name}` : c.part)).join("; "),
+});
+
 /** The item's metadata, every value from data: the script's record and the performers' chosen names. */
 export function itemMeta(script, credits, createdAt) {
   const evidence = (script.rights?.evidence || []).map((e) => `${e.claim} ${e.src}`).join("; ");
@@ -94,10 +103,9 @@ export function itemMeta(script, credits, createdAt) {
     mediatype: "audio",
     collection: IA_COLLECTION,
     title: `${script.title} (Ear Drama recording)`,
-    creator: [...new Set(credits.map((c) => c.name).filter(Boolean))],
+    ...creditMeta(credits),
     subject: ["Ear Drama", "audio drama", "eardrama.org"],
     description: `Recorded part by part with Ear Drama (https://eardrama.org). Script: ${script.title}${from}. Each file is one line, in script order.`,
-    credits: credits.map((c) => (c.name ? `${c.part}: ${c.name}` : c.part)).join("; "),
     language: "eng",
     licenseurl: CC0_URL,
     rights: evidence,
@@ -245,10 +253,16 @@ async function runJob(env, pid, now, budget) {
   const row = await env.DB.prepare("SELECT * FROM play_productions WHERE id = ?1").bind(pid).first();
   if (!job || !row) return;
   const p = { ...row, cast: JSON.parse(row.cast_sheet) };
-  const script = MANIFEST.scripts[p.script_id] || { title: p.title };
   const identifier = job.identifier || identifierFor(pid);
+  // Failed is final until the director asks again, and asking is refused (publish): the cron never picks a failed job.
+  const publishable = isPublishable(madeFrom(p));
+  const refuseScript = async () => {
+    await setJob(env, pid, { status: "failed", reason: NOT_PUBLISHABLE }, now);
+    log(pid, `failed ${NOT_PUBLISHABLE}`);
+  };
 
   if (job.status === "queued") {
+    if (!publishable) return refuseScript();
     const refusal = await seedFiles(env, job, p, now);
     if (refusal) {
       await setJob(env, pid, { status: "failed", reason: refusal }, now);
@@ -324,9 +338,14 @@ async function runJob(env, pid, now, budget) {
     }
   }
 
-  const left = await env.DB.prepare("SELECT COUNT(*) AS n FROM play_archive_files WHERE production_id = ?1 AND state IN ('pending', 'remove')")
+  const left = await env.DB.prepare("SELECT COUNT(*) AS n, SUM(state = 'remove') AS removals FROM play_archive_files WHERE production_id = ?1 AND state IN ('pending', 'remove')")
     .bind(pid)
     .first();
+  // What was asked off the item comes off first; a first upload then stops here, unfinished.
+  if (initial && !publishable) {
+    if (!left.removals) await refuseScript();
+    return;
+  }
   const credits = await creditsFor(env, p, p.cast);
   const creditText = JSON.stringify(credits);
   if (initial) {
@@ -343,7 +362,7 @@ async function runJob(env, pid, now, budget) {
     await setJob(env, pid, { credits: null }, now);
     if (budget.left <= 0) return;
     budget.left--;
-    const r = await patchCredits(env, identifier, itemMeta(script, credits, job.created_at));
+    const r = await patchCredits(env, identifier, creditMeta(credits));
     if (!r.ok) return r.transient ? transient(r, null, { credits: creditText }) : void (await setJob(env, pid, { credits: creditText, reason: r.reason }, now));
     await setJob(env, pid, { credits: creditText, attempts: 0, reason: held ? "reported_take" : null }, now);
     return;
@@ -425,6 +444,12 @@ export async function sendFile(env, request, p, lineId, userId, now) {
   if (!iaConfigured(env)) return problem(503, "publishing_unavailable");
   const job = await env.DB.prepare("SELECT * FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first();
   if (!job || !["uploading", "published"].includes(job.status)) return problem(409, "not_ready", job ? job.status : undefined);
+  const script = madeFrom(p);
+  if (!isPublishable(script)) {
+    // A first upload ends here and says why; a published item stays as it is.
+    if (job.status === "uploading") await setJob(env, p.id, { status: "failed", reason: NOT_PUBLISHABLE }, now);
+    return problem(422, NOT_PUBLISHABLE);
+  }
   const f = await env.DB.prepare(
     "SELECT f.*, t.user_id, t.content_type, t.frames, t.sample_rate FROM play_archive_files f " +
       "LEFT JOIN play_takes t ON t.production_id = f.production_id AND t.id = f.take_id WHERE f.production_id = ?1 AND f.line_id = ?2",
@@ -462,7 +487,6 @@ export async function sendFile(env, request, p, lineId, userId, now) {
   }
   const extra = {};
   if (initial) {
-    const script = MANIFEST.scripts[p.script_id] || { title: p.title };
     Object.assign(extra, { "x-archive-auto-make-bucket": "1", ...metaHeaders(itemMeta(script, await creditsFor(env, p, p.cast), job.created_at)) });
     // Only the last file of a first upload asks archive.org to make the MP3s, so the item derives once.
     if (others.pending) extra["x-archive-queue-derive"] = "0";

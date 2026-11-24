@@ -15,6 +15,9 @@ GOOGLE_AUDIENCES = "1083349339355-hmed22o33qemdc3dfhbqhkt0vho782ak.apps.googleus
 # Browsers that may call this Worker. Native apps send no Origin header.
 # http://localhost and http://127.0.0.1 on any port are always allowed.
 ALLOWED_ORIGINS = "https://eardrama.org,https://www.eardrama.org"
+# The published play library, on our own site over HTTPS: where one play's
+# manifest row is read when something is made from it (plays-castable.js).
+PLAY_LIBRARY_URL = "https://eardrama.org/data/plays/library"
 # Only needed to revoke Sign in with Apple tokens when an account is deleted.
 # The private key itself is a secret (APPLE_PRIVATE_KEY).
 APPLE_TEAM_ID = ""

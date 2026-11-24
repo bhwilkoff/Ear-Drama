@@ -265,7 +265,7 @@ describe("a first publish", () => {
     expect(id).toMatch(/^[a-z0-9][a-z0-9._-]{4,99}$/);
     expect([...fake.items.keys()]).toEqual([id]);
     const item = fake.items.get(id);
-    const entry = MANIFEST.scripts[small.id];
+    const entry = MANIFEST.scripts[small.id][0];
     expect(item.meta).toMatchObject({ mediatype: "audio", collection: IA_COLLECTION, title: `${entry.title} (Ear Drama recording)`, licenseurl: CC0_URL, source: entry.source, language: "eng" });
     // The owner-approved labels (2026-10-29): subject "Ear Drama" finds every production.
     expect(item.meta.subject).toEqual(["Ear Drama", "audio drama", "eardrama.org"]);

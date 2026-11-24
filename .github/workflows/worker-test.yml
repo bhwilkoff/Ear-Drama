@@ -9,11 +9,13 @@ on:
   pull_request:
     paths:
       - 'worker/**'
+      - 'catalog/plays/castable-scripts.json'
       - '.github/workflows/worker-test.yml'
   push:
     branches: [main]
     paths:
       - 'worker/**'
+      - 'catalog/plays/castable-scripts.json'
       - '.github/workflows/worker-test.yml'
   workflow_dispatch:
 

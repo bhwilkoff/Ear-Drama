@@ -50,11 +50,14 @@ Cloudflare, Apple, or Google is the owner's.
 | `worker/src/plays-names.js` | the display-name deny list (the server's layer of the two-layer gate) |
 | `worker/src/plays-audio.js` | a take's length and format, read from its own WAV or FLAC header, and `takeStream` (checked from its head, streamed, never held whole) |
 | `worker/src/plays-archive.js` | the archive.org uploader (Decision 073): the cron lays items out, removes lines, rewrites credits; `sendFile` streams each line's file from a device |
-| `worker/src/plays-manifest.js`, `worker/src/castable-manifest.json` | the castable manifest: script id, revision, title, source, rights evidence, and the SHA-256 of each cast sheet |
-| `worker/tools/castable-manifest.mjs` | rebuilds the manifest from `catalog/plays/castable-scripts.json` |
+| `worker/src/plays-castable.js` | which script a production, class production or read room is made from (the bundle's rows, then the published library's), and which may be published |
+| `worker/src/plays-manifest.js` | a manifest row: how it is built and how it is checked when read back; shared with the site build |
+| `worker/src/castable-manifest.json` | the bundle's rows: each play's revisions, newest first |
+| `worker/tools/castable-manifest.mjs` | rebuilds the bundle's rows; `--library DIR` writes the published library's, `--check DIR` fails naming the plays when they lag it |
 | `worker/migrations/0001_accounts.sql` | the D1 schema for accounts and sync |
 | `worker/migrations/0002_rooms.sql` | the D1 schema for rooms |
 | `worker/migrations/0003_plays.sql` | the D1 schema for shared plays and classes |
+| `worker/migrations/0012_script_rows.sql` | `play_productions.script_row`: the manifest row a production was made from |
 | `worker/migrations/0004_archive_uploader.sql` | the uploader's job columns and `play_archive_files` |
 | `worker/test/*.test.js` | the suite (vitest inside workerd, a throwaway local D1) |
 | `worker/test/mutations.mjs` | negative controls: breaks each guarantee and expects the suite to fail |
@@ -381,13 +384,55 @@ a bearer token (Decision 057) and counts against `USER_LIMITER`. Only
 **Castable only.** A production is made from a script id, its revision, and
 its cast sheet (`[{ id, part }]`, every line in script order, `part` being
 `role:NAME`, `sound`, or `directions` exactly as `js/plays-core.js`
-`linePart` gives it). The Worker checks all three against
-`src/castable-manifest.json`, which holds the SHA-256 of each castable
-script's cast sheet; the title comes from the manifest, never from the client.
-`node tools/castable-manifest.mjs` rebuilds the manifest whenever
-`catalog/plays/castable-scripts.json` changes, and a test fails while the two
-disagree. A revision the Worker does not have is `409 revision_mismatch` with
-the current one.
+`linePart` gives it). The Worker checks all three against a **manifest row**
+`{ format: 1, id, revision, title, cast, lines, source, rights, publishable }`,
+where `cast` is the SHA-256 of the script's cast sheet; the title, source and
+rights come from the row, never from the client. A row comes from one of two
+places (R4-0, `plays-castable.js`):
+
+1. **The bundle's**, in `src/castable-manifest.json`, deployed with the Worker.
+   Each play keeps its last 6 revisions, so an app in a store with an older bundle
+   is still answered, each revision with its own cast hash. No request is made.
+2. **The published library's**: `GET <PLAY_LIBRARY_URL>/castable/<id>.json?r=<revision>`
+   on our own site, over HTTPS. The site build writes one row a play from the very
+   scripts it is deploying and checks them (`tools/assemble_site.sh`), so a library
+   refresh needs **no Worker deploy** and nothing to remember: a refresh whose rows
+   do not build is refused before its upload (`tools/refresh_play_library.sh`), and a
+   site whose rows lag its library does not deploy.
+
+Nothing a client sends chooses what is read: the host is configuration, the id must
+match `SCRIPT_ID` (never `own-`) and the revision 12 hex digits before either reaches
+the URL, redirects are not followed, the answer is capped at 64 KiB and 5 seconds and
+must be a whole row for that id. A row found at the revision asked for is kept an hour
+in the edge cache under id and revision (a revision's cast sheet never changes), so a
+class opening the same play again costs no request; a failure is never kept. The read
+happens only when something is made: never on a poll, in the cron, or in a room.
+
+| Answer | When |
+|---|---|
+| `422 not_castable` | no such play in the bundle or the library, or an id the Worker does not ask about |
+| `409 revision_mismatch` | the play is there at another revision (`detail` is that revision) |
+| `422 cast_mismatch` | the cast sheet is not that revision's |
+| `503 library_unavailable` | the site could not be read, or its row is not whole; nothing is made, try again |
+
+**The row goes with the production** (`play_productions.script_row`): its invite,
+its archive.org item and its own read rooms use that row, so a play that leaves the
+library or changes there breaks no production made from it. A room with a
+`production_id` opens at that production's revision for its director or its class's
+teacher. A production made before migration 0012 was made from the bundle, so its
+play's bundled row stands in. A recording on a device of a revision that the library
+has replaced, and that was never shared, is `409 revision_mismatch` when shared.
+
+**Publishable.** A row is `publishable` only for a castable rights bucket
+(`CASTABLE_BUCKETS`, held equal to `script_rights.py` by
+`tools/test_castable_manifest.mjs`), and the Worker checks the bucket as well as the
+flag. `publish`, `archive/files` and the cron refuse a production with no publishable
+row: `422 script_not_publishable`, no job written, nothing uploaded; there is no
+title-only item. A job that was already queued is marked `failed` with that reason on
+its next run (asking again is refused, and the cron never picks a failed job); one
+part-way through a first upload is marked `failed` after its removals are done, or
+when a device next sends a line. A published item keeps its removals and its credits
+rewrite, and takes no new file. Nothing is deleted from archive.org by this.
 
 **Takes pass through; nothing is kept** (Decision 082; owner 2026-11-19: *"We
 are using archive.org for storage, not cloudflare."*). No R2, no audio in D1,
@@ -450,9 +495,9 @@ All under `/v1/plays`, all bearer except the open reads below. `:pid` is a produ
 | `GET /productions/:pid/receiver` | a member | | `{ receiving, name }`: whether the director's app holds a pickup (or did in the last 10 s) and the director's chosen name; read from the relay's memory, nothing is written |
 | `PUT /productions/:pid/assignments` | the director of a class production | `{ assignments: [{ part, from?, to?, seat }] }`: the whole casting; `from`/`to` are lines of that part (a split by scene); no line twice | `{ assignments }`; `422 not_a_class_production`, `422 bad_assignments` |
 | `POST /productions/:pid/takes/:takeId/review` | the director of a class production | `{ state: "approved" or "again", note? }` (typed, up to 500 characters) | `{ take_id, state, note, reviewed_at }`; the latest review stands; the note is shown to that take's seat alone |
-| `PUT /productions/:pid/archive/files/:lineId` | the director, or the line's take's performer | the line's chosen take, with its `Content-Length` | `200 { line_id, state: "sent", name, archive }`; `409 not_ready` (the cron has not laid the item out), `409 already_sent`, `409 reported_take`, `422 not_the_take`, `503 archive_busy` (check_limit), `503 archive_unavailable` / `502 archive_refused` (archive.org's answer, redacted) |
+| `PUT /productions/:pid/archive/files/:lineId` | the director, or the line's take's performer | the line's chosen take, with its `Content-Length` | `200 { line_id, state: "sent", name, archive }`; `409 not_ready` (the cron has not laid the item out), `409 already_sent`, `409 reported_take`, `422 not_the_take`, `422 script_not_publishable`, `503 archive_busy` (check_limit), `503 archive_unavailable` / `502 archive_refused` (archive.org's answer, redacted) |
 | `POST /productions/:pid/chosen` | the claimant | `{ take_id }` | the record |
-| `POST /productions/:pid/publish` | the director | a class production: `{ credit_name?, performers_agreed: true, media_release: true }` | `201 { status: "queued", take_ids, created_at }`; again, `200` and the same job; after `failed`, `200` and queued again; `503 publishing_unavailable` without both keys; a class production also `403 under_13_never_published`, `422 confirmations_required` (either confirmation missing or not `true`; Decision 084), `422 credit_name_required` |
+| `POST /productions/:pid/publish` | the director | a class production: `{ credit_name?, performers_agreed: true, media_release: true }` | `201 { status: "queued", take_ids, created_at }`; again, `200` and the same job; after `failed`, `200` and queued again; `422 script_not_publishable`; `503 publishing_unavailable` without both keys; a class production also `403 under_13_never_published`, `422 confirmations_required` (either confirmation missing or not `true`; Decision 084), `422 credit_name_required` |
 | `DELETE /productions/:pid` | the director | | `204`: the production and every row of it (takes' fields, parts, members, invites, consents, casting, reviews); `409 submitted` once it has an archive job (a submitted production stays; its lines are removed one by one) |
 | `POST /productions/:pid/archive/lines/:lineId/remove` | the line's performer, or the director | `{ reason? }`: `withdrawn` (default) or a report reason | `202 { line_id, state }`; `404 not_published` before the item is |
 | `POST /reports` | a member | `{ production_id, take_id }` or `{ production_id, user_id }`, `reason`, `note?` | `201 { id }` |
@@ -760,7 +805,7 @@ Times are milliseconds.
 | `queue` | `(user_id, ord)` | `episode_id` |
 | `rooms` | `code` | `episode_id`, `archive_id`, `file`, `position`, `playing`, `rate`, `updated_at`, `generation`, `host_member`, `created_at`, `touched_at` |
 | `room_members` | `id` | `code`, `key_hash` (SHA-256 of the member key), `joined_at`, `seen_at` |
-| `play_productions` | `id` | `user_id` (the director), `script_id`, `script_revision`, `title`, `cast_sheet` (JSON `[[line id, part]]`), `created_at`, `updated_at`, `class_id` (a class production; deleted with the class) |
+| `play_productions` | `id` | `user_id` (the director), `script_id`, `script_revision`, `title`, `cast_sheet` (JSON `[[line id, part]]`), `created_at`, `updated_at`, `class_id` (a class production; deleted with the class), `script_row` (the manifest row it was made from, JSON; null before migration 0012) |
 | `play_members` | `(production_id, user_id)` | `display_name`, `joined_at` |
 | `play_invites` | `id` | `production_id`, `user_id` (its maker), `token_hash` (SHA-256), `created_at`, `expires_at`, `revoked` |
 | `play_parts` | `(production_id, part)` | `status` (`recording`, `done`, `silent`; no row is open), `user_id`, `claimed_at` |
@@ -797,6 +842,7 @@ fills them):
 | Name | Meaning |
 |---|---|
 | `APPLE_AUDIENCES` | comma-separated `aud` values: the bundle id (`app.eardrama`) and the Services ID for web and Android |
+| `PLAY_LIBRARY_URL` | the published play library, where a play's manifest row is read: `https://eardrama.org/data/plays/library` |
 | `GOOGLE_AUDIENCES` | comma-separated Google OAuth client ids: web, iOS, and the web id Android requests |
 | `ALLOWED_ORIGINS` | browser origins; `http://localhost` and `http://127.0.0.1` on any port are always allowed |
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID` | only for Apple token revocation |
@@ -863,11 +909,12 @@ until a TV client signs in and the owner decides how they should.
 ```sh
 cd worker
 npm ci
-npm test                 # 455 tests in workerd with a local D1, local Durable Objects, and a fake archive.org
-npm run test:mutations   # 307 deliberate breaks; every one must turn the suite red
+npm test                 # 533 tests in workerd with a local D1, local Durable Objects, and a fake archive.org
+npm run test:mutations   # 365 deliberate breaks; every one must turn the suite red
 node test/mutations.mjs --check              # every break still matches its source, nothing run
 node test/mutations.mjs --only "name,name"   # just those, after fixing a survivor
-node tools/castable-manifest.mjs             # after every rebuild of the castable scripts
+node tools/castable-manifest.mjs             # after every rebuild of the BUNDLED scripts; the library's rows build with the site
+node tools/castable-manifest.mjs --check DIR # a published library's rows against its scripts
 ```
 
 The suite mints its own RSA keys and serves them in place of Apple's and
@@ -880,7 +927,13 @@ create and join, a guest refused a state write, guests receiving the host's
 copy, handoff when the host leaves or goes quiet, the last one out ending the
 room, the size limit, idle expiry, the sweep, code randomness and
 normalization, every room rate limit, the drift and clock rules, and that the
-protocol file stays pure. For shared plays: the manifest matching the
+protocol file stays pure. What may be made and published (`test/castable.test.js`, R4-0,
+over a fixture library, never the live one): a production, class production and read room
+of a library play; the bundle's revision and the library's, each with its own cast only;
+every way the library can fail, with nothing made; ids and revisions that never reach the
+URL; one request a revision and none after creation; a play that leaves the library; and
+each refusal of a script that is not publishable, with a job queued, part sent, or
+published. For shared plays: the manifest matching the
 catalog's castable file, and a production refused for an unknown script, an
 old revision, or a cast sheet that is not the script's; the record's
 production.json fields and its merge of every member's takes; members-only
@@ -920,7 +973,7 @@ accounts and the `deleted-account` row, the cron, the class export's contents, t
 route's token and finds, the 13+ confirmations, and the required school reference. The scripts come from the castable file by their data,
 never by name.
 `.github/workflows/worker-test.yml` runs `npm test` on any change under
-`worker/`. It has no Cloudflare credential and no deploy step.
+`worker/` or to the bundled scripts. It has no Cloudflare credential and no deploy step.
 
 ## Needs Ben
 

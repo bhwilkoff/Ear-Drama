@@ -117,6 +117,22 @@ const PlaysCore = (() => {
   const voiceBand = (script) => bandOf(VOICE_BANDS, voicesOf(script));
   const lengthBand = (script) => bandOf(LENGTH_BANDS, minutesOf(script));
 
+  /**
+   * The plays as a pick list, by name (class page, WEB-DESIGN §4.19 item 5): `{ id, label }`. A title two plays
+   * share is told apart by its author, then by its length.
+   */
+  function pickList(rows) {
+    const list = (rows || []).slice().sort((a, b) =>
+      (a.sort_name || a.title).localeCompare(b.sort_name || b.title, 'en', { sensitivity: 'base' }) || (a.id < b.id ? -1 : 1));
+    const apart = (labels, more) => {
+      const seen = new Map();
+      for (const l of labels) seen.set(l, (seen.get(l) || 0) + 1);
+      return labels.map((l, i) => (seen.get(l) > 1 && more(list[i]) ? `${l}, ${more(list[i])}` : l));
+    };
+    const labels = apart(apart(list.map(s => s.title), authorLine), s => `about ${minutesOf(s)} min`);
+    return list.map((s, i) => ({ id: s.id, label: labels[i] }));
+  }
+
   /** FNV-1a 64 over the UTF-8 bytes, as a BigInt (cross-platform-determinism: never a JS number). */
   function fnv1a64(str) {
     let h = 0xcbf29ce484222325n;
@@ -937,7 +953,7 @@ const PlaysCore = (() => {
     DIRECTIONS, SOUND, STANDIN, TAKE_RATE, ROOM_TONE_SECONDS, DEFAULT_GAP, TARGET_LUFS, PEAK_CEILING,
     BLEED_LOUD_FRACTION, now, uuid, clone,
     role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, spokenText, displayName, authorName, authorLine,
-    WORDS_PER_MINUTE, CASTABLE_LINES, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, fnv1a64, todaysPlay, scenePool, todaysScene, openingOf,
+    WORDS_PER_MINUTE, CASTABLE_LINES, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, pickList, fnv1a64, todaysPlay, scenePool, todaysScene, openingOf,
     linesFor, speechLineIDs, castParts,
     newProduction, isEmptyProduction, secondProductionNeedsAccount, madeHereLeads, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused, deleteTake,
     fingerprint, isFinished, stableStringify,

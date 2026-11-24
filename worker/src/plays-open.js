@@ -26,7 +26,7 @@
 import { json, problem } from "./http.js";
 import { sha256Hex } from "./jwt.js";
 import { castParts, next, statusOf } from "./plays-relay.js";
-import MANIFEST from "./castable-manifest.json";
+import { madeFrom } from "./plays-castable.js";
 
 export const INVITE_HEADER = "x-invite";
 export const FINISHED_DEFAULT = 20;
@@ -109,7 +109,7 @@ async function viewOpenInvite(request, env, now) {
       scriptID: p.script_id,
       scriptRevision: p.script_revision,
       title: p.title,
-      source: MANIFEST.scripts[p.script_id]?.source ?? null,
+      source: madeFrom(p)?.source ?? null,
       parts: castParts(p.cast).map(({ id, lineCount }) => {
         const status = statusOf(rows, id, now);
         const part = { id, lineCount, status };
@@ -169,7 +169,7 @@ async function finishedFrom(env, rows) {
     script_id: r.script_id,
     script_revision: r.script_revision,
     title: r.title,
-    source: MANIFEST.scripts[r.script_id]?.source ?? null,
+    source: madeFrom(r)?.source ?? null,
     credits: credits.get(r.id),
     archive_url: r.item_url,
     published_at: r.published_at,
@@ -178,7 +178,7 @@ async function finishedFrom(env, rows) {
 
 /** A production is finished once its job is published and at least one line is still on the item. */
 const FINISHED =
-  "SELECT j.production_id AS id, j.item_url, j.published_at, p.script_id, p.script_revision, p.title FROM play_archive_jobs j " +
+  "SELECT j.production_id AS id, j.item_url, j.published_at, p.script_id, p.script_revision, p.title, p.script_row FROM play_archive_jobs j " +
   "JOIN play_productions p ON p.id = j.production_id WHERE j.status = 'published' AND j.item_url IS NOT NULL AND j.published_at IS NOT NULL " +
   "AND EXISTS (SELECT 1 FROM play_archive_files f WHERE f.production_id = j.production_id AND f.state IN ('pending', 'sent'))";
 
