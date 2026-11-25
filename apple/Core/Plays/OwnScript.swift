@@ -1270,6 +1270,32 @@ nonisolated enum OwnScript {
         return .object(script)
     }
 
+    /// A castable script (revision still to be sealed) over lines that came from the Worker, as `toScript` shapes a Done doc's:
+    /// the roles by first speech, each with its lines and words.
+    static func fromSharedLines(_ lines: OwnJSON, meta: OwnMeta) -> OwnJSON {
+        guard case .array(let all) = lines else { return .null }
+        var order: [String] = []
+        var counts: [String: (Int, Int)] = [:]
+        for l in all {
+            guard case .string("speech")? = l["kind"], case .string(let role)? = l["role"] else { continue }
+            if counts[role] == nil { order.append(role); counts[role] = (0, 0) }
+            counts[role]!.0 += 1
+            if case .array(let parts)? = l["parts"] {
+                for p in parts { if case .string(let t)? = p["say"] { counts[role]!.1 += wordsOf(t).count } }
+            }
+        }
+        var script: [String: OwnJSON] = [
+            "id": .string(meta.id), "revision": .string(""), "kind": .string("own"), "title": .string(meta.title), "authors": .array([]),
+            "source": meta.episodeId != nil ? .object(["name": .string("Automatic transcript"), "url": .string(meta.episodeUrl ?? "")])
+                : .object(["name": .string("Shared script"), "url": .string("")]),
+            "rights": .object(["bucket": .string("own"), "evidence": .array([])]),
+            "roles": .array(order.map { .object(["name": .string($0), "lines": .int(counts[$0]!.0), "words": .int(counts[$0]!.1)]) }),
+            "lines": lines,
+        ]
+        if let e = meta.episodeId { script["episode"] = .string(e) }
+        return .object(script)
+    }
+
     /// A doc over a script as it stands, for Edit a copy (new script id, same line ids).
     static func fromScript(_ script: OwnJSON) -> OwnDoc {
         var given: [String: Int] = [:]

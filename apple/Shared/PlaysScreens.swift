@@ -440,11 +440,8 @@ struct CastSheet: View {
                 ListenThrough(production: production, script: script)
             }
             .modifier(CastColumnRows(on: sizeClass == .regular))
-            // No Share and no Publish for a person's own script, absent rather than dead (PLAYS-DESIGN §13).
-            if !script.isOwn {
-                SharedProductionSection(production: production, script: script)
-                    .modifier(CastColumnRows(on: sizeClass == .regular))
-            }
+            SharedProductionSection(production: production, script: script)
+                .modifier(CastColumnRows(on: sizeClass == .regular))
             Section {
                 PartGrid {
                     ForEach(script.castParts) { part in

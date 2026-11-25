@@ -95,13 +95,20 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
 
     struct Credit: Codable, Equatable, Sendable { var name: String; var lines: Int; var consented: Bool? }
 
+    /// False for an own script, always (Decision 088); absent on a record from before.
+    var publishable: Bool?
+    /// The text's state when the production carries its own script (docs/WORKER.md "Own scripts").
+    var ownScript: OwnShare.Own?
+    /// The class that cast it, when a teacher did.
+    var classID: String?
+
     /// The teacher's review of a take (a class production the caller directs): `approved` or `again`, with a note only that seat sees.
     struct Review: Codable, Equatable, Sendable { var state: String; var note: String? }
     var reviews: [String: Review] = [:]
 
     enum CodingKeys: String, CodingKey {
-        case id, scriptID, scriptRevision, title, parts, takes, chosen, director, members, next, archive, uploads, credits, reviews
-        case hiddenTakes = "hidden_takes"
+        case id, scriptID, scriptRevision, title, parts, takes, chosen, director, members, next, archive, uploads, credits, reviews, publishable
+        case hiddenTakes = "hidden_takes", ownScript = "own_script", classID = "class_id"
     }
 
     init(id: String, scriptID: String, scriptRevision: String, title: String, parts: [String: Part],
@@ -139,6 +146,9 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
         uploads = try c.decodeIfPresent(Bool.self, forKey: .uploads)
         credits = try c.decodeIfPresent([Credit].self, forKey: .credits) ?? []
         reviews = try c.decodeIfPresent([String: Review].self, forKey: .reviews) ?? [:]
+        publishable = try c.decodeIfPresent(Bool.self, forKey: .publishable)
+        ownScript = try c.decodeIfPresent(OwnShare.Own.self, forKey: .ownScript)
+        classID = try c.decodeIfPresent(String.self, forKey: .classID)
     }
 
     func part(_ id: PartID) -> Part { parts[id.rawValue] ?? Part(status: .open) }
@@ -232,14 +242,20 @@ nonisolated struct PublishJob: Codable, Equatable, Sendable {
 
 /// The reasons a report carries (docs/WORKER.md "Reports").
 nonisolated enum ReportReason: String, CaseIterable, Codable, Sendable, Identifiable {
-    case offensive, harassment
+    case copyright, offensive, harassment
     case personalInformation = "personal_information"
     case notAPerformance = "not_a_performance"
     case other
     var id: String { rawValue }
 
+    /// What a take or a member may be reported for; copyright is a script's alone.
+    static var forTakes: [ReportReason] { allCases.filter { $0 != .copyright } }
+    /// What a production's own script may be reported for: copyright first (PLAYS-DESIGN §13 item 15).
+    static var forScript: [ReportReason] { [.copyright] + forTakes }
+
     var title: String {
         switch self {
+        case .copyright: "Copyright"
         case .offensive: "Offensive"
         case .harassment: "Harassment"
         case .personalInformation: "Personal information"
@@ -318,6 +334,18 @@ protocol PlaysTransport {
     func createClass(name: String, under13: Bool) async throws -> PlayClass
     func joinClass(code: String, displayName: String?) async throws -> PlayClass
     func deleteProduction(_ pid: String) async throws
+    /// An own script's production (`own: true`, its title and episode): the same record, its text still owed.
+    func createOwn(_ body: OwnShare.MakeBody, displayName: String?) async throws -> SharedRecord
+    /// The director sends an own script's text, once (`PUT /productions/:pid/script`): the canonical bytes, exactly as hashed.
+    func putScript(_ pid: String, bytes: Data) async throws
+    /// A report of the production's own script (`script: true`): `copyright` first, then the reasons a take has (item 15).
+    func reportScript(_ pid: String, reason: ReportReason, note: String?) async throws
+}
+
+extension PlaysTransport {
+    func reportScript(_ pid: String, reason: ReportReason, note: String?) async throws { throw PlaysRefusal(kind: .notConfigured) }
+    func createOwn(_ body: OwnShare.MakeBody, displayName: String?) async throws -> SharedRecord { throw PlaysRefusal(kind: .notConfigured) }
+    func putScript(_ pid: String, bytes: Data) async throws { throw PlaysRefusal(kind: .notConfigured) }
 }
 
 /// The Worker's plays routes through the one `APIClient`, refreshed before
@@ -346,7 +374,7 @@ struct WorkerPlays: PlaysTransport {
         return data
     }
 
-    static func refusal(_ status: Int, _ data: Data) -> PlaysRefusal {
+    nonisolated static func refusal(_ status: Int, _ data: Data) -> PlaysRefusal {
         let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         let code = object?["error"] as? String
         var r = PlaysRefusal(kind: status == 401 ? .unauthorized : .refused, status: status,
@@ -370,6 +398,21 @@ struct WorkerPlays: PlaysTransport {
         let script_revision: String
         let cast: [PlaysShare.CastLine]
         let display_name: String?
+    }
+    private struct CreateOwn: Encodable {
+        let own = true
+        let title: String?
+        let script_id: String
+        let script_revision: String
+        let cast: [PlaysShare.CastLine]
+        let episode_id: String?
+        let display_name: String?
+    }
+    private struct ScriptReport: Encodable {
+        let production_id: String
+        let script = true
+        let reason: String
+        let note: String?
     }
     private struct Token: Encodable { let token: String }
     private struct Claim: Encodable { let token: String?; let part: String; let display_name: String? }
@@ -398,6 +441,20 @@ struct WorkerPlays: PlaysTransport {
     func create(scriptID: String, revision: String, cast: [PlaysShare.CastLine], displayName: String?) async throws -> SharedRecord {
         try decode(SharedRecord.self, try await call("POST", "\(Self.root)/productions",
             json: Create(script_id: scriptID, script_revision: revision, cast: cast, display_name: displayName)))
+    }
+
+    func createOwn(_ body: OwnShare.MakeBody, displayName: String?) async throws -> SharedRecord {
+        try decode(SharedRecord.self, try await call("POST", "\(Self.root)/productions",
+            json: CreateOwn(title: body.title, script_id: body.scriptID, script_revision: body.revision, cast: body.cast,
+                            episode_id: body.episodeID, display_name: displayName)))
+    }
+
+    func reportScript(_ pid: String, reason: ReportReason, note: String?) async throws {
+        _ = try await call("POST", "\(Self.root)/reports", json: ScriptReport(production_id: pid, reason: reason.rawValue, note: note))
+    }
+
+    func putScript(_ pid: String, bytes: Data) async throws {
+        _ = try await call("PUT", "\(Self.at(pid))/script", raw: bytes, contentType: "application/json")
     }
 
     func list() async throws -> [RemoteProduction] {
@@ -510,5 +567,36 @@ struct WorkerPlays: PlaysTransport {
     /// The director removes a production and its takes from the server (PLAYS-DESIGN §12.12 item 7); a submitted one is refused.
     func deleteProduction(_ pid: String) async throws {
         _ = try await call("DELETE", Self.at(pid))
+    }
+}
+
+/// The Worker's four reads of an own script's text: a member's, an invite's, a seat's and a room's (docs/WORKER.md "Own scripts").
+nonisolated struct WorkerOwnScripts: OwnScriptReads {
+    let api: APIClient
+
+    private static func esc(_ s: String) -> String {
+        s.addingPercentEncoding(withAllowedCharacters: .alphanumerics.union(CharacterSet(charactersIn: "-_.~"))) ?? s
+    }
+
+    func read(_ who: OwnShare.Who) async throws -> OwnShare.Arrival {
+        let path: String
+        var headers: [String: String] = [:]
+        var bearer = false
+        switch who {
+        case let .member(pid): path = "/v1/plays/productions/\(Self.esc(pid))/script"; bearer = true
+        case let .invite(token): path = "/v1/plays/open/invite/script"; headers = ["x-invite": token]
+        case let .seat(key, pid): path = "/v1/plays/seat/productions/\(Self.esc(pid))/script"; headers = ["x-seat-key": key]
+        case let .room(code, key): path = "/v1/read/\(Self.esc(code))/script"; headers = ["x-read-key": key]
+        }
+        let data: Data, status: Int, header: String?
+        do { (data, status, header) = try await api.scriptResponse(path: path, headers: headers, bearer: bearer) } catch { throw PlaysRefusal.from(error) }
+        guard 200...299 ~= status else { throw WorkerPlays.refusal(status, data) }
+        return OwnShare.Arrival(bytes: data, meta: Self.meta(header))
+    }
+
+    static func meta(_ header: String?) -> OwnShare.Meta? {
+        guard let header, let o = (try? JSONSerialization.jsonObject(with: Data(header.utf8))) as? [String: Any],
+              let id = o["id"] as? String, let revision = o["revision"] as? String, let title = o["title"] as? String else { return nil }
+        return OwnShare.Meta(id: id, revision: revision, title: title, episodeID: o["episode_id"] as? String)
     }
 }

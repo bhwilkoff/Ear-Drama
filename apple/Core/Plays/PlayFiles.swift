@@ -157,6 +157,13 @@ final class ProductionStore {
         shares[id] = share
     }
 
+    /// The share undone on this device, after the Worker refused its script for good: the production is private again.
+    func unshare(_ id: String) throws {
+        let url = shareURL(id)
+        if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+        shares[id] = nil
+    }
+
     func readTake(_ id: String, file: String) throws -> Data {
         try Data(contentsOf: takesFolder(id).appending(path: file))
     }

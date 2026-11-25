@@ -33,6 +33,8 @@ final class PlaysLibrary {
     @ObservationIgnored private let fetch: Fetch
     @ObservationIgnored private let cache: URL
     @ObservationIgnored private let bundled: @Sendable () -> CastableLibrary?
+    /// The Worker's reads of an own script's text (a seam so a test can stand one in).
+    @ObservationIgnored var reads: any OwnScriptReads = WorkerOwnScripts(api: .shared)
 
     init(store: ProductionStore = ProductionStore(),
          fetch: @escaping Fetch = { try await APIClient.shared.playsData($0) },
@@ -122,6 +124,29 @@ final class PlaysLibrary {
         if let found = (try? await script(id: id)) ?? nil, found.revision == revision { return found }
         // The library may hold a newer revision than a production cast here: the bundle's is tried too.
         return script(id).flatMap { $0.revision == revision ? $0 : nil }
+    }
+
+    /// The script of a production, an invitation, a seat's part or a room (PLAYS-DESIGN §13 item 11): the one way every screen gets it,
+    /// `OwnShare.scriptOf` over what this device holds. Throws `revision_mismatch`, `script_damaged` or the Worker's own refusal.
+    func resolve(id: String, revision: String, who: OwnShare.Who? = nil, fit: (PlayScript) -> Bool = { _ in true }) async throws -> PlayScript {
+        if state == .loading, !PlayScript.isOwnID(id) { await load() }
+        let store = store, own = own
+        let local = OwnShare.Local(
+            catalog: { [self] id, revision in
+                if let found = await script(id: id, revision: revision) { return found }
+                // Neither the library nor the bundle holds that revision: say why when the library could not be reached.
+                _ = try await script(id: id)
+                return nil
+            },
+            kept: { pid in store.findShared(pid).flatMap { store.script(for: $0) } },
+            mine: { id in own.script(id) })
+        return try await OwnShare.scriptOf(id: id, revision: revision, who: who, fit: fit, local: local, reads: reads,
+                                           link: { "https://eardrama.org/episode/\($0)" })
+    }
+
+    /// `resolve` for a door that only needs to know whether the script is there; the refusal is `PlaysShare.line`'s.
+    func resolved(id: String, revision: String, who: OwnShare.Who? = nil, fit: (PlayScript) -> Bool = { _ in true }) async -> (script: PlayScript?, failure: (any Error)?) {
+        do { return (try await resolve(id: id, revision: revision, who: who, fit: fit), nil) } catch { return (nil, error) }
     }
 
     /// The script a production was cast from, as stored with it.

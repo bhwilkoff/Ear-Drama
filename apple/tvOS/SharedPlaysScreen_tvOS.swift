@@ -150,7 +150,7 @@ struct SharedPlayScreen_tvOS: View {
         .defaultFocus($listenFocused, true)
         .confirmationDialog("Report", isPresented: Binding(get: { reporting != nil }, set: { if !$0 { reporting = nil } }),
                             presenting: reporting) { member in
-            ForEach(ReportReason.allCases) { reason in
+            ForEach(ReportReason.forTakes) { reason in
                 Button(reason.title) { Task { await report(member, reason) } }
             }
             Button("Cancel", role: .cancel) {}
@@ -184,8 +184,12 @@ struct SharedPlayScreen_tvOS: View {
         scriptLoading = true
         defer { scriptLoading = false }
         do {
-            script = try await LibraryScripts.script(id: rec.scriptID, revision: rec.scriptRevision)
-            if script == nil { scriptLine = PlaysShare.line(PlaysRefusal.code("revision_mismatch")) }
+            if PlayScript.isOwnID(rec.scriptID) {
+                script = try await OwnShare.resolve(id: rec.scriptID, revision: rec.scriptRevision, who: .member(pid: rec.id), fit: OwnShare.Fit.record(rec))
+            } else {
+                script = try await LibraryScripts.script(id: rec.scriptID, revision: rec.scriptRevision)
+                if script == nil { scriptLine = PlaysShare.line(PlaysRefusal.code("revision_mismatch")) }
+            }
         } catch is CancellationError {
         } catch {
             scriptLine = PlaysShare.line(error)
