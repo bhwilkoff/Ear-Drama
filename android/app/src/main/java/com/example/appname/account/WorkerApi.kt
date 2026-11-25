@@ -158,10 +158,10 @@ class WorkerApi(
     suspend fun callText(method: HttpMethod, path: String, body: String? = null): String = authed(method, path, body)
 
     /** The takes inbox long poll (docs/WORKER.md): signed in, the bytes with the `x-take` header, or null on a 204. */
-    suspend fun callInbox(path: String): Pair<ByteArray, String?>? {
+    suspend fun callInbox(path: String, header: String = "x-take"): Pair<ByteArray, String?>? {
         val r = authedResponse(HttpMethod.Get, path)
         if (r.status.value == 204) return null
-        return r.bodyAsBytes() to r.headers["x-take"]
+        return r.bodyAsBytes() to r.headers[header]
     }
 
     /**
@@ -177,12 +177,12 @@ class WorkerApi(
      * A read room's take route, no account: sends [raw] bytes (a take) or reads the answer as bytes with its `x-take` header
      * (the receiver's pickup); null on a 204. [headers] carries the member key.
      */
-    suspend fun anonBytes(method: HttpMethod, path: String, raw: ByteArray? = null, headers: Map<String, String> = emptyMap()): Pair<ByteArray, String?>? {
+    suspend fun anonBytes(method: HttpMethod, path: String, raw: ByteArray? = null, headers: Map<String, String> = emptyMap(), header: String = "x-take"): Pair<ByteArray, String?>? {
         if (!config.workerReady) throw WorkerException(503, "not_configured")
         val r = send(method, path, null, null, raw, headers)
         if (r.status.value == 204) return null
         ok(r)
-        return r.bodyAsBytes() to r.headers["x-take"]
+        return r.bodyAsBytes() to r.headers[header]
     }
 
     /** The `wss://` form of a Worker path, for a read room's socket; null when no Worker is configured. */

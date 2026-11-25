@@ -17,7 +17,7 @@ import kotlinx.serialization.json.put
  * here never carries a stale one (AGENTS.md hard rule). Every route is
  * signed in (Decision 057). It holds no rule; [PlaysShare] does.
  */
-class PlaysApi(private val worker: WorkerApi) : PlaysTransport {
+class PlaysApi(private val worker: WorkerApi) : PlaysTransport, ScriptWire {
     private val p = "/v1/plays"
     private fun at(pid: String) = "$p/productions/${enc(pid)}"
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
@@ -36,6 +36,7 @@ class PlaysApi(private val worker: WorkerApi) : PlaysTransport {
                 else -> PlaysException.Kind.Refused
             },
             e.detail,
+            e.status,
         )
     } catch (e: SignedOutException) {
         throw PlaysException("", PlaysException.Kind.Unauthorized)
@@ -140,6 +141,25 @@ class PlaysApi(private val worker: WorkerApi) : PlaysTransport {
             HttpMethod.Post, "$p/classes/join",
             buildJsonObject { put("code", code); displayName?.let { put("display_name", it) } },
         )
+
+    // An own script's text (docs/WORKER.md "Own scripts"): sent once by its director, read by each door with its own key.
+
+    override suspend fun putScript(pid: String, text: String) {
+        guarded { worker.callBytes(HttpMethod.Put, "${at(pid)}/script", text.toByteArray(Charsets.UTF_8), mapOf("content-type" to "application/json")) }
+    }
+
+    private fun scriptOf(got: Pair<ByteArray, String?>?): ScriptBytes = got?.let { ScriptBytes(it.first, it.second) } ?: throw PlaysException("no_script")
+
+    override suspend fun memberScript(pid: String): ScriptBytes = guarded { scriptOf(worker.callInbox("${at(pid)}/script", "x-script")) }
+
+    override suspend fun inviteScript(token: String): ScriptBytes =
+        guarded { scriptOf(worker.anonBytes(HttpMethod.Get, "$p/open/invite/script", null, mapOf("x-invite" to token), "x-script")) }
+
+    override suspend fun seatScript(key: String, pid: String): ScriptBytes =
+        guarded { scriptOf(worker.anonBytes(HttpMethod.Get, "$p/seat/productions/${enc(pid)}/script", null, mapOf("x-seat-key" to key), "x-script")) }
+
+    override suspend fun roomScript(code: String, key: String): ScriptBytes =
+        guarded { scriptOf(worker.anonBytes(HttpMethod.Get, "/v1/read/${enc(code)}/script", null, mapOf("x-read-key" to key), "x-script")) }
 
     @kotlinx.serialization.Serializable
     private data class Productions(val productions: List<RemoteRow> = emptyList())

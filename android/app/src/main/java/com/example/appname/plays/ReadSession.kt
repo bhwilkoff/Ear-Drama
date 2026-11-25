@@ -217,7 +217,7 @@ class WorkerReadWire(private val worker: WorkerApi, private val ok: OkHttpClient
 
     override suspend fun inbox(code: String, key: String): ReadTakeIn? = guarded {
         val (bytes, header) = worker.anonBytes(HttpMethod.Get, at(code) + "/takes/inbox", null, mapOf(KEY_HEADER to key)) ?: return@guarded null
-        val fields = header?.let { runCatching { ShareJson.decodeFromString(ReadTakeFields.serializer(), it) }.getOrNull() } ?: return@guarded null
+        val fields = header?.let { runCatching { ShareJson.decodeFromString(ReadTakeFields.serializer(), it) }.getOrNull() } ?: throw ReadFailure("error")
         ReadTakeIn(fields, bytes)
     }
 
