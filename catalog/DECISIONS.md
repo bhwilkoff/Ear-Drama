@@ -1685,3 +1685,33 @@ projection". R4-9's design found it.
 - MEASURED on catalog-2026-11-21's assets: see `docs/research/data/public-cache-inventory.md` section 4.
 - A new harvester decides, before its first cut, whether its source's words may be republished. The inventory names the
   other parts of the cache in question; none is changed here, and each is the owner's.
+
+## 046 — A person's reading of one line is a correction, audited and bound to the text it read (B22)
+
+*Date: 2026-11-25*
+
+**Rule**: what a class of three plays or more has gets a rule in `play_roles` (044). What one play has, one line at a time,
+is a correction in `editorial/play_corrections.json`, applied by `play_corrections.apply` after the roles, to the entry the
+build has chosen and mended. A correction can reassign a speech to the speaker the print names (`role`), make a speech a
+direction (`direction`) or a direction a speech (`speech`), set a line aside (`drop`), or cut a line where a quoted passage
+begins into speeches and directions (`split`, a printed label between two pieces cut away with `cut`, a piece set aside with
+`as: drop`). It never adds a word: every piece is a slice of the line, and the build refuses a split whose letters are not the
+line's, less the quoted cut. Each correction carries the `revision` of the play it was read against, `evidence` (at most twelve
+words, found in the play's own lines or labels) and a `why`; a play that has changed since is refused, loudly, and read again.
+A piece after the first takes the next letter its number has not used (`L0331` to `L0331a`), so no id moves.
+
+**Why**: the owner, 2026-11-24: "All radio and regular play scripts should be able to be re-recorded." A fault found by
+reading (a label run into the speech above, a tableau printed inside a speech, a cast row read as the first speech) is settled
+by a rule only when the print shows it the same way in three plays; a rule written for one play renames a Justice called Silence
+in another. B22 settled 103 published plays that `known-faults.json` listed, plus two more: one rule (a part who speaks seldom
+still has a label, inside another's speech: `_label_inside` asks one speech elsewhere, not five) and 113 corrections in 60
+plays. A wider rule for brackets the print never closes was tried and refused: it changed 58 of the 176 scripts it was run on,
+most of them not listed, and "moves no play it was not asked about" is the first test of a rule here. The one rule that stayed
+also mended three plays no list named (gut-6788, gut-70261, gut-7172-101), each read line by line before it was kept.
+
+**How to apply**: a fault in a published play is first asked whether a class of three has it; if so, a step in `play_roles`
+with a fixture and, when it is a one-line change, a text mutant in `tests/mutate_play_roles.py`; if not, a correction. Read the
+line and its neighbors before and after (`tests/test_play_corrections.py` holds the guards; `tests/mutate_play_corrections.py`
+removes each in turn). A rule change that moves a corrected play changes its revision and refuses its corrections: run a build,
+read the play again, and re-issue them. `plays/known-faults.json` keeps only what no rule or correction settles. A library with
+phonemes needs them rebuilt for the plays whose lines changed (their files are keyed to the lines).

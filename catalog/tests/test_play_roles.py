@@ -260,6 +260,21 @@ def a_label_in_capitals_inside_a_speech_is_the_next_speaker():
 
 
 @case
+def a_label_of_a_part_who_speaks_seldom_is_still_the_next_speaker():
+    """gut-1775 L0061: GURNEY speaks twice in King John, so his label inside the Bastard's speech was not read."""
+    was, now = reads(play("GURNEY. I thank you, my lord.\n\nSHERIFF. James Gurney, wilt thou give us leave awhile? GURNEY. Good leave, good Philip.\n\nHALE. Be it so."))
+    assert "GURNEY. Good leave" in said(find(was, "wilt thou give us leave")), "the fault"
+    assert said(find(now, "wilt thou give us leave")) == "James Gurney, wilt thou give us leave awhile?"
+    assert find(now, "Good leave, good Philip")["role"] == "GURNEY"
+
+
+@case
+def a_capital_name_nobody_speaks_as_is_not_a_label():
+    was, now = reads(play("SHERIFF. Tell the king. KIMBERLEY. Is a place I know well.\n\nHALE. Be it so."))
+    assert "KIMBERLEY" not in roles(now) and "KIMBERLEY. Is a place" in said(find(now, "Tell the king"))
+
+
+@case
 def a_verse_line_two_speakers_share_is_two_speeches():
     shared = "\n\n".join(f"_Bor._ To serve your vast expenses {i}. _Are._ Am I then\nBrought in the balance?" for i in range(6))
     talk = "\n\n".join(f"_{w}._ I tell you plainly, line {i} is mine, and you know it." for i in range(15) for w in ("Are", "Bor"))

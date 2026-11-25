@@ -1,0 +1,1399 @@
+{
+ "format": 1,
+ "corrections": [
+  {
+   "play": "gut-10722-3",
+   "revision": "7a68c31edce4",
+   "line": "L0000b",
+   "op": "drop",
+   "evidence": "AFANÁSY invalid boy about eighteen years of age",
+   "why": "Cast-list rows were read as a speaker's first words."
+  },
+  {
+   "play": "gut-10850",
+   "revision": "0bb770cab8c8",
+   "line": "L1100",
+   "op": "role",
+   "role": "KING",
+   "evidence": "KIN. But heaven hath made asignement",
+   "why": "KIN is the King's abbreviation, printed once; KING is his label in the lines around it."
+  },
+  {
+   "play": "gut-10850",
+   "revision": "0bb770cab8c8",
+   "line": "L1105",
+   "op": "role",
+   "role": "MEG",
+   "evidence": "ME. I hold your scoffes in vildest base contempt",
+   "why": "ME is Megra (MEG, the print's other label for her), answered by Bellario."
+  },
+  {
+   "play": "gut-1124",
+   "revision": "9f0448b1de2d",
+   "line": "L1290",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "TROY"
+    },
+    {
+     "as": "speech",
+     "role": "ALL",
+     "from": "ALL. Hector",
+     "cut": "ALL."
+    }
+   ],
+   "evidence": "Hector is slain. ALL. Hector!",
+   "why": "A printed label stands inside the speech above it; its words belong to the speaker it names."
+  },
+  {
+   "play": "gut-1240",
+   "revision": "2858adf6d97c",
+   "line": "L0003",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "direction"
+    },
+    {
+     "as": "speech",
+     "role": "SHAWN",
+     "from": "—Where’s himself?"
+    }
+   ],
+   "evidence": "looks round awkwardly, when he sees she is alone._—Where’s himself?",
+   "why": "The italic words are the print's entrance for Shawn Keogh, whose other speeches are under SHAWN."
+  },
+  {
+   "play": "gut-13039-3",
+   "revision": "95d357323a4a",
+   "line": "L0181",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "HAVERILL"
+    },
+    {
+     "as": "direction",
+     "from": "[KERCHIVAL turns"
+    }
+   ],
+   "evidence": "your initials are on it. [KERCHIVAL turns and stares",
+   "why": "The print's own stage direction (a bracket the text never closes, or a tableau) was read as speech."
+  },
+  {
+   "play": "gut-13039-3",
+   "revision": "95d357323a4a",
+   "line": "L0182",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "KERCHIVAL"
+    },
+    {
+     "as": "direction",
+     "from": "[ He exits"
+    }
+   ],
+   "evidence": "Thank you. [ He exits with a quick glance back.",
+   "why": "The print's own stage direction (a bracket the text never closes, or a tableau) was read as speech."
+  },
+  {
+   "play": "gut-13050",
+   "revision": "69707bd9419a",
+   "line": "L0441",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MRS. FARLEY"
+    },
+    {
+     "as": "direction",
+     "from": "[ Door closed"
+    }
+   ],
+   "evidence": "expect me to keep--[ Door closed",
+   "why": "The print's own stage direction (a bracket the text never closes, or a tableau) was read as speech."
+  },
+  {
+   "play": "gut-13319",
+   "revision": "274b75f81939",
+   "line": "L1073",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "PETER"
+    },
+    {
+     "as": "speech",
+     "role": "WILLIAM AND PETER",
+     "from": "WILLIAM and PETER.",
+     "cut": "WILLIAM and PETER."
+    },
+    {
+     "as": "direction",
+     "from": "PETER GRIMM _has danced off"
+    }
+   ],
+   "evidence": "WILLIAM and PETER. \"Ha! H'm!\" PETER GRIMM _has danced off",
+   "why": "A joint speech's label is run into Peter's, then the print's closing direction."
+  },
+  {
+   "play": "gut-13319",
+   "revision": "274b75f81939",
+   "line": "L1075",
+   "op": "direction",
+   "evidence": "orchestra and continues as the audience passes out._",
+   "why": "The tail of the print's closing direction (L1074 begins it) was read as Peter's words."
+  },
+  {
+   "play": "gut-13894-2",
+   "revision": "f367518d14c8",
+   "line": "L0588",
+   "op": "role",
+   "role": "LOOE",
+   "evidence": "LOOK. Lady Leonard Alcar has consulted me",
+   "why": "LOOK is a misprint of LOOE, the speaker of the lines before and after it."
+  },
+  {
+   "play": "gut-14322",
+   "revision": "ab3ca36e57bb",
+   "line": "L0331",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "ELECTRA"
+    },
+    {
+     "as": "speech",
+     "role": "ORESTES",
+     "from": "ORESTES. O faithful",
+     "cut": "ORESTES."
+    },
+    {
+     "as": "speech",
+     "role": "ELECTRA",
+     "from": "ELECTRA. Aye",
+     "cut": "ELECTRA."
+    },
+    {
+     "as": "speech",
+     "role": "ORESTES",
+     "from": "ORESTES. Go, Pylades",
+     "cut": "ORESTES."
+    },
+    {
+     "as": "direction",
+     "from": "[ELECTRA and PYLADES"
+    }
+   ],
+   "evidence": "Farewell! ORESTES. O faithful unto death,",
+   "why": "A printed label stands inside the speech above it; its words belong to the speaker it names. The bracket that ends the speech is a direction."
+  },
+  {
+   "play": "gut-14347-2",
+   "revision": "337c8d8accbe",
+   "line": "L0595",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MAURICE"
+    },
+    {
+     "as": "speech",
+     "role": "JEANNE",
+     "from": "JEANNE. Coldly",
+     "cut": "JEANNE."
+    }
+   ],
+   "evidence": "anything else. JEANNE. Coldly Answer a question first",
+   "why": "A printed label stands inside the speech above it; its words belong to the speaker it names."
+  },
+  {
+   "play": "gut-15349-2",
+   "revision": "de82ebb154e2",
+   "line": "L0573",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "OZM"
+    },
+    {
+     "as": "direction",
+     "from": "[ Exit OZM."
+    }
+   ],
+   "evidence": "such a cure! [ Exit OZM. led by BENZ.",
+   "why": "The print's own stage direction (a bracket the text never closes, or a tableau) was read as speech."
+  },
+  {
+   "play": "gut-1537",
+   "revision": "1942ef3d9229",
+   "line": "L0109",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "direction"
+    },
+    {
+     "as": "speech",
+     "role": "GOWER",
+     "from": "Good Helicane, that stay’d at home."
+    }
+   ],
+   "evidence": "Good Helicane, that stay’d at home.",
+   "why": "Gower speaks the verse after the dumb show; only the dumb show is the print's direction."
+  },
+  {
+   "play": "gut-1537",
+   "revision": "1942ef3d9229",
+   "line": "L0110",
+   "op": "speech",
+   "role": "GOWER",
+   "evidence": "Thunder above and deeps below",
+   "why": "These words are Gower's verse, the line after 'For now the wind begins to blow'."
+  },
+  {
+   "play": "gut-1537",
+   "revision": "1942ef3d9229",
+   "line": "L0111",
+   "op": "speech",
+   "role": "GOWER",
+   "evidence": "Make such unquiet, that the ship",
+   "why": "The end of Gower's verse after the first dumb show."
+  },
+  {
+   "play": "gut-1537",
+   "revision": "1942ef3d9229",
+   "line": "L0308",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "direction"
+    },
+    {
+     "as": "speech",
+     "role": "GOWER",
+     "from": "By many a dern and painful perch"
+    }
+   ],
+   "evidence": "By many a dern and painful perch",
+   "why": "Gower speaks the verse after the dumb show; only the dumb show is the print's direction."
+  },
+  {
+   "play": "gut-1537",
+   "revision": "1942ef3d9229",
+   "line": "L0541",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "direction"
+    },
+    {
+     "as": "speech",
+     "role": "GOWER",
+     "from": "See how belief may suffer by foul show;"
+    }
+   ],
+   "evidence": "See how belief may suffer by foul show;",
+   "why": "Gower speaks the verse after the dumb show; only the dumb show is the print's direction."
+  },
+  {
+   "play": "gut-1782",
+   "revision": "909fc36f97cd",
+   "line": "L0309a",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "THIRD DRAWER"
+    },
+    {
+     "as": "speech",
+     "role": "SECOND DRAWER",
+     "from": "SECOND DRAWER. I'll",
+     "cut": "SECOND DRAWER."
+    }
+   ],
+   "evidence": "SECOND DRAWER. I'll see if I can find out Sneak.",
+   "why": "A printed label stands inside the speech above it; its words belong to the speaker it names."
+  },
+  {
+   "play": "gut-18677",
+   "revision": "77b33d772c2f",
+   "line": "L0158",
+   "op": "direction",
+   "evidence": "LEEK HIRST MALCOLM SOMERS kneeling _seated",
+   "why": "The positions of the final tableau and a note on another ending, read as a speaker's words."
+  },
+  {
+   "play": "gut-19826-2",
+   "revision": "78da0f97d92e",
+   "line": "L0002",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "OPENING SONG",
+     "cut": "Music illustration:"
+    }
+   ],
+   "evidence": "Music illustration: 1. The ship is sail-ing",
+   "why": "A picture's caption was read as the first words of the song."
+  },
+  {
+   "play": "gut-19826-2",
+   "revision": "78da0f97d92e",
+   "line": "L0205",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "THE TIME IS NEAR",
+     "cut": "Music illustration:"
+    }
+   ],
+   "evidence": "Music illustration: 1. The time is near",
+   "why": "A picture's caption was read as the first words of the song."
+  },
+  {
+   "play": "gut-20288",
+   "revision": "55fe02ad0cae",
+   "line": "L1005",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "K. EDW",
+     "cut": "Third._"
+    },
+    {
+     "as": "direction",
+     "from": "[ Exeunt Attendants."
+    },
+    {
+     "as": "speech",
+     "role": "K. EDW",
+     "from": "Accursed head"
+    }
+   ],
+   "evidence": "Third._ Go fetch my father's hearse",
+   "why": "'Third._' ends the label K. Edw. Third; the bracket is the print's direction, and the speech goes on after it."
+  },
+  {
+   "play": "gut-22146",
+   "revision": "2e4f5e625261",
+   "line": "L0010",
+   "op": "direction",
+   "evidence": "boy who is the hawk is squatting center stage",
+   "why": "The second half of the print's direction (L0009 begins it), read as BOY'S VOICE's words."
+  },
+  {
+   "play": "gut-2909",
+   "revision": "c712234b2468",
+   "line": "L0203",
+   "op": "role",
+   "role": "BILL",
+   "evidence": "BITS. I do.",
+   "why": "BITS is a misprint of BILL: the speech answers Mabel's question to Bill, and BILL is the other speaker of the scene."
+  },
+  {
+   "play": "gut-2914",
+   "revision": "6871e8885e7d",
+   "line": "L0767",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "CHIEF STUDENT"
+    },
+    {
+     "as": "direction",
+     "from": "The crowd falls back"
+    }
+   ],
+   "evidence": "Give him air! The crowd falls back, and two STUDENTS",
+   "why": "The stage description after the speech was read as part of it."
+  },
+  {
+   "play": "gut-2914",
+   "revision": "6871e8885e7d",
+   "line": "L0768",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "CHIEF STUDENT"
+    },
+    {
+     "as": "direction",
+     "from": "Then begins a scared swaying"
+    }
+   ],
+   "evidence": "By the Lord, it's over! Then begins a scared swaying",
+   "why": "The stage description after the last speech was read as part of it."
+  },
+  {
+   "play": "gut-2920-3",
+   "revision": "7fe82ed8cd14",
+   "line": "L0096",
+   "op": "drop",
+   "evidence": "A Little Comedy",
+   "why": "The title page of the next play was read as a speaker (PUNCH AND GO)."
+  },
+  {
+   "play": "gut-2920-3",
+   "revision": "7fe82ed8cd14",
+   "line": "L0097",
+   "op": "drop",
+   "evidence": "FRUST..............The Boss",
+   "why": "The play's list of players was read as JAMES G's words."
+  },
+  {
+   "play": "gut-3023",
+   "revision": "0884ba7dfef5",
+   "line": "L0032",
+   "op": "drop",
+   "evidence": "MEPHISTOPHELES. WAGNER, a Student. MARGARET.",
+   "why": "The cast list was read as FAUST's words."
+  },
+  {
+   "play": "gut-3023",
+   "revision": "0884ba7dfef5",
+   "line": "L0032a",
+   "op": "drop",
+   "evidence": "A STUDENT. ELIZABETH, an Acquaintance of Margaret",
+   "why": "The cast list went on after the label OLD PEASANT, which is a part of the list."
+  },
+  {
+   "play": "gut-3023",
+   "revision": "0884ba7dfef5",
+   "line": "L0033",
+   "op": "drop",
+   "evidence": "TITANIA. ARIEL. PUCK, &C, &C.",
+   "why": "The cast list's last row was read as OBERON's words."
+  },
+  {
+   "play": "gut-3023",
+   "revision": "0884ba7dfef5",
+   "line": "L0034",
+   "op": "direction",
+   "evidence": "A high vaulted narrow Gothic chamber.",
+   "why": "The scene's heading (NIGHT) and its setting were read as a speaker's words."
+  },
+  {
+   "play": "gut-30643-4",
+   "revision": "57b592ad4a39",
+   "line": "L0004",
+   "op": "direction",
+   "evidence": "to her, KIT, C. He enters on tiptoe,",
+   "why": "The tail of the print's direction (L0003 holds its beginning inside Arethusa's speech), read as ARETHUSA's words."
+  },
+  {
+   "play": "gut-3304-2",
+   "revision": "2624a5c8ea98",
+   "line": "L0377",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "LAURA"
+    },
+    {
+     "as": "speech",
+     "role": "MONTAGUE",
+     "from": "MONTAGUE. After",
+     "cut": "MONTAGUE."
+    }
+   ],
+   "evidence": "a bad man? MONTAGUE. After a pause.",
+   "why": "A printed label stands inside the speech above it; its words belong to the speaker it names."
+  },
+  {
+   "play": "gut-3695",
+   "revision": "7cd4667d0b0a",
+   "line": "L0003",
+   "op": "drop",
+   "evidence": "THE CHARACTERS OF THE PERSONS",
+   "why": "The cast list was read as SHIFT's words."
+  },
+  {
+   "play": "gut-3695",
+   "revision": "7cd4667d0b0a",
+   "line": "L0004",
+   "op": "direction",
+   "evidence": "After the second sounding.",
+   "why": "The print's direction was read as the words of THE STAGE."
+  },
+  {
+   "play": "gut-3735",
+   "revision": "364a8d425660",
+   "line": "L0340a",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "GOVERNOR"
+    },
+    {
+     "as": "speech",
+     "role": "KHLESTAKOV",
+     "from": "KHLESTAKOV curtly",
+     "cut": "KHLESTAKOV"
+    }
+   ],
+   "evidence": "Your Ex-ex-ex- KHLESTAKOV curtly . What is it?",
+   "why": "KHLESTAKOV answers; the print has his name, then his direction, then his words, run into the Governor's stammer."
+  },
+  {
+   "play": "gut-3735",
+   "revision": "364a8d425660",
+   "line": "L0341",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "GOVERNOR"
+    },
+    {
+     "as": "speech",
+     "role": "KHLESTAKOV",
+     "from": "KHLESTAKOV as before",
+     "cut": "KHLESTAKOV"
+    }
+   ],
+   "evidence": "Your Ex-ex-ex- KHLESTAKOV as before . I can",
+   "why": "The same run-in as the line before: KHLESTAKOV's name and words follow the Governor's stammer."
+  },
+  {
+   "play": "gut-38597",
+   "revision": "78c432053eeb",
+   "line": "L0015",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "TRIS",
+     "cut": "TRISTAN"
+    },
+    {
+     "as": "speech",
+     "role": "LADIES",
+     "from": "LADIES near door",
+     "cut": "LADIES"
+    }
+   ],
+   "evidence": "TRISTAN sings . Lovely cousin, I implore you",
+   "why": "NO. 3 is the number of the song in the score; the singers are the print's own labels, TRISTAN and LADIES."
+  },
+  {
+   "play": "gut-38678-1",
+   "revision": "2e898cc20069",
+   "line": "L0004c",
+   "op": "direction",
+   "evidence": "MRS. ROCKINGHAM and EVELYN (LADY TRENCHARD), handsome",
+   "why": "The print's entrance for two characters, read as MADGE's words."
+  },
+  {
+   "play": "gut-38678-1",
+   "revision": "2e898cc20069",
+   "line": "L0474",
+   "op": "direction",
+   "evidence": "Election speech (a roll of foolscap paper) on cabinet L.",
+   "why": "The print's list of properties, read as PHYLLIS's words."
+  },
+  {
+   "play": "gut-38909",
+   "revision": "1882de9d131a",
+   "line": "L0001",
+   "op": "drop",
+   "evidence": "Certain Maidens, Myrmidons, Men-at-Arms.",
+   "why": "The cast list's last row was read as a speaker's words."
+  },
+  {
+   "play": "gut-41589",
+   "revision": "7a0453bbf894",
+   "line": "L0360",
+   "op": "direction",
+   "evidence": "The Amber Boudoir at Wyvern immediately after",
+   "why": "A chapter's title and its setting, read as a speaker's words."
+  },
+  {
+   "play": "gut-44221",
+   "revision": "594d0edbcdfb",
+   "line": "L0247",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "SUSAN"
+    },
+    {
+     "as": "speech",
+     "role": "ALL",
+     "from": "ALL. shouting",
+     "cut": "ALL."
+    }
+   ],
+   "evidence": "We are resolved! ALL. shouting We are resolved!",
+   "why": "A printed label stands inside the speech above it; its words belong to the speaker it names."
+  },
+  {
+   "play": "gut-44233-3",
+   "revision": "3469851963ae",
+   "line": "L0168",
+   "op": "direction",
+   "evidence": "LINDGREN. The WAITER. Then the FIANCÉ, dressed in black",
+   "why": "The print's list of who is on stage, read as AXEL's words."
+  },
+  {
+   "play": "gut-44302-1",
+   "revision": "a6e47095cb97",
+   "line": "L0797",
+   "op": "role",
+   "role": "SHERIFF",
+   "evidence": "SHERUT. _To_ KERSTI Why so pale?",
+   "why": "SHERUT is a misprint of SHERIFF, who is answered by Kersti in the next line."
+  },
+  {
+   "play": "gut-4736",
+   "revision": "d580ecd9b84c",
+   "line": "L0245",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "INGOLF"
+    },
+    {
+     "as": "speech",
+     "role": "HADDA PADDA",
+     "from": "HADDA PADDA gets up",
+     "cut": "HADDA PADDA"
+    }
+   ],
+   "evidence": "loved you? HADDA PADDA gets up . Not an old one",
+   "why": "A printed label stands inside the speech above it; its words belong to the speaker it names."
+  },
+  {
+   "play": "gut-47559",
+   "revision": "15c4d7d7eb6b",
+   "line": "L0830",
+   "op": "role",
+   "role": "ADAM CHERRY",
+   "evidence": "ADAM CHERRY.'. Anything to do with",
+   "why": "The label keeps a stray quotation mark from the print."
+  },
+  {
+   "play": "gut-49181-2",
+   "revision": "0e81a491fe53",
+   "line": "L0556",
+   "op": "role",
+   "role": "GOODKIND",
+   "evidence": "THANKS. _The_ SERVANT _starts to exit L._ And, Riggs!",
+   "why": "THANKS is the first word of Goodkind's speech, printed as a label; the speech answers the servant Riggs. The word is set aside: nothing is added."
+  },
+  {
+   "play": "gut-49198",
+   "revision": "708ba1fa6a4a",
+   "line": "L0469b",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "CHARITY"
+    },
+    {
+     "as": "direction",
+     "from": "TABLEAU.--"
+    }
+   ],
+   "evidence": "forgiven! TABLEAU.-- With her left hand on his shoulder",
+   "why": "The print's own stage direction (a bracket the text never closes, or a tableau) was read as speech."
+  },
+  {
+   "play": "gut-4963",
+   "revision": "91d0f01645ce",
+   "line": "L0043",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "FRAU BOLLAND"
+    },
+    {
+     "as": "speech",
+     "role": "HAUSER",
+     "from": "DR. HAUSER. They",
+     "cut": "DR. HAUSER."
+    }
+   ],
+   "evidence": "idealists! DR. HAUSER. They deserve nothing better.",
+   "why": "A printed label stands inside the speech above it; its words belong to the speaker it names. HAUSER is the role this play gives Dr. Hauser's other speeches."
+  },
+  {
+   "play": "gut-5053-2",
+   "revision": "d8375070fba0",
+   "line": "L0088",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MR. Y",
+     "cut": "Y."
+    }
+   ],
+   "evidence": "ME. Y. Growing more familiar",
+   "why": "ME. is a misprint of MR.; the letter that follows is the person's name, not a word of the speech."
+  },
+  {
+   "play": "gut-5053-2",
+   "revision": "d8375070fba0",
+   "line": "L0150",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MR. X",
+     "cut": "X."
+    }
+   ],
+   "evidence": "ME. X. There you see! The first",
+   "why": "ME. is a misprint of MR.; the letter that follows is the person's name, not a word of the speech."
+  },
+  {
+   "play": "gut-5053-2",
+   "revision": "d8375070fba0",
+   "line": "L0167",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MR. X",
+     "cut": "X."
+    }
+   ],
+   "evidence": "ME. X. So you don",
+   "why": "ME. is a misprint of MR.; the letter that follows is the person's name, not a word of the speech."
+  },
+  {
+   "play": "gut-5328-6",
+   "revision": "ebbe459071f4",
+   "line": "L0424",
+   "op": "drop",
+   "evidence": "EDGAR ALLAN WOOLF Author of",
+   "why": "A title-page row (BOOKS AND LYRICS BY) was read as a speaker."
+  },
+  {
+   "play": "gut-5328-6",
+   "revision": "ebbe459071f4",
+   "line": "L0425",
+   "op": "drop",
+   "evidence": "ANATOL FRIEDLAND Composer of",
+   "why": "A title-page row (MUSIC BY) was read as a speaker."
+  },
+  {
+   "play": "gut-5328-6",
+   "revision": "ebbe459071f4",
+   "line": "L0571",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "drop"
+    },
+    {
+     "as": "speech",
+     "role": "MRS. SCHUYLER",
+     "from": "MRS. SCHUYLER: Counting",
+     "cut": "MRS. SCHUYLER:"
+    }
+   ],
+   "evidence": "Could not break paragraph: MRS. SCHUYLER: Counting.",
+   "why": "A transcriber's warning stands in front of the speech it was written about; the label after it names the speaker."
+  },
+  {
+   "play": "gut-53832",
+   "revision": "782b603a125e",
+   "line": "L0028",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "JUMPING-JACK"
+    },
+    {
+     "as": "speech",
+     "role": "SANTA AND MRS. SANTA",
+     "from": "SANTA and MRS. SANTA together : Poor",
+     "cut": "SANTA and MRS. SANTA together :"
+    }
+   ],
+   "evidence": "SANTA and MRS. SANTA together : Poor thing.",
+   "why": "Two speakers answer together; the print names them in the label run into the Jumping-Jack speech."
+  },
+  {
+   "play": "gut-54014",
+   "revision": "696fc4cff39f",
+   "line": "L0014",
+   "op": "direction",
+   "evidence": "A lawn before a villa. The serenade and finale.",
+   "why": "The third scene's setting in the list of scenes, read as a speaker's words (II)."
+  },
+  {
+   "play": "gut-54063-6",
+   "revision": "b96a9af47987",
+   "line": "L0060",
+   "op": "direction",
+   "evidence": "The Raven,” by Edgar A. Poe. FESTUS._",
+   "why": "A heading over the title of the piece read aloud, read as the words of READING."
+  },
+  {
+   "play": "gut-54063-6",
+   "revision": "b96a9af47987",
+   "line": "L0067",
+   "op": "direction",
+   "evidence": "Maud Muller.” STELLA._",
+   "why": "A heading over the title of the piece read aloud, read as the words of READING."
+  },
+  {
+   "play": "gut-54063-6",
+   "revision": "b96a9af47987",
+   "line": "L0205",
+   "op": "direction",
+   "evidence": "The Bells,” Poe. STELLA._",
+   "why": "A heading over the title of the piece read aloud, read as the words of READING."
+  },
+  {
+   "play": "gut-54063-6",
+   "revision": "b96a9af47987",
+   "line": "L0209",
+   "op": "direction",
+   "evidence": "Sheridan’s Ride,” Reid. FESTUS._",
+   "why": "A heading over the title of the piece read aloud, read as the words of READING."
+  },
+  {
+   "play": "gut-56151",
+   "revision": "3f881e0a825a",
+   "line": "L0019",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "HORTON"
+    },
+    {
+     "as": "direction",
+     "from": "MRS. EMPTAGE struggles"
+    }
+   ],
+   "evidence": "Mrs. Quinton Twelves. MRS. EMPTAGE struggles to her feet",
+   "why": "The print's own stage direction (a bracket the text never closes, or a tableau) was read as speech."
+  },
+  {
+   "play": "gut-56266-1",
+   "revision": "351e102e7451",
+   "line": "L0001",
+   "op": "direction",
+   "evidence": "Reception-room in the Palace._",
+   "why": "The setting was read as PAL's words."
+  },
+  {
+   "play": "gut-56286",
+   "revision": "6fa69670f4f3",
+   "line": "L0001",
+   "op": "direction",
+   "evidence": "The first dialogue treats of getting up",
+   "why": "The editor's heading and note were read as a speaker's words."
+  },
+  {
+   "play": "gut-56286",
+   "revision": "6fa69670f4f3",
+   "line": "L0024",
+   "op": "direction",
+   "evidence": "Erasmus in his Ciceronianus thus describes the style",
+   "why": "The editor's heading and note were read as a speaker's words."
+  },
+  {
+   "play": "gut-56286",
+   "revision": "6fa69670f4f3",
+   "line": "L0025",
+   "op": "direction",
+   "evidence": "The treatises on education in Tudor times",
+   "why": "The editor's heading and note were read as a speaker's words."
+  },
+  {
+   "play": "gut-56286",
+   "revision": "6fa69670f4f3",
+   "line": "L0026",
+   "op": "direction",
+   "evidence": "It has already been mentioned that Vives supplies",
+   "why": "The editor's heading and note were read as a speaker's words."
+  },
+  {
+   "play": "gut-57371",
+   "revision": "2dcd228fa2db",
+   "line": "L0007",
+   "op": "direction",
+   "evidence": "Foreground—a frozen crater",
+   "why": "The setting was read as THE PROLOGUE's words."
+  },
+  {
+   "play": "gut-58303",
+   "revision": "401d74295565",
+   "line": "L0903",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "direction"
+    },
+    {
+     "as": "speech",
+     "role": "SWET",
+     "from": "Swet. Why",
+     "cut": "Swet."
+    }
+   ],
+   "evidence": "Enter Swetnam muzzled, hal’d in by Women . Swet. Why",
+   "why": "The print's entrance for Swetnam, then his label and speech, were read as the Epilogue's words."
+  },
+  {
+   "play": "gut-58303",
+   "revision": "401d74295565",
+   "line": "L0905",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "LEO"
+    },
+    {
+     "as": "speech",
+     "role": "SWET",
+     "from": "Swet. I now repent",
+     "cut": "Swet."
+    }
+   ],
+   "evidence": "Though you report vs so. Swet. I now repent",
+   "why": "A printed label stands inside the speech above it; its words belong to the speaker it names."
+  },
+  {
+   "play": "gut-58928-1",
+   "revision": "b73cc5304995",
+   "line": "L0024",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "AIR",
+     "cut": "Chorus to “The Moon,” “San Toy,” Act I._"
+    }
+   ],
+   "evidence": "Chorus to “The Moon,” “San Toy,” Act I._",
+   "why": "The tune's name was spoken before the song."
+  },
+  {
+   "play": "gut-58928-1",
+   "revision": "b73cc5304995",
+   "line": "L0122",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "AIR",
+     "cut": "“Chinee Soje Man,” last sixteen measures, “San Toy,” Act II._"
+    }
+   ],
+   "evidence": "“Chinee Soje Man,” last sixteen measures",
+   "why": "The tune's name was spoken before the song."
+  },
+  {
+   "play": "gut-58928-1",
+   "revision": "b73cc5304995",
+   "line": "L0134",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "AIR",
+     "cut": "“Samee Gamee,” “San Toy,” Act I._"
+    }
+   ],
+   "evidence": "“Samee Gamee,” “San Toy,” Act I._",
+   "why": "The tune's name was spoken before the song."
+  },
+  {
+   "play": "gut-59685-10",
+   "revision": "814fe6677b3d",
+   "line": "L0171",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MR. WELLS, ALINE, AND ALEXIS",
+     "cut": "WELLS, ALINE, AND ALEXIS aside ."
+    }
+   ],
+   "evidence": "WELLS, ALINE, AND ALEXIS aside . See--see--they drink",
+   "why": "TRIO.--MR. WELLS, ALINE, AND ALEXIS is the print's label; the singers' names were read as the first words."
+  },
+  {
+   "play": "gut-59685-10",
+   "revision": "814fe6677b3d",
+   "line": "L0174a",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "ALEXIS AND ALINE",
+     "cut": "ALEXIS AND ALINE aside ."
+    }
+   ],
+   "evidence": "ALEXIS AND ALINE aside . Oh, love, true love",
+   "why": "The singers the print names were read as the first words of the song."
+  },
+  {
+   "play": "gut-59685-10",
+   "revision": "814fe6677b3d",
+   "line": "L0175a",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "ALEXIS, MR. WELLS, AND ALINE",
+     "cut": "aside ALEXIS, MR. WELLS, AND ALINE aside ."
+    }
+   ],
+   "evidence": "aside ALEXIS, MR. WELLS, AND ALINE aside . Oh, marvellous",
+   "why": "The singers the print names were read as the first words of the song."
+  },
+  {
+   "play": "gut-59685-10",
+   "revision": "814fe6677b3d",
+   "line": "L0274",
+   "op": "role",
+   "role": "ALINE AND DR. DALY",
+   "evidence": "Oh, joyous boon! oh, mad delight!",
+   "why": "ENSEMBLE.--ALINE AND DR. DALY is the print's label; the pair sing."
+  },
+  {
+   "play": "gut-59685-10",
+   "revision": "814fe6677b3d",
+   "line": "L0320",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "SIR MARMADUKE, LADY SANGAZURE, ALEXIS, AND ALINE",
+     "cut": "SIR MARMADUKE, LADY SANGAZURE, ALEXIS, AND ALINE."
+    }
+   ],
+   "evidence": "SIR MARMADUKE, LADY SANGAZURE, ALEXIS, AND ALINE. Now to the banquet",
+   "why": "The singers the print names were read as the first words of the song."
+  },
+  {
+   "play": "gut-62173-1",
+   "revision": "91f2d4ec809f",
+   "line": "L0966",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "LAUN"
+    },
+    {
+     "as": "direction",
+     "from": "_Brains him_"
+    },
+    {
+     "as": "speech",
+     "role": "LAUN",
+     "from": "Quick! Help me"
+    }
+   ],
+   "evidence": "Die Hound! _Brains him_. LAUNCELOT drags him aside",
+   "why": "The words between Launcelot's two speeches are the print's direction, in which LAUNCELOT is a name, not a label."
+  },
+  {
+   "play": "gut-6992",
+   "revision": "4bde8252c661",
+   "line": "L0213b",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "TREMAYNE"
+    },
+    {
+     "as": "speech",
+     "role": "BELINDA",
+     "from": "BELINDA with that",
+     "cut": "BELINDA"
+    }
+   ],
+   "evidence": "BELINDA with that happy sigh of hers . O-oh!",
+   "why": "A printed label stands inside the speech above it; its words belong to the speaker it names."
+  },
+  {
+   "play": "gut-70315",
+   "revision": "cc14d888ccc0",
+   "line": "L0117",
+   "op": "direction",
+   "evidence": "Any room nowadays must be the scene",
+   "why": "The editor's preface under THE NEW WORD, read as a speaker's words."
+  },
+  {
+   "play": "gut-70635-4",
+   "revision": "76a915c0c597",
+   "line": "L0003",
+   "op": "drop",
+   "evidence": "HYKIGHT, stylish, modern according to taste.",
+   "why": "Cast-list rows were read as the first speech."
+  },
+  {
+   "play": "gut-7073",
+   "revision": "72cb4b37861a",
+   "line": "L0093",
+   "op": "direction",
+   "evidence": "Xerxes has led the hosts of Asia",
+   "why": "The editor's summary, printed under the play's name, was read as a speaker's words."
+  },
+  {
+   "play": "gut-7073",
+   "revision": "72cb4b37861a",
+   "line": "L0291",
+   "op": "direction",
+   "evidence": "The ancient Council of the Areopagus",
+   "why": "The editor's summary, printed under the play's name, was read as a speaker's words."
+  },
+  {
+   "play": "gut-7073",
+   "revision": "72cb4b37861a",
+   "line": "L0537",
+   "op": "direction",
+   "evidence": "After the day of horrors the blind Oedipus",
+   "why": "The editor's summary, printed under the play's name, was read as a speaker's words."
+  },
+  {
+   "play": "gut-76792",
+   "revision": "fca99681c06a",
+   "line": "L0002",
+   "op": "drop",
+   "evidence": "Soarethereal. Hurlothrumbo. Dologodelmo. Darony.",
+   "why": "The men's names in the cast list were read as a speaker's words."
+  },
+  {
+   "play": "gut-76792",
+   "revision": "fca99681c06a",
+   "line": "L0003",
+   "op": "drop",
+   "evidence": "Cademore. Sermentory. Seringo. Lusingo. Cuzzonida.",
+   "why": "The women's names in the cast list were read as a speaker's words."
+  },
+  {
+   "play": "gut-78656",
+   "revision": "f8b7cc67d346",
+   "line": "L0012",
+   "op": "direction",
+   "evidence": "LITERARY TASTES. Characters.",
+   "why": "A title over the list of characters, read as a speaker."
+  },
+  {
+   "play": "gut-78656",
+   "revision": "f8b7cc67d346",
+   "line": "L0069",
+   "op": "direction",
+   "evidence": "THE SETTLEMENT QUESTION. A CONVERSATION.",
+   "why": "A title over the next dialogue, read as a speaker."
+  },
+  {
+   "play": "gut-8772",
+   "revision": "07fb156bdbcf",
+   "line": "L0334",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "TRI"
+    },
+    {
+     "as": "speech",
+     "role": "PHI., ARM. AND BEL.",
+     "from": "PHI., ARM. and BEL. That",
+     "cut": "PHI., ARM. and BEL."
+    }
+   ],
+   "evidence": "PHI., ARM. and BEL. That ungrateful fever!",
+   "why": "A printed label stands inside the speech above it; its words belong to the speaker it names. Three speak together."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0011",
+   "op": "drop",
+   "evidence": "A dark, nervous, lively man of Jewish type.",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0012",
+   "op": "drop",
+   "evidence": "MARYA VASILYEVNA TOLBOUHINA. A very distinguished, rich",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0013",
+   "op": "drop",
+   "evidence": "About 50, an ex-Assistant Minister of State.",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0014",
+   "op": "drop",
+   "evidence": "Personal attendant on Zvezdintsef, aged about 60.",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0015",
+   "op": "drop",
+   "evidence": "A footman, about 28, handsome, profligate",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0016",
+   "op": "drop",
+   "evidence": "Butler, about 40, a bustling, kindly man",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0017",
+   "op": "drop",
+   "evidence": "The butler's assistant, about 20",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0018",
+   "op": "drop",
+   "evidence": "A man of about 35, a dandy.",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0019",
+   "op": "drop",
+   "evidence": "About 45, dishevelled, unshaved, bloated",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0020",
+   "op": "drop",
+   "evidence": "A talkative, dissatisfied woman of 30.",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0021",
+   "op": "drop",
+   "evidence": "A retired soldier.",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0021a",
+   "op": "drop",
+   "evidence": "LADY's-maid, 19, energetic, strong, merry",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0022",
+   "op": "drop",
+   "evidence": "About 60. Has served as village Elder.",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0023",
+   "op": "drop",
+   "evidence": "About 45, head of a family. A man of few words.",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0024",
+   "op": "drop",
+   "evidence": "About 70. Wears shoes of plaited bast.",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0024a",
+   "op": "drop",
+   "evidence": "in attendance on the Countess An old man",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-9792-3",
+   "revision": "a087f79e33b2",
+   "line": "L0025",
+   "op": "drop",
+   "evidence": "Of enormous size, strong, and rude.",
+   "why": "A row of the cast list, with the part's description, read as that part's first speech."
+  },
+  {
+   "play": "gut-994",
+   "revision": "cfc7748f624e",
+   "line": "L0000a",
+   "op": "drop",
+   "evidence": "an old woman ..... Honor Lavelle BARTLEY her son",
+   "why": "The cast list with its players was read as MAURYA's first words."
+  },
+  {
+   "play": "gut-9971-4",
+   "revision": "44208f239da4",
+   "line": "L0916",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "direction"
+    },
+    {
+     "as": "speech",
+     "role": "LEONTINE",
+     "from": "But, Doctor"
+    }
+   ],
+   "evidence": "Face assumes an expression of horror; she is about to shriek.",
+   "why": "The words before 'But, Doctor' are the print's direction for Leontine, whose speech they open."
+  }
+ ]
+}
