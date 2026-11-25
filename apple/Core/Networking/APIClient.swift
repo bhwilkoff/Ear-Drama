@@ -46,6 +46,17 @@ actor APIClient {
         return String(decoding: data, as: UTF8.self)
     }
 
+    /// A transcript's times as archive.org serves them (`.vtt`, beside the `.txt`), with the status: a 404 is an answer
+    /// (no times), not a failure. No token: it is not a Worker. The text is capped before it is read.
+    func transcriptCues(_ url: URL) async throws -> (String, Int) {
+        var request = URLRequest(url: url, timeoutInterval: 20)
+        request.setValue("text/vtt, text/plain", forHTTPHeaderField: "Accept")
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        guard data.count <= 4_000_000 else { throw URLError(.dataLengthExceedsMaximum) }
+        return (String(decoding: data, as: UTF8.self), http.statusCode)
+    }
+
     /// A byte range of a recording on archive.org (`StartTiming.sniff` reads its frame headers).
     /// Short timeout: the player is waiting on it to start.
     func bytes(of url: URL, range: ClosedRange<Int>) async throws -> Data {

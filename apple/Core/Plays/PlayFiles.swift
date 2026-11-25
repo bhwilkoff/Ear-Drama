@@ -85,7 +85,7 @@ final class ProductionStore {
     }
 
     static var defaultRoot: URL {
-        URL.applicationSupportDirectory.appending(path: "Plays", directoryHint: .isDirectory)
+        (LaunchDoors.scratchRoot ?? URL.applicationSupportDirectory).appending(path: "Plays", directoryHint: .isDirectory)
     }
 
     func folder(_ id: String) -> URL { root.appending(path: id, directoryHint: .isDirectory) }
@@ -179,6 +179,24 @@ final class ProductionStore {
                                               options: .atomic)
         try save(production)
         return production
+    }
+
+    // MARK: Own scripts (PLAYS-DESIGN §13)
+
+    func productions(of scriptID: String) -> [Production] { productions.filter { $0.scriptID == scriptID } }
+
+    /// Every line of `scriptID` with a take in any production, chosen or not: what may not move (§13 item 4).
+    func takenLines(of scriptID: String) -> Set<String> { Set(productions(of: scriptID).flatMap { $0.takes.map(\.lineID) }) }
+
+    /// A changed own script reaches its productions here (§13 item 5). A shared one keeps its own text.
+    func adopt(_ script: PlayScript) throws {
+        for production in productions(of: script.id) where shares[production.id] == nil {
+            var next = production
+            next.adopt(script, lines: self.script(for: production)?.lines.map(\.id) != script.lines.map(\.id))
+            // The record first: a script that then fails to write is found changed again when this is tried again.
+            try save(next)
+            try Self.encoder.encode(script).write(to: folder(production.id).appending(path: "script.json"), options: .atomic)
+        }
     }
 
     /// The script as cast, read back from the production's own folder, so a

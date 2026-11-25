@@ -148,6 +148,42 @@ final class AudioPlayer {
         observeAudioSession()
     }
 
+    // MARK: - Held for casting by ear (PLAYS-DESIGN §13 item 10, iOS-DESIGN §4.22)
+
+    /// The person's own speed, and whether the queue goes on, kept while a casting holds the player.
+    @ObservationIgnored private var held: (speed: Float, queue: Bool)?
+    var isCasting: Bool { held != nil }
+
+    /// The player plays at the page's speed, never the person's, only the copy it is given, and nothing after its end.
+    func hold(speed page: Float) {
+        if held == nil { held = (speed, playsQueue) }
+        playsQueue = false
+        upNext = []
+        if speed != page { speed = page }
+    }
+
+    /// Lets go: the person's own speed, and the queue as it was. What is playing plays on.
+    func release() {
+        guard let own = held else { return }
+        held = nil
+        if speed != own.speed { speed = own.speed }
+        guard let current = item, own.queue else { return }
+        playsQueue = true
+        refreshUpNext()
+        if arc == nil { readArc(current.episode.id) }
+    }
+
+    /// Where the audio is, read from AVPlayer rather than the half-second tick; nil while a load, its timing check or a
+    /// seek has not landed, when the clock is not yet the person's place.
+    var settledSeconds: Double? {
+        guard let current = player.currentItem, current.status == .readyToPlay, timingCheck == nil, seeksInFlight == 0 else { return nil }
+        let seconds = player.currentTime().seconds
+        return seconds.isFinite ? seconds : nil
+    }
+
+    /// Counts every move of the place by hand (a seek, a skip, a load), so a casting knows the lines between were not heard.
+    @ObservationIgnored private(set) var jumps = 0
+
     // MARK: - Transport
 
     /// Plays an episode's default recording, resuming where the listener left
@@ -158,7 +194,7 @@ final class AudioPlayer {
         // The episode already on the player: Play resumes it where it stands, never reloads it.
         if offset == nil, let current = item, current.episode.id == detail.episode.id,
            recording == nil || recording == current.recording, player.currentItem != nil, !isAtEnd {
-            playsQueue = queue
+            playsQueue = queue && held == nil
             resume()
             return
         }
@@ -184,7 +220,8 @@ final class AudioPlayer {
         arcRead = nil
 
         loadToken += 1
-        recovery = LoadRecovery(chosen: recording, among: detail.recordings)
+        // A casting's times are this copy's: no other is tried.
+        recovery = LoadRecovery(chosen: recording, among: held == nil ? detail.recordings : [recording])
         loadContext = LoadContext(detail: detail, rate: rate)
         open(recording, detail: detail, start: offset ?? history.resumePosition(for: detail.episode.id, length: duration), rate: rate)
         publishNowPlaying()
@@ -192,9 +229,10 @@ final class AudioPlayer {
         onRoomChange()
 
         dequeue(detail.episode.id)
-        playsQueue = queue
+        if held != nil { held?.queue = true }
+        playsQueue = queue && held == nil
         refreshUpNext()
-        if queue { readArc(detail.episode.id) }
+        if playsQueue { readArc(detail.episode.id) }
     }
 
     /// What a recovery needs to reload the same episode.
@@ -235,6 +273,7 @@ final class AudioPlayer {
     private func open(_ recording: Recording, detail: EpisodeDetail, start: Double?, rate: Float?) {
         let source = Self.source(episodeID: detail.episode.id, recording: recording, localFile: localFile)
         isLocal = source.isLocal
+        jumps += 1
         // Archive VBR MP3s often lack a Xing/VBRI table, so AVFoundation's quick
         // estimate scales the first frame's bitrate: a 23-minute file read as an
         // hour, and a seek past its real end stalled (iPhone 12, 2026-10-27).
@@ -444,7 +483,7 @@ final class AudioPlayer {
         if player.currentItem == nil || player.currentItem?.status == .failed, let context = loadContext {
             let recording = recovery?.current ?? current.recording
             errorMessage = nil
-            recovery = LoadRecovery(chosen: recording, among: context.detail.recordings)
+            recovery = LoadRecovery(chosen: recording, among: held == nil ? context.detail.recordings : [recording])
             open(recording, detail: context.detail, start: elapsed > 0 ? elapsed : nil, rate: speed)
             return
         }
@@ -484,6 +523,7 @@ final class AudioPlayer {
 
     private func seekExactly(to seconds: Double) {
         elapsed = seconds
+        jumps += 1
         seeksInFlight += 1
         diag("seek \(Self.whole(seconds)) item \(player.currentItem?.status.rawValue ?? -1)")
         player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { @Sendable [weak self] finished in

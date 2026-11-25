@@ -25,7 +25,7 @@ nonisolated enum OwnWho: Equatable, Sendable {
 }
 
 /// One line of a doc being corrected. `k` is its key while it is edited, `id` nil until `OwnScript.done`.
-nonisolated struct OwnLine: Equatable, Sendable {
+nonisolated struct OwnLine: Codable, Equatable, Sendable {
     var k: Int = 0
     var id: String?
     var kind: String
@@ -38,12 +38,15 @@ nonisolated struct OwnLine: Equatable, Sendable {
 
 /// A doc is plain data, never changed in place: `OwnScript.apply` returns a new one. `undo` holds the earlier
 /// `lines` arrays themselves (copy on write), not copies.
-nonisolated struct OwnDoc: Equatable, Sendable {
+nonisolated struct OwnDoc: Codable, Equatable, Sendable {
     var lines: [OwnLine]
     var nextKey: Int
     var letters: [String: Int] = [:]
     var heard: [Int] = []
     var undo: [[OwnLine]] = []
+
+    /// A doc is kept without its undo (`OwnScript.kept`).
+    private enum CodingKeys: String, CodingKey { case lines, nextKey, letters, heard }
 }
 
 nonisolated enum OwnPiece: Equatable, Sendable {
@@ -1350,6 +1353,8 @@ nonisolated enum OwnScript {
         o["revision"] = .string(revisionOf(o["lines"] ?? .null))
         return .object(o)
     }
+
+    static func isOwnID(_ id: String) -> Bool { isOwnID(u(id)) }
 
     private static func isOwnID(_ s: U) -> Bool {
         let groups = [8, 4, 4, 4, 12]
