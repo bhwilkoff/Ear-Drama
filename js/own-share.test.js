@@ -62,7 +62,14 @@ function worker() {
     return { bytes: r.bytes.buffer.slice(0), meta: { id: r.body.script_id, revision: r.body.script_revision, title: r.title, episode_id: r.body.episode_id || null } };
   };
   W.api = {
-    create: async (body) => make(body),
+    create: async (body) => { const rec = make(body); if (W.lose) { W.lose = false; throw offline(); } return rec; },
+    list: async () => ({ productions: [...W.rows].map(([id, r]) => ({ id, title: r.title, script_id: r.body.script_id, director: r.director || 'me', updated_at: r.at || 0 })) }),
+    get: async (pid) => {
+      W.calls.push(['get', pid]);
+      const r = row(pid);
+      if (!r) throw problem(404, 'not_found');
+      return { id: pid, scriptID: r.body.script_id, scriptRevision: r.body.script_revision, own_script: r.body.own ? { state: r.bytes ? 'kept' : 'owed', by: r.director || 'me' } : undefined };
+    },
     classProduction: async (id, body) => make(body),
     putScript: async (pid, text) => {
       W.calls.push(['put', pid]);
@@ -160,6 +167,47 @@ test('a sending that can never pass undoes the share, on the Worker and here', a
   const s = await made(d), local = await d.plays.create(s);
   await refused(S.share({ api: W.api, store: d.plays, local, script: s, scripts: d.own }), 'bad_name', 'a title the filter refuses');
   eq([W.count('put'), d.plays.share(local.id)], [0, null], 'no text was sent');
+});
+
+test('a share whose creation answer was lost is adopted when it can be, deleted when it is an hour old, else left; asked once a page, never polled', async () => {
+  const NOW = 10 * 3600 * 1000;
+  const lost = async (W, d, title) => {
+    const s = await made(d, title), local = await d.plays.create(s);
+    W.lose = true;
+    await refused(S.share({ api: W.api, store: d.plays, local, script: s, scripts: d.own }), undefined, 'the answer is lost').catch(() => {});
+    return { s, local };
+  };
+  const run = async (W, d, checked = new Set()) => {
+    const remote = (await W.api.list()).productions;
+    return S.reconcileOwed({ api: W.api, store: d.plays, remote, me: 'me', scripts: d.own, now: NOW, checked });
+  };
+  // Adopt: one unshared production of that script here.
+  let W = worker(), d = await device();
+  let { s, local } = await lost(W, d, 'Lost One');
+  eq([W.rows.size, d.plays.share(local.id)], [1, null], 'the Worker holds it and this device has no link');
+  const checked = new Set();
+  eq(await run(W, d, checked), true, 'reconciled');
+  eq([d.plays.share(local.id), W.count('put'), W.rows.get('P1').bytes !== null], [{ pid: 'P1' }, 1, true], 'linked, and the text sent');
+  eq([await run(W, d, checked), W.count('get')], [false, 1], 'asked once a page: the second pass asks nothing');
+  eq(await run(W, d), false, 'a linked production is not fetched again');
+  // An old orphan with nothing here: deleted. A young one: left. A catalog row, another person's row: never fetched.
+  W = worker(); d = await device();
+  await lost(W, d, 'Old'); await lost(W, d, 'Young');
+  for (const p of [...d.plays.productions]) await d.plays.delete(p.id);
+  W.rows.get('P1').at = NOW - 2 * 3600 * 1000; W.rows.get('P2').at = NOW - 60 * 1000;
+  W.rows.set('P3', { body: { script_id: 'gut-1', script_revision: 'r', cast: [] }, bytes: null, title: 'Catalog' });
+  W.rows.set('P4', { body: { script_id: 'own-x', script_revision: 'r', cast: [], own: true }, bytes: null, title: 'Theirs', director: 'you' });
+  const page = new Set();
+  eq(await run(W, d, page), true, 'changed');
+  eq(await run(W, d, page), false, 'the same page asks about the young one once');
+  eq([...W.rows.keys()], ['P2', 'P3', 'P4'], 'the old orphan is gone from the Worker; the young one, a catalog row and another person\'s stay');
+  eq(W.calls.filter(c => c[0] === 'get').map(c => c[1]), ['P1', 'P2'], 'only this person\'s own rows are fetched');
+  // A refusal that can never pass undoes the adopted share, here and there.
+  W = worker(); d = await device();
+  ({ s, local } = await lost(W, d, 'Never'));
+  W.fail.put = [problem(413, 'script_too_long')];
+  await run(W, d);
+  eq([W.rows.size, d.plays.share(local.id)], [0, null], 'nothing left shared');
 });
 
 test('a disk that will not keep the freeze does not lose the share', async () => {
@@ -285,6 +333,15 @@ test('a catalog play is the library\'s at the recorded revision, else the bundle
   eq(await at('a'), old, 'the bundle\'s');
   await refused(at('c'), 'revision_mismatch', 'neither');
   eq(await at('c', { anyRevision: true }), lib, 'a class page draws what the library has now');
+  // A production whose play's revision moved on (547 scripts changed 2026-11-24): its own copy is the text, at every door that knows the production.
+  const d = await device();
+  const was = { id: 'gut-1', revision: 'a0', kind: 'radio', title: 'Old', authors: [], roles: [], lines: [{ id: 'L0001', kind: 'speech', role: 'ANN', text: 'Hello.' }] };
+  const mine = await d.plays.create(was);
+  await d.plays.setShare(mine.id, { pid: 'PX' });
+  eq(await at('a0', { store: d.plays, who: { pid: 'PX' } }), was, 'the production\'s copy at its recorded revision');
+  eq(await at('a0', { store: d.plays, who: { pid: 'PX' }, anyRevision: true }), was, 'and on a class page, before the library\'s current text');
+  await refused(at('a0', { store: d.plays, who: { pid: 'PY' } }), 'revision_mismatch', 'a person with no copy of it has only the library, which no longer holds it');
+  await refused(at('a0', { store: d.plays }), 'revision_mismatch', 'and no production named, none');
   await refused(S.scriptOf({ api: { playScript: async () => null, castableScripts: async () => [] }, id: 'gut-1', revision: 'b', anyRevision: true }), 'revision_mismatch', 'and nothing is never drawn');
 });
 

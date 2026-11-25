@@ -30,6 +30,8 @@
                     <SolidColorBrush x:Key="BrandSurfaceAltBrush" Color="#E8E8EB"/>
                     <Color x:Key="BrandText">#131316</Color>
                     <SolidColorBrush x:Key="BrandTextBrush" Color="#131316"/>
+                    <Color x:Key="BrandScrim">#131316</Color>
+                    <SolidColorBrush x:Key="BrandScrimBrush" Color="#131316"/>
                     <Color x:Key="BrandTextMuted">#5C5C66</Color>
                     <SolidColorBrush x:Key="BrandTextMutedBrush" Color="#5C5C66"/>
                     <Color x:Key="BrandBorder">#D8D8DD</Color>
@@ -85,6 +87,8 @@
                     <SolidColorBrush x:Key="BrandSurfaceAltBrush" Color="#232327"/>
                     <Color x:Key="BrandText">#F2F2F4</Color>
                     <SolidColorBrush x:Key="BrandTextBrush" Color="#F2F2F4"/>
+                    <Color x:Key="BrandScrim">#000000</Color>
+                    <SolidColorBrush x:Key="BrandScrimBrush" Color="#000000"/>
                     <Color x:Key="BrandTextMuted">#C4C4CC</Color>
                     <SolidColorBrush x:Key="BrandTextMutedBrush" Color="#C4C4CC"/>
                     <Color x:Key="BrandBorder">#34343A</Color>

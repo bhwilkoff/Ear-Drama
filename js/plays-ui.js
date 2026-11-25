@@ -138,6 +138,14 @@ const PlaysUI = (() => {
   const canShare = () => API.plays.available() && API.account.signedIn();
   const signIn = () => { if (typeof AccountUI !== 'undefined') AccountUI.openSheet(); };
 
+  /** This person's productions on the Worker; an own share whose creation answer was lost is adopted or deleted first (§13 item 11a), and the list read again. */
+  async function listed() {
+    const read = async () => (await API.plays.list()).productions || [];
+    let remote = await read();
+    if (await S.reconcileOwed({ api: API.plays, store, remote, me: API.account.state().user_id }).catch((e) => { console.error(e); return false; })) remote = await read();
+    return remote;
+  }
+
   /** The productions list. Record passes `onEmpty` (the section goes, no sentence) and `classes: false`. */
   async function renderMine(body, helpers, opts = {}) {
     h = helpers;
@@ -154,7 +162,7 @@ const PlaysUI = (() => {
     const out = [];
     let remote = [];
     if (canShare()) {
-      try { remote = (await API.plays.list()).productions || []; } catch (err) { console.error(err); }
+      try { remote = await listed(); } catch (err) { console.error(err); }
       if (my !== token) return;
     }
     const rows = S.libraryRows(store, remote).filter(r => !opts.play || playKey(r) === opts.play);
@@ -201,7 +209,7 @@ const PlaysUI = (() => {
     await openStore();
     let remote = [];
     if (canShare()) {
-      try { remote = (await API.plays.list()).productions || []; } catch (err) { console.error(err); }
+      try { remote = await listed(); } catch (err) { console.error(err); }
     }
     const groups = new Map();
     for (const r of S.libraryRows(store, remote)) {

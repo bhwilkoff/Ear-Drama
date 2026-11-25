@@ -298,6 +298,39 @@ const PlaysShare = (() => {
     return null;
   }
 
+  const reconciled = new Set();
+  const ORPHAN_AFTER_MS = 60 * 60 * 1000;
+  /**
+   * An own-script share whose creation answer was lost (§13 item 11a): the Worker holds a production of this person's
+   * with the text `owed` and this device holds no link to it. Run once a page over the list the screen already read, so
+   * nothing polls. One unshared production of that script at that revision here adopts it and sends the text; else, once
+   * it is an hour old (another device may be sending it), it is deleted: it counts toward 20 and its text can never come.
+   */
+  async function reconcileOwed({ api, store, remote, me, scripts = ownScripts(), now = Date.now(), checked = reconciled }) {
+    let changed = false;
+    for (const r of remote || []) {
+      if (!isOwnId(r.script_id) || !me || r.director !== me || checked.has(r.id) || store.findShared(r.id)) continue;
+      checked.add(r.id);
+      let rec;
+      try { rec = await api.get(r.id); } catch (e) { checked.delete(r.id); console.error(e); continue; }
+      if (!rec || !rec.own_script || rec.own_script.state !== 'owed' || rec.own_script.by !== me) continue;
+      const here = store.productions.filter(p => p.scriptID === r.script_id && p.scriptRevision === rec.scriptRevision && !store.share(p.id));
+      const script = here.length === 1 && scripts ? await scripts.script(r.script_id).catch(() => null) : null;
+      try {
+        if (script && script.revision === rec.scriptRevision) {
+          await store.setShare(here[0].id, { pid: r.id });
+          const err = await sendOrUndo({ api, pid: r.id, script, scripts });
+          if (err && !passes(err)) await store.unshare(here[0].id);
+          changed = true;
+        } else if (now - (r.updated_at || 0) > ORPHAN_AFTER_MS) {
+          await api.deleteProduction(r.id);
+          changed = true;
+        }
+      } catch (e) { console.error(e); checked.delete(r.id); }
+    }
+    return changed;
+  }
+
   /** The record's own script: null for a catalog play, else its state, with `held` (the owner removed it) and `mine` (this person brought it). */
   function ownState(rec, me = null) {
     const s = rec && rec.own_script;
@@ -362,6 +395,11 @@ const PlaysShare = (() => {
    */
   async function scriptOf({ api, id, revision, who = {}, fit = () => true, store = null, scripts = ownScripts(), anyRevision = false }) {
     if (!isOwnId(id)) {
+      // The production's own copy at its recorded revision comes first: the library publishes only its current text, so a
+      // play whose revision has moved on is otherwise unreadable for the production made from the old one.
+      const local = store && who.pid ? store.findShared(who.pid) : null;
+      const kept = local ? await store.script(local).catch(() => null) : null;
+      if (kept && kept.id === id && kept.revision === revision && Array.isArray(kept.lines)) return kept;
       const found = await api.playScript(id);
       if (found && (found.revision === revision || anyRevision)) return found;
       const held = scriptFor(await api.castableScripts(), id, revision);
@@ -562,6 +600,6 @@ const PlaysShare = (() => {
 
   return {
     consentBlocks, PUBLISH_WAITS, archiveStatus, canPublishAgain, changeableLines, published, ownParts, canPublish, publishPlay, performers, needsMyConsent, waitingOn, agreeToPublish, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
-    upload, mergedChosen, missingHere, inStep, bringHome, share, makeBody, sendScript, sendOrUndo, passes, isOwnId, ownState, publishable, neverPublishes, fits, scriptOf, forgetFetched, scriptLine, join, localFor, scriptFor, libraryRows, inviteLink, inviteToken, pendingInvite, holdInvite, pickAudio, line,
+    upload, mergedChosen, missingHere, inStep, bringHome, share, makeBody, sendScript, sendOrUndo, passes, isOwnId, ownState, publishable, neverPublishes, fits, scriptOf, forgetFetched, reconcileOwed, scriptLine, join, localFor, scriptFor, libraryRows, inviteLink, inviteToken, pendingInvite, holdInvite, pickAudio, line,
   };
 })();

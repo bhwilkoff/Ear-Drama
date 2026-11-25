@@ -62,6 +62,13 @@ const playThrough = (S, a, b) => { for (let t = a; t <= b; t += 16) S.tick(t, tr
 
 /* Each is a rule with its own mutants: run over the shipped core, and over each broken one. */
 const RULES = {
+  hue(E) {
+    const ps = [{ name: 'ANN', lines: 2 }, { name: 'BOB', lines: 9 }, { name: 'CY', lines: 2 }, { name: 'DEE', lines: 0 }];
+    const H = vm.runInThisContext('PlaysCore').PART_HUES;
+    eq([E.hueOf('BOB', ps), E.hueOf('ANN', ps), E.hueOf('CY', ps), E.hueOf('DEE', ps), E.hueOf('ZED', ps)], [H[0], H[1], H[2], 'none', 'none'], 'largest first, ties by who came first, no line none');
+    const eight = Array.from({ length: 8 }, (_, i) => ({ name: `P${i}`, lines: 10 - i }));
+    eq(E.hueOf('P7', eight), 'none', 'the eighth stands on neutral');
+  },
   lit(E) {
     const S = sit(E);
     const at = (ms) => { S.tick(ms, false); return S.lit; };
@@ -252,6 +259,8 @@ for (const [name, rule] of Object.entries(RULES)) test(`rule: ${name}`, () => ru
 
 /** [rule, text in the core, what it becomes]. */
 const MUTANTS = [
+  ['hue', 'b.p.lines - a.p.lines || a.i - b.i', 'a.i - b.i'],
+  ['hue', '.filter(x => x.p.lines > 0)', ''],
   ['rename', "take(O.apply(S.doc, { op: 'rename', part: from, to: name }, env()))", "take(O.apply(S.doc, { op: 'rename', part: from, to: name }))"],
   ['rename', 'while (!why && renames.length', 'while (false && renames.length'],
   ['rename', 'order.map(n => (n === from ? name : n))', 'before.filter(n => n !== from)'],

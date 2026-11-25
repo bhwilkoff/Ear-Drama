@@ -65,6 +65,10 @@ const VoiceCast = (() => {
   };
 
   const band = (f0) => f0 < 115 ? 'Deep' : f0 < 150 ? 'Low' : f0 < 180 ? 'Middle' : f0 < 220 ? 'High' : 'Very high';
+  /** The macOS novelty voices (apple DeviceVoices.noveltyNames, android VoiceCasting.NOVELTY): never a Default unless ticked. Names squashed to letters. */
+  const NOVELTY = Object.freeze(['albert', 'badnews', 'bahh', 'bells', 'boing', 'bubbles', 'cellos', 'deranged', 'goodnews',
+    'hysterical', 'jester', 'organ', 'superstar', 'trinoids', 'whisper', 'wobble', 'zarvox']);
+  const isNovelty = (name) => NOVELTY.includes(String(name || '').replace(/\(.*$/, '').toLowerCase().replace(/[^a-z]+/g, ''));
   const tagOf = (lang) => String(lang || '').replace(/_/g, '-');
   const squash = (x) => String(x || '').toLowerCase().replace(/[^a-z]+/g, ' ').trim();
   const NUL = '\u0000';
@@ -171,7 +175,7 @@ const VoiceCast = (() => {
     const named = label((all || []).filter(v => v && v.localService && /^en([-_]|$)/i.test(v.lang || '')));
     return named.voices
       .map(v => ({ engine: 'system', id: v.voiceURI || v.name, name: named.labels.get(v.voiceURI || v.name), lang: v.lang, tier: tierOf(v.name),
-                   gender: genderOf(v), register: registerOf(v), isDefault: !!v.default, raw: v }))
+                   gender: genderOf(v), register: registerOf(v), isDefault: !!v.default, offByDefault: isNovelty(v.name), raw: v }))
       .sort((a, b) => {
         if (a.tier !== b.tier) return b.tier - a.tier;
         const al = tagOf(a.lang).toLowerCase() === lang, bl = tagOf(b.lang).toLowerCase() === lang;
@@ -382,5 +386,5 @@ const VoiceCast = (() => {
 
   return { label, accentOf, localeNamed, KEY, DEFAULTS_KEY, PITCHES, RATE, PITCH, NOT_READ, tierOf, genderOf, systemVoices, autoCast, resolve, normalize,
            load, save, forget, productionKey, scriptKey, caster,
-           voiceKey, loadDefaults, saveDefaults, normalizeDefaults, usesVoice, ordered, poolOf, move };
+           voiceKey, loadDefaults, saveDefaults, normalizeDefaults, usesVoice, ordered, poolOf, move, NOVELTY, isNovelty };
 })();

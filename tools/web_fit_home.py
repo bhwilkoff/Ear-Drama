@@ -29,7 +29,7 @@ grid the two quiet doors no longer use.
 Second (2026-11-15): delete `flex-wrap: nowrap;` from `.pl-scene-actions`; at 320 px Try a line, Hear
 it and Read wrap and "a button row wrap apart" fails (it did, before that rule).
 """
-import datetime, json, os, subprocess, sys, tempfile, time
+import datetime, json, os, subprocess, sys, tempfile, time, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
@@ -166,6 +166,7 @@ def main():
 
     def call(self, method, params=None, timeout=20):
         if method == 'Page.navigate':
+            orig(self, 'Emulation.setTimezoneOverride', {'timezoneId': state['zone']})
             orig(self, 'Emulation.setEmulatedMedia', {'features': [
                 {'name': 'prefers-color-scheme', 'value': 'dark' if state['dark'] else 'light'}]})
             seed = ''.join(f"localStorage.setItem({k!r},{json.dumps(json.dumps(v))});"
@@ -186,17 +187,32 @@ def main():
             state['out'] = json.loads(r['result']['value'])
         return orig(self, method, params, timeout)
     web_run.CDP.call = call
-    today = datetime.date.today().isoformat()
-    # Local clock times through the ?now= door (local servers only): 8 PM is inside every published
-    # evening; 11 AM is daytime, when a genre station leads.
-    tz = datetime.datetime.now().astimezone().strftime('%z')
-    tz = tz[:3] + ':' + tz[3:]
-    cases = [('home-evening', 'home', f'?view=home&mute=1&now={today}T20:00:00{tz}', False, True),
-             ('home-day-history', 'home', f'?view=home&mute=1&now={today}T11:00:00{tz}', True, True),
+    # The clock is read from the published data, never from the wall clock (2026-11-25: "no On the air
+    # block" failed after local midnight and ten day-history frames failed when the file's window and
+    # the machine's date disagreed). The evening case is 2 minutes into the first published slot that is
+    # not a gap; the day case is the first hour from a station's first slot on that no evening covers.
+    # Chrome's zone is pinned to the file's zone so the date the client reads is the file's own date.
+    def published(name):
+        return json.loads(urllib.request.urlopen(data.rstrip('/') + '/' + name, timeout=30).read())
+    tonight, stations = published('tonight.json'), published('stations.json')
+    state['zone'] = tonight.get('zone', 'America/New_York')
+    parse = lambda t: datetime.datetime.strptime(t, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=datetime.timezone.utc)
+    evenings = [(parse(sl['utc_start']), parse(sl['utc_end'])) for d in tonight['days'].values() for sl in d['slots']]
+    first = next(parse(sl['utc_start']) for k in sorted(tonight['days']) for sl in tonight['days'][k]['slots'] if not sl.get('gap'))
+    evening_at = first + datetime.timedelta(minutes=2)
+    day_at = parse(stations['stations'][0]['slots'][0]['utc_start']) + datetime.timedelta(hours=1)
+    for _ in range(48):
+        if not any(a <= day_at < b for a, b in evenings):
+            break
+        day_at += datetime.timedelta(hours=1)
+    iso = lambda t: t.strftime('%Y-%m-%dT%H:%M:%SZ')
+    print(f'clock: evening {iso(evening_at)}, day {iso(day_at)}, zone {state["zone"]}', flush=True)
+    cases = [('home-evening', 'home', f'?view=home&mute=1&now={iso(evening_at)}', False, True),
+             ('home-day-history', 'home', f'?view=home&mute=1&now={iso(day_at)}', True, True),
              ('record', 'record', '?view=record&mute=1', False, False)]
     # The raw-title fixture (V5): tonight leading and a station leading, at 375 px.
-    raw_cases = [('home-raw-evening', 'home', f'fx.html?view=home&mute=1&now={today}T20:00:00{tz}', False, True),
-                 ('home-raw-day', 'home', f'fx.html?view=home&mute=1&now={today}T11:00:00{tz}', False, True)]
+    raw_cases = [('home-raw-evening', 'home', f'fx.html?view=home&mute=1&now={iso(evening_at)}', False, True),
+                 ('home-raw-day', 'home', f'fx.html?view=home&mute=1&now={iso(day_at)}', False, True)]
     runs = [(c, d, w) for c in cases for d in (False, True) for w in WIDTHS] + [(c, False, 375) for c in raw_cases]
     if '--only' in sys.argv:   # a prefix of the frame names, for a negative control
         runs = [r for r in runs if r[0][0].startswith(sys.argv[sys.argv.index('--only') + 1])]

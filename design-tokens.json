@@ -8,6 +8,7 @@
       "surface":      { "light": "#F4F4F5", "dark": "#19191C", "use": "cards, panels, the sidebar" },
       "surfaceAlt":   { "light": "#E8E8EB", "dark": "#232327", "use": "hover, a quieter second surface" },
       "text":         { "light": "#131316", "dark": "#F2F2F4", "use": "body text" },
+      "scrim":        { "light": "#131316", "dark": "#000000", "use": "the veil behind a sheet: always darkens the page, never lightens it" },
       "textMuted":    { "light": "#5C5C66", "dark": "#C4C4CC", "use": "secondary text, captions" },
       "border":       { "light": "#D8D8DD", "dark": "#34343A", "use": "hairlines and outlines" },
       "secondary":    { "light": "#0B6E99", "dark": "#6CC0E0", "use": "wayfinding: the selected tab or sidebar item, buttons that are not Play" },
