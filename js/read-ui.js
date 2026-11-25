@@ -243,6 +243,7 @@ const ReadUI = (() => {
     const el = api.el;
     const fact = el('p', { class: 'caption rr-fact', role: 'status', 'aria-live': 'polite' });
     const here = el('span', { class: 'caption tabular rr-here' });
+    const people = el('button', { type: 'button', class: 'btn btn-way tabular rr-here', hidden: true, 'aria-haspopup': 'dialog', onclick: () => peopleSheet(api).showModal() });
     const warn = el('p', { class: 'caption rr-warn', role: 'alert' });
     const back = el('button', { type: 'button', class: 'btn rr-back' }, 'Back');
     const next = el('button', { type: 'button', class: 'btn btn-primary rr-next' }, 'Next');
@@ -253,7 +254,7 @@ const ReadUI = (() => {
     const menu = el('details', { class: 'rr-menu', hidden: true });
     const recRow = el('div', { class: 'rr-row rr-rec', hidden: true });
     const bar = el('div', { class: 'rr-bar', role: 'region', 'aria-label': 'Reading together' },
-      el('div', { class: 'rr-row' }, fact, skip, parts, here), recRow, warn, el('div', { class: 'rr-row rr-row-lead' }, lead, menu));
+      el('div', { class: 'rr-row' }, fact, skip, parts, here, people), recRow, warn, el('div', { class: 'rr-row rr-row-lead' }, lead, menu));
     api.footer.before(bar);
     let lastCursor = null;
     let lastMine = null;
@@ -388,7 +389,10 @@ const ReadUI = (() => {
       }
       paintRec(s);
       skip.hidden = !away;
-      here.textContent = `${num.format(s.present)} here`;
+      const removes = R.removable(s).length > 0;
+      here.hidden = removes;
+      people.hidden = !removes;
+      here.textContent = people.textContent = `${num.format(s.present)} here`;
       parts.hidden = s.kind !== 'adult' || !s.you || s.you.role !== 'reader';
       lead.hidden = !leads;
       menu.hidden = !leads;
@@ -583,6 +587,35 @@ const ReadUI = (() => {
       }
     }
     line.className = 'caption'; line.textContent = 'On archive.org';
+  }
+
+  /** Who is here, for whoever may remove a member (PLAYS-DESIGN §12.13). */
+  function peopleSheet(api) {
+    const el = api.el;
+    const list = el('ul', { class: 'cast-list' });
+    const line = el('p', { class: 'caption refusal', role: 'alert' });
+    const dlg = el('dialog', { class: 'rd-sheet', 'aria-label': 'Here' },
+      el('div', { class: 'rd-sheet-head' }, el('h2', { class: 'section-header' }, 'Here'),
+        el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => dlg.close() }, 'Done')), list, line);
+    const paint = () => {
+      const rows = R.removable(session.state().snap);
+      if (!rows.length || session.state().ended) { dlg.close(); return; }
+      const key = JSON.stringify(rows);
+      if (key === list.dataset.key) return;
+      list.dataset.key = key;
+      list.replaceChildren(...rows.map((m) => el('li', { class: 'cast-row' },
+        el('div', { class: 'cast-main' }, el('span', { class: 'body-strong' }, m.label), m.live ? null : el('span', { class: 'caption' }, 'Away')),
+        el('button', { type: 'button', class: 'btn btn-way', 'aria-label': `Remove ${m.label}`, onclick: () => {
+          if (!confirm(`Remove ${m.label} and lock joining?`)) return;
+          line.textContent = '';
+          session.send({ type: 'remove', member: m.id }).catch((e) => { line.textContent = R.refusal(codeOf(e)); });
+        } }, 'Remove'))));
+    };
+    const off = session.onChange((kind, detail) => { if (kind === 'refused') line.textContent = R.refusal(detail.code); else paint(); });
+    dlg.addEventListener('close', () => { off(); dlg.remove(); });
+    api.root.append(dlg);
+    paint();
+    return dlg;
   }
 
   /** An adult room's parts: Take (first claim wins) or Release; a taken part says so. */

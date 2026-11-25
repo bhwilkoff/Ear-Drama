@@ -75,6 +75,7 @@ const STATUS = {
   receiver_records_here: 409,
   receivers_only: 403,
   school_consent_required: 403,
+  no_such_member: 404,
   no_such_pair: 404,
   pair_expired: 410,
   bad_name: 422,
@@ -100,6 +101,16 @@ async function memberByKey(members, key) {
 }
 
 const snapshot = (w, memberId, now) => P.joinSnapshot(w.room, w.cast, w.members, memberId, now);
+
+const isIn = (w, memberId) => w.members.some((m) => m.id === memberId);
+
+/** The answer to a message sent over HTTP; someone who left gets no snapshot of the room. */
+function sent(r, memberId, now) {
+  if (r.world.room.ended) return json({ ended: true });
+  if (!isIn(r.world, memberId)) return json({ left: true });
+  const out = snapshot(r.world, memberId, now);
+  return json(r.reply ? { ...out, reply: r.reply } : out);
+}
 
 /**
  * THE ENGINE both transports share: a store loads and saves `{ room, cast,
@@ -197,6 +208,8 @@ async function createInput(request, env) {
   if (error) return { response: error };
   const cast = parseCast(body.cast);
   if (!cast) return { response: problem(400, "bad_request", "cast") };
+  // Every device in the room reads the opener's name, so it passes the same filter as a name given on joining.
+  if (nameRefusal(body.owner_name)) return { response: refuse("bad_name") };
   // A production's room opens at the production's own revision, whatever the library holds now.
   let made = null;
   if (body.kind === "class") {
@@ -391,11 +404,21 @@ export class ReadRoom extends DurableObject {
         const now = Date.now();
         this.polled.set(member, now);
         if (!this.world) return resolve(refuse(this.endedAt ? "room_ended" : "no_such_room"));
+        if (!isIn(this.world, member)) return resolve(refuse("not_a_member"));
         resolve(json({ ...snapshot(this.refresh(this.world, now), member, now), held_ms: now - since }));
       };
       p.timer = setTimeout(p.answer, LONG_POLL_MS);
       this.parked.add(p);
     });
+  }
+
+  /** A member who left or was removed hears nothing more; their close then writes nothing. */
+  drop(ws) {
+    ws.serializeAttachment({ member: null });
+    try {
+      ws.send(JSON.stringify({ type: "error", error: "not_a_member" }));
+      ws.close(4003, "not_a_member");
+    } catch {}
   }
 
   answerParked() {
@@ -406,6 +429,10 @@ export class ReadRoom extends DurableObject {
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment();
       if (!a || !a.member) continue;
+      if (!isIn(world, a.member)) {
+        this.drop(ws);
+        continue;
+      }
       try {
         ws.send(JSON.stringify(snapshot(world, a.member, now)));
       } catch {}
@@ -523,9 +550,7 @@ export class ReadRoom extends DurableObject {
       const guarded = await engine.guard(this.env, this.world, msg);
       if (guarded) return refuse(guarded);
       const r = await this.apply(auth.me.id, msg, now);
-      if (r.error) return refuse(r.error, r.detail);
-      const out = r.world.room.ended ? { ended: true } : snapshot(r.world, auth.me.id, now);
-      return json(r.reply ? { ...out, reply: r.reply } : out);
+      return r.error ? refuse(r.error, r.detail) : sent(r, auth.me.id, now);
     }
 
     return problem(404, "not_found");
@@ -743,9 +768,7 @@ const d1 = {
     const guarded = await engine.guard(env, loaded.world, msg);
     if (guarded) return refuse(guarded);
     const r = await d1.update(env, code, now, async (world) => engine.send(world, auth.me.id, msg, now, env.READ_DIAG === "1"));
-    if (r.error) return refuse(r.error, r.detail);
-    const out = r.world.room.ended ? { ended: true } : snapshot(r.world, auth.me.id, now);
-    return json(r.reply ? { ...out, reply: r.reply } : out);
+    return r.error ? refuse(r.error, r.detail) : sent(r, auth.me.id, now);
   },
 };
 

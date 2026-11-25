@@ -454,6 +454,45 @@ export function takeSeat(room, members, memberId, seat, move, now) {
 }
 
 /**
+ * A member out of the room: their row and so their key, and the parts they claimed, which open again. A class's
+ * lead comes back to its teacher; an adult room's passes on in `settle`.
+ */
+function without(room, members, id, now) {
+  const claims = Object.fromEntries(Object.entries(room.claims).filter(([, holder]) => holder !== id));
+  const leader = room.kind === "class" && room.leader === id ? room.owner : room.leader;
+  return {
+    room: { ...room, claims, leader, generation: room.generation + 1, touched_at: now },
+    members: members.filter((m) => m.id !== id),
+    changed: true,
+  };
+}
+
+/** Whether a member may remove another: an adult room's leader or opener; in a class only its teacher, never a student who leads. */
+export function canRemove(room, memberId) {
+  if (!memberId) return false;
+  return memberId === room.owner || (room.kind === "adult" && memberId === room.leader);
+}
+
+/**
+ * REMOVE (App Store guideline 1.2; PLAYS-DESIGN §12.13). The removed member's key stops working at once and joining
+ * locks: the code is still on their screen, so a removal that left the door open would keep nobody out.
+ */
+function remove(room, members, memberId, msg, now) {
+  if (!canRemove(room, memberId)) return { error: "leader_only" };
+  const id = msg.member;
+  if (id === memberId || id === room.owner || !members.some((m) => m.id === id)) return { error: "no_such_member" };
+  const out = without(room, members, id, now);
+  return { ...out, room: { ...out.room, leader: out.room.leader === id ? memberId : out.room.leader, locked: true } };
+}
+
+/** LEAVE. A class's teacher keeps their place (the room holds still for them); a room its last reader leaves is over. */
+function leave(room, members, memberId, now) {
+  if (room.kind === "class" && memberId === room.owner) return { room, changed: false };
+  const out = without(room, members, memberId, now);
+  return out.members.some((m) => m.role === "reader") ? out : { ...out, room: { ...out.room, ended: true } };
+}
+
+/**
  * THE ARBITER. One message from one member; returns the next room and members,
  * a reply for the sender when there is one, or a refusal. The transports
  * persist what comes back and send each member its snapshot when `changed`.
@@ -501,6 +540,10 @@ export function applyMessage(world, memberId, msg, now) {
       if (r.error) return r;
       return out({ room: { ...room, generation: room.generation + 1, touched_at: now }, members: r.members, changed: true });
     }
+    case "remove":
+      return out(remove(room, seen, memberId, msg, now));
+    case "leave":
+      return out(leave(room, seen, memberId, now));
     case "read-open":
       if (!canLead(room, memberId)) return { error: "leader_only" };
       if (typeof msg.open !== "boolean") return { error: "bad_message" };

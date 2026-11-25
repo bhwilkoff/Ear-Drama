@@ -1321,7 +1321,7 @@ The owner's answers in §9 hold on the server, word for word:
 | P1 | R2 needs a payment method on file. Turn it on, or keep phase 2 waiting? | Answered 2026-11-19: "We are using archive.org for storage, not cloudflare." No R2; takes pass through (Decision 082, §12.5) |
 | P2 | The CC0 consent words (Decision 059) | Answered 2026-10-29: the owner's words at version `cc0-2026-10-29` |
 | P3 | A vetted deny list for names | A short seed list in `worker/src/plays-names.js` |
-| P4 | Who reads reports, how they arrive, and how fast they are answered (guideline 1.2 asks for timely action and a published contact) | Reports wait in D1 with status `open`; nothing notifies anyone, and nothing auto-hides a take for everyone |
+| P4 | Who reads reports, how they arrive, and how fast they are answered (guideline 1.2 asks for timely action and a published contact) | Answered 2026-11-24 (Decision 088.6): an hourly workflow tells the owner by GitHub email how many wait, and `tools/reports.py` reads and answers them (`docs/runbooks/reports.md`); nothing auto-hides a take for everyone |
 | P5 | The privacy policy that covers school consent for students under 13 | Words approved 2026-11-21 ("The policy wording looks good to me."); `SCHOOL_CONSENT_POLICY` is set to the published policy's version at deploy. Until it is set, no school consent can be recorded, so no under-13 class takes a student |
 | P6 | The Ear Drama archive.org account and its keys | Answered 2026-10-29: keys given; the uploader runs once both are Worker secrets (Decision 073) |
 | P14 | Does deleting an account remove that person's lines from the item? An Ear Drama collection on archive.org? | Answered by the owner 2026-10-29: "Account deletion should definitely not remove their recordings from already submitted works" (lines stay, uncredited); "community audio is just fine, as long as we are doing a good job of labeling the ear dramas within archive.org" |
@@ -1911,6 +1911,27 @@ and has no class page). Words are exactly these; a refusal is `ReadCore.refusal(
    `submitted` "A published play stays."
 10. **Never**: speaker identification, voice matching, or any analysis of a student's take (R3d T5); a birth year
     stored or sent; a notice by email (none is held).
+
+### §12.13 Removing a reader, and leaving (App Store guideline 1.2, 2026-11-24; binding on every client)
+
+1. **Remove.** An adult room's leader, or whoever opened it, removes any other member; in a class only the teacher
+   does, never a student who leads. The opener is never removed. The member's key stops working at once on every
+   transport, their parts open, and **joining locks** in the same message: the code is still on their screen, so a
+   removal that left the door open would keep nobody out. The leader may unlock. The control is behind the presence
+   count ("3 here"), which is a control only for someone who may remove: a list of who is here, each with
+   **Remove**, confirmed by "Remove Ann and lock joining?" (a consequence the person cannot discover by looking).
+2. **The removed device** reads "You are no longer in this reading." (`not_a_member`) and asks nothing more.
+3. **Leave.** Closing the reading is leaving: the room is told, the person's parts open, an adult room's lead passes
+   on at once, and the last reader to leave ends the room. A class's teacher keeps their place (the room holds still
+   for them, §12.2). `leave` is sent only by a person's act, never by a rotation, a background, or a lost network:
+   those keep the key and come back.
+4. **Names.** Every name a room shows passes the name filter: a joiner's, a seat's, and the opener's (`422 bad_name`).
+5. **No Report in a room, and why.** Guideline 1.2 asks for a filter, a way to report, a way to block, and a published
+   contact where people's content is kept and shown to others. A room keeps none: the Worker holds a typed name and who
+   holds what until it ends and then deletes both; no words are typed, and a take passes to the leader's device and is
+   kept nowhere on the way. A report filed after the fact would name nothing anyone could look at, so the answer is the
+   leader's, on the spot: Remove, Lock joining, End. A room that records into a production leaves takes there, and
+   that production has Report and Block. If a room ever keeps something, it gets a Report first.
 
 ---
 

@@ -40,7 +40,7 @@ const C = coreFrom(CORE_SRC);
 
 /* ---- The goldens: every case of a function the client ports ---- */
 const PORTED = ['normalizeCode', 'codeFromBytes', 'clockOffset', 'canLead', 'partsOf', 'whoReads', 'nextMine', 'leaderGone',
-  'cleanName', 'receiverOf', 'recordRefusal', 'leaderName'];
+  'cleanName', 'receiverOf', 'recordRefusal', 'leaderName', 'canRemove'];
 const norm = (v) => JSON.parse(JSON.stringify(v === undefined ? null : v));
 function goldenFailures(core) {
   const bad = [];
@@ -219,7 +219,11 @@ function stubWorker(P, w) {
   const member = (role) => { s.n++; return { id: `m${s.n}`, key: `key-${s.n}`, role, seat: null, joined_at: w.now(), seen_at: w.now() }; };
   const snap = (room, id) => P.joinSnapshot(room.room, cast, room.members, id, w.now());
   function broadcast(room) {
-    for (const ws of s.sockets) if (ws.room === room && ws.member && ws.readyState === 1) ws.deliver(snap(room, ws.member));
+    for (const ws of s.sockets) {
+      if (ws.room !== room || !ws.member || ws.readyState !== 1) continue;
+      if (room.members.some((m) => m.id === ws.member)) ws.deliver(snap(room, ws.member));
+      else { ws.member = null; ws.deliver({ type: 'error', error: 'not_a_member' }); }
+    }
     for (const p of (room.parked || []).slice()) p.answer();
   }
   function apply(room, id, msg) {
@@ -293,15 +297,17 @@ function stubWorker(P, w) {
       if (refusal) return problem(409, refusal);
       const me = { ...member(body.role || 'reader'), seat: body.seat || null, name: P.cleanName(room.room, body.name) || null };
       room.members.push(me); room.keys.set(me.key, me.id);
+      room.room = { ...room.room, generation: room.room.generation + 1 };
       broadcast(room);
       return json(200, { ...snap(room, me.id), member_key: me.key, transport: room.pollOnly ? 'poll' : 'socket' });
     }
     const id = room.keys.get(key);
-    if (!id) return problem(403, 'not_a_member');
+    if (!id || !room.members.some((x) => x.id === id)) return problem(403, 'not_a_member');
     room.members = room.members.map((x) => (x.id === id ? { ...x, seen_at: w.now() } : x));
     if (m[2] === 'send') {
       const r = apply(room, id, body);
       if (r.error) return problem(r.error === 'stale' ? 409 : 403, r.error, r.detail);
+      if (!room.members.some((x) => x.id === id)) return json(200, { left: true });
       return json(200, r.reply ? { ...snap(room, id), reply: r.reply } : snap(room, id));
     }
     // As read-rooms.js: a poll at the room's generation waits for a change, or 20 s.
@@ -315,6 +321,7 @@ function stubWorker(P, w) {
           if (!room.parked.includes(p)) return;
           room.parked = room.parked.filter((x) => x !== p);
           w.timers_.clearTimeout(p.timer);
+          if (!room.members.some((x) => x.id === id)) return resolve(problem(403, 'not_a_member'));
           resolve(json(200, { ...snap(room, id), held_ms: w.now() - since }));
         };
         p.timer = w.timers_.setTimeout(p.answer, 20000);
@@ -502,6 +509,45 @@ async function main() {
     await w.advance(50);
     eq(reader.session.state().snap.cursor, 'l3', 'the parked poll brings the move at once');
     eq(reader.session.state().slow, false, 'time spent waiting is not a slow connection');
+  });
+
+  // App Store 1.2, PLAYS-DESIGN §12.13.
+  for (const blocked of [false, true]) {
+    test(`over ${blocked ? 'polling' : 'the socket'}: the leader removes a reader, whose device stops; leaving tells the room`, async () => {
+      const w = world();
+      const server = stubWorker(P, w);
+      server.blockSockets = blocked;
+      const lead = client(w, server);
+      const ann = client(w, server);
+      const bob = client(w, server);
+      await lead.session.open(body);
+      await ann.session.join('ABC123', { name: 'Ann' });
+      await bob.session.join('ABC123', {});
+      await w.advance(300);
+      eq(C.removable(ann.session.state().snap), [], 'a reader may remove nobody');
+      const rows = C.removable(lead.session.state().snap);
+      eq(rows.map((r) => r.label), ['Ann', 'A reader']);
+      await ann.session.send({ type: 'claim', part: 'role:LUCY' });
+      await lead.session.send({ type: 'remove', member: rows[0].id });
+      await w.advance(1500);
+      eq([ann.session.state().ended, ann.session.state().key], ['not_a_member', null], 'the removed device is out and keeps no key');
+      eq(ann.storage.getItem('ed.read'), null);
+      const calls = server.calls.length;
+      await w.advance(60000);
+      ok(!server.calls.slice(calls).some((c) => c.key === 'key-2'), 'it asks nothing more');
+      const s = lead.session.state().snap;
+      eq([s.locked, s.claims, s.members.length], [true, {}, 2]);
+      bob.session.leave();
+      await w.advance(1500);
+      eq(lead.session.state().snap.members.length, 1, 'a leaver is gone at once, not after 2 minutes');
+      eq(C.refusal('not_a_member'), 'You are no longer in this reading.');
+    });
+  }
+
+  test('in a class only the teacher may remove, and a name is its seat', () => {
+    const base = { kind: 'class', members: [{ id: 't', role: 'reader', seat: null, name: null, live: true }, { id: 'd1', role: 'reader', seat: 's1', name: null, live: false }, { id: 'tv', role: 'screen', seat: null, name: null, live: true }], seats: [{ id: 's1', label: 'Lucy' }] };
+    eq(C.removable({ ...base, you: { id: 't', owner: true, leads: false } }).map((r) => [r.label, r.live]), [['Lucy', false], ['A screen', true]]);
+    eq(C.removable({ ...base, you: { id: 'd1', owner: false, leads: true } }), [], 'a student who leads removes nobody');
   });
 
   test('a dropped socket keeps following by polling, then the socket comes back', async () => {
