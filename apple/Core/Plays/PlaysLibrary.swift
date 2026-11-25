@@ -26,6 +26,8 @@ final class PlaysLibrary {
     /// True when `rows` are the published library's.
     private(set) var fromLibrary = false
     let store: ProductionStore
+    /// The person's own scripts on this device (PLAYS-DESIGN §13).
+    let own: OwnScripts
 
     @ObservationIgnored private var hub: RelayHub?
     @ObservationIgnored private let fetch: Fetch
@@ -35,8 +37,12 @@ final class PlaysLibrary {
     init(store: ProductionStore = ProductionStore(),
          fetch: @escaping Fetch = { try await APIClient.shared.playsData($0) },
          cache: URL = URL.cachesDirectory.appending(path: "PlayLibrary", directoryHint: .isDirectory),
-         bundled: @escaping @Sendable () -> CastableLibrary? = { CastableLibrary.load() }) {
+         bundled: @escaping @Sendable () -> CastableLibrary? = { CastableLibrary.load() },
+         own: OwnScripts? = nil) {
         self.store = store
+        // Beside the productions they are cast into; a store made anywhere else keeps its scripts there too.
+        let elsewhere = store.root == ProductionStore.defaultRoot ? nil : store.root.appending(path: "Scripts", directoryHint: .isDirectory)
+        self.own = own ?? OwnScripts(root: elsewhere, plays: store)
         self.fetch = fetch
         self.cache = cache
         self.bundled = bundled
@@ -80,7 +86,7 @@ final class PlaysLibrary {
     }
 
     /// True when the library's index or the bundle lists the play.
-    func has(_ id: String) -> Bool { rows.contains { $0.id == id } || script(id) != nil }
+    func has(_ id: String) -> Bool { PlayScript.isOwnID(id) ? own.row(id)?.done == true : rows.contains { $0.id == id } || script(id) != nil }
 
     /// The bundled script, when it is one of the bundle's.
     func script(_ id: String) -> PlayScript? { scripts.first { $0.id == id } }
@@ -88,6 +94,8 @@ final class PlaysLibrary {
     /// A play's whole script: the library's file for it, else the bundle's. Nil when neither has it; throws the
     /// fetch's error when the library could not be reached and the bundle does not hold the play.
     func script(id: String) async throws -> PlayScript? {
+        // A person's own script is this device's: the one seam the reader, the studio and the pages go through.
+        if PlayScript.isOwnID(id) { return own.script(id) }
         if state == .loading { await load() }
         var failure: (any Error)?
         if let path = rows.first(where: { $0.id == id })?.path {

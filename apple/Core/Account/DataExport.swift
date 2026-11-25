@@ -73,6 +73,34 @@ nonisolated struct DataExport: Sendable, Equatable {
         var drawing: String
     }
 
+    /// One of the person's own scripts (docs/EXPORT.md `scripts[]`): its lines as they stand, Done or not.
+    struct Script: Sendable, Equatable {
+        var id: String
+        var title: String
+        var source: String
+        var episode: String?
+        var created: Date
+        var done: Bool
+        var lines: [ScriptLineRow]
+    }
+
+    struct ScriptLineRow: Sendable, Equatable {
+        var id: String?
+        var kind: String
+        var role: String?
+        var parts: [LinePart]?
+        var source: String?
+
+        var object: [String: Any] {
+            var out: [String: Any] = ["kind": kind]
+            if let id { out["id"] = id }
+            if let role { out["role"] = role }
+            if let source { out["source"] = source }
+            if let parts { out["parts"] = parts.map { [$0.isSaid ? "say" : "direction": $0.text] } }
+            return out
+        }
+    }
+
     var exportedAt: Date
     var history: [History]
     var following: [Follow]
@@ -80,6 +108,7 @@ nonisolated struct DataExport: Sendable, Equatable {
     var takes: [Production]
     var marks: [MarkRow] = []
     var ink: [InkRow] = []
+    var scripts: [Script] = []
 
     static let historyColumns = ["episode", "title", "seriesName", "airDate", "listenedAt", "positionSeconds", "durationSeconds"]
 
@@ -120,6 +149,12 @@ nonisolated struct DataExport: Sendable, Equatable {
             "ink": ink.map { i in
                 drop([("script", i.script), ("title", i.title), ("revision", i.revision), ("line", i.line), ("strokes", i.strokes),
                       ("width", i.width), ("updated", Self.iso(i.updated)), ("drawing", i.drawing)])
+            },
+            "scripts": scripts.map { s in
+                var o = drop([("id", s.id), ("title", s.title), ("source", s.source), ("created", Self.iso(s.created)), ("done", s.done),
+                              ("lines", s.lines.map(\.object))])
+                if let episode = s.episode { o["episode"] = episode }
+                return o
             },
         ]
         return try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])

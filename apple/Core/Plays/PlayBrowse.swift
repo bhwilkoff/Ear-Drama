@@ -314,7 +314,7 @@ nonisolated extension PlayScript {
             let text = OpeningSpeech.clean(line.spokenText)
             guard !text.isEmpty else { continue }
             out.append(OpeningSpeech(part: line.part, name: line.role ?? "", text: text, lineID: line.id,
-                                     verse: OpeningSpeech.verseLines(PlayPage.verseRows(line, roles: names))))
+                                     verse: OpeningSpeech.verseLines(PlayPage.verseRows(line, roles: names, emphasis: !isOwn))))
             if out.count >= n { break }
         }
         return out

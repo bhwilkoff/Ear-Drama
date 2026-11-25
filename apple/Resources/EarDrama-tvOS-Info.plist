@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EDWorkerURL</key>
+	<string>$(EARDRAMA_WORKER_URL)</string>
+	<key>EDGoogleClientID</key>
+	<string>$(EARDRAMA_GOOGLE_IOS_CLIENT_ID)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.eardrama</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>eardrama</string>
+			</array>
+		</dict>
+	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>BigShoulders-Bold.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+	<key>ATSApplicationFontsPath</key>
+	<string>.</string>
+</dict>
+</plist>

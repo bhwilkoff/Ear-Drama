@@ -465,6 +465,7 @@ struct ShowTile: View {
 /// Lines of fragments that wrap between fragments only.
 struct FlowLayout: Layout {
     var spacing: CGFloat = 4
+    var rowSpacing: CGFloat = 0
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         arrange(width: proposal.width ?? .infinity, subviews: subviews).size
@@ -484,7 +485,7 @@ struct FlowLayout: Layout {
             var size = subview.sizeThatFits(.unspecified)
             if size.width > width { size = subview.sizeThatFits(ProposedViewSize(width: width, height: nil)) }
             if x > 0, x + size.width > width {
-                y += rowHeight
+                y += rowHeight + rowSpacing
                 x = 0
                 rowHeight = 0
             }

@@ -366,13 +366,19 @@ nonisolated final class VoiceCast: Sendable {
     /// A production's cast, starting from its play's. The voices are this device's (`DeviceVoices`).
     static func production(_ id: String, script: PlayScript) -> VoiceCast {
         VoiceCast(key: VoiceCastBook.productionKey(id), seed: VoiceCastBook.scriptKey(script.id), playID: script.id,
-                  parts: script.castParts.map(\.id), voices: { DeviceVoices.castable() }, downloaded: deviceDownloaded)
+                  parts: script.castParts.map(\.id), voices: { DeviceVoices.castable() }, downloaded: downloaded(for: script))
+    }
+
+    /// An own script has no published phonemes, so no downloaded voice is offered for it (PLAYS-DESIGN §13 item 8).
+    private static func downloaded(for script: PlayScript) -> @Sendable () -> [CastVoice] {
+        if script.isOwn { return { [] } }
+        return deviceDownloaded
     }
 
     /// A play's own cast, the reader's (Hear the cast).
     static func script(_ script: PlayScript) -> VoiceCast {
         VoiceCast(key: VoiceCastBook.scriptKey(script.id), playID: script.id, parts: script.castParts.map(\.id),
-                  voices: { DeviceVoices.castable() }, downloaded: deviceDownloaded)
+                  voices: { DeviceVoices.castable() }, downloaded: downloaded(for: script))
     }
 
     /// The device's own voices.

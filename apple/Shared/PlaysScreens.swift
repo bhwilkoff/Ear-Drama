@@ -16,6 +16,10 @@ enum PlayRoute: Hashable {
     case production(String)
     /// `line` set: replacing that one line of a finished part on a published play (P12).
     case recording(production: String, part: PartID, line: String? = nil)
+    /// Adding a script, correcting one, and casting an episode by ear (PLAYS-DESIGN §13; never on a TV).
+    case addScript
+    case parts(String)
+    case cast(String)
 }
 
 // MARK: - Record this
@@ -198,6 +202,8 @@ struct PlayScriptScreen: View {
                     .background(Color(uiColor: .systemGroupedBackground))
                     #endif
                     .navigationTitle(script.title)
+            } else if failed, PlayScript.isOwnID(id) {
+                EmptyState("This script is not on this device.", systemImage: "questionmark.square.dashed")
             } else if failed {
                 VStack(spacing: Spacing.s3) {
                     EmptyState("Play not found", systemImage: "questionmark.square.dashed")
@@ -207,7 +213,13 @@ struct PlayScriptScreen: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: id) { await load() }
+        .task(id: Key(id: id, changed: plays.own.row(id)?.updated)) { await load() }
+    }
+
+    /// An own script is read again when it is corrected.
+    private struct Key: Hashable {
+        let id: String
+        let changed: Date?
     }
 
     private func load() async {
@@ -237,7 +249,8 @@ struct PlayPageBody: View {
             ActionRow {
                 StartEarDramaButton(script: script)
                 ReadButton(scriptID: script.id)
-                ReadStartButton(script: script)
+                // An own script is this device's: no room can read it until it is shared (PLAYS-DESIGN §13).
+                if !script.isOwn { ReadStartButton(script: script) }
             }
             Text("Parts").font(TypeRamp.sectionHeader)
             PartGrid {
@@ -245,7 +258,7 @@ struct PlayPageBody: View {
                     PartCard(script: script, part: part)
                 }
             }
-            RightsLine(script: script)
+            if script.isOwn { OwnScriptFoot(script: script) } else { RightsLine(script: script) }
         }
         .padding(.vertical, Spacing.s4)
         .pageBarPadding()
@@ -427,8 +440,11 @@ struct CastSheet: View {
                 ListenThrough(production: production, script: script)
             }
             .modifier(CastColumnRows(on: sizeClass == .regular))
-            SharedProductionSection(production: production, script: script)
-                .modifier(CastColumnRows(on: sizeClass == .regular))
+            // No Share and no Publish for a person's own script, absent rather than dead (PLAYS-DESIGN §13).
+            if !script.isOwn {
+                SharedProductionSection(production: production, script: script)
+                    .modifier(CastColumnRows(on: sizeClass == .regular))
+            }
             Section {
                 PartGrid {
                     ForEach(script.castParts) { part in

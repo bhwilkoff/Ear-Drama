@@ -1071,7 +1071,7 @@ no take.
 | Takes, one file per kept take, never overwritten | `Plays/<production>/takes/` as FLAC (if the floor OS cannot write FLAC, ALAC in CAF; to measure) | `filesDir/Plays/<production>/takes/` as 24-bit WAV (§4.5) | IndexedDB, `<production>/takes/`, 24-bit WAV, written with `add()` |
 | Room tone, per session | `Plays/<production>/roomtone/` | the same | IndexedDB, `<production>/roomtone/` |
 | The production record (parts, who took which part by the name they typed, what each take heard, the timeline) | `Plays/<production>/production.json` | the same | IndexedDB, `<production>/production.json`, the same fields |
-| A script the person added (§13): its castable shape, the working copy it is corrected in (cast by ear: its lines' times, the parts, the place), and the text as pasted | ⏳ (R4-6) `Scripts/<id>/` | ⏳ (R4-7) `filesDir/Scripts/<id>/` | IndexedDB `ed-plays`, object store `scripts`, keys `scripts/<id>/script.json`, `doc.json` and `row.json`; the text being added, `scripts/draft.json` |
+| A script the person added (§13): its castable shape, the working copy it is corrected in (cast by ear: its lines' times, the parts, the place), and the text as pasted | `Scripts/<id>/script.json`, `doc.json`, `row.json`, swapped in together; `Scripts/draft.json` (never on the TV) | ⏳ (R4-7) `filesDir/Scripts/<id>/` | IndexedDB `ed-plays`, object store `scripts`, keys `scripts/<id>/script.json`, `doc.json` and `row.json`; the text being added, `scripts/draft.json` |
 | The rendered mix of a finished play | `Plays/<production>/mix.m4a`, rebuilt from the takes whenever they change | the same | IndexedDB, `<production>/mix.wav`; `navigator.storage.persist()` is asked when a play is cast |
 | Stand-in audio, transcripts of takes, analytics | Never stored | Never stored | Never stored |
 | Apple TV | Nothing: it records nothing and stores no plays in phase 1 (tvOS writes only to Caches) | | |
@@ -1940,9 +1940,10 @@ and has no class page). Words are exactly these; a refusal is `ReadCore.refusal(
 The owner, 2026-11-24: *"You should be able to record your own version of
 anything you want with your own casting."* Research and frames:
 `docs/research/design/R4-record-anything.md`. Core: `js/own-core.js`
-(`R4-core-port-brief.md`). Built on the web, on the device only: adding (R4-2) and
-casting by ear (R4-3). Sharing and classes are R4-4 and R4-5, and Apple and Android
-are R4-6 and R4-7. Until sharing is built, an own script and its productions offer no
+(`R4-core-port-brief.md`). Built on the web, and on
+iPhone, iPad, the Duo and the Mac (R4-6's on-device half, 2026-11-24), on the device only: adding and
+casting by ear. Sharing and classes are R4-4 and R4-5 (R4-6's second half on Apple), and Android
+is R4-7. Until sharing is built, an own script and its productions offer no
 Share, no Read together, no Invite and no Publish: the buttons are absent, never
 dead.
 

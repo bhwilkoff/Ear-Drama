@@ -241,7 +241,9 @@ struct PartGrid<Content: View>: View {
 
 /// What a play's head board says about it: the kind from the record, then the facts the record holds.
 enum PlayHead {
-    static func kicker(_ script: some PlayListing) -> String { script.kind == "radio" ? "Radio play" : "Stage play" }
+    static func kicker(_ script: some PlayListing) -> String {
+        script.kind == "own" ? "Your script" : script.kind == "radio" ? "Radio play" : "Stage play"
+    }
 
     static func facts(_ script: some PlayListing) -> [String?] {
         let parts = script.castLines.count

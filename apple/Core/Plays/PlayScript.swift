@@ -167,9 +167,22 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
     var sortName: String? = nil
     /// The printed act and scene headings the parser set aside (contract §4.1), for the reader's contents.
     var sections: [ScriptSection]? = nil
+    /// An own script cast by ear: the episode it came from (PLAYS-DESIGN §13 item 10).
+    var episode: String? = nil
+    /// An own script: what a line with a take said before its words changed, oldest first (§13 item 4).
+    var edits: [String: [LineEdit]]? = nil
+
+    struct LineEdit: Codable, Hashable, Sendable {
+        let until: Date
+        let text: String
+    }
+
+    /// A person's own script (PLAYS-DESIGN §13): on this device only, so no Share, Read Together or Publish.
+    var isOwn: Bool { kind == "own" }
+    static func isOwnID(_ id: String) -> Bool { id.hasPrefix("own-") }
 
     private enum CodingKeys: String, CodingKey {
-        case id, revision, kind, title, authors, year, source, rights, roles, lines, sections
+        case id, revision, kind, title, authors, year, source, rights, roles, lines, sections, episode, edits
         case sortName = "sort_name"
     }
 

@@ -59,6 +59,15 @@ import Foundation
 /// - APP_LIBRARY_SIDE=making | listening: Library drawn on that side; the side the person last chose is not written
 /// - APP_LANDSCAPE=1 (iOS): asks the scene for landscape, for frames of a phone nobody can turn (ScrollDoor_iOS)
 ///
+/// - APP_SCRATCH=1: the person's own scripts and productions are set aside whole: both are read and written in a
+///   scratch folder, emptied at each launch (APP_SCRATCH=keep leaves what the last one made, for a relaunch inside a
+///   test), and nothing of the owner's is read or changed. The own-script doors below always set it
+/// - APP_START_OWN=add | parts | script (iOS and macOS, §4.21): Add a Script, the parts page, or an own script's page,
+///   over APP_OWN_FROM=<script id>'s own words (a library or bundled play as text; the first bundled one without it).
+///   `keep` adds what the first Done makes: APP_OWN_LINE=<n> goes to the nth line, APP_OWN_SHEET=1 opens its controls
+/// - APP_START_CAST=<episode id> (iOS and macOS, §4.22): casting that episode by ear; APP_CAST_STEPS drives it for a
+///   frame (EarDoorSteps). Use with APP_MUTE=1
+///
 /// - APP_DOOR_FILE (Mac): commands read from a file while the app runs (DoorFile_macOS)
 ///
 /// DEBUG-only: in a Release build `current` is always empty, so every door is a
@@ -90,6 +99,13 @@ struct LaunchDoors: Sendable, Equatable {
     var readScreen = false
     var readPart: String?
     var readRecord = false
+    var scratch: String?
+    var own: String?
+    var ownFrom: String?
+    var ownLine: Int?
+    var ownSheet = false
+    var cast: String?
+    var castSteps: String?
 
     var isEmpty: Bool { self == LaunchDoors() }
 
@@ -137,9 +153,29 @@ struct LaunchDoors: Sendable, Equatable {
             readSeat: environment["APP_START_SEAT"].flatMap { $0.isEmpty ? nil : $0 },
             readScreen: environment["APP_START_SCREEN"] == "1",
             readPart: environment["APP_START_READ_PART"].flatMap { $0.isEmpty ? nil : $0 },
-            readRecord: environment["APP_START_READ_RECORD"] == "1"
+            readRecord: environment["APP_START_READ_RECORD"] == "1",
+            scratch: Self.scratch(environment),
+            own: environment["APP_START_OWN"].flatMap { ["add", "parts", "script"].contains($0) ? $0 : nil },
+            ownFrom: environment["APP_OWN_FROM"].flatMap { $0.isEmpty ? nil : $0 },
+            ownLine: environment["APP_OWN_LINE"].flatMap { Int($0) },
+            ownSheet: environment["APP_OWN_SHEET"] == "1",
+            cast: environment["APP_START_CAST"].flatMap { $0.isEmpty ? nil : $0 },
+            castSteps: environment["APP_CAST_STEPS"]
         )
     }
+
+    private static func scratch(_ environment: [String: String]) -> String? {
+        if let asked = environment["APP_SCRATCH"], ["1", "keep"].contains(asked) { return asked }
+        return environment["APP_START_OWN"] != nil || environment["APP_START_CAST"] != nil ? "1" : nil
+    }
+
+    /// Where this launch keeps own scripts and productions when the person's are set aside; nil for their own.
+    static let scratchRoot: URL? = {
+        guard let scratch = current.scratch else { return nil }
+        let root = URL.temporaryDirectory.appending(path: "EarDramaScratch", directoryHint: .isDirectory)
+        if scratch != "keep" { try? FileManager.default.removeItem(at: root) }
+        return root
+    }()
 
     /// The keys of the lists a person builds by listening, on this device.
     static let userStatePrefixes = ["listeningHistory.", "listeningQueue.", "followedSeries."]
