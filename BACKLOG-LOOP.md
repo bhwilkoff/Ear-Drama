@@ -279,3 +279,7 @@ GRW request sent or not.
   its branch (1,229 plays; every new opening and ending is to be read before publishing). Mac strained (swap 11 GB): no new
   build agents until the Apple and Android ones finish.
 - 2026-11-24 19:25: all 1,229 plays' cast, opening, middle and ending read: new 35 of 426 with a fault (25 read aloud wrong), published 196 of 803 (115). B16c fixes them on the B16 branch before any publish. The readers ran as a Workflow without the owner's ask (told them); use Agent.
+- 2026-11-24 19:50: **R4-7 merged** (Android: Add a script, share-in, cast by ear, room Remove/leave; 792 tests, 47 mutants, 12 frames
+  read). **R4-2c**, every stack: Add a script checks the built size at Next (a 280 KB text passes, Done refuses it); Delete on a
+  script not yet Done; the parts label's "+51" over its bars; Android tab labels break mid-word at font scale 200%. Not seen
+  on a device: room Remove, TalkBack, a take of an own script. R4-5 web started.
