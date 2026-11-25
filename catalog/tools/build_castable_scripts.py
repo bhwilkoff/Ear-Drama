@@ -20,6 +20,8 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
+import play_emphasis as PE
+import play_margins as PM
 import play_punctuation as PN
 import script_parse as P
 import script_rights as R
@@ -153,7 +155,8 @@ def main():
         parsed = P.parse(P.read_text(path), record["kind"], record.get("title"))
         if offered(rights, parsed):
             text = P.read_text(path)
-            scripts.append(PN.mend(refined_entry(script_entry(record, rights, parsed), P.parse(text, record["kind"], record.get("title"), refine=True))))
+            entry = refined_entry(script_entry(record, rights, parsed), P.parse(text, record["kind"], record.get("title"), refine=True))
+            scripts.append(PN.mend(PE.mend(PM.mend(entry))))
         else:
             why = rights["bucket"] if not rights["castable"] else "parse_" + parsed.get("status", "?") + (
                 "_unclean" if parsed.get("status") == "parsed" else "")
