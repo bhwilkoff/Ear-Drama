@@ -47,6 +47,23 @@ def tv_versions(text):
     return "VersionsSection_tvOS(detail: detail)" in text and "recording: recording, presentPlayer: true" in text
 
 
+def sections_do_not_load_themselves(sources):
+    """A section or rows view that can be empty never owns its loading: a List (and a lazy stack) never runs the
+    task of a child with nothing in it, so it would stay empty for good (2026-11-25: Home's Record a play)."""
+    for text in sources.values():
+        for m in re.finditer(r"struct \w*(?:Section|Rows|Row|Scene)\w*: View \{.*?\n\}\n", text, re.S):
+            body = re.search(r"var body: some View \{\n(?:\s*//[^\n]*\n)*(\s+)Group \{\n(.*?)\n\1\}\n(.*?)\n    \}\n", m.group(0), re.S)
+            if not body or ".task" not in body.group(3):
+                continue
+            inner, pad = body.group(2), body.group(1).strip("\n") + "    "
+            if re.match(r"\s*switch\b", inner) and "EmptyView()" in inner:
+                return False
+            always = f"\n{pad}}} else" in "\n" + inner or re.match(r"\s*if [^\n]*\} else \{[^\n]*\}\s*$", inner)
+            if re.match(r"\s*if\b", inner) and not always:
+                return False
+    return True
+
+
 def detail_share_twin(text):
     """iOS-DESIGN §4.4: Share carries the https twin."""
     return "ShareLink(item: SiteLinks.episode(episode.id)" in text
@@ -167,7 +184,12 @@ def main():
           swift["apple/Core/Player/AudioPlayer.swift"].replace(
               "-PlayerNumbers.interruptionRewindSeconds", "-3")}),
     ]
+    home_rows = {k: v for k, v in swift.items() if k.startswith(("apple/Shared/", "apple/tvOS/"))}
     cases += [
+        ("a section that can be empty never loads itself", sections_do_not_load_themselves, home_rows,
+         {**home_rows, "apple/Shared/HomeRows.swift": home_rows["apple/Shared/HomeRows.swift"].replace(
+             "                    }\n                }\n            }\n        }\n    }\n}\n#endif",
+             "                    }\n                }\n            }\n        }\n        .task { await finished.load() }\n    }\n}\n#endif", 1)}),
         ("empty states go through EmptyState", empty_states_through_one_view, swift,
          {**swift, "x.swift": 'ContentUnavailableView("Nothing here", systemImage: "tray")'}),
         ("red means recording", red_means_recording, swift,

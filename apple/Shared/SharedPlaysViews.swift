@@ -549,7 +549,6 @@ struct ClassesSection: View {
                 }
             }
         }
-        .task { await shared.loadClasses() }
     }
 }
 

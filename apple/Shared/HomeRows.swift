@@ -130,7 +130,8 @@ struct EpisodeTile: View {
 
 // MARK: - Record a play
 
-/// Home's Record a play: Today's Scene (Decision 079), then the shared productions with a part still open.
+/// Home's Record a play: Today's Scene (Decision 079), then the shared productions with a part still open. The page
+/// loads what its sections draw: a List never runs the task of a section with nothing in it yet.
 struct HomeRecordSection: View {
     @Environment(PlaysLibrary.self) private var plays
 
@@ -162,7 +163,6 @@ struct HomeRecordSection: View {
                 }
             }
         }
-        .task { await plays.load() }
     }
 }
 
@@ -192,9 +192,6 @@ struct OpenPartsRows: View {
                     }
                 }
             }
-        }
-        .task(id: account.isSignedIn) {
-            if account.isSignedIn { await shared.loadOpenParts(plays: plays) }
         }
     }
 
@@ -233,7 +230,6 @@ struct MadeHereSection: View {
                 }
             }
         }
-        .task { await finished.load() }
     }
 }
 #endif

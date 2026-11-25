@@ -15,7 +15,8 @@ struct TodaysScene_tvOS: View {
     private var opening: [OpeningSpeech] { script?.opening(n: 4) ?? row?.opening(n: 4) ?? [] }
 
     var body: some View {
-        Group {
+        // A stack, not a Group: a lazy stack never runs the task of a child with nothing in it yet.
+        VStack(alignment: .leading, spacing: 0) {
             if let row, !opening.isEmpty {
                 VStack(alignment: .leading, spacing: Spacing.s4) {
                     VStack(alignment: .leading, spacing: Spacing.s1) {

@@ -54,6 +54,7 @@ struct RecordScreen: View {
             return true
         }
         .task { await plays.load() }
+        .task { await FinishedStore.shared.load() }
     }
 }
 

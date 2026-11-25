@@ -20,7 +20,7 @@ struct SharedEarDramasSection_tvOS: View {
     @State private var load = 0
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: TV.rowGap) {
             if account.isSignedIn && (refusal != nil || !(rows ?? []).isEmpty) {
                 Section("Ear dramas") {
                     if let refusal {

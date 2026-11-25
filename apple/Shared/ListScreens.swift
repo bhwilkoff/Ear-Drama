@@ -87,6 +87,9 @@ struct ListenScreen: View {
     @State private var allNight = false
     @State private var voices: [PersonRow] = []
     @State private var heroKey: String?
+    @Environment(PlaysLibrary.self) private var plays
+    @Environment(SharedPlays.self) private var shared
+    @Environment(AccountStore.self) private var account
 
     private static let nightFirst = 6
     private static let voiceCount = 12
@@ -163,6 +166,9 @@ struct ListenScreen: View {
             year = nil
             loaded = true
         }
+        .task { await plays.load() }
+        .task { await FinishedStore.shared.load() }
+        .task(id: account.isSignedIn) { if account.isSignedIn { await shared.loadOpenParts(plays: plays) } }
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
             continuing = await catalog.episodes(Array(history.inProgressIDs.prefix(10)))
         }
@@ -1435,6 +1441,7 @@ struct LibraryScreen: View {
         .toolbar { if side == .listening && !queued.isEmpty && !Self.emptied { ToolbarItem(placement: .primaryAction) { EditButton() } } }
         #endif
         .task(id: account.isSignedIn) { if account.isSignedIn { await shared.loadRemote() } }
+        .task(id: account.isSignedIn) { if account.isSignedIn { await shared.loadClasses() } }
         .task(id: LibraryKey(entries: history.entries, queue: queue.items, load: catalog.loadKey)) {
             guard !Self.emptied else { inProgress = []; return }
             queued = await catalog.episodes(queue.items)
