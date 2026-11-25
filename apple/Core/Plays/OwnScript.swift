@@ -1066,18 +1066,30 @@ nonisolated enum OwnScript {
         }
         if op.op == .rename || op.op == .notPart {
             let part = op.part
-            let mine = lines.filter { $0.kind == "speech" && eq($0.role, part) }
-            if mine.isEmpty { return refuse(doc, .no_such_part) }
+            // While casting by ear a part is its marks, and the lines heard after them (castOf); renaming covers both.
+            func marks(_ l: OwnLine) -> Bool {
+                guard op.op == .rename, l.kind == "open", case .role(let r)? = l.mark else { return false }
+                return eq(r, part)
+            }
+            func mine(_ l: OwnLine) -> Bool { (l.kind == "speech" && eq(l.role, part)) || marks(l) }
+            if !lines.contains(where: mine) { return refuse(doc, .no_such_part) }
             let to: String? = op.op == .rename ? partName(normalize(op.rename)) : nil
             if op.op == .rename {
                 if let why = partNameRefusal(to) { return refuse(doc, why) }
                 if eq(to, part) { return OwnResult(doc: doc, refusal: nil) }
             }
-            if mine.contains(where: taken) { return refuse(doc, .part_has_take) }
+            let cast = castOf(doc)
+            if lines.contains(where: { l in
+                guard taken(l) else { return false }
+                if op.op == .notPart { return mine(l) }
+                guard case .role(let r)? = cast[l.k] ?? nil else { return false }
+                return eq(r, part)
+            }) { return refuse(doc, .part_has_take) }
             return accept(doc, lines.map { l in
                 var l = l
-                if l.kind != "speech" || !eq(l.role, part) { return l }
-                if op.op == .rename { l.role = to }
+                if !mine(l) { return l }
+                if marks(l), let to { l.mark = .role(to) }
+                else if op.op == .rename { l.role = to }
                 else {
                     l.kind = "open"
                     l.role = nil
@@ -1399,6 +1411,13 @@ nonisolated enum OwnScript {
         if speeches == 0 { return .no_parts }
         if canonicalBytes(.array(lines)).count > maxBytes { return .too_long }
         return nil
+    }
+
+    /// nil, or why Done would refuse `parse`'s lines whatever the person makes of them: too_many_lines, too_long. Asked at Next.
+    static func builtRefusal(_ lines: [OwnLine]) -> OwnRefusal? {
+        if lines.count > maxLines { return .too_many_lines }
+        guard case .array(let built)? = toScript(done(newDoc(lines)), OwnMeta(id: "", title: ""))["lines"] else { return nil }
+        return canonicalBytes(.array(built)).count > maxBytes ? .too_long : nil
     }
 
     /// nil when a text may be read, or why not: empty, too_long. Asked before `parse`.

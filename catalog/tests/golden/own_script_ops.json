@@ -3066,6 +3066,38 @@
    "refusal": null
   }
  ],
+ "built": [
+  {
+   "name": "short lines: their ids and parts weigh more than their words",
+   "unit": "ANNA: Yes.\n\nBEN: No.\n\n",
+   "times": 2990,
+   "want": "too_long"
+  },
+  {
+   "name": "the same, half as many",
+   "unit": "ANNA: Yes.\n\nBEN: No.\n\n",
+   "times": 1450,
+   "want": null
+  },
+  {
+   "name": "long lines",
+   "unit": "ANNA: All the words of one long speech, over and over. All the words of one long speech, over and over. All the words of one long speech, over and over. All the words of one long speech, over and over. All the words of one long speech, over and over. All the words of one long speech, over and over. All the words of one long speech, over and over. All the words of one long speech, over and over. \n\nBEN: No.\n\n",
+   "times": 700,
+   "want": null
+  },
+  {
+   "name": "no part at all, and too long once every line has its id",
+   "unit": "He goes out by the door.\n\n",
+   "times": 5900,
+   "want": "too_long"
+  },
+  {
+   "name": "more lines than a script may have",
+   "unit": "He goes.\n\n",
+   "times": 6001,
+   "want": "too_many_lines"
+  }
+ ],
  "refusals": [
   {
    "name": "a catalog id",
