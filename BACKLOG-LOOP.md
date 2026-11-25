@@ -296,3 +296,6 @@ GRW request sent or not.
   catalog Releases' `harvest-cache.tar.xz` holds 1,028 Generic Radio Workshop texts (and the database 251,775 `script_cues`), on
   every dated catalog Release since 10-21. New Release without them, a guard test, then the old assets deleted (owner's yes
   needed: permanent). 1.1.0 (172): TestFlight and Play internal green; Android Build rerun (Robolectric download).
+- 2026-11-24 23:15: **R4-5 Apple + room Remove/leave + B26 Apple merged** (681 tests; a library room read on Ben Bedroom, left on). Left for Apple:
+  `shared` in Export my data, class export lines, Read Together on an unshared own script's page, own-script share seen on a device.
+  Web (and Android if so): `js/ear-ui.js` colors parts by the order named; match `EarCore.hue` (largest first). Web novelty voices.
