@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createExecutionContext, createScheduledController, waitOnExecutionContext } from "cloudflare:test";
 import worker from "../src/index.js";
-import { call, env, installProviderKeys, signIn } from "./helpers.js";
+import { call, env, installProviderKeys, ownerOp, signIn } from "./helpers.js";
 import { castOf, catalog, consent, flac, newTakeId, wav } from "./plays-helpers.js";
 import { castParts, isSpeaking, linesOf } from "../src/plays-relay.js";
 import MANIFEST from "../src/castable-manifest.json";
@@ -696,6 +696,87 @@ describe("a published production outlives its members' accounts (owner, 2026-10-
     expect((await call("DELETE", "/v1/account", { token: director.access_token })).status).toBe(200);
     expect(await env.DB.prepare("SELECT 1 FROM play_productions WHERE id = ?1").bind(p.id).first()).toBeNull();
     expect(await takeUsers(p.id)).toEqual([]);
+  });
+});
+
+describe("the owner's answer to a report reaches the item (Decision 088.6)", () => {
+  const reportOf = async (s, body) => {
+    const r = await call("POST", "/v1/plays/reports", { token: s.access_token, body: { reason: "offensive", ...body } });
+    expect(r.status).toBe(201);
+    return (await r.json()).id;
+  };
+  const answer = async (op, id) => {
+    const [r] = await ownerOp("show", { id, now: Date.now() });
+    await ownerOp(op, { id, production: r.production_id, take: r.take_id, target: r.target_user_id, seat: r.seat, credit: r.credit, reason: r.reason, now: Date.now() });
+  };
+  const listed = async (pid) => (await call("GET", `/v1/plays/finished/${pid}`)).status;
+
+  it("dismissing lets the publish it held go ahead", async () => {
+    const { director, p } = await complete("rep-dismiss");
+    const take = await env.DB.prepare("SELECT id FROM play_takes WHERE production_id = ?1 AND chosen = 1 LIMIT 1").bind(p.id).first();
+    const id = await reportOf(director, { production_id: p.id, take_id: take.id });
+    expect((await publish(director, p.id)).status).toBe(409);
+    await answer("dismiss", id);
+    expect((await publish(director, p.id)).status).toBe(201);
+  });
+
+  it("remove-take: the cron takes the line's file off the item and nothing else", async () => {
+    const { director, p } = await published("rep-take");
+    const [f, ...rest] = await files(p.id);
+    const id = await reportOf(director, { production_id: p.id, take_id: f.take_id });
+    await answer("remove-take", id);
+    await drain(p.id);
+    const item = fake.items.get(identifierFor(p.id));
+    expect(item.files.has(f.name)).toBe(false);
+    for (const x of rest) expect(item.files.has(x.name)).toBe(true);
+    expect((await files(p.id))[0]).toMatchObject({ state: "removed", removed_by: "owner", reason: "offensive" });
+  });
+
+  it("remove-member: every line of theirs leaves the item, and their name leaves the credits", async () => {
+    const { director, her, p } = await published("rep-member");
+    const id = await reportOf(director, { production_id: p.id, user_id: her.user_id });
+    await answer("remove-member", id);
+    await drain(p.id);
+    const item = fake.items.get(identifierFor(p.id));
+    expect(item.files.size).toBe(speakingLines.length - herLines().length);
+    expect(item.meta.creator).toEqual(["Pat"]);
+    expect(JSON.stringify(item.meta.credits)).not.toContain("Zoë");
+  });
+
+  it("unshare: the whole item is emptied, the listing drops it, and a performer cannot put a line back", async () => {
+    const { director, her, p } = await published("rep-unshare");
+    const id = await reportOf(her, { production_id: p.id, user_id: director.user_id });
+    await answer("unshare", id);
+    expect(await listed(p.id)).toBe(404);
+    await drain(p.id);
+    expect(fake.items.get(identifierFor(p.id)).files.size).toBe(0);
+    const r = await call("PUT", `/v1/plays/productions/${p.id}/takes/${newTakeId()}`, {
+      token: her.access_token,
+      body: wav(4800),
+      envOverride: KEYS,
+      headers: {
+        "content-type": "audio/wav",
+        "content-length": String(wav(4800).length),
+        "x-take": JSON.stringify({ lineID: herLines()[0], frames: 4800, sampleRate: 48000, capture: "direct", heard: {}, peak: 0.5, loudness: -18, bleed: false }),
+      },
+    });
+    expect([r.status, (await r.json()).error]).toEqual([409, "removed_by_director"]);
+  });
+
+  it("unshare before anything was sent ends the publish, and the director cannot publish the same takes again", async () => {
+    const queued = await complete("rep-queued");
+    expect((await publish(queued.director, queued.p.id)).status).toBe(201);
+    await answer("unshare", await reportOf(queued.her, { production_id: queued.p.id, user_id: queued.director.user_id }));
+    expect(await job(queued.p.id)).toMatchObject({ status: "failed", reason: "removed_after_report" });
+    const laid = await complete("rep-laid");
+    expect((await publish(laid.director, laid.p.id)).status).toBe(201);
+    await runArchive(ia, Date.now(), 1000);
+    await answer("unshare", await reportOf(laid.her, { production_id: laid.p.id, user_id: laid.director.user_id }));
+    expect((await job(laid.p.id)).status).toBe("failed");
+    const r = await publish(laid.director, laid.p.id);
+    expect([r.status, (await r.json()).error]).toEqual([409, "reported_take"]);
+    await runArchive(ia, Date.now(), 1000);
+    expect(fake.puts()).toEqual([]);
   });
 });
 

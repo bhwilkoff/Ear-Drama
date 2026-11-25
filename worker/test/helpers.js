@@ -1,6 +1,7 @@
 import { env, createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { vi } from "vitest";
 import worker from "../src/index.js";
+import ops from "../ops/reports.json";
 import { b64urlEncode, clearJwksCache } from "../src/jwt.js";
 
 export const APPLE_AUD = "app.eardrama.test";
@@ -110,6 +111,14 @@ export async function signIn(sub, provider = "apple", extra = {}) {
   const r = await call("POST", `/v1/auth/${provider}`, { body: { id_token: token, device: "test-device", ...extra } });
   if (r.status !== 200) throw new Error(`sign-in failed: ${r.status} ${await r.text()}`);
   return r.json();
+}
+
+/** One of the owner's report answers (worker/ops/reports.json), each :name quoted as tools/reports.py quotes it, run on D1. */
+export function ownerOp(name, values = {}) {
+  const lit = (v) => (v === null || v === undefined ? "NULL" : typeof v === "number" ? String(v) : `'${String(v).replaceAll("'", "''")}'`);
+  const fill = (sql) => sql.replace(/:([a-z]+)/g, (_, k) => lit(values[k]));
+  const op = ops[name];
+  return typeof op === "string" ? env.DB.prepare(fill(op)).all().then((r) => r.results) : env.DB.batch(op.map((s) => env.DB.prepare(fill(s))));
 }
 
 export { env };

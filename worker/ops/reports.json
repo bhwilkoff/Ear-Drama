@@ -1,0 +1,37 @@
+{
+  "about": "The owner's answers to a report (tools/reports.py), as D1 statements; the tool quotes each :name. worker/test/reports.test.js runs these same statements on the Worker's database and then asks the Worker's own routes what changed, so a schema or rule change that breaks an answer fails there.",
+  "count": "SELECT COUNT(*) AS n FROM play_reports WHERE status = 'open'",
+  "list": "SELECT r.id, r.created_at, r.reason, CASE WHEN r.take_id IS NULL THEN 'member' ELSE 'take' END AS kind, p.title, p.class_id IS NOT NULL AS class, j.status AS archive FROM play_reports r LEFT JOIN play_productions p ON p.id = r.production_id LEFT JOIN play_archive_jobs j ON j.production_id = r.production_id WHERE r.status = 'open' ORDER BY r.created_at LIMIT 100",
+  "show": "SELECT r.id, r.status, r.created_at, r.reason, r.note, r.production_id, r.take_id, r.target_user_id, p.title, p.script_id, p.class_id, p.user_id = r.target_user_id AS names_director, rm.display_name AS reporter_name, tm.display_name AS target_name, t.line_id, t.part, t.seat_id AS seat, t.credit, t.uploaded_at, t.chosen, f.state AS file_state, f.name AS file_name, j.status AS archive, j.item_url, (SELECT COUNT(*) FROM play_invites i WHERE i.production_id = r.production_id AND i.revoked = 0 AND i.expires_at > :now) AS live_invites, (SELECT COUNT(*) FROM play_takes k WHERE k.production_id = r.production_id AND k.user_id = r.target_user_id) AS their_takes FROM play_reports r LEFT JOIN play_productions p ON p.id = r.production_id LEFT JOIN play_members rm ON rm.production_id = r.production_id AND rm.user_id = r.user_id LEFT JOIN play_members tm ON tm.production_id = r.production_id AND tm.user_id = r.target_user_id LEFT JOIN play_takes t ON t.production_id = r.production_id AND t.id = r.take_id LEFT JOIN play_archive_jobs j ON j.production_id = r.production_id LEFT JOIN play_archive_files f ON f.production_id = r.production_id AND f.take_id = r.take_id WHERE r.id = :id",
+  "dismiss": [
+    "UPDATE play_reports SET status = 'dismissed' WHERE id = :id AND status = 'open'"
+  ],
+  "remove-take": [
+    "UPDATE play_archive_files SET state = 'remove', removed_by = 'owner', reason = :reason, updated_at = :now WHERE production_id = :production AND take_id = :take AND state NOT IN ('remove', 'removed')",
+    "DELETE FROM play_reviews WHERE production_id = :production AND take_id = :take",
+    "DELETE FROM play_takes WHERE production_id = :production AND id = :take",
+    "UPDATE play_reports SET status = 'acted' WHERE production_id = :production AND take_id = :take AND status = 'open'"
+  ],
+  "remove-maker": [
+    "UPDATE play_archive_files SET state = 'remove', removed_by = 'owner', reason = :reason, updated_at = :now WHERE production_id = :production AND state NOT IN ('remove', 'removed') AND take_id IN (SELECT id FROM play_takes WHERE production_id = :production AND CASE WHEN :credit IS NOT NULL THEN credit = :credit ELSE seat_id = :seat END)",
+    "UPDATE play_reports SET status = 'acted' WHERE production_id = :production AND status = 'open' AND take_id IN (SELECT id FROM play_takes WHERE production_id = :production AND CASE WHEN :credit IS NOT NULL THEN credit = :credit ELSE seat_id = :seat END)",
+    "DELETE FROM play_reviews WHERE production_id = :production AND take_id IN (SELECT id FROM play_takes WHERE production_id = :production AND CASE WHEN :credit IS NOT NULL THEN credit = :credit ELSE seat_id = :seat END)",
+    "DELETE FROM play_takes WHERE production_id = :production AND CASE WHEN :credit IS NOT NULL THEN credit = :credit ELSE seat_id = :seat END"
+  ],
+  "remove-member": [
+    "UPDATE play_archive_files SET state = 'remove', removed_by = 'owner', reason = :reason, updated_at = :now WHERE production_id = :production AND state NOT IN ('remove', 'removed') AND take_id IN (SELECT id FROM play_takes WHERE production_id = :production AND user_id = :target)",
+    "UPDATE play_reports SET status = 'acted' WHERE production_id = :production AND target_user_id = :target AND status = 'open'",
+    "DELETE FROM play_reviews WHERE production_id = :production AND take_id IN (SELECT id FROM play_takes WHERE production_id = :production AND user_id = :target)",
+    "DELETE FROM play_takes WHERE production_id = :production AND user_id = :target",
+    "DELETE FROM play_parts WHERE production_id = :production AND user_id = :target",
+    "DELETE FROM play_consents WHERE production_id = :production AND user_id = :target",
+    "DELETE FROM play_members WHERE production_id = :production AND user_id = :target",
+    "UPDATE play_invites SET revoked = 1 WHERE production_id = :production"
+  ],
+  "unshare": [
+    "UPDATE play_invites SET revoked = 1 WHERE production_id = :production",
+    "UPDATE play_archive_jobs SET status = 'failed', reason = 'removed_after_report', updated_at = :now WHERE production_id = :production AND (status = 'queued' OR (status = 'uploading' AND NOT EXISTS (SELECT 1 FROM play_archive_files f WHERE f.production_id = :production AND f.state IN ('sent', 'remove'))))",
+    "UPDATE play_archive_files SET state = 'remove', removed_by = 'owner', reason = :reason, updated_at = :now WHERE production_id = :production AND state NOT IN ('remove', 'removed')",
+    "UPDATE play_reports SET status = 'acted' WHERE id = :id"
+  ]
+}

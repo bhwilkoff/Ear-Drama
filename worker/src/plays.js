@@ -592,7 +592,8 @@ const publishedLine = (env, pid, lineID) =>
 /** Only the line's own performer replaces it, at the current consent, and not a line the director removed. */
 async function replaceRefusal(env, p, f, userId) {
   if (f.user_id !== userId) return problem(403, "not_your_take");
-  if (f.removed_by === "director") return problem(409, "removed_by_director");
+  // The director's removal stands, and so does the owner's after a report (worker/ops/reports.json).
+  if (f.removed_by === "director" || f.removed_by === "owner") return problem(409, "removed_by_director");
   const agreed = await env.DB.prepare("SELECT version FROM play_consents WHERE production_id = ?1 AND user_id = ?2 AND version = ?3")
     .bind(p.id, userId, CONSENT_VERSION)
     .first();
@@ -713,7 +714,9 @@ async function publish(auth, request, env, p, now) {
     .bind(p.id)
     .all();
   const { results: reported } = await env.DB.prepare(
-    "SELECT DISTINCT take_id FROM play_reports WHERE production_id = ?1 AND status = 'open' AND take_id IS NOT NULL",
+    "SELECT take_id FROM play_reports WHERE production_id = ?1 AND status = 'open' AND take_id IS NOT NULL " +
+      // What the owner took down after a report does not go out again.
+      "UNION SELECT take_id FROM play_archive_files WHERE production_id = ?1 AND removed_by = 'owner'",
   )
     .bind(p.id)
     .all();

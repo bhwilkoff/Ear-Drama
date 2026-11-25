@@ -2,7 +2,7 @@
 // "I do not want to set or keep track of keys and passwords for this repo."). A token must be GitHub's, for this
 // Worker's origin, from this repository on main, from exactly the one workflow the route names, on its events.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { call, githubClaims, githubToken, installProviderKeys, keys, mint } from "./helpers.js";
+import { call, githubClaims, githubToken, installProviderKeys, keys, mint, signIn } from "./helpers.js";
 
 const GITHUB_JWKS = "https://token.actions.githubusercontent.com/.well-known/jwks";
 let spy;
@@ -13,6 +13,7 @@ afterEach(() => vi.restoreAllMocks());
 
 const operator = async (token, extra = {}) => (await call("GET", "/v1/operator/classes?reference=no-such-school", { token, ...extra })).status;
 const takedown = async (token, extra = {}) => (await call("GET", "/v1/takedown/cases", { token, ...extra })).status;
+const count = async (token, extra = {}) => (await call("GET", "/v1/operator/reports/count", { token, ...extra })).status;
 const nowS = () => Math.floor(Date.now() / 1000);
 
 describe("GitHub OIDC on the operator route", () => {
@@ -84,6 +85,46 @@ describe("GitHub OIDC on the take-down check's routes", () => {
     const old = "an-old-takedown-token-value";
     expect(await takedown(old, { envOverride: { TAKEDOWN_TOKEN: old } })).toBe(403);
     expect(await operator(old, { envOverride: { OPERATOR_TOKEN: old } })).toBe(403);
+  });
+});
+
+describe("GitHub OIDC on the reports count (Decision 088.6)", () => {
+  it("reports.yml's scheduled and dispatched runs on main are let in", async () => {
+    expect(await count(await githubToken("reports.yml", { event_name: "schedule" }))).toBe(200);
+    expect(await count(await githubToken("reports.yml", { event_name: "workflow_dispatch" }))).toBe(200);
+  });
+
+  const refused = {
+    "the operator workflow": ["operator.yml", {}],
+    "the take-down workflow": ["takedown-check.yml", { event_name: "schedule" }],
+    "another repository": ["reports.yml", { repository: "someone/Ear-Drama" }],
+    "a recreated namesake": ["reports.yml", { repository_id: "999" }],
+    "another branch": ["reports.yml", { ref: "refs/heads/feature" }],
+    "the workflow at another ref": ["reports.yml", { job_workflow_ref: "bhwilkoff/Ear-Drama/.github/workflows/reports.yml@refs/heads/feature" }],
+    "another repository's reusable workflow": ["reports.yml", { job_workflow_ref: "someone/tools/.github/workflows/reports.yml@refs/heads/main" }],
+    "a push event": ["reports.yml", { event_name: "push" }],
+    "a pull_request event": ["reports.yml", { event_name: "pull_request" }],
+    "an issue event": ["reports.yml", { event_name: "issues" }],
+    "another audience": ["reports.yml", { aud: "https://github.com/bhwilkoff" }],
+    "another issuer": ["reports.yml", { iss: "https://token.actions.example.com" }],
+    "an expired token": ["reports.yml", { iat: nowS() - 3600, exp: nowS() - 600 }],
+  };
+  for (const [name, [workflow, over]] of Object.entries(refused)) {
+    it(`refuses ${name}`, async () => {
+      expect(await count(await githubToken(workflow, over))).toBe(403);
+    });
+  }
+
+  it("refuses no token, and a signed-in person's", async () => {
+    expect(await count(undefined)).toBe(403);
+    expect(await count((await signIn("reports-count")).access_token)).toBe(403);
+  });
+
+  it("its token opens nothing else of the owner's", async () => {
+    const token = await githubToken("reports.yml");
+    expect(await operator(token)).toBe(403);
+    expect(await takedown(token)).toBe(403);
+    expect((await call("DELETE", "/v1/operator/classes/any", { token })).status).toBe(403);
   });
 });
 

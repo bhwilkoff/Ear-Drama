@@ -350,11 +350,15 @@ the room opened join the next room.
 Messages: `cursor { line, base }`, `line-done { line, base }` (the holder's take ended; a line that is no longer the
 cursor is marked done and the cursor stays, T7c), `again { line,
 base }`, `mode { mode }`, `claim { part }`, `release { part }`, `lead { to }`,
-`lock { locked }`, `read-open { open }` (the leader's "Read open parts", carried in the snapshot as `read_open`; the screen obeys it), `seat { seat, seat_key, move? }`, `ping { t0 }` (answered `pong {
+`lock { locked }`, `remove { member }` (an adult room's leader or opener, a class's teacher: that member's key
+stops working, their parts open, joining locks; never the opener), `leave` (the sender's own; a class's teacher keeps
+their place; the last reader's ends the room), `read-open { open }` (the leader's "Read open parts", carried in the snapshot as `read_open`; the screen obeys it), `seat { seat, seat_key, move? }`, `ping { t0 }` (answered `pong {
 t0, server_time }`), `end`. Refusals: `leader_only`, `stale` (with the current
 cursor generation), `part_taken` (with the holder), `not_your_line`,
-`class_assignments_only`, `readers_only`, `screens_do_not_lead`,
-`not_a_member`, `seat_key_required`, `rate_limited`. The key never travels in a URL. The snapshot carries `leader_name` (the leader's seat label, or the room owner's own `owner_name` given when the room opens; else null) so readers see "Waiting for <name>", and `read_open`.
+`no_such_member`, `class_assignments_only`, `readers_only`, `screens_do_not_lead`,
+`not_a_member`, `seat_key_required`, `rate_limited`. The key never travels in a URL. The snapshot carries `leader_name` (the leader's seat label, or the room owner's own `owner_name` given when the room opens; else null) so readers see "Waiting for <name>", and `read_open`. `owner_name` passes the name filter as a joiner's name does (`422 bad_name`). A removed
+member's socket gets `not_a_member` and closes (4003), and a poll of theirs answers it; a leaver's `send` over HTTP
+answers `{ left: true }`.
 
 **Record in the room** (T5, PLAYS-DESIGN §12.10). A take crosses the Worker only from a reader who
 holds the line (`recordRefusal`: Record mode, a reader, an adult's claimed part or a seat's
@@ -652,8 +656,8 @@ ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
 - **Reports.** A member reports a take or another member, with a reason
   (`offensive`, `harassment`, `personal_information`, `not_a_performance`,
   `other`) and an optional note of up to 500 characters. A reported take is
-  hidden from its reporter at once. Reports wait in `play_reports` for the
-  owner; nothing is sent anywhere yet.
+  hidden from its reporter at once. Reports wait in `play_reports`; an hourly
+  workflow tells the owner how many ("Reports reach a person").
 - **Names.** Display names (on a production, an invite claim, or a class
   join) and class names pass `plays-names.js`: at most 40 characters, no
   links, nothing that reads as the service, and no denied word after folding
@@ -695,7 +699,8 @@ ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
   then send its file from their device, which overwrites the line's file (a
   different format deletes the old name first); the performer or the director may remove a line, and the
   uploader deletes the file (`x-archive-cascade-delete`, a `404` counts as
-  gone) and keeps `removed_by` and `reason`. A line the director removed is
+  gone) and keeps `removed_by` (`performer`, `director`, or `owner` after a
+  report) and `reason`. A line the director removed is
   not put back. A reported replacement is held until its report is closed (`409 reported_take`).
   When a performer has no line left, the item's credits are rewritten
   through the metadata write API. A refused change marks that line `failed`
@@ -789,6 +794,29 @@ dispatching `actor` and `run_id`. The owner answers the school in writing with
 the date, within 30 days of the request (the policy's promise). Any other caller
 gets `403`.
 
+### Reports reach a person (Decision 088.6)
+
+`GET /v1/operator/reports/count` answers `{ open }`, the number of open reports
+and nothing else. Only `.github/workflows/reports.yml` on `refs/heads/main`, on
+its schedule or dispatched, is let in (`OWNER_WORKFLOWS.reports`); its token
+opens no other owner route. It asks once an hour: 24 requests and 24 one-row
+reads a day, no write, no Durable Object. `tools/reports_issue.py` keeps one
+GitHub issue, opened by the Actions bot and assigned to the owner while any
+report waits, saying only how many; a comment (which is the email) only when the
+number rises; closed at zero. GitHub may run a scheduled workflow late.
+
+The owner reads and answers with `tools/reports.py` (docs/runbooks/reports.md),
+through their own wrangler login. Its statements are `worker/ops/reports.json`,
+which `test/reports.test.js` and `archive.test.js` run on the Worker's database
+and judge by the Worker's routes: `dismiss`; `remove-take` and `remove-member`
+(a class seat's or a room reader's takes when the report names one of those)
+delete the rows and mark a published file `remove` with `removed_by: "owner"`,
+which the cron takes off the item; `unshare` revokes the invites and removes
+every line, failing a publish that had sent nothing. A report is then `dismissed`
+or `acted` and holds nothing. A line the owner removed is not put back by its
+performer (`409 removed_by_director`), and its take is not published again
+(`409 reported_take`).
+
 ## Schema
 
 `worker/migrations/0001_accounts.sql`, `0002_rooms.sql`, and `0003_plays.sql`.
@@ -811,7 +839,7 @@ Times are milliseconds.
 | `play_parts` | `(production_id, part)` | `status` (`recording`, `done`, `silent`; no row is open), `user_id`, `claimed_at` |
 | `play_takes` | `(production_id, id)` | `user_id` (a seat's take: the teacher), `seat_id`, `line_id`, `part`, `file`, `content_type`, `bytes`, `frames`, `sample_rate`, `capture` (`direct`, `aec`, `room`), `heard`, `loudness`, `peak`, `created`, `uploaded_at`, `chosen` (one per line); no audio, no object key |
 | `play_consents` | `(user_id, production_id, version)` | `consented_at` |
-| `play_reports` | `id` | `user_id` (the reporter), `production_id`, `target_user_id` (cleared when that account goes), `take_id`, `reason`, `note`, `created_at`, `status` |
+| `play_reports` | `id` | `user_id` (the reporter), `production_id`, `target_user_id` (cleared when that account goes), `take_id`, `reason`, `note`, `created_at`, `status` (`open`, `dismissed`, `acted`) |
 | `play_blocks` | `(user_id, blocked_id)` | `created_at` |
 | `play_archive_jobs` | `production_id` | `user_id`, `status` (`queued`, `uploading`, `published`, `failed`), `take_ids`, `identifier`, `item_url`, `reason`, `attempts`, `next_attempt_at`, `lease_until`, `credits`, `published_at`, `created_at`, `updated_at`, `performers_agreed_at` and `media_release_at` (a class publish's two confirmations) |
 | `play_archive_files` | `(production_id, line_id)` | `seq`, `part`, `take_id`, `name`, `state` (`pending`, `sent`, `remove`, `removed`, `failed`), `stale_name`, `removed_by`, `reason`, `updated_at`; no person column |
@@ -862,7 +890,7 @@ trusting anything.
 Secrets, with `tools/secrets.sh` (`gen SESSION_SECRET`, `put-file NAME FILE`), which pipes each value into
 `wrangler secret put` without printing it (never in git, never in `wrangler.toml`, never in a file). The
 owner's routes, `/v1/operator/*` and the take-down case routes, need no secret: they take a GitHub Actions
-OIDC token from one named workflow (`src/github-oidc.js`, "A school asks"):
+OIDC token from one named workflow each (`src/github-oidc.js`, "A school asks", "Reports reach a person"):
 
 | Name | Meaning |
 |---|---|
