@@ -114,6 +114,7 @@ internal fun OwnFoot(script: PlayScript, onDeleted: () -> Unit, onOpenEpisode: (
             failed = if (ok) null else "The file could not be saved."
         }
     }
+    val frozen by produceState(false, script.id) { value = withContext(Dispatchers.IO) { runCatching { plays.own.frozen(script.id) }.getOrDefault(false) } }
     val left by produceState<OwnRow?>(null, script.id) {
         value = withContext(Dispatchers.IO) { runCatching { plays.own.list().firstOrNull { it.id == script.id && it.ear != null && it.ear.cast < it.ear.lines } }.getOrNull() }
     }
@@ -127,15 +128,31 @@ internal fun OwnFoot(script: PlayScript, onDeleted: () -> Unit, onOpenEpisode: (
                 } else {
                     append(script.source.name)
                 }
-                append(" \u00b7 Kept on this device")
+                append(if (frozen) " \u00b7 Shared" else " \u00b7 Kept on this device")
             },
             style = MaterialTheme.typography.labelMedium, color = muted,
         )
         left?.ear?.let { Text(OwnWords.castLine(it.cast, it.lines), style = MaterialTheme.typography.bodySmall, color = muted) }
         Text("This script can\u2019t be published.", style = MaterialTheme.typography.labelMedium, color = muted)
         ChipFlow {
-            if (left != null && episode != null) OutlinedButton(onClick = { onCastByEar(episode) }) { Text("Cast by ear") }
-            OutlinedButton(onClick = { onEdit(script.id) }) { Text("Edit") }
+            if (left != null && episode != null && !frozen) OutlinedButton(onClick = { onCastByEar(episode) }) { Text("Cast by ear") }
+            if (frozen) {
+                OutlinedButton(onClick = {
+                    scope.launch {
+                        try {
+                            val made = plays.own.copy(script)
+                            val casting = made.ear != null && com.example.appname.plays.OwnScript.castCount(made.doc).let { (n, of) -> n < of }
+                            if (casting && made.episode != null) onCastByEar(made.episode.id) else onEdit(made.id)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            failed = OwnWords.notKept(e)
+                        }
+                    }
+                }) { Text("Edit a copy") }
+            } else {
+                OutlinedButton(onClick = { onEdit(script.id) }) { Text("Edit") }
+            }
             OutlinedButton(onClick = { runCatching { save.launch(OwnScripts.fileName(script.title)) }.onFailure { failed = "The file could not be saved." } }) { Text("Save as text") }
             TextButton(onClick = {
                 scope.launch {

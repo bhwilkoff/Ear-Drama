@@ -25,7 +25,16 @@ class SharedPlays(
     private val now: () -> Long = System::currentTimeMillis,
     /** A play of the published library that the bundle does not hold, at the revision a production was cast from. */
     private val libraryScript: suspend (String, String) -> PlayScript? = { _, _ -> null },
+    /** An own script's text: the one resolver, the wire it goes out by, and what freezes a script once it is shared (PLAYS-DESIGN §13). */
+    private val resolver: OwnShare.Resolver? = null,
+    private val wire: ScriptWire? = null,
+    private val freezer: ScriptFreezer? = null,
 ) {
+    private val _notSent = MutableStateFlow<Map<String, Throwable>>(emptyMap())
+
+    /** Why an own script's text is owed, by this device's production id, for this run: the Worker keeps only that it is. */
+    val notSent: StateFlow<Map<String, Throwable>> = _notSent
+
     private val _records = MutableStateFlow<Map<String, SharedRecord>>(emptyMap())
 
     /** The Worker's record by this device's production id. */
@@ -74,11 +83,47 @@ class SharedPlays(
 
     suspend fun share(localId: String, script: PlayScript, name: String?): SharedRecord = withContext(io) {
         val local = store.production(localId) ?: throw PlaysException("not_found")
-        val rec = PlaysShare.share(api, store, local, script, name)
-        _links.update { it + (localId to ShareLink(rec.id)) }
-        _records.update { it + (localId to rec) }
-        rec
+        val sent = OwnShare.share(api, wire, store, local, script, name, freezer)
+        _links.update { it + (localId to ShareLink(sent.rec.id)) }
+        _records.update { it + (localId to sent.rec) }
+        sent.unsent?.let { e -> _notSent.update { it + (localId to e) } }
+        sent.rec
     }
+
+    /** Try again for a text that is owed: null when it is there now, else why not. One that can never pass undoes the share. */
+    suspend fun sendAgain(localId: String, script: PlayScript): Throwable? = withContext(io) {
+        val pid = linkOf(localId)?.pid ?: throw PlaysException("not_found")
+        val e = OwnShare.sendOrUndo(api, wire ?: throw PlaysException("not_found"), pid, script, freezer)
+        when {
+            e == null -> { _notSent.update { it - localId }; refresh(localId) }
+            OwnShare.passes(e) -> _notSent.update { it + (localId to e) }
+            else -> {
+                store.unshare(localId)
+                _links.update { it - localId }
+                _records.update { it - localId }
+                _notSent.update { it + (localId to e) }
+            }
+        }
+        e
+    }
+
+    /** The script of a shared production for one of its members; an own script's is drawn only once it is shown to be whole. */
+    suspend fun memberScript(rec: SharedRecord): PlayScript? =
+        if (OwnShare.isOwn(rec.scriptID)) {
+            (resolver ?: throw PlaysException("not_on_device")).scriptOf(rec.scriptID, rec.scriptRevision, ScriptWho(pid = rec.id), OwnShare.Fits.record(rec))
+        } else {
+            PlaysShare.scriptFor(scripts(), rec.scriptID, rec.scriptRevision) ?: libraryScript(rec.scriptID, rec.scriptRevision)
+        }
+
+    /** An invitation's script, read by its token: for the page that shows the cast sheet, and for the join. */
+    suspend fun inviteScript(token: String, inv: OpenInvite): PlayScript? =
+        if (OwnShare.isOwn(inv.scriptID)) {
+            (resolver ?: throw PlaysException("not_on_device")).scriptOf(
+                inv.scriptID, inv.scriptRevision, ScriptWho(token = token, pid = inv.id), OwnShare.Fits.invite(inv.parts.map { InvitePart(it.id, it.lineCount) }),
+            )
+        } else {
+            PlaysShare.scriptFor(scripts(), inv.scriptID, inv.scriptRevision) ?: libraryScript(inv.scriptID, inv.scriptRevision)
+        }
 
     /** A new invite link for the director, and what its caption says. */
     suspend fun makeInvite(localId: String): Pair<String, String> {
@@ -175,6 +220,13 @@ class SharedPlays(
         refresh(localId)
     }
 
+    /** Report script: the Worker hides the production from this person at once, so nothing is read again. */
+    suspend fun reportScript(localId: String, reason: String, note: String?) {
+        val pid = linkOf(localId)?.pid ?: throw PlaysException("not_found")
+        api.reportScript(pid, reason, note)
+        _records.update { it - localId }
+    }
+
     suspend fun reportMember(localId: String, userId: String, reason: String, note: String?) {
         val pid = linkOf(localId)?.pid ?: throw PlaysException("not_found")
         api.report(pid, null, userId, reason, note)
@@ -212,7 +264,10 @@ class SharedPlays(
             } catch (e: Exception) {
                 continue
             }
-            val script = try {
+            // The record's parts are the cast sheet's, so an own script's text is not fetched for a count; one not yet kept is not open.
+            val own = OwnShare.ownState(rec)
+            if (own != null && own.state != "kept") continue
+            val script = if (own != null) null else try {
                 PlaysShare.scriptFor(scripts(), rec.scriptID, rec.scriptRevision) ?: libraryScript(rec.scriptID, rec.scriptRevision)
             } catch (e: CancellationException) {
                 throw e
@@ -228,8 +283,12 @@ class SharedPlays(
     suspend fun viewInvite(token: String): InviteView = api.viewInvite(token)
 
     /** Joins by the held invite, claiming [part]; the local production, ready to open. */
-    suspend fun join(token: String, part: String, name: String?, scriptID: String, revision: String): Production {
-        val script = PlaysShare.scriptFor(scripts(), scriptID, revision) ?: libraryScript(scriptID, revision)
+    suspend fun join(token: String, part: String, name: String?, scriptID: String, revision: String, invite: InviteView? = null): Production {
+        val script = if (OwnShare.isOwn(scriptID)) {
+            (resolver ?: throw PlaysException("not_on_device")).scriptOf(scriptID, revision, ScriptWho(token = token, pid = invite?.id), invite?.let { OwnShare.Fits.invite(it.parts) } ?: { true })
+        } else {
+            PlaysShare.scriptFor(scripts(), scriptID, revision) ?: libraryScript(scriptID, revision)
+        }
         val joined = withContext(io) { PlaysShare.join(api, store, token, part, name, script) }
         _links.update { it + (joined.local.id to (store.share(joined.local.id) ?: ShareLink(joined.rec.id))) }
         _records.update { it + (joined.local.id to joined.rec) }
@@ -241,7 +300,7 @@ class SharedPlays(
     /** Opens a shared production this device has not opened: makes it here from the bundle's script, as a join does. */
     suspend fun openRemote(pid: String): Production {
         val rec = api.get(pid)
-        val script = PlaysShare.scriptFor(scripts(), rec.scriptID, rec.scriptRevision) ?: libraryScript(rec.scriptID, rec.scriptRevision)
+        val script = memberScript(rec)
         val local = withContext(io) { PlaysShare.localFor(store, pid, script) }
         _links.update { it + (local.id to (store.share(local.id) ?: ShareLink(pid))) }
         _records.update { it + (local.id to rec) }

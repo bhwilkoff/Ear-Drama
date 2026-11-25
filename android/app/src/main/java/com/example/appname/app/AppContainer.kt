@@ -36,6 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** The app's singletons, built once in [AppNameApplication]. */
 class AppContainer(context: Context, scope: CoroutineScope) {
@@ -109,11 +110,30 @@ class AppContainer(context: Context, scope: CoroutineScope) {
     /** Shared ear dramas, phase 2 (PLAYS-DESIGN §11.7): the Worker's calls on the one client, never on a TV. */
     val sharing: SharedPlays by lazy {
         SharedPlays(
-            PlaysApi(accounts.worker),
+            scriptWire,
             plays.store,
             { accounts.account.value?.userId },
             { plays.load(); (plays.state.value as? PlaysLibrary.State.Ready)?.scripts.orEmpty() },
             libraryScript = { id, revision -> plays.script(id, revision) },
+            resolver = scripts,
+            wire = scriptWire,
+            freezer = com.example.appname.plays.ScriptFreezer { plays.own.freeze(it) },
+        )
+    }
+
+    /** The Worker's shared-plays calls, and the wire an own script's text goes out and comes in by (docs/WORKER.md "Own scripts"). */
+    val scriptWire: PlaysApi by lazy { PlaysApi(accounts.worker) }
+
+    /**
+     * The one resolver for "the script of this production, invite, seat or room" (PLAYS-DESIGN §13 item 11): a catalog play is
+     * the library's, an own script this device's or the Worker's once shown to be whole.
+     */
+    val scripts: com.example.appname.plays.OwnShare.Resolver by lazy {
+        com.example.appname.plays.OwnShare.Resolver(
+            scriptWire,
+            catalog = { id, revision -> plays.script(id, revision) },
+            kept = { pid -> withContext(Dispatchers.IO) { plays.store.findShared(pid)?.let(plays.store::script) } },
+            device = { id -> withContext(Dispatchers.IO) { plays.own.script(id) } },
         )
     }
 

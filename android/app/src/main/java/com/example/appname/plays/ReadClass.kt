@@ -64,6 +64,9 @@ interface ReadClassWire {
     suspend fun removeSeat(id: String, seat: String)
     suspend fun releaseSeat(id: String, seat: String)
     suspend fun classProduction(id: String, scriptId: String, revision: String, cast: List<Pair<String, String>>): ReadProductionInfo
+
+    /** A class production made from a body of the caller's (an own script's carries its title and `own: true`). */
+    suspend fun classProductionBody(id: String, body: JsonObject): ReadProductionInfo = throw ReadFailure("error")
     suspend fun assign(pid: String, assignments: List<ReadCore.Assignment>): List<ReadCore.Assignment>
 
     /** The director marks an arrived take of a class production (approved or again, with a typed note a seat alone sees). */
@@ -119,6 +122,9 @@ class WorkerReadClass(private val worker: WorkerApi) : ReadClassWire {
     override suspend fun removeSeat(id: String, seat: String) { signed(HttpMethod.Delete, "$p/classes/${enc(id)}/seats/${enc(seat)}") }
 
     override suspend fun releaseSeat(id: String, seat: String) { signed(HttpMethod.Post, "$p/classes/${enc(id)}/seats/${enc(seat)}/release", JsonObject(emptyMap())) }
+
+    override suspend fun classProductionBody(id: String, body: JsonObject): ReadProductionInfo =
+        ShareJson.decodeFromString(signed(HttpMethod.Post, "$p/classes/${enc(id)}/productions", body))
 
     override suspend fun classProduction(id: String, scriptId: String, revision: String, cast: List<Pair<String, String>>): ReadProductionInfo {
         val o = buildJsonObject {

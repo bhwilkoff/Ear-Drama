@@ -88,6 +88,9 @@ object EarCore {
             private set
         private val named = names.toMutableList()
         val names: List<String> get() = named.toList()
+
+        /** The order of the names before each rename, with the undo depth it left, for its Undo. */
+        private val renames = ArrayList<Pair<Int, List<String>>>()
         var lit = 0
             private set
 
@@ -144,7 +147,37 @@ object EarCore {
             return Added(name, refusal)
         }
 
-        fun undo(): String? = take(OwnScript.apply(doc, OwnOp("undo")))
+        fun undo(): String? {
+            val why = take(OwnScript.apply(doc, OwnOp("undo")))
+            while (why == null && renames.isNotEmpty() && renames.last().first > doc.undo.size) {
+                val back = renames.removeAt(renames.lastIndex).second
+                named.clear()
+                named.addAll(back)
+            }
+            return why
+        }
+
+        data class Renamed(val name: String, val refusal: String?)
+
+        /** A part's name on every line of theirs, and in its place in the order; a name another part has joins the two. One step. */
+        fun rename(from: String, raw: String): Renamed {
+            val name = OwnScript.partName(OwnScript.normalize(raw))
+            val all = parts()
+            val held = all.firstOrNull { it.name == from }
+            val why = OwnScript.partNameRefusal(name) ?: if (held == null) "no_such_part" else null
+            if (why != null) return Renamed(name, why)
+            if (name == from) return Renamed(name, null)
+            val before = names
+            if (held!!.lines > 0) {
+                val refusal = take(OwnScript.apply(doc, OwnOp("rename", part = from, rename = name), env()))
+                if (refusal != null) return Renamed(name, refusal)
+                renames += doc.undo.size to before
+            }
+            val order = all.map { it.name }
+            named.clear()
+            named.addAll(if (name in order) order.filter { it != from } else order.map { if (it == from) name else it })
+            return Renamed(name, null)
+        }
 
         /** One line alone, from its sheet: a part, Direction or Sound. The line after it keeps the cast it had. */
         fun assign(k: Int, to: OwnTarget): String? = take(OwnScript.apply(doc, OwnOp("assign", line = k, to = to), env()))

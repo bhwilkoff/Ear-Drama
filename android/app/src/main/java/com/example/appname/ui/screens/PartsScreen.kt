@@ -103,8 +103,23 @@ fun PartsScreen(onBack: () -> Unit, onRecord: OpenStudio) {
             try {
                 val home = seatWire.home(key)
                 for (p in home.productions.filter { it.assignments.isNotEmpty() }) {
-                    val script = container.plays.script(p.scriptID)?.takeIf { it.revision == p.scriptRevision }
-                    if (script == null) { failure = ReadCore.refusal("revision_mismatch"); continue }
+                    // A catalog play at the library's revision; an own script by this seat's key, drawn only once it is whole (§13 item 14).
+                    val script = if (com.example.appname.plays.OwnShare.isOwn(p.scriptID)) {
+                        try {
+                            container.scripts.scriptOf(
+                                p.scriptID, p.scriptRevision, com.example.appname.plays.ScriptWho(seat = key, pid = p.id),
+                                com.example.appname.plays.OwnShare.Fits.seat(p.assignments.map { Triple(it.part, it.from, it.to) }),
+                            )
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            failure = if (com.example.appname.plays.RelayCore.codeOf(e) == "no_script") "Your teacher has not sent this script yet." else com.example.appname.plays.OwnShare.scriptLine(e).ifEmpty { say(e) }
+                            null
+                        }
+                    } else {
+                        container.plays.script(p.scriptID)?.takeIf { it.revision == p.scriptRevision }
+                    }
+                    if (script == null) { if (failure == null) failure = ReadCore.refusal("revision_mismatch"); continue }
                     out += Block(seat, home.`class`.name, p, script, key)
                     runCatching { seatWire.receiver(key, p.id) }.getOrNull()?.name?.let { receiverName = receiverName + (p.id to it) }
                 }

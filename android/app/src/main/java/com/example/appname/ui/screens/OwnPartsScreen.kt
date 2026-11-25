@@ -97,6 +97,13 @@ internal class OwnKeeper(private val own: OwnScripts, private val scope: Corouti
         private set
     private var job: Job? = null
     private var owed = false
+    private var dropped = false
+
+    /** The script is being deleted: nothing more is kept for it. */
+    fun drop() {
+        dropped = true
+        job?.cancel()
+    }
 
     fun soon() {
         owed = true
@@ -109,14 +116,19 @@ internal class OwnKeeper(private val own: OwnScripts, private val scope: Corouti
 
     /** What is owed, now, on a scope that outlives the page. */
     fun flush() {
-        if (owed) scope.launch { write() }
+        if (owed && !dropped) scope.launch { write() }
     }
 
     suspend fun write(): Boolean = withContext(NonCancellable) {
+        if (dropped) return@withContext true
         val rec = now() ?: return@withContext true
         owed = false
         try {
-            own.keep(rec)
+            // Shared from another screen since this one opened it: what people were sent stands (§13 item 12).
+            if (own.keep(rec) == "shared") {
+                problem = OwnWords.say("shared")
+                return@withContext false
+            }
             problem = null
             true
         } catch (e: Exception) {
@@ -183,6 +195,9 @@ private sealed interface PartsLoad {
     data object Loading : PartsLoad
     data object Missing : PartsLoad
     data object Failed : PartsLoad
+
+    /** Shared once, a script is what people were sent: its page has Edit a copy (§13 item 12). */
+    data object Shared : PartsLoad
     data class Ready(val model: OwnPartsModel) : PartsLoad
 }
 
@@ -202,6 +217,7 @@ fun OwnPartsScreen(id: String, onBack: () -> Unit, onDone: (String) -> Unit) {
         value = withContext(Dispatchers.IO) {
             try {
                 own.get(id)?.let { rec ->
+                    if (rec.shared != null) return@let PartsLoad.Shared
                     val taken = own.takes(id)
                     // A transcript cast in part: its marks become the lines' own parts, and left-out lines are gone (§13 item 10).
                     PartsLoad.Ready(OwnPartsModel(if (rec.ear != null) rec.copy(doc = OwnScript.settle(rec.doc)) else rec, taken))
@@ -213,6 +229,7 @@ fun OwnPartsScreen(id: String, onBack: () -> Unit, onDone: (String) -> Unit) {
             }
         }
     }
+    if (load == PartsLoad.Shared) LaunchedEffect(id) { onDone(id) }
     when (val l = load) {
         is PartsLoad.Ready -> OwnPartsPage(l.model, onBack, onDone)
         else -> Scaffold(topBar = { BackBar(onBack) }) { padding ->
@@ -282,7 +299,7 @@ internal fun OwnPartsPage(model: OwnPartsModel, onBack: () -> Unit, onDone: (Str
 
     val lines = model.doc.lines
     val parts = remember(lines, model.rec.extras) { model.parts() }
-    val hues = remember(parts) { parts.filter { it.second > 0 }.mapIndexed { i, p -> p.first to hueKeyAt(i) }.toMap() }
+    val hues = remember(parts) { partHues(parts) }
     val near = remember(lines) { OwnScripts.nearestAll(lines) }
     val open = remember(lines) { lines.count { it.kind == "open" } }
     val large = largeText()
@@ -389,7 +406,9 @@ internal fun OwnPartsPage(model: OwnPartsModel, onBack: () -> Unit, onDone: (Str
             renaming = false
             null
         }
-    }, onDismiss = { renaming = false })
+    }, onDismiss = { renaming = false }, below = if (model.rec.done) null else ({
+        DeleteNotDone(model.rec.title, delete = { keeper.drop(); container.plays.deleteOwn(model.rec.id) }, onGone = { renaming = false; onBack() })
+    }))
     if (naming) NameDialog("New part", "Name", "Add", OwnScript.MAX_PART_NAME, act = { v ->
         val (_, why) = model.addPart(v)
         if (why == null) {

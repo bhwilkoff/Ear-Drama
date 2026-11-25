@@ -188,8 +188,26 @@ fun InvitationScreen(onBack: () -> Unit, onOpenProduction: (String) -> Unit) {
             s is InviteState.Failed -> EmptyMessage(s.line, Modifier.padding(padding), action = EmptyAction("Try again") { attempt++ })
             s is InviteState.Ready -> {
                 val inv = s.invite
-                val script by produceState<com.example.appname.plays.PlayScript?>(null, inv.scriptID, inv.scriptRevision) {
-                    value = runCatching { container.plays.script(inv.scriptID, inv.scriptRevision) }.getOrNull()
+                // An own script's text is read by the invitation's own token and shown only once it is whole; any other is the library's.
+                var scriptAttempt by remember { mutableIntStateOf(0) }
+                val scriptState by produceState<Result<com.example.appname.plays.PlayScript?>?>(null, inv.scriptID, inv.scriptRevision, scriptAttempt) {
+                    value = null
+                    value = try {
+                        Result.success(sharing.inviteScript(t, inv))
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Result.failure(e)
+                    }
+                }
+                val script = scriptState?.getOrNull()
+                val scriptWhy = scriptState?.exceptionOrNull()?.takeIf { com.example.appname.plays.OwnShare.isOwn(inv.scriptID) }?.let { com.example.appname.plays.PlaysShare.line(it) }
+                if (scriptWhy != null) {
+                    EmptyMessage(
+                        scriptWhy, Modifier.padding(padding),
+                        action = if (scriptWhy == com.example.appname.plays.PlaysShare.line(PlaysException("script_removed"))) null else EmptyAction("Try again") { scriptAttempt++ },
+                    )
+                    return@Scaffold
                 }
                 val lineOrder = remember(script) { script?.lines?.map { it.id }.orEmpty() }
                 InviteContent(
@@ -220,7 +238,7 @@ fun InvitationScreen(onBack: () -> Unit, onOpenProduction: (String) -> Unit) {
                                 error = null
                                 scope.launch {
                                     try {
-                                        onOpenProduction(sharing.join(t, part, name, v.scriptID, v.scriptRevision).id)
+                                        onOpenProduction(sharing.join(t, part, name, v.scriptID, v.scriptRevision, v).id)
                                     } catch (e: CancellationException) {
                                         throw e
                                     } catch (e: Exception) {

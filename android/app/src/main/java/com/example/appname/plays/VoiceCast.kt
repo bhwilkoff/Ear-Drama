@@ -146,6 +146,13 @@ object VoiceCasting {
     val PITCH = 0.5..1.5
     const val STEP = 0.1
 
+    /** Voices made for fun, not for reading a play (macOS's novelty set): never picked by Defaults, though a person may tick one. */
+    val NOVELTY = setOf(
+        "albert", "bad news", "bahh", "bells", "boing", "bubbles", "cellos", "good news", "jester", "organ", "superstar", "trinoids", "whisper", "wobble", "zarvox",
+    )
+
+    fun isNovelty(name: String): Boolean = name.trim().lowercase(Locale.ROOT) in NOVELTY
+
     private val json = Json { ignoreUnknownKeys = true }
     private val all = MapSerializer(String.serializer(), CastRow.serializer())
 
@@ -171,7 +178,7 @@ object VoiceCasting {
             )
         val labels = VoiceLabels.labels(sorted.map { it.name to it.localeTag }, traits)
         return sorted.map { v ->
-            CastVoice(v.name, labels.getValue(v.name), v.localeTag, v.quality, null, v.isDefault, register = VoiceLabels.register(traits[v.name]))
+            CastVoice(v.name, labels.getValue(v.name), v.localeTag, v.quality, null, v.isDefault, offByDefault = isNovelty(v.name), register = VoiceLabels.register(traits[v.name]))
         }
     }
 

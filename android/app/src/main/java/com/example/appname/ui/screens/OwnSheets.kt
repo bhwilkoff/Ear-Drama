@@ -112,6 +112,9 @@ private val SideWidth = 380.dp
 /** The hue of the [i]th part, as the recorder's and the reader's. */
 internal fun hueKeyAt(i: Int): String? = PlayScript.PART_HUES.getOrNull(i)
 
+/** The parts page's colors: the parts that have lines, largest first, take the marks in order, exactly as [PlayScript.partHue] gives them once Done. */
+internal fun partHues(parts: List<Pair<String, Int>>): Map<String, String?> = parts.filter { it.second > 0 }.mapIndexed { i, p -> p.first to hueKeyAt(i) }.toMap()
+
 @Composable
 internal fun hueColor(key: String?): Color = genreColor(key, OnAir.colors.dark) ?: MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -206,11 +209,16 @@ internal fun Refusal(text: String, modifier: Modifier = Modifier) {
 
 /** A name asked for in a dialog of its own: a new part, the title. */
 @Composable
-internal fun NameDialog(title: String, label: String, button: String, max: Int, value: String = "", act: (String) -> String?, onDismiss: () -> Unit) {
+internal fun NameDialog(title: String, label: String, button: String, max: Int, value: String = "", act: (String) -> String?, onDismiss: () -> Unit, below: (@Composable () -> Unit)? = null) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { NameForm(label, button, max, act, value, claim = true) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+                NameForm(label, button, max, act, value, claim = true)
+                below?.invoke()
+            }
+        },
         confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )

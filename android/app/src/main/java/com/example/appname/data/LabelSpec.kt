@@ -140,6 +140,12 @@ internal object LabelMath {
             if (offDial(a)) "butt" else "round", if (offDial(b)) "butt" else "round")
     }
 
+    /** How wide [s] stands in [face], in em: what a text of size 1 takes. */
+    fun textWidth(s: String, face: String): Double = em(s, face)
+
+    /** The gap between the last bar of a play's cast and what stands beside it. */
+    val castGap: Double get() = T["play"]["cast"]["gap"].d()
+
     private fun cap(face: String) = T["glyphs"][face]["cap"].d()
     private fun em(s: String, face: String): Double =
         s.codePoints().toArray().sumOf { T["glyphs"][face].glyph(String(Character.toChars(it))) + T["glyphs"]["tracking"].d() }
@@ -287,15 +293,18 @@ internal object LabelMath {
         val most = (shown.firstOrNull() ?: 1).toDouble()
         val total = if (shown.isEmpty()) 0.0 else c["hFirst"].d() + (shown.size - 1) * (c["h"].d() + c["gap"].d())
         var y = 50 - total / 2
+        val more = all.size - shown.size
+        val m = c["more"]
+        fun share(n: Int) = max(c["minW"].d(), (100 * n / most).roundToInt().toDouble()) / 100
+        // "+N" stands at the last bar's end. Every bar is drawn to the same shorter scale when that one would reach it.
+        val room = if (more > 0) m["x"].d() - m["size"].d() * em("+$more", "body") - c["gap"].d() - c["x"].d() else c["w"].d()
+        val w = if (shown.isNotEmpty()) min(c["w"].d(), max(0.0, room) / share(shown.last())) else c["w"].d()
         val bars = shown.mapIndexed { i, n ->
             val h = if (i > 0) c["h"].d() else c["hFirst"].d()
-            val pct = max(c["minW"].d(), (100 * n / most).roundToInt().toDouble())
-            val bar = LabelBar(c["x"].d(), r2(y), r2(c["w"].d() * pct / 100), h)
+            val bar = LabelBar(c["x"].d(), r2(y), r2(w * share(n)), h)
             y += h + c["gap"].d()
             bar
         }
-        val more = all.size - shown.size
-        val m = c["more"]
         return LabelSpec("play", "square", tier, T["viewBox"].d(), groundOf(g), onOf(g),
             cast = if (bars.isEmpty()) null else LabelCast(bars),
             text = if (more > 0) listOf(LabelText("+$more", "body", m["size"].d(), m["x"].d(), m["y"].d(), "end", "on")) else emptyList())

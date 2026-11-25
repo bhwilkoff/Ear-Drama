@@ -121,7 +121,16 @@ data class SharedRecord(
     val uploads: Boolean = true,
     val credits: List<SharedCredit> = emptyList(),
     val reviews: Map<String, SharedReview> = emptyMap(),
+    /** False for an own script, always (Decision 088): Publish is absent and the reason stands in its place. A record that does not say may. */
+    val publishable: Boolean = true,
+    /** An own script's text: `owed` until the director sends it, `kept`, or `removed` (docs/WORKER.md "Own scripts"). */
+    @SerialName("own_script") val ownScript: OwnScriptState? = null,
+    @SerialName("class_id") val classId: String? = null,
 )
+
+/** The record's own-script block: its state, who brought it (null once their account is gone), and the episode a transcript came from. */
+@Serializable
+data class OwnScriptState(val state: String, val by: String? = null, @SerialName("episode_id") val episodeId: String? = null)
 
 /** `GET /consent`: the owner's words, shown as they arrive. */
 @Serializable
@@ -143,6 +152,7 @@ data class InviteView(
     val parts: List<InvitePart> = emptyList(),
     val next: String? = null,
     val member: Boolean = false,
+    @SerialName("own_script") val ownScript: OwnScriptState? = null,
 )
 
 /** `GET /productions`: a shared production this person is in. */
@@ -177,6 +187,8 @@ class PlaysException(
     val code: String,
     val kind: Kind = Kind.Refused,
     val detail: JsonElement? = null,
+    /** The HTTP status when there was an answer; 0 when there was none. */
+    val status: Int = 0,
 ) : Exception("plays: $kind $code") {
     enum class Kind { Refused, RateLimited, Offline, NotConfigured, Unauthorized, Other }
 }
@@ -202,6 +214,9 @@ interface PlaysTransport {
     suspend fun removeLine(pid: String, lineId: String, reason: String)
     suspend fun report(pid: String, takeId: String?, userId: String?, reason: String, note: String?)
     suspend fun block(userId: String)
+
+    /** Report script (docs/WORKER.md "Own scripts"): the text itself, with one more reason, `copyright`. */
+    suspend fun reportScript(pid: String, reason: String, note: String?) { throw PlaysException("not_found") }
     suspend fun classes(): ClassesAnswer
     suspend fun classDetail(id: String): ClassRow
     suspend fun createClass(name: String, under13: Boolean): ClassRow
@@ -216,6 +231,9 @@ interface ShareStore {
     fun create(script: PlayScript): Production
     fun share(id: String): ShareLink?
     fun setShare(id: String, link: ShareLink)
+
+    /** Takes the Worker's link away: a share that was undone leaves nothing here. */
+    fun unshare(id: String) {}
     fun findShared(pid: String): Production?
     fun readTake(id: String, file: String): ByteArray
 
@@ -307,7 +325,7 @@ object PlaysShare {
 
     /** Publish for the director of a complete play (rule 9). Whether the Worker can upload is [Consent.publishes]. */
     fun canPublish(rec: SharedRecord, script: PlayScript, me: String?): Boolean =
-        isDirector(rec, me) && rec.archive == null && complete(rec, script)
+        isDirector(rec, me) && rec.archive == null && rec.publishable && complete(rec, script)
 
     fun performers(rec: SharedRecord): List<SharedMember> = rec.members.filter { it.performer } +
         // A maker with no account is credited by the name they gave; they have not agreed and cannot here (PLAYS-DESIGN §12.11).
@@ -315,7 +333,7 @@ object PlaysShare {
 
     /** A performer who is not the director, in a complete play, who has not agreed yet. */
     fun needsMyConsent(rec: SharedRecord, script: PlayScript, me: String?): Boolean =
-        me != null && rec.archive == null && rec.director != me && complete(rec, script) &&
+        me != null && rec.archive == null && rec.publishable && rec.director != me && complete(rec, script) &&
             performers(rec).any { it.userId == me && !it.consented }
 
     /** The performers other than the director who have not agreed: Publish waits on them. */
@@ -488,12 +506,7 @@ object PlaysShare {
     /** "Share": the Worker makes the record; the caller directs it. */
     suspend fun share(api: PlaysTransport, store: ShareStore, local: Production, script: PlayScript, displayName: String?): SharedRecord {
         val name = displayName?.trim().orEmpty()
-        val body = buildJsonObject {
-            put("script_id", script.id)
-            put("script_revision", script.revision)
-            put("cast", JsonArray(castSheet(script).map { (id, part) -> buildJsonObject { put("id", id); put("part", part) } }))
-            if (name.isNotEmpty()) put("display_name", name)
-        }
+        val body = JsonObject(OwnShare.makeBody(script) + if (name.isNotEmpty()) mapOf("display_name" to JsonPrimitive(name)) else emptyMap())
         val rec = api.create(body)
         store.setShare(local.id, ShareLink(rec.id))
         return rec
@@ -611,6 +624,15 @@ object PlaysShare {
         "not_castable" to "This play cannot be shared.",
         "script_not_publishable" to "This play cannot be published.",
         "cast_mismatch" to "This play cannot be shared.",
+        "script_too_long" to "This script is too long to share.",
+        "scripts_full" to "Sharing scripts is full.",
+        "script_removed" to "This script was removed.",
+        "script_reported" to "This script has been reported.",
+        "script_damaged" to "This script did not arrive whole.",
+        "no_script" to "This script has not been sent yet.",
+        "bad_script_id" to "This script cannot be shared.",
+        "not_on_device" to "This script is not on this device.",
+        "needs_account" to "Sharing needs an account.",
         "production_full" to "This production is full.",
         "too_many_productions" to "You have too many shared productions.",
         "too_many_takes" to "This line has too many takes.",
@@ -629,6 +651,11 @@ object PlaysShare {
         if (err == null) return ""
         if (err !is PlaysException) return "Ear Drama could not be reached."
         val detail = err.detail
+        if (err.code == "bad_name" && detail != null) {
+            val what = OwnShare.detailText(err)
+            return if (what == "title") "The title is not allowed." else "The part name ${PartID(what).title} is not allowed."
+        }
+        if (err.code == "too_many_scripts") return "You have shared ${OwnShare.detailText(err).ifEmpty { "20" }} scripts. Delete a production of one first."
         if (err.code == "another_part_is_recording") {
             val part = (detail as? JsonPrimitive)?.contentOrNull.orEmpty()
             return "${PartID(part).title} is still recording."

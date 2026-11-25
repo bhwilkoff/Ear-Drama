@@ -189,6 +189,11 @@ class ProductionStore(val root: File) : ShareStore {
         links[id] = link
     }
 
+    override fun unshare(id: String) {
+        File(folder(id), "share.json").delete()
+        links.remove(id)
+    }
+
     override fun findShared(pid: String): Production? = _productions.value.firstOrNull { share(it.id)?.pid == pid }
 
     override fun readTake(id: String, file: String): ByteArray = File(takesFolder(id), file).readBytes()

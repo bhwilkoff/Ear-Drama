@@ -247,12 +247,20 @@ fun AppRoot(
             Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = TvSafeHorizontal, vertical = TvSafeVertical)
         } else Modifier
+        val suite = if (reading) NavigationSuiteType.None else NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
+        val tabs = Tab.entries.filter { !(container.isTelevision && it == Tab.Record) }
+        // At large text the widest label no longer fits its tab as a whole word: the bar shows its icons alone, each named for TalkBack.
+        val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+        val labelStyle = MaterialTheme.typography.labelMedium
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val widthPx = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
+        val labelsShown = suite != NavigationSuiteType.NavigationBar ||
+            com.example.appname.ui.TabLabels.fit(tabs.maxOf { measurer.measure(it.label, labelStyle).size.width }, widthPx.toFloat(), tabs.size, density.density)
         NavigationSuiteScaffold(
             modifier = safeArea,
-            layoutType = if (reading) NavigationSuiteType.None
-            else NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo()),
+            layoutType = suite,
             navigationSuiteItems = {
-                Tab.entries.filter { !(container.isTelevision && it == Tab.Record) }.forEach { tab ->
+                tabs.forEach { tab ->
                     item(
                         selected = tab == selected,
                         onClick = {
@@ -264,8 +272,8 @@ fun AppRoot(
                             }
                             selected = tab
                         },
-                        icon = { Icon(tab.icon(), contentDescription = null) },
-                        label = { Text(tab.label) },
+                        icon = { Icon(tab.icon(), contentDescription = if (labelsShown) null else tab.label) },
+                        label = if (labelsShown) ({ Text(tab.label) }) else null,
                     )
                 }
             },
@@ -430,7 +438,7 @@ fun AppRoot(
                                     container.plays.store.production(route.id)?.let { stack.add(Route.Reader(it.scriptID, null, route.id, null, along = true)) }
                                     Unit
                                 }
-                                ProductionScreen(route.id, onBack = back, onRecord = { part -> openStudio(part, null) }, onReplace = { part, line -> openStudio(part, line) }, onReadAlong = readAlong)
+                                ProductionScreen(route.id, onBack = back, onRecord = { part -> openStudio(part, null) }, onReplace = { part, line -> openStudio(part, line) }, onReadAlong = readAlong, onEditOwn = { stack.navigateTo(Route.OwnParts(it)) }, onCastByEar = { stack.navigateTo(Route.Ear(it)) })
                             }
                             entry<Route.Recording> { route ->
                                 RecordingScreen(route.production, PartID(route.part), onBack = back, startLine = route.line)

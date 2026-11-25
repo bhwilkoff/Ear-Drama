@@ -43,6 +43,8 @@ data class OwnRecord(
     val done: Boolean = false,
     val episode: OwnEpisode? = null,
     val ear: OwnEar? = null,
+    /** When it was shared (milliseconds): from then on it is what people were sent (PLAYS-DESIGN §13 item 12). */
+    val shared: Long? = null,
 )
 
 /** What Record's Your scripts draws without opening the script. */
@@ -61,6 +63,7 @@ data class OwnRow(
     val episode: String? = null,
     val ear: EarCount? = null,
     val format: Int = 1,
+    val shared: Long? = null,
 ) : PlayListing {
     override val kind: String get() = "own"
     override val year: Int? get() = null
@@ -156,7 +159,7 @@ object OwnWords {
         "bad_name" to "That name does not work.", "line_has_take" to "This line has a take.", "lines_have_take" to "A line there has a take.",
         "part_has_take" to "A line of this part has a take.", "no_parts" to "No line has a part.", "no_lines" to "No lines.",
         "not_text" to "That is not a text file.", "no_title" to "Add a title.", "title_too_long" to "That title is too long.",
-        "no_such_line" to "No line is lit.",
+        "no_such_line" to "No line is lit.", "shared" to "This script is shared.",
     )
 
     fun say(code: String): String = REFUSAL[code] ?: "That did not work."
@@ -285,6 +288,38 @@ class OwnScripts(
         }
     }
 
+    /** Shared once, a script is frozen (§13 item 12): what people were sent is what it stays. */
+    fun frozen(id: String): Boolean = get(id)?.shared != null
+
+    /** Freezes [id] at the time it was shared; a script already shared, or not here, is left as it is. */
+    suspend fun freeze(id: String) {
+        val rec = get(id) ?: return
+        if (rec.shared != null) return
+        lock.withLock {
+            withContext(Dispatchers.IO) { synchronized(disk) { write(rec.copy(shared = now(), updated = rec.updated)) } }
+            refresh()
+        }
+    }
+
+    /**
+     * Edit a copy: a new script of [script]'s text (a production's, or this device's own), with a new id and its own
+     * productions. The kept doc is copied while it is that text, so a casting can be taken up again.
+     */
+    suspend fun copy(script: PlayScript): OwnRecord {
+        val was = get(script.id)
+        val here = if (was?.done == true) script(script.id) else null
+        val at = now()
+        val title = script.title.take(OwnScript.MAX_TITLE - COPY.length) + COPY
+        val base = if (was != null && here != null && here.revision == script.revision) was else OwnRecord(
+            "", "", "", OwnScript.fromScript(mapOf("lines" to OwnShare.linesOf(script))), created = at, updated = at,
+            episode = script.episode?.let { OwnEpisode(it, script.source.url) },
+        )
+        val rec = base.copy(id = newId(), title = title, created = at, updated = at, done = true, shared = null)
+        val why = keep(rec)
+        if (why != null) throw IllegalStateException(why)
+        return rec
+    }
+
     /** The lines of [id] with a take in any of its productions: what may not move (§13 item 4). */
     fun takes(id: String): Set<String> = plays().takenLines(id)
 
@@ -334,6 +369,7 @@ class OwnScripts(
             rec.episode?.let { put("episode", JsonPrimitive(it.id)) }
             put("created", JsonPrimitive(java.time.Instant.ofEpochMilli(rec.created).toString()))
             put("done", JsonPrimitive(rec.done))
+            rec.shared?.let { put("shared", JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString())) }
             put("lines", element(lines))
         }
     }
@@ -345,6 +381,8 @@ class OwnScripts(
 
     private fun write(snap: OwnRecord): Pair<String?, PlayScript?> {
         recover()
+        // Shared from another screen since this one opened it: what people were sent stands.
+        if (snap.shared == null && read(File(folder(snap.id), ROW))?.let { runCatching { json.decodeFromString(OwnRow.serializer(), it).shared }.getOrNull() } != null) return "shared" to null
         val settled = OwnScript.settle(snap.doc).lines
         val parts = OwnScript.partsOf(settled).map { it.second }.sortedDescending()
         var script: PlayScript? = null
@@ -365,7 +403,7 @@ class OwnScripts(
         val row = OwnRow(
             snap.id, snap.title, parts.size, settled.size, settled.count { it.kind == "open" }, snap.done, parts,
             parts.count { it >= CASTABLE_LINES }, snap.created, snap.updated, snap.episode?.id,
-            snap.ear?.let { OwnScript.castCount(snap.doc).let { (n, of) -> EarCount(n, of) } }, FORMAT,
+            snap.ear?.let { OwnScript.castCount(snap.doc).let { (n, of) -> EarCount(n, of) } }, FORMAT, snap.shared,
         )
         root.mkdirs()
         val next = File(root, ".${snap.id}.next")
@@ -453,16 +491,17 @@ class OwnScripts(
         val done: Boolean = false,
         val episode: OwnEpisode? = null,
         val ear: OwnEar? = null,
+        val shared: Long? = null,
     ) {
         fun record() = OwnRecord(
             id, title, original, OwnDoc(lines.map { it.line() }, maxOf(nextKey, (lines.maxOfOrNull { it.k } ?: 0) + 1), letters, heard),
-            extras, created, updated, done, episode, ear,
+            extras, created, updated, done, episode, ear, shared,
         )
 
         companion object {
             fun of(r: OwnRecord) = StoredRecord(
                 FORMAT, r.id, r.title, r.original, r.doc.lines.map(StoredLine::of), r.doc.nextKey, r.doc.letters, r.doc.heard, r.extras,
-                r.created, r.updated, r.done, r.episode, r.ear,
+                r.created, r.updated, r.done, r.episode, r.ear, r.shared,
             )
         }
     }
@@ -474,10 +513,18 @@ class OwnScripts(
         const val SCRIPT = "script.json"
         const val DRAFT = "draft.json"
         const val CASTABLE_LINES = 5
+        private const val COPY = " (copy)"
         const val SOURCE_ADDED = "Added by you"
         const val SOURCE_EPISODE = "Automatic transcript"
 
         val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+        /** What Next asks of a pasted text: why Done would refuse what it builds to (null when it may go on), and what it parses to. */
+        fun judge(text: String): Pair<String?, OwnParsed?> {
+            val why = OwnScript.textRefusal(text)
+            val parsed = if (why == null) OwnScript.parse(text) else null
+            return (why ?: parsed?.let { OwnScript.builtRefusal(it.lines) }) to parsed
+        }
 
         fun newId() = "own-" + UUID.randomUUID().toString().lowercase(java.util.Locale.ROOT)
 
