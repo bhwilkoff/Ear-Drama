@@ -316,3 +316,8 @@ GRW request sent or not.
 - 2026-11-25 01:20: R4-9b merged (58 tests, 51 mutants, the design's detection table reproduced exactly). Old worktrees removed, branches kept. Reports: GitHub runs even a twice-hourly schedule about 3 times a day here; `reports.yml` has not fired on schedule yet.
 - 2026-11-25 02:00: B17b CarPlay merged (716 tests; not seen in a car). NOT shipped: launch on the iPhone 12 first (a CarPlay scene change crashed 1.0.59), after Screen Time ends in the morning. Next: B22 (103 published plays with known faults).
 - 2026-11-25 02:15: B22 merged (113 corrections in 60 plays, each with quoted evidence, none can add a word; 54 published plays still listed with faults). Library refresh + site deploy running. Left for daylight: iPhone 12 launch check, then 1.1.2; B20/B24 device passes; reports schedule; owner rulings on Releases and the public cache; R4-9c on.
+- 2026-11-25 02:50 (loop stopped for the night; nothing running): corrected library live (plays-library-2026-11-25-2). **On restart**: (1) launch the
+  build on the iPhone 12 (CarPlay scene), then 1.1.2 to TestFlight + Play internal; (2) has `reports.yml` fired on schedule?; (3) B20 and B24
+  device passes by day (iPhone before 21:00; the Duo only when nothing plays on it); (4) R4-9c on, after the cache ruling; (5) B21 leftovers
+  (reader and Google sign-in on Apple TV); Apple export of shared scripts; the site over 1 GB. Waiting on the owner: delete the 11 old
+  Release assets (then the GRW email); other third-party text in the public cache; macOS Documents prompt: Don't Allow.

@@ -32,12 +32,12 @@
      Through out of order. Eleven stage plays ship; no radio play parses clean yet.
   15. **Send the Generic Radio Workshop request** (drafted in Gmail to Larry Groebe, 2026-11-24;
      `docs/outreach/grw-request.md`). Radio scripts (B19) wait for the answer.
-- **Status (2026-11-24, 17:30)**: main is 1.0.170 (171), on TestFlight (iOS, macOS, tvOS) and Play internal (versionCode 17). The
-  backlog loop is running again: round 2 in `BACKLOG-LOOP.md` (Decision 088, record anything). Done today: every library
-  play can be shared, cast and read together (Worker c92c52f2, D1 0012), Android Auto filled, Add a script live on the web
-  (R4-2), the own-script core on three stacks, Duo and landscape fixes. Running: cast by ear (R4-3), play recovery (B16).
-  App Store: iOS and macOS 1.0.137 have waited for review since 2026-11-16 with nothing missing; if still untouched on
-  Monday 2026-11-30, pull them and submit the newest once B23 (privacy label, age answers, review notes) is done.
+- **Status (2026-11-25, 02:50)**: 1.1.1 (173) is on TestFlight (iOS, macOS, tvOS) and Play internal. Live: 1,194 plays, all recordable,
+  shareable, castable and read together; Add a script, cast by ear, and sharing your own script on web, Apple and Android; reports email
+  the owner; Worker 60821385, D1 0013. Merged, not shipped: CarPlay tabs (launch on the iPhone 12 first). Loop stopped for the night:
+  `BACKLOG-LOOP.md`, last entry. Waiting on the owner: deleting 11 old Release assets that hold the Workshop's texts (then their
+  email), the other third-party text in the public cache. App Store: iOS and macOS 1.0.137 still waiting since 2026-11-16; on
+  Monday 2026-11-30, if untouched, pull and submit 1.1.x with `docs/store/NEXT-VERSION.md` done.
 - **Catalog now**: published 2026-11-03 from the daily schedule; 6,794 series served, 1,708 with five
   or more episodes. Research database and caches: `catalog/README.md`.
 - **Open infrastructure**: `workflow-health.yml` and `retry-infra-failures.yml` run on schedule and
