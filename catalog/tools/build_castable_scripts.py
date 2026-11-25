@@ -20,6 +20,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
+import play_punctuation as PN
 import script_parse as P
 import script_rights as R
 from sort_name import sort_name
@@ -152,7 +153,7 @@ def main():
         parsed = P.parse(P.read_text(path), record["kind"], record.get("title"))
         if offered(rights, parsed):
             text = P.read_text(path)
-            scripts.append(refined_entry(script_entry(record, rights, parsed), P.parse(text, record["kind"], record.get("title"), refine=True)))
+            scripts.append(PN.mend(refined_entry(script_entry(record, rights, parsed), P.parse(text, record["kind"], record.get("title"), refine=True))))
         else:
             why = rights["bucket"] if not rights["castable"] else "parse_" + parsed.get("status", "?") + (
                 "_unclean" if parsed.get("status") == "parsed" else "")

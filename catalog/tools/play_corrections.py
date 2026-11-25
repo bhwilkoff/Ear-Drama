@@ -8,8 +8,11 @@ entry the build has already judged, chosen and mended. A correction can only mov
 - `direction`: a speech is a stage direction, its words kept;
 - `speech`: a direction is a speech of the speaker the print names, its words kept;
 - `drop`: a line is set aside (a cast row, a title page); its id stays used;
+- `merge`: two labels the print gives one part ("JOE'S M" and "JOE'S MOTHER") become one: every speech labeled `from` is
+  labeled `role`, a label the play already prints; `line` is the first speech labeled `from`, where the evidence is read;
 - `split`: a line is cut where a quoted passage begins, into pieces that are each a speech of a named speaker or a
   direction; a printed label standing between two pieces may be cut away (`cut`, quoted), and a piece may be set aside (`as: drop`).
+  A quoted start that the line prints more than once names which (`nth`, from 1).
 
 Never a word added: every piece is a slice of the line, and the words that leave are the quoted `cut` and `drop`
 words, counted. Every correction names the `revision` of the entry it was read against; when a rule changes that
@@ -27,7 +30,7 @@ import script_parse as P
 HERE = os.path.dirname(os.path.abspath(__file__))
 PATH = os.path.join(HERE, "..", "editorial", "play_corrections.json")
 FORMAT = 1
-OPS = ("role", "direction", "speech", "drop", "split")
+OPS = ("role", "direction", "speech", "drop", "split", "merge")
 EVIDENCE_WORDS = 12
 
 
@@ -57,6 +60,8 @@ def load(path=PATH):
             raise Refused(f"{c['play']} {c['line']}: unknown op {c['op']!r}")
         if len(c["evidence"].split()) > EVIDENCE_WORDS:
             raise Refused(f"{c['play']} {c['line']}: evidence is more than {EVIDENCE_WORDS} words")
+        if c["op"] == "merge" and not (isinstance(c.get("role"), str) and isinstance(c.get("from"), str) and c["role"].strip() and c["from"].strip()):
+            raise Refused(f"{c['play']} {c['line']}: a merge names the label it keeps (role) and the label it takes away (from)")
         out[c["play"]].append(c)
     return dict(out)
 
@@ -125,10 +130,13 @@ def _pieces(line, c, taken):
         raise Refused(f"{c['play']} {c['line']}: a split makes two pieces, or cuts one")
     starts = [0]
     for p in pieces[1:]:
-        q = p.get("from")
-        if not q or flat.count(q) != 1:
-            raise Refused(f"{c['play']} {c['line']}: {q!r} is in the line {flat.count(q or '')} times, not once")
-        starts.append(flat.index(q))
+        q, nth = p.get("from"), p.get("nth")
+        if not q or (nth is None and flat.count(q) != 1) or (nth is not None and not (isinstance(nth, int) and 1 <= nth <= flat.count(q))):
+            raise Refused(f"{c['play']} {c['line']}: {q!r} is in the line {flat.count(q or '')} times, not once" + (f", and not {nth} times" if nth else ""))
+        at = -1
+        for _ in range(nth or 1):
+            at = flat.index(q, at + 1)
+        starts.append(at)
     if starts != sorted(set(starts)) or starts[0] != 0:
         raise Refused(f"{c['play']} {c['line']}: pieces are not in the order of the line")
     ends = starts[1:] + [len(flat)]
@@ -193,7 +201,7 @@ def apply(entry, corrections=None):
     at = {l["id"]: i for i, l in enumerate(lines)}
     taken = set(at)
     whole = squash(" ".join((l["role"] + ". " if l["kind"] == "speech" else "") + _flat(l) for l in lines))
-    seen, out = set(), {}
+    seen, out, merged = set(), {}, []
     for c in mine:
         where = f"{c['play']} {c['line']}"
         if c["revision"] != entry["revision"]:
@@ -221,11 +229,18 @@ def apply(entry, corrections=None):
             out[c["line"]] = [_speech(line["id"], c["role"].strip(), [("say", line["source"])])]
         elif op == "drop":
             out[c["line"]] = []
+        elif op == "merge":
+            printed = {l["role"] for l in lines if l["kind"] == "speech"}
+            if line["kind"] != "speech" or line["role"] != c["from"] or c["role"] == c["from"] or c["role"] not in printed:
+                raise Refused(f"{where}: a merge starts at a speech labeled {c['from']!r} and keeps a label the play prints")
+            merged.append((c["from"], c["role"].strip()))
         else:
             out[c["line"]] = _pieces(line, c, taken)
     new = []
     for l in lines:
         new += out.get(l["id"], [l])
+    for gone, kept in merged:
+        new = [{**l, "role": kept} if l["kind"] == "speech" and l["role"] == gone else l for l in new]
     ids = {l["id"] for l in new}
     for s in entry.get("sections") or []:
         if s["line"] not in ids:

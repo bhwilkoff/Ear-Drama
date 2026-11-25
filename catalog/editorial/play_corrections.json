@@ -2,6 +2,165 @@
  "format": 1,
  "corrections": [
   {
+   "play": "gut-10541-108",
+   "revision": "841d0cef3a9b",
+   "line": "L0010",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "FIRST MAID",
+     "cut": "FIRST MAID"
+    },
+    {
+     "as": "speech",
+     "role": "SECOND MAID",
+     "from": "SECOND MAID.",
+     "cut": "SECOND MAID."
+    },
+    {
+     "as": "speech",
+     "role": "THIRD MAID",
+     "from": "THIRD MAID",
+     "cut": "THIRD MAID"
+    }
+   ],
+   "evidence": "FIRST MAID pointing to the Miller and his Son",
+   "why": "Printed speaker labels stand inside the speech above them; each speaker's words belong to the label that opens them."
+  },
+  {
+   "play": "gut-10541-108",
+   "revision": "841d0cef3a9b",
+   "line": "L0014",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "FIRST OLD MAN",
+     "cut": "FIRST OLD MAN"
+    },
+    {
+     "as": "speech",
+     "role": "SECOND OLD MAN",
+     "from": "SECOND OLD MAN",
+     "cut": "SECOND OLD MAN"
+    },
+    {
+     "as": "speech",
+     "role": "THIRD OLD MAN",
+     "from": "THIRD OLD MAN",
+     "cut": "THIRD OLD MAN"
+    }
+   ],
+   "evidence": "FIRST OLD MAN pointing to the Miller and his Son",
+   "why": "Printed speaker labels stand inside the speech above them; each speaker's words belong to the label that opens them."
+  },
+  {
+   "play": "gut-10541-108",
+   "revision": "841d0cef3a9b",
+   "line": "L0018",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "FIRST GOODY",
+     "cut": "FIRST GOODY"
+    },
+    {
+     "as": "speech",
+     "role": "SECOND GOODY",
+     "from": "SECOND GOODY",
+     "cut": "SECOND GOODY"
+    },
+    {
+     "as": "speech",
+     "role": "THIRD GOODY",
+     "from": "THIRD GOODY",
+     "cut": "THIRD GOODY"
+    }
+   ],
+   "evidence": "FIRST GOODY indignantly, pointing to the Miller and his Son",
+   "why": "Printed speaker labels stand inside the speech above them; each speaker's words belong to the label that opens them."
+  },
+  {
+   "play": "gut-10541-108",
+   "revision": "841d0cef3a9b",
+   "line": "L0024",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MAYOR",
+     "cut": "MAYOR"
+    }
+   ],
+   "evidence": "MAYOR turning to his Clerks; pointing to the Miller",
+   "why": "Printed speaker labels stand inside the speech above them; each speaker's words belong to the label that opens them."
+  },
+  {
+   "play": "gut-10541-108",
+   "revision": "841d0cef3a9b",
+   "line": "L0026",
+   "op": "role",
+   "role": "MAYOR",
+   "evidence": "Pray, honest friend, is that beast your own?",
+   "why": "The Mayor asks it, turning to the Miller (the stage direction just above); the Miller answers in the next speech."
+  },
+  {
+   "play": "gut-10541-108",
+   "revision": "841d0cef3a9b",
+   "line": "L0027",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MILLER"
+    },
+    {
+     "as": "speech",
+     "role": "MAYOR",
+     "from": "MAYOR. One would not",
+     "cut": "MAYOR."
+    },
+    {
+     "as": "speech",
+     "role": "FIRST CLERK",
+     "from": "FIRST CLERK",
+     "nth": 1,
+     "cut": "FIRST CLERK"
+    },
+    {
+     "as": "speech",
+     "role": "SECOND CLERK",
+     "from": "SECOND CLERK",
+     "nth": 1,
+     "cut": "SECOND CLERK"
+    },
+    {
+     "as": "speech",
+     "role": "MAYOR",
+     "from": "THE MAYOR",
+     "cut": "THE MAYOR"
+    },
+    {
+     "as": "speech",
+     "role": "FIRST CLERK",
+     "from": "FIRST CLERK",
+     "nth": 2,
+     "cut": "FIRST CLERK"
+    },
+    {
+     "as": "speech",
+     "role": "SECOND CLERK",
+     "from": "SECOND CLERK",
+     "nth": 2,
+     "cut": "SECOND CLERK"
+    }
+   ],
+   "evidence": "Yes, my lord Mayor. MAYOR. One would not think so",
+   "why": "Printed speaker labels stand inside the speech above them; each speaker's words belong to the label that opens them."
+  },
+  {
    "play": "gut-10722-3",
    "revision": "7a68c31edce4",
    "line": "L0000b",
@@ -389,6 +548,16 @@
    "why": "'Third._' ends the label K. Edw. Third; the bracket is the print's direction, and the speech goes on after it."
   },
   {
+   "play": "gut-20989-8",
+   "revision": "36270e11c7f0",
+   "line": "L0001",
+   "op": "merge",
+   "role": "COUNT LOUIE",
+   "from": "COUNT LUIE",
+   "evidence": "Noble compatriots, I greet thee well.",
+   "why": "COUNT LUIE and COUNT LOUIE are one count: the other speakers address him as Count Louie."
+  },
+  {
    "play": "gut-22146",
    "revision": "2e4f5e625261",
    "line": "L0010",
@@ -619,12 +788,91 @@
    "why": "The cast list's last row was read as a speaker's words."
   },
   {
+   "play": "gut-39045-2",
+   "revision": "ea9489714915",
+   "line": "L0008",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "SOLO",
+     "cut": "JOHN."
+    }
+   ],
+   "evidence": "JOHN. Fruit, when gathered ripe, is wholesome--",
+   "why": "JOHN is the name of the boy who sings the solo, printed above his verse; it is a label, not a word of the song."
+  },
+  {
+   "play": "gut-39045-2",
+   "revision": "ea9489714915",
+   "line": "L0015",
+   "op": "merge",
+   "role": "JOE'S MOTHER",
+   "from": "JOE'S M",
+   "evidence": "So laudable his wish, I would not cross it--",
+   "why": "JOE'S M is the print's short label for JOE'S MOTHER, the part whose other speeches are under that name."
+  },
+  {
    "play": "gut-41589",
    "revision": "7a0453bbf894",
    "line": "L0360",
    "op": "direction",
    "evidence": "The Amber Boudoir at Wyvern immediately after",
    "why": "A chapter's title and its setting, read as a speaker's words."
+  },
+  {
+   "play": "gut-4269-18",
+   "revision": "377db3b523d9",
+   "line": "L0060",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "GIRL"
+    },
+    {
+     "as": "direction",
+     "from": "She puts her face close to his."
+    }
+   ],
+   "evidence": "Aren't you going to kees me, ni-ice boy?",
+   "why": "The print's stage direction, set on its own paragraph under her words, ran into her speech and would be read aloud as hers."
+  },
+  {
+   "play": "gut-4269-18",
+   "revision": "377db3b523d9",
+   "line": "L0113",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "GIRL"
+    },
+    {
+     "as": "direction",
+     "from": "At that intense soft bitterness in her voice"
+    }
+   ],
+   "evidence": "We love ourselves, noting more.",
+   "why": "The print's stage direction, set on its own paragraph under her words, ran into her speech and would be read aloud as hers."
+  },
+  {
+   "play": "gut-4269-18",
+   "revision": "377db3b523d9",
+   "line": "L0116",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "GIRL"
+    },
+    {
+     "as": "direction",
+     "from": "Suddenly she tears them across"
+    }
+   ],
+   "evidence": "Take them--I will not haf your English money--take them.",
+   "why": "The print's stage direction, set on its own paragraph under her words, ran into her speech and would be read aloud as hers."
   },
   {
    "play": "gut-44221",
@@ -691,6 +939,16 @@
    "role": "ADAM CHERRY",
    "evidence": "ADAM CHERRY.'. Anything to do with",
    "why": "The label keeps a stray quotation mark from the print."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0002",
+   "op": "merge",
+   "role": "MRS. M",
+   "from": "MRS. MONTGOMERY",
+   "evidence": "Good-bye, my children, I shall be back soon.",
+   "why": "MRS. MONTGOMERY is the mother whose every other speech is labeled MRS. M; the children call her Mammy."
   },
   {
    "play": "gut-49181-2",
@@ -1122,6 +1380,14 @@
    "why": "The words between Launcelot's two speeches are the print's direction, in which LAUNCELOT is a name, not a label."
   },
   {
+   "play": "gut-68984-119",
+   "revision": "649c008128aa",
+   "line": "L0002",
+   "op": "direction",
+   "evidence": "While no special costumes are necessary, they will add to the program.",
+   "why": "The costume suggestions for the players, printed under their heading, were read as the first speech of Vertumnus."
+  },
+  {
    "play": "gut-6992",
    "revision": "4bde8252c661",
    "line": "L0213b",
@@ -1148,6 +1414,26 @@
    "op": "direction",
    "evidence": "Any room nowadays must be the scene",
    "why": "The editor's preface under THE NEW WORD, read as a speaker's words."
+  },
+  {
+   "play": "gut-70515-115",
+   "revision": "21ff738ac323",
+   "line": "L0006",
+   "op": "merge",
+   "role": "MRS. VAN",
+   "from": "MRS. V",
+   "evidence": "I am Mrs. Van Dusen, of the charitable committee of the club.",
+   "why": "MRS. V is the print's short label for MRS. VAN, the visitor who gives her name in this speech."
+  },
+  {
+   "play": "gut-70515-115",
+   "revision": "21ff738ac323",
+   "line": "L0032",
+   "op": "merge",
+   "role": "MRS. GRAHAM",
+   "from": "MRS. G",
+   "evidence": "Oh, no. I’m not a school teacher; only a friend",
+   "why": "MRS. G is the print's short label for MRS. GRAHAM, whom Mrs. Randy answers as the second visitor."
   },
   {
    "play": "gut-70635-4",

@@ -4,6 +4,23 @@
  "scripts": {
   "gut-49295": [
    {
+    "revision": "5270eafa7d68",
+    "title": "After Taps",
+    "cast": "61ce3af3f6dcc4e3ef49ef5d8eccbab9160f4c60a32c53f6eca90946c3e354de",
+    "lines": 730,
+    "source": "https://www.gutenberg.org/ebooks/49295",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/49295.rdf"
+      }
+     ]
+    },
+    "publishable": true
+   },
+   {
     "revision": "b0c1f8297f72",
     "title": "After Taps",
     "cast": "61ce3af3f6dcc4e3ef49ef5d8eccbab9160f4c60a32c53f6eca90946c3e354de",
@@ -78,6 +95,23 @@
   ],
   "gut-12039": [
    {
+    "revision": "cae31cd38c59",
+    "title": "The Custom of the Country",
+    "cast": "afffa7e83830083af19c6731b0ff3b7ea3effbf94995f795b90afa029b366870",
+    "lines": 976,
+    "source": "https://www.gutenberg.org/ebooks/12039",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/12039.rdf"
+      }
+     ]
+    },
+    "publishable": true
+   },
+   {
     "revision": "295936f9db5b",
     "title": "The Custom of the Country",
     "cast": "afffa7e83830083af19c6731b0ff3b7ea3effbf94995f795b90afa029b366870",
@@ -149,6 +183,23 @@
    }
   ],
   "gut-67583": [
+   {
+    "revision": "1ee48dc64139",
+    "title": "The Jazz Singer",
+    "cast": "b9f35c2d5e437a28b7986cae8eacb01a8c85cab33e22fa2818b6f71d80977e14",
+    "lines": 994,
+    "source": "https://www.gutenberg.org/ebooks/67583",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/67583.rdf"
+      }
+     ]
+    },
+    "publishable": true
+   },
    {
     "revision": "f3bc2f369d12",
     "title": "The Jazz Singer",
@@ -223,6 +274,23 @@
    }
   ],
   "gut-5071": [
+   {
+    "revision": "1b19be11fab7",
+    "title": "The Philanderer",
+    "cast": "7574040c3c177093f43efb7c08738cb130da9c4ce85e8d8745e3b00b058d58cc",
+    "lines": 895,
+    "source": "https://www.gutenberg.org/ebooks/5071",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/5071.rdf"
+      }
+     ]
+    },
+    "publishable": true
+   },
    {
     "revision": "731aac4167ab",
     "title": "The Philanderer",
@@ -354,6 +422,23 @@
    }
   ],
   "gut-76327": [
+   {
+    "revision": "1b6148fb18c2",
+    "title": "The true-born Irishman",
+    "cast": "7e455ec7da956c48ffe16703585f330542ef6672447e53e670029474c74d27d4",
+    "lines": 548,
+    "source": "https://www.gutenberg.org/ebooks/76327",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/76327.rdf"
+      }
+     ]
+    },
+    "publishable": true
+   },
    {
     "revision": "d7f9ae7beddb",
     "title": "The true-born Irishman",

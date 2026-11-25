@@ -1715,3 +1715,26 @@ line and its neighbors before and after (`tests/test_play_corrections.py` holds 
 removes each in turn). A rule change that moves a corrected play changes its revision and refuses its corrections: run a build,
 read the play again, and re-issue them. `plays/known-faults.json` keeps only what no rule or correction settles. A library with
 phonemes needs them rebuilt for the plays whose lines changed (their files are keyed to the lines).
+
+## 047 — A direction's closing stop is not the speaker's; a play's voices are every part that speaks (B27)
+
+*Date: 2026-11-25*
+
+**Rule**: `play_punctuation.mend` runs after `play_corrections.apply` and takes the stop a split-off direction leaves at the
+head of the words ("[yawning impatiently]. Come!" is a direction and ".\nCome!"): a `say` after a direction with no words said
+before it loses its leading run of `. , ; :`; a `say` after a direction in mid-speech loses a leading ". " only when the words
+before it already end in `. ! ?` (a comma ending is the sentence's own stop: "any thing, [Arnoldo]."). Never an ellipsis, a
+dash, a quote, a bracket or a letter. An empty `say` goes; a speech left with no words becomes a direction. No id moves; a line
+nothing is mended in is the same object. The index's `voices` is every role with a spoken line, not the roles with five speeches
+(`script_parse.CASTABLE_LINES`, which now only names "main parts" inside the build, for editions and role artifacts).
+`play_corrections` gains `merge` (two labels the print gives one part; every line takes the kept label) and `nth` on a split's
+`from` (which of a repeated start).
+
+**Why**: 6,006 speeches in 338 plays opened on a stray stop a voice reads as a pause or a "dot", and 3,203 more carried the
+direction's second stop mid-speech. A play of thirteen roles read "2 voices" in every list and could be chosen as Today's scene,
+"a short play for two" (Decision 079).
+
+**How to apply**: a speech that opens on punctuation is a build defect, not a text to edit. A rule that changes a published
+line changes the play's `revision`, so its phoneme file and any Kokoro cache keyed by the line's words (`play_phonemes.line_text`)
+are rebuilt for those plays; line ids and `roles` order are unchanged. Clients that count `voices` from a whole script (roles
+with five speeches) disagree with the index until they count every role.
