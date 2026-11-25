@@ -25,23 +25,19 @@
      awake. First check the iPhone app still opens normally (the CarPlay stub
      changed how its scenes start). Broken would be: playback that never starts, a sleep timer that
      starts the next episode, "public domain" anywhere.
-  10. **Setup steps still open** (LOOP-PLAN Needs Ben): the CarPlay entitlement request,
-     store-word approval, and the take-down page's reply time and agent details.
+  10. **Setup steps still open** (LOOP-PLAN Needs Ben): Apple's answer to the CarPlay entitlement request (sent 2026-11-14).
   11. **Record a play on a device** (M7's play gate): a two-role scene on the
      iPhone and on the Pixel (Android since 1.0.24), with headphones. Broken would be a
      take that never ends on silence, a cue line you cannot hear, or Listen
      Through out of order. Eleven stage plays ship; no radio play parses clean yet.
-  13. **Store words** (`docs/store/LISTING-DRAFT.md`): approve or edit the App
-     Store and Play text (category: Entertainment, decided).
-  15. **Ask the Generic Radio Workshop** before any GRW script is used (the
-     owner sends it; a draft is in `docs/outreach/grw-request.md`).
-- **Status (2026-11-24)**: main is 1.0.168 (169). It is on Play internal; TestFlight was redispatched (run 45405162430) after the first run built the pre-bump commit. Loop stopped by the owner; resume notes are at the end of `BACKLOG-LOOP.md` State. Disk cleaned to 50 GB free (2026-11-24). The backlog loop
-  (`BACKLOG-LOOP.md`) ran B1-B14: Apple Export row, Android seek stall, Worker deploy (DO alarm loop fixed),
-  relay free-plan rules on every stack, web voice labels, device passes, class-room silence (bench), tap-tier
-  harness, two catalog title passes (2,133 titles), Apple TV Share QR, parity audit, Gutenberg illustration
-  markers. Stopped waiting on the owner: iPhone 12 Screen Time limit, the Duo, a signed-in teacher, and the
-  owner calls listed in BACKLOG-LOOP "Waiting on the owner". The tap tier's reset door erased the owner's lists
-  on the iPhone 12 (not signed in: unrecoverable) and Duo before b377a936/7ecdd3d8 fixed it.
+  15. **Send the Generic Radio Workshop request** (drafted in Gmail to Larry Groebe, 2026-11-24;
+     `docs/outreach/grw-request.md`). Radio scripts (B19) wait for the answer.
+- **Status (2026-11-24, 17:30)**: main is 1.0.170 (171), on TestFlight (iOS, macOS, tvOS) and Play internal (versionCode 17). The
+  backlog loop is running again: round 2 in `BACKLOG-LOOP.md` (Decision 088, record anything). Done today: every library
+  play can be shared, cast and read together (Worker c92c52f2, D1 0012), Android Auto filled, Add a script live on the web
+  (R4-2), the own-script core on three stacks, Duo and landscape fixes. Running: cast by ear (R4-3), play recovery (B16).
+  App Store: iOS and macOS 1.0.137 have waited for review since 2026-11-16 with nothing missing; if still untouched on
+  Monday 2026-11-30, pull them and submit the newest once B23 (privacy label, age answers, review notes) is done.
 - **Catalog now**: published 2026-11-03 from the daily schedule; 6,794 series served, 1,708 with five
   or more episodes. Research database and caches: `catalog/README.md`.
 - **Open infrastructure**: `workflow-health.yml` and `retry-infra-failures.yml` run on schedule and
