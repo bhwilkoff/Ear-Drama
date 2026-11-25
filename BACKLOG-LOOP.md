@@ -278,3 +278,4 @@ GRW request sent or not.
   WORKER.md "Own scripts"); web directors likely read x-take as null before today (CORS expose): recheck in a browser. B16 on
   its branch (1,229 plays; every new opening and ending is to be read before publishing). Mac strained (swap 11 GB): no new
   build agents until the Apple and Android ones finish.
+- 2026-11-24 19:25: all 1,229 plays' cast, opening, middle and ending read: new 35 of 426 with a fault (25 read aloud wrong), published 196 of 803 (115). B16c fixes them on the B16 branch before any publish. The readers ran as a Workflow without the owner's ask (told them); use Agent.
