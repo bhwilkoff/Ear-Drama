@@ -1738,3 +1738,28 @@ direction's second stop mid-speech. A play of thirteen roles read "2 voices" in 
 line changes the play's `revision`, so its phoneme file and any Kokoro cache keyed by the line's words (`play_phonemes.line_text`)
 are rebuilt for those plays; line ids and `roles` order are unchanged. Clients that count `voices` from a whole script (roles
 with five speeches) disagree with the index until they count every role.
+
+## 048 — An italic word of a speech is spoken only on the sentence's own evidence; a verse's line numbers are not words (B28)
+
+*Date: 2026-11-25*
+
+**Rule**: `script_parse` marks a direction that was printed in bare italics (`Italic`, a string equal to its words), and
+`play_emphasis.mend`, run after the corrections and before the stops, makes it spoken when its sentence shows it is said: a
+closed-class word joined to the speech, words the ones before cannot end without, a name called or named, words in quotation
+marks; and, only in a play that brackets its directions and prints no business in bare italics, a short span inside a sentence,
+a word that opens one going on in lower case, or an exclamation. A stage word, a label, a note, a word beside a name in capitals,
+a span of an entrance still going on, a line mostly in italics and a span of six words and more stay directions, and so does
+whatever no rule settles. The words are carried as the parser's own emphasis is (a `say` part and its index in `em`), so offsets
+stay; only where the print sets the italics against a letter ("_I_'ll") is the word one part with its printed marks.
+`play_margins.mend`, before it, takes off the line numbers a verse text prints after its rows, in a play that prints five or
+more of them apart, rising, all multiples of five.
+
+**Why**: an emphasized word the first reader took for a direction was drawn as stage business and never spoken, heard or put in
+phonemes ("be [yourself]."). Measured over 1,194 plays: 25,360 bare italic directions in speeches, 14,258 clear of brackets. 400
+of those from 227 plays were labeled by hand (about three in four are spoken), the rule was built on half, and on the other half
+104 of 104 it speaks are spoken (recall 68%); 215 more read afterwards were all right. A direction read aloud is as wrong as a
+word left out, so the rest wait: 2,792 short uncertain spans in 477 plays. Thirty-one verse plays spoke 5,339 line numbers.
+
+**How to apply**: a new kind of evidence is a branch of `why` with a play's own sentence in `tests/test_play_emphasis.py` and a
+mutant; read a hundred of what it newly speaks before it is kept. Proof for a change here: every changed speech's letters, in
+print order, are the ones it had, and what is said is the old words and those directions (nothing dropped, no id moved).

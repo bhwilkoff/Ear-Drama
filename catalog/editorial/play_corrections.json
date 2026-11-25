@@ -951,6 +951,511 @@
    "why": "MRS. MONTGOMERY is the mother whose every other speech is labeled MRS. M; the children call her Mammy."
   },
   {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0006",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MRS. M"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "You would be very sorry if they weren't",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0016",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "What an idea!",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0017",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MRS. M"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "Certainly not.",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0026",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MRS. M"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "Look at us out of the window. They",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0027",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "I think it's rather dull staying in the",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0028",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "Very well--I'll sit here and work, and you",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0030",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "I wish I had some work to do.",
+   "why": "The speech opens on PHŒBE's printed label, 'P.--', which was read as her brother's words."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0031",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "Well, of course, I shan't do that. Takes",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0032",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "I don't know in the least what modication",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0033",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "Well, what's the difference?",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0034",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "Then you are as stupid as I am.",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0037",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "Great clumsy creature you are!",
+   "why": "The speech opens on PHŒBE's printed label, 'P.--', which was read as her brother's words."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0040",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "Naughty boy!",
+   "why": "The speech opens on PHŒBE's printed label, 'P.--', which was read as her brother's words."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0042",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "Sugar plums!",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0043",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "We must pick them up as quickly as",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0045",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "I'll tell you what. Let's lick the outside",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0046",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "Licking one. Are you quite sure?",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0047",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "I think it's rather horrid to put them",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0048",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "But they are all mixed! I don't know",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0049",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "I really think that would be the safest",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0051",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MRS. M"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "So we were! We were trying to be",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0054",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "While I did your work.",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0056",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "So then he threw a sofa cushion at",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0057",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "And I jumped up, and the reels rolled",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0060",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "H"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "We just licked them to make sure they",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
+   "play": "gut-47609-109",
+   "revision": "7ce325d8d84f",
+   "line": "L0063",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "MRS. M"
+    },
+    {
+     "as": "speech",
+     "role": "PHŒBE",
+     "from": "P.--",
+     "cut": "P.--"
+    }
+   ],
+   "evidence": "It is a pity, just when we were",
+   "why": "PHŒBE's printed label, 'P.--', stands inside the speech above hers; the words after it are hers."
+  },
+  {
    "play": "gut-49181-2",
    "revision": "0e81a491fe53",
    "line": "L0556",
@@ -1434,6 +1939,26 @@
    "from": "MRS. G",
    "evidence": "Oh, no. I’m not a school teacher; only a friend",
    "why": "MRS. G is the print's short label for MRS. GRAHAM, whom Mrs. Randy answers as the second visitor."
+  },
+  {
+   "play": "gut-70515-115",
+   "revision": "21ff738ac323",
+   "line": "L0016",
+   "op": "split",
+   "pieces": [
+    {
+     "as": "speech",
+     "role": "JOHNNY"
+    },
+    {
+     "as": "speech",
+     "role": "ANNIE AND SUSIE",
+     "from": "ANNIE and SUSIE.",
+     "cut": "ANNIE and SUSIE."
+    }
+   ],
+   "evidence": "ANNIE and SUSIE. Ma, who was it?",
+   "why": "Two children's printed label, 'ANNIE and SUSIE.', stands inside the speech above theirs."
   },
   {
    "play": "gut-70635-4",

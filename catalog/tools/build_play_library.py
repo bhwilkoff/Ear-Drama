@@ -43,7 +43,9 @@ import zlib
 sys.path.insert(0, os.path.dirname(__file__))
 import build_castable_scripts as B
 import play_corrections as PC
+import play_emphasis as PE
 import play_layouts as PL
+import play_margins as PM
 import play_punctuation as PN
 import script_parse as P
 import script_rights as R
@@ -708,7 +710,7 @@ def refined(entry):
     """The kept play with its roles mended (play_roles, catalog DECISIONS 044). Which plays are kept, and which edition, was
     settled on the readings as they were; a play nothing is mended in is the same entry, byte for byte."""
     read, args = entry.pop("_read")
-    return PN.mend(PC.apply(B.refined_entry(entry, read(*args, refine=True))))
+    return PN.mend(PE.mend(PM.mend(PC.apply(B.refined_entry(entry, read(*args, refine=True))))))
 
 
 def same_title_words(a, b):

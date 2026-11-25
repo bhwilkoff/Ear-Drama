@@ -231,6 +231,21 @@ def _inside_sentence(before, after):
     return bool(before) and not re.search(r"[.!?][\"'’”)]*$", before) and bool(re.match(r"[a-zà-ÿ,;:?!’'”\-]", after))
 
 
+class Italic(str):
+    """A direction's words printed in italics and in no bracket. Equal to the words, and written as them: the print is kept
+    only until play_emphasis has read it. `sides` is the character printed before the italics and the one after ("" at an end)."""
+    sides = ("", "")
+
+
+def _italic_direction(m, inner, text):
+    raw = m.group(0)
+    if raw[0] != "_" or raw[1:-1] != inner:
+        return inner  # "[aside]", "_(aside)_", or a span whose marks pair badly ("_ I say _")
+    d = Italic(inner)
+    d.sides = (text[max(0, m.start() - 1):m.start()], text[m.end():m.end() + 1])
+    return d
+
+
 def split_parts(text, italic=True):
     """Speech text -> parts, each an exact slice of `text`. Bracketed or italic spans are
     directions; everything else is `say`. A radio script brackets its directions, so there an
@@ -263,7 +278,7 @@ def split_parts(text, italic=True):
                 and not _directional(inner) and _inside_sentence(before, after):
             parts.append({"say": inner, "_em": True})
         elif italic:
-            parts.append({"sound" if SOUNDWORD.search(inner) and raw[0] == "[" else "direction": inner})
+            parts.append({"sound" if SOUNDWORD.search(inner) and raw[0] == "[" else "direction": _italic_direction(m, inner, text)})
         else:
             kind = "mic" if MIC.match(inner) else "sound" if (
                 (SOUNDWORD.search(inner) and raw[0] == "[") or RADIO_SOUND.match(inner)) else "direction"
