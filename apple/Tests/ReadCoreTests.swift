@@ -80,6 +80,7 @@ struct ReadCoreTests {
             case .refused: return false
             case let .name(n): return n
             }
+        case "canRemove": return ReadCore.canRemove(room(a[0]), memberID: a[1] as? String)
         case "receiverOf": return ReadCore.receiverOf(room(a[0]))
         case "recordRefusal": return jsonValue(recordRefusal(room(a[0]), cast(a[1]), member(a[2]), a[3] as? String ?? ""))
         case "leaderName": return jsonValue(ReadCore.leaderName(room(a[0]), members: members(a[1])))
@@ -88,7 +89,7 @@ struct ReadCoreTests {
     }
 
     private static let ported: Set<String> = ["normalizeCode", "codeFromBytes", "clockOffset", "canLead", "partsOf", "whoReads", "nextMine", "leaderGone",
-                                          "cleanName", "receiverOf", "recordRefusal", "leaderName"]
+                                          "cleanName", "receiverOf", "recordRefusal", "leaderName", "canRemove"]
 
     private static func same(_ x: Any?, _ y: Any?) -> Bool {
         guard let x, let y else { return x == nil && y == nil }

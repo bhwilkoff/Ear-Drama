@@ -11,7 +11,7 @@ import SwiftUI
 @Observable
 final class RoomReaderModel {
     enum Sheet: String, Identifiable {
-        case parts, takes, screen
+        case parts, takes, screen, people
         var id: String { rawValue }
     }
 
@@ -80,6 +80,12 @@ final class RoomReaderModel {
         recorder.detach()
         session.pause()
     }
+
+    /// The person's own Leave: the room is told, then everything stops. Only this and `ReadScreenBody`'s close run it.
+    func leaveRoom() {
+        recorder.detach()
+        session.leave()
+    }
 }
 
 // MARK: - The room bar
@@ -93,6 +99,7 @@ struct RoomBar: View {
     @Environment(\.openWindow) private var openWindow
     #endif
     @State private var ending = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         if let snap = room.snapshot {
@@ -102,7 +109,12 @@ struct RoomBar: View {
                     Text(verbatim: text).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted).lineLimit(1)
                         .accessibilityIdentifier("room-fact")
                     Spacer(minLength: 0)
-                    Text("\(snap.present) here").font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted).fixedSize()
+                    if ReadCore.removable(snap).isEmpty || room.session.ended != nil {
+                        Text("\(snap.present) here").font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted).fixedSize()
+                    } else {
+                        Button("\(snap.present) here") { room.sheet = .people }
+                            .font(TypeRamp.caption).fixedSize().accessibilityIdentifier("room-people")
+                    }
                     Text(verbatim: pageLabel).font(TypeRamp.tabular).foregroundStyle(Color.brandTextMuted).fixedSize()
                 }
                 if let r = room.session.refusal {
@@ -120,6 +132,7 @@ struct RoomBar: View {
                 case .parts: RoomPartsSheet(room: room)
                 case .takes: ReadTakesSheet(room: room)
                 case .screen: RoomScreenSheet(room: room)
+                case .people: RoomPeopleSheet(room: room)
                 }
             }
         }
@@ -177,6 +190,7 @@ struct RoomBar: View {
                 Button("End the Reading", role: .destructive) { ending = true }
             }
             Text(verbatim: ReadScreenText.grouped(snap.code))
+            Button("Leave the Reading") { room.leaveRoom(); dismiss() }
         } label: {
             Label("Reading", systemImage: "ellipsis.circle")
         }
@@ -275,6 +289,47 @@ struct RoomPartsSheet: View {
             }
             .navigationTitle("Parts")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { room.sheet = nil } } }
+        }
+        #if os(macOS)
+        .frame(width: 360, height: 420)
+        #endif
+    }
+}
+
+/// Who is here, for whoever may remove a member (PLAYS-DESIGN §12.13): a reader's key stops working at once, their parts
+/// open and joining locks in the same message, so the code on their screen lets nobody back in.
+struct RoomPeopleSheet: View {
+    @Bindable var room: RoomReaderModel
+    @State private var removing: ReadCore.Removable?
+
+    var body: some View {
+        NavigationStack {
+            let rows = ReadCore.removable(room.snapshot)
+            List {
+                ForEach(rows) { m in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(verbatim: m.label).font(TypeRamp.bodyStrong)
+                            if !m.live { Text("Away").font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted) }
+                        }
+                        Spacer()
+                        Button("Remove", role: .destructive) { removing = m }
+                            .accessibilityLabel("Remove \(m.label)")
+                    }
+                }
+                if let r = room.session.refusal {
+                    Text(verbatim: ReadCore.refusal(r)).font(TypeRamp.caption).foregroundStyle(Color.semanticError)
+                }
+            }
+            .navigationTitle("Here")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { room.sheet = nil } } }
+            .onChange(of: rows.isEmpty) { _, none in if none { room.sheet = nil } }
+            .confirmationDialog(removing.map { "Remove \($0.label) and lock joining?" } ?? "", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
+                Button("Remove", role: .destructive) {
+                    if let m = removing { room.send(["type": "remove", "member": m.id]) }
+                    removing = nil
+                }
+            }
         }
         #if os(macOS)
         .frame(width: 360, height: 420)
