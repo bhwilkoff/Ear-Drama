@@ -1,0 +1,24 @@
+R4-9b measurements (2026-11-25): tools/originality/, counts and timings only, no text.
+
+Index build (python3 -I tools/originality/cli.py build, nice 15, 1 process): 98 s, peak 0.9 GB.
+  gut 1,721 docs / 68,231,211 words / 10,332,371 numbers; tr 9,542 / 31,634,464 / 4,784,424; grw 1,028 / 4,286,537 / 651,788
+  (identical to the design's counts). Files: gut.u64 82.7 MB, tr.u64 38.3 MB, grw.u64 5.2 MB (separate, optional).
+  The Workshop's part is a file of its own: `build --without grw` writes no grw.u64, grw.json or titles-grw; the index id
+  changes and every verdict says left_out ["grw"].
+
+Detection table: results-r4-9b.txt is `reproduce.py` (measure.py unchanged, the tool's Index in place of fingerprint.py) then
+  report.py. Diff against results.txt, every line but the first (index timing field): none. Same classes, same counts, same
+  run and share quantiles. 49 s, peak 0.86 GB.
+
+Self-test on the real index (3 plays + 1 control from the Gutenberg cache): passes in 0.7 s. Fails with the threshold at 400
+  (the 150-in-2,000 copies), with k changed to 4, with only two plays, with the index folder empty (refused).
+  One edition of a play may rank another edition of the same play first, so "names its source" means the source is among the
+  works found with at least 40 words copied; design 2.3 counted it the same way.
+
+One run with work (bench.py, 10 scripts of 7k to 22k words, longest path, recorded empty answers): self-test once 0.7 s, judge
+  0.6 s for all ten, peak 0.18 GB. The live client's waits counted on a fake clock (3 s between archive.org calls, 1 s per other
+  service): 210 s at 1.5 s per answer, 270 s at 3 s per answer. Under 6 minutes for 10 scripts either way.
+  A script held by its content makes no request at all.
+
+Tests: tools/originality/test_originality.py, 58 tests, 6 s. mutants.py: 51 of 51 mutants killed (every threshold, the
+  never-clear rules, the self-test gate, the verdict, the log, the request agent).
