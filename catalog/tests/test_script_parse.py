@@ -20,6 +20,7 @@ Broken controls, 2026-10-23 (radio shapes), each failing its own case: no direct
     a Gutenberg header ("Author: ...") and fails 25/27.
 """
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
@@ -859,6 +860,82 @@ def a_one_letter_misprint_of_a_speaker_is_that_speaker():
     names = {x["name"]: x["lines"] for x in r["roles"]}
     assert "GRAVEN" not in names and names["CRAVEN"] == 17, names
     assert names.get("JOAN") == 1, "a one-off speaker the cast list names stays"
+
+
+def noted_play(mark, note, rest=""):
+    """A play with an editor's note printed under its third speech (gut-3012's shape), its mark on the speech's last word."""
+    parts = ["SCENE: The Pnyx."]
+    for i in range(30):
+        for who in ("HERALD", "DICAEOPOLIS"):
+            parts.append(f"{who}\n Speech {i} of mine, spoken at some length, to get within the area.{mark if i == 1 and who == 'HERALD' else ''}")
+            if i == 1 and who == "HERALD" and note:
+                parts.append(note)
+                if rest:
+                    parts.append(rest)
+    return "*** START OF THE PROJECT GUTENBERG EBOOK X ***\n\nTHE PLAY\n\n" + "\n\n".join(parts) + "\n"
+
+
+@case
+def an_editors_note_under_a_speech_is_never_spoken():
+    """gut-3012: "...the consecrated area. f Shortly before the meeting of the Assembly, a number of young pigs were
+    immolated" was the Herald's speech. Fails on the parser before 2026-11-24 for every mark below."""
+    for mark, note in (("(1)", " f(1) Shortly before the meeting, a number of young pigs\n were immolated."), ("{1}", "{1} Young pigs were immolated."),
+                       ("*", "* Young pigs were immolated."), ("", "Footnotes:")):
+        rest = "Young pigs were immolated here." if note == "Footnotes:" else ""
+        with_note = P.parse(noted_play(mark, note, rest), "stage")
+        bare = P.parse(noted_play("", ""), "stage")
+        spoken = " ".join(p["say"] for l in with_note["lines"] if l["kind"] == "speech" for p in l["parts"] if "say" in p)
+        assert "immolated" not in spoken and "Footnotes" not in spoken, (mark, spoken[:400])
+        assert [(l["id"], l["role"]) for l in with_note["lines"]] == [(l["id"], l["role"]) for l in bare["lines"]], mark
+        assert not any(re.fullmatch(r"\d+", next(iter(p.values()))) for l in with_note["lines"] for p in l.get("parts") or []), mark
+        assert with_note["clean"] == bare["clean"], mark
+
+
+@case
+def a_note_line_goes_without_renumbering_only_in_a_play_whose_notes_were_spoken():
+    raw = noted_play("(1)", " f(1) Young pigs were immolated.").replace("DICAEOPOLIS\n Speech 4", "(2) Another note.\n\nDICAEOPOLIS\n Speech 4", 1)
+    r = P.parse(raw, "stage")
+    ids = [l["id"] for l in r["lines"]]
+    assert not any("Another note" in l["source"] for l in r["lines"]) and len(set(ids)) == len(ids)
+    k = next(i for i, l in enumerate(r["lines"]) if "Speech 4 of mine" in l["source"] and l["role"] == "DICAEOPOLIS")
+    assert int(ids[k][1:]) == int(ids[k - 1][1:]) + 2, "the note's id stays used"
+    quiet = noted_play("", "").replace("DICAEOPOLIS\n Speech 4", "(2) Another note.\n\nDICAEOPOLIS\n Speech 4", 1)
+    assert any("Another note" in l["source"] for l in P.parse(quiet, "stage")["lines"]), "no other play changes"
+
+
+@case
+def a_starred_line_without_its_mark_is_still_spoken():
+    r = P.parse(noted_play("", "* Blessed are the pure of heart"), "stage")
+    assert any("Blessed are the pure" in p.get("say", "") for l in r["lines"] if l["kind"] == "speech" for p in l["parts"])
+
+
+@case
+def a_picture_marker_inside_a_direction_is_not_its_words():
+    raw = noted_play("", "").replace("DICAEOPOLIS\n Speech 4", "[They wear it. [Illustration: Hand] Clear stage of desk and chair.]\n\nDICAEOPOLIS\n Speech 4", 1)
+    d = next(l for l in P.parse(raw, "stage")["lines"] if l["kind"] == "direction" and "Clear stage" in l["source"])
+    assert "Illustration" not in d["source"] and "They wear it. Clear stage" in d["source"], d["source"]
+
+
+@case
+def a_title_page_row_is_not_the_first_speaker():
+    """gut-25235 opened on a speaker BETWEEN ("Dean Swift and Tho. Prior, Esq;"). Fails on the parser before 2026-11-24."""
+    raw = noted_play("", "").replace("SCENE: The Pnyx.", "SCENE: The Pnyx.\n\nBETWEEN\n Dean Swift and Tho. Prior, Esq;", 1) + "\n\nBY THE SAME AUTHOR\n Plays, in three volumes.\n"
+    r, bare = P.parse(raw, "stage"), P.parse(noted_play("", ""), "stage")
+    assert "BETWEEN" not in {x["name"] for x in r["roles"]}, r["roles"]
+    speech = [l for l in r["lines"] if l["kind"] == "speech"]
+    assert speech[0]["role"] == "HERALD" and int(speech[0]["id"][1:]) == int(next(l for l in bare["lines"] if l["kind"] == "speech")["id"][1:]) + 1, speech[0]["id"]
+    kept = noted_play("", "").replace("DICAEOPOLIS\n Speech 9", "BETWEEN\n I will speak here.\n\nDICAEOPOLIS\n Speech 9", 1)
+    assert "BETWEEN" in {x["name"] for x in P.parse(kept, "stage")["roles"]}, "a name inside the play is a speaker"
+
+
+@case
+def a_name_over_nothing_but_a_picture_is_not_a_line():
+    """A speech with no parts fails check_play_library, so six plays stopped the library from being built at all."""
+    raw = noted_play("", "").replace("DICAEOPOLIS\n Speech 4", "DIM.\n\n[Illustration: Judy points at the trustees.]\n\nDICAEOPOLIS\n Speech 4", 1)
+    r = P.parse(raw, "stage")
+    assert all(l["parts"] for l in r["lines"] if l["kind"] == "speech") and "DIM" not in {x["name"] for x in r["roles"]}, r["roles"]
+    k = next(i for i, l in enumerate(r["lines"]) if "Speech 4 of mine" in l["source"] and l["role"] == "DICAEOPOLIS")
+    assert int(r["lines"][k]["id"][1:]) == int(r["lines"][k - 1]["id"][1:]) + 2, "its id stays used"
 
 
 def main():

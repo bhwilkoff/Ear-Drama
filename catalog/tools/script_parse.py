@@ -178,6 +178,19 @@ def clean_html(raw):
     return html.unescape(t)
 
 
+def read_text(path):
+    """A text file as printed. Gutenberg's older files are Latin-1 under an 8-bit header or a wrong one (43 of the 1,721
+    cached texts, measured 2026-11-24; every one decodes with no control characters): read as UTF-8 they lost every
+    accented letter ("Th�r�se"). A file with NULs is UTF-16."""
+    raw = open(path, "rb").read()
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        if raw[:400].count(b"\0") > 50:
+            return raw.decode("utf-16", errors="replace")
+        return raw.decode("cp1252", errors="replace")
+
+
 GUT_START = re.compile(r"\*\*\* ?START OF TH(?:E|IS) PROJECT GUTENBERG")
 
 
@@ -664,6 +677,27 @@ def play_bounds(paras, labels, names):
     return start, end
 
 
+# An editor's note printed under the speech it explains (2026-11-24: 11 published plays spoke them): "f(1) Shortly
+# before ..." (gut-3012), "{1} _Epices_, ..." (gut-8776), "* Pronounce _Knoot_." (gut-19018), and all that follows "Footnotes:".
+# A note only when the mark it opens with is printed on a word before it, so a song's "1." or a "(2)" of business is not one.
+NOTE_MARK = re.compile(r"^\s*_?(?:f\s?\((?P<f>\d{1,3})\)|\[(?P<s>\d{1,3})\]|\{(?P<c>\d{1,3})\}|\((?P<p>\d{1,3})\)|(?P<a>\*{1,3}|[†‡§]))\s?(?=\S)")
+NOTES_HEAD = re.compile(r"^\s*_?\[?FOOTNOTES?_?\]?\s*:?\s*$", re.I)
+NOTE_REACH = 20000
+
+
+def _is_note(p, before):
+    """A paragraph that is an editor's note on a mark printed in `before` (the text so far)."""
+    m = NOTE_MARK.match(p)
+    if not m or len(p.split()) < 2:
+        return False
+    if m.group("a"):
+        if p.rstrip(" _").endswith(m.group("a")):
+            return False  # "*Blessed are the Pure of Heart*" is emphasis
+        return bool(re.search(r"\S ?_?%s(?![*†‡§])" % re.escape(m.group("a")), before[-4000:]))
+    n = m.group("f") or m.group("s") or m.group("c") or m.group("p")
+    return bool(re.search(r"[^\s(\[{f]_?\s?[\[({]%s[\])}]" % n, before[-NOTE_REACH:]))
+
+
 def _stage_items(text):
     raw = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     names = known_names(text)
@@ -674,7 +708,9 @@ def _stage_items(text):
     items = [{"kind": "front", "source": p} for p in raw[:start]]
     pending, pending_src, incast, casts, last_role = None, None, False, 0, None
     known = {r for r in (_speaker(p.split("\n")[0].strip(), labels, names) for p, _ in paras) if r}
+    notes, in_notes, before = [], False, ""
     for p, cont in paras:
+        before = (before + "\n\n" + p)[-2 * NOTE_REACH:]
         if items and items[-1]["kind"] in ("speech", "heading", "cast"):
             last_role = items[-1].get("role")
         lines = p.split("\n")
@@ -765,11 +801,18 @@ def _stage_items(text):
             items[-1]["source"] += "\n\n" + p
             continue
         if items and items[-1]["kind"] == "speech":
+            # an editor's note under the speech is set aside: it was read as more of the speech
+            if in_notes and in_notes is items[-1] or NOTES_HEAD.match(p) or _is_note(p, before[:-len(p)]):
+                if NOTES_HEAD.match(p):
+                    in_notes = items[-1]
+                notes.append({"kind": "note", "source": p, "spoken": True})
+                continue
             items[-1]["source"] += "\n\n" + p
             items[-1]["text"] += "\n" + joined
             items[-1]["continued"] = items[-1].get("continued", 0) + 1
             continue
         items.append({"kind": "other", "source": p})
+    items += notes
     items += [{"kind": "back", "source": p} for p in raw[end:]]
     # plays are counted over the WHOLE text, so a play window never hides the others
     whole = [(p.split("\n")[0].strip(), len(p.split("\n"))) for p in raw]
@@ -824,6 +867,11 @@ def _title_block_is_not_a_speech(raw, items, title):
     for it in items:
         if it["kind"] == "speech" and spoken[it["role"]] == 1 and _title_key(it["role"]) == key:
             it["kind"] = "front"
+
+
+def _without_pictures(source):
+    """A direction's words without a picture marker printed inside it ("wear.  [Illustration: Hand]Clear stage")."""
+    return re.sub(r"\[%s\]\s*" % ILLUSTRATION_PART.pattern, "", source, flags=re.I).strip() or source
 
 
 def _letters(n):
@@ -920,6 +968,38 @@ def parse(raw, kind, title=None):
         _mark_commercials(items)
     else:
         items, casts = _stage_items(text)
+    return assemble(raw, text, items, casts, kind, title)
+
+
+# A row of the title page, a program note or a publisher's list, read as a speaker ("BETWEEN / Dean Swift and Tho. Prior, Esq;",
+# gut-25235; "AS PERFORMED AT THE / THEATRE ROYAL", gut-19407). A part of the play is never named so.
+TITLE_ROW = re.compile(r"^(?:BETWEEN|BEING|COPYRIGHT|LONDON|NEW YORK|BOSTON|PAGE|CONTENTS|PREFACE|AUTHOR'S PREFACE|NOTES?|COSTUMES|PROPERTIES|STAGE DIRECTIONS|ADVERTISEMENT|REMARKS|"
+                       r"PROGRAM CONTINUED|BILL OF THE PLAY|STORY OF THE SKETCH|PRONUNCIATION OF NAMES|LIST OF .*|BY .*|.* BY|.* BY THE SAME AUTHOR|AS PERFORMED .*|PAINTED BY .*|ENGRAVED .*|"
+                       r"UNIFORM EDITION .*|A SELECTION FROM|MUSIC TO OPEN ACT|THE (?:[A-Z]+ )?(?:TRAGEDY|COMEDY|HISTORY|BURGOMASTER) OF)$")
+TITLE_ROW_REACH = 3
+
+
+def _title_rows(items):
+    """Title-page and publisher's rows read as the first or the last speeches: marked `gone`, so the row is not a line and its
+    id stays used (no line after it is renumbered). Only a name of that kind that speaks at most twice, all of it there."""
+    spoken = [it for it in items if it["kind"] == "speech"]
+    count = collections.Counter(it["role"] for it in spoken)
+    last = max((k for k, it in enumerate(spoken) if count[it["role"]] >= CASTABLE_LINES), default=-1)
+    for k, it in enumerate(spoken):
+        if count[it["role"]] <= 2 and TITLE_ROW.match(it["role"]):
+            at = [j for j, o in enumerate(spoken) if o["role"] == it["role"]]
+            if all(j < TITLE_ROW_REACH for j in at) or all(j > last for j in at):
+                it["gone"] = True
+    # two lists of characters on facing rows: nothing said but names ("A TRAINED NURSE / A MANSERVANT / A PUNKAH-BOY")
+    for it in spoken[:1]:
+        said = it["text"].strip()
+        if count[it["role"]] == 1 and (said.startswith(".") or len(said.split()) >= 2 and said.upper() == said and not re.search(r"[!?.]$", said)):
+            it["gone"] = True
+
+
+def assemble(raw, text, items, casts, kind, title=None):
+    """Items in text order -> the parse: line ids, roles, sections, and the clean test. An item may carry its own
+    `parts` (play_layouts, the second reader); otherwise they are split from its `text`."""
     stub = stub_check(text, items)
     if stub == "format_unrecognized":
         return {"status": "failed", "issues": [stub], "words": len(text.split())}
@@ -928,8 +1008,12 @@ def parse(raw, kind, title=None):
     if kind == "stage":
         _title_block_is_not_a_speech(raw, items, title)
         _one_speaker_one_role(items)
+        _title_rows(items)
     lines, roles, unclassified = [], collections.OrderedDict(), []
     sections, pending, numbered, letters, pictures = [], [], 0, 0, 0
+    # A play whose notes were spoken loses them all: a note that stood as a direction keeps its id used, as a picture
+    # does, and the marks that pointed to notes ("area.(1)") are no longer directions. No other play changes.
+    noted = any(it.get("spoken") for it in items)
     for it in items:
         if it["kind"] == "heading" and section_level(it["source"]):
             pending.append(it["source"])
@@ -938,7 +1022,8 @@ def parse(raw, kind, title=None):
         if it["kind"] == "other":
             unclassified.append(it["source"])
             continue
-        if it["kind"] != "speech" and ILLUSTRATION_ONLY.fullmatch(it["source"]):
+        if it.get("gone") or it["kind"] != "speech" and (ILLUSTRATION_ONLY.fullmatch(it["source"]) or noted and NOTE_MARK.match(it["source"])
+                                       and not re.match(r"\s*\*", it["source"])):
             # its id (or its letter) stays used, so the lines after keep theirs
             numbered, letters = (numbered, letters + 1) if it.get("split") else (numbered + 1, 0)
             pictures += 1
@@ -953,8 +1038,13 @@ def parse(raw, kind, title=None):
         sections.extend({"line": lid, "source": src} for src in pending)
         pending = []
         if it["kind"] == "speech":
-            parts = [p for p in (it.get("lead") or []) + split_parts(it["text"], italic=kind == "stage")
-                     if "say" in p or not ILLUSTRATION_PART.fullmatch(next(iter(p.values())).strip())]
+            found = it["parts"] if "parts" in it else (it.get("lead") or []) + split_parts(it["text"], italic=kind == "stage")
+            parts = [p for p in found
+                     if "say" in p or not ILLUSTRATION_PART.fullmatch(next(iter(p.values())).strip())
+                     and not (noted and re.fullmatch(r"\d{1,3}", next(iter(p.values())).strip()))]
+            if not parts:
+                pictures += 1  # nothing but a picture marker under a name (gut-75857-2 L0330): no line, its id stays used
+                continue
             em = [k for k, p in enumerate(parts) if p.pop("_em", False)]
             r = roles.setdefault(it["role"], {"name": it["role"], "lines": 0, "words": 0})
             r["lines"] += 1
@@ -962,7 +1052,7 @@ def parse(raw, kind, title=None):
             lines.append({"id": lid, "kind": "speech", "role": it["role"], "source": it["source"], "parts": parts,
                           **({"em": em} if em else {})})
         else:
-            lines.append({"id": lid, "kind": it["kind"], "role": None, "source": it["source"]})
+            lines.append({"id": lid, "kind": it["kind"], "role": None, "source": _without_pictures(it["source"])})
     blocks = len(lines) + len(unclassified) + pictures  # a marker was a placed block: the share judged before it went
     castable = [r for r in roles.values() if r["lines"] >= CASTABLE_LINES]
     big = [r["name"] for r in castable]
