@@ -107,7 +107,7 @@ struct ExportRow: View {
                                     chosen: p.chosen[t.lineID] == t.id)
                 })
             },
-            marks: MarkStore().exportRows(), ink: InkStore().exportRows())
+            marks: MarkStore().exportRows(), ink: InkStore().exportRows(), scripts: plays.own.exportRows())
     }
 }
 #endif

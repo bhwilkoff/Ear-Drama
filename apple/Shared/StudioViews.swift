@@ -817,6 +817,10 @@ private struct TakeRow: View {
                     if take.bleed {
                         Label("Re-take", systemImage: "exclamationmark.triangle.fill").foregroundStyle(Color.semanticWarning)
                     }
+                    // An own script's line was corrected after this take was made (PLAYS-DESIGN §13 item 4).
+                    if OwnBuild.wordsChanged(model.script, take) {
+                        Label(OwnText.wordsChanged, systemImage: "pencil").foregroundStyle(Color.semanticWarning)
+                    }
                 }
                 .font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
             }

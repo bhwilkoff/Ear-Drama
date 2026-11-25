@@ -61,6 +61,7 @@ targets:
           - "Resources/PrivacyInfo.xcprivacy"
           # Read by the build settings below, never bundled as resources.
           - "Resources/EarDrama-Info.plist"
+          - "Resources/EarDrama-tvOS-Info.plist"
           - "Resources/EarDrama.entitlements"
           - "Resources/EarDrama-tvOS.entitlements"
           # The Top Shelf extension is its own target (EarDramaTopShelf, below).
@@ -97,6 +98,12 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         # Only the Accounts.xcconfig keys; Xcode merges the generated keys in.
         INFOPLIST_FILE: apple/Resources/EarDrama-Info.plist
+        # A text file opened here is copied in on iOS, never touched where it is; a Mac has no copying in and Xcode
+        # refuses NO there (the file is only read).
+        "INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace[sdk=iphone*]": NO
+        "INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace[sdk=macosx*]": YES
+        # The same plist without the document type: a TV opens no text file (tvOS-DESIGN 4.13).
+        "INFOPLIST_FILE[sdk=appletv*]": apple/Resources/EarDrama-tvOS-Info.plist
         # Portal-side capabilities on the app.eardrama App ID: Sign in with Apple
         # and Group Activities (SharePlay), both enabled (2026-10-23), so the
         # profiles carry them; App Groups (group.app.eardrama), registered
@@ -130,6 +137,8 @@ targets:
         "ENABLE_APP_SANDBOX[sdk=macosx*]": YES
         "ENABLE_OUTGOING_NETWORK_CONNECTIONS[sdk=macosx*]": YES
         "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
+        # File > Open Script and a file dropped on the window (macOS-DESIGN 4.11): read only.
+        "ENABLE_USER_SELECTED_FILES[sdk=macosx*]": readonly
         # Plays: the microphone records a performer's part (PLAYS-DESIGN §4).
         # Asked at the moment of recording, never at launch.
         "ENABLE_RESOURCE_ACCESS_AUDIO_INPUT[sdk=macosx*]": YES

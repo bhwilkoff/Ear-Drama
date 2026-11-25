@@ -39,6 +39,9 @@ struct RouteDestinations: ViewModifier {
             case let .script(id): PlayScriptScreen(id: id)
             case let .production(id): ProductionScreen(id: id)
             case let .recording(production, part, line): PartScreen(productionID: production, part: part, replacing: line)
+            case .addScript: AddScriptScreen()
+            case let .parts(id): OwnPartsScreen(id: id).id(route)
+            case let .cast(id): EarScreen(id: id).id(route)
             }
         }
     }
@@ -836,6 +839,7 @@ struct EpisodeScreen: View {
     #endif
     @State private var detail: EpisodeDetail??
     @State private var show: SeriesRow?
+    @State private var castsByEar = false
 
     var body: some View {
         Group {
@@ -855,6 +859,8 @@ struct EpisodeScreen: View {
             let loaded = await catalog.episodeDetail(id)
             if let loaded { show = await catalog.series([loaded.episode.seriesKey]).first }
             detail = .some(loaded)
+            castsByEar = false
+            if let loaded { castsByEar = await EarDoor.opens(loaded, plays: plays, forwarding: catalog.forwarding) }
         }
         .task { await plays.load() }
     }
@@ -921,6 +927,9 @@ struct EpisodeScreen: View {
                     StartEarDramaButton(scriptID: id)
                         .pageAction()
                         .gridRow(.words, top: 0)
+                } else if castsByEar {
+                    // With no castable script and a shown transcript, Record This casts the episode by ear (Decision 088.3).
+                    EarDoor(episodeID: episode.id).gridRow(.words, top: 0)
                 }
                 if let access = detail.scriptAccess {
                     ReadScriptControl(access: access)
@@ -1226,6 +1235,7 @@ struct SearchResultsList: View {
     let query: String
     @Environment(CatalogStore.self) private var catalog
     @Environment(PlaysLibrary.self) private var plays
+    @Environment(AppStore.self) private var app
     @State private var results: SearchResults?
     @State private var searchedFor = ""
 
@@ -1235,10 +1245,15 @@ struct SearchResultsList: View {
                 EmptyState("Search titles, people, and spoken words", systemImage: "magnifyingglass")
             } else if let results, searchedFor == query {
                 let matchingPlays = Self.plays(plays.rows, matching: query)
-                if results.isEmpty && matchingPlays.isEmpty {
-                    EmptyState("No matches for “\(query)”", systemImage: "magnifyingglass")
+                let mine = Self.own(plays.own.rows, matching: query)
+                if results.isEmpty && matchingPlays.isEmpty && mine.isEmpty {
+                    EmptyState("No matches for “\(query)”", systemImage: "magnifyingglass",
+                               action: .init(title: "Add a Script") { app.wantsAddScript = true })
                 } else {
                     PageBody {
+                        if !mine.isEmpty {
+                            PageRows("Your Scripts") { ForEach(mine) { OwnScriptLink(row: $0).pageRow() } }
+                        }
                         if !results.series.isEmpty {
                             PageRows("Series") {
                                 ForEach(results.series) { row in
@@ -1287,6 +1302,13 @@ struct SearchResultsList: View {
                                 }
                             }
                         }
+                        // A search that found no play: the person may have the words themselves.
+                        if matchingPlays.isEmpty && mine.isEmpty {
+                            PageSection {
+                                Button { app.wantsAddScript = true } label: { Label("Add a Script", systemImage: "plus") }
+                                    .gridRow(.words)
+                            }
+                        }
                         if !results.transcript.isEmpty {
                             PageRows(Transcript.label) {
                                 let words = Transcript.searchWords(query)
@@ -1327,6 +1349,16 @@ extension SearchResultsList {
             let have = Self.words("\(script.title) \(script.authorLine)")
             return words.allSatisfy { w in have.contains { $0.hasPrefix(w) } }
         }.prefix(40))
+    }
+
+    /// This device's own scripts by their titles (PLAYS-DESIGN §13).
+    static func own(_ rows: [OwnRow], matching query: String) -> [OwnRow] {
+        let words = Self.words(query)
+        guard !words.isEmpty else { return [] }
+        return rows.filter { row in
+            let have = Self.words(row.title)
+            return words.allSatisfy { w in have.contains { $0.hasPrefix(w) } }
+        }
     }
 
     private static func words(_ text: String) -> [String] {

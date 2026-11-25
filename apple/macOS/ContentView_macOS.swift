@@ -44,7 +44,7 @@ struct ContentView_macOS: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
                 OfflineLine().background(.bar)
-                if player.item != nil { TransportBar_macOS() }
+                if player.item != nil, !store.isCasting { TransportBar_macOS() }
             }
         }
         .navigationTitle(player.item?.episode.displayTitle ?? "Ear Drama")
@@ -62,6 +62,7 @@ struct ContentView_macOS: View {
             player.togglePlayPause()
             return .handled
         }
+        .modifier(OwnDoors())
         .task(id: store.playDoor) {
             guard let id = store.playDoor else { return }
             store.playDoor = nil
