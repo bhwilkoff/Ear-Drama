@@ -216,6 +216,7 @@ actor KokoroReader {
     /// Fetches a play's phonemes once. A play the catalog held for review has none (the file is absent).
     @discardableResult
     func prepare(_ playID: String) async -> Bool {
+        if PlayScript.isOwnID(playID) { return false }  // an own script has none to ask for
         if let known = hasPhonemes(playID) { return known }
         let lines: [String: PhonemeLine]?
         do {

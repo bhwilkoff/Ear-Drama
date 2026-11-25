@@ -117,6 +117,19 @@ final class AppStore {
     /// APP_START_ALONG: the finished drama whose page presses Listen once it has loaded; the page clears it.
     var alongDoor: String?
 
+    /// A text file from Open In, the share sheet, a drop or the Mac's File menu, for Add a Script (PLAYS-DESIGN §13).
+    var incomingScript: OwnIncoming?
+    /// The Mac's File > Open Script…: Add a Script opens its file panel.
+    var wantsScriptFile = false
+    /// Add a Script is asked for, and whether it is already in front.
+    var wantsAddScript = false
+    var isAddingScript = false
+    /// Casting by ear is in front: its own transport stands where the mini player would (iOS-DESIGN §4.22).
+    var isCasting = false
+    /// APP_START_OWN, APP_START_CAST: the own-script screen a door opens (DEBUG doors only; its scripts are scratch).
+    var ownDoor: String?
+    var castDoor: String?
+
     /// Player-level mute. A door launch sets it (APP_MUTE); the player reads
     /// it, so a harness run is silent unless it opts in.
     var isMuted = false
@@ -143,6 +156,8 @@ final class AppStore {
         case readRoom(String, screen: Bool)
         /// "Your parts" (DEEP_LINKS.md `parts`): never on a TV.
         case parts
+        /// A text file handed to the app: Add a Script opens with it. Never on a TV.
+        case script(URL)
     }
 
     /// A deep link's search query, taken once by the Search screen.
@@ -193,6 +208,14 @@ final class AppStore {
 
     func push(_ route: some Hashable) {
         var path = paths[selectedTab] ?? NavigationPath()
+        path.append(route)
+        paths[selectedTab] = path
+    }
+
+    /// The page on top gives way to another, so Back passes over it.
+    func replaceTop(with route: some Hashable) {
+        var path = paths[selectedTab] ?? NavigationPath()
+        if !path.isEmpty { path.removeLast() }
         path.append(route)
         paths[selectedTab] = path
     }
@@ -259,6 +282,11 @@ final class AppStore {
                 #if !os(tvOS)
                 push(Route.parts)
                 #endif
+            case .script(let url):
+                #if !os(tvOS)
+                incomingScript = OwnIncoming(url)
+                wantsAddScript = true
+                #endif
             case .series(let key):
                 push(Route.series(key))
             case .episode(let id):
@@ -290,6 +318,8 @@ final class AppStore {
         if doors.autoplay && !doors.miniPlayer { isPlayerPresented = true }
         if doors.sleepMenu { isSleepMenuPresented = true }
         playDoor = doors.play
+        ownDoor = doors.own
+        castDoor = doors.cast
         productionDoor = doors.production
         if let room = doors.readRoom, let code = ReadCore.normalizeCode(room) {
             post(.readRoom(code, screen: doors.readScreen))
@@ -362,4 +392,28 @@ nonisolated struct ReaderDoor: Equatable, Sendable {
     /// APP_READER_INK_DEMO=1: three synthetic strokes are stored on the lines from the first one shown (a device whose
     /// UI automation is not enabled cannot draw them); they are the same stored ink a Pencil makes.
     var inkDemo = false
+}
+
+/// A text file read once, at the door: its title from its name, its words, or why it was refused. The bytes are
+/// counted before anything reads them, and a copy the system made for this app is removed.
+nonisolated struct OwnIncoming: Equatable, Sendable, Identifiable {
+    let id = UUID()
+    private let found: Result<File, OwnFile.Refusal>
+
+    struct File: Equatable, Sendable {
+        let title: String
+        let text: String
+    }
+
+    init(_ url: URL) {
+        do {
+            let file = try OwnFile.read(url)
+            found = .success(File(title: file.title, text: file.text))
+        } catch {
+            found = .failure(error as? OwnFile.Refusal ?? .not_text)
+        }
+        if url.deletingLastPathComponent().lastPathComponent == "Inbox" { try? FileManager.default.removeItem(at: url) }
+    }
+
+    func read() -> Result<File, OwnFile.Refusal> { found }
 }

@@ -58,8 +58,9 @@ nonisolated struct RunNote: Equatable, Sendable {
 nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
     let id: String
     let scriptID: String
-    let scriptRevision: String
-    let title: String
+    /// An own script's change moves these (`ProductionStore.adopt`); a catalog script's never do.
+    private(set) var scriptRevision: String
+    private(set) var title: String
     let created: Date
     var parts: [PartID: PartState] = [:]
     var takes: [Take] = []
@@ -150,6 +151,18 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
         }
         if !gone.isEmpty { listenedThrough = false }
         return gone
+    }
+
+    /// The own script this was cast from changed (PLAYS-DESIGN §13 item 5): its title, revision and parts follow, every
+    /// take stays, and lines added, left out or split (`lines`) make the play unfinished.
+    mutating func adopt(_ script: PlayScript, lines: Bool) {
+        title = script.title
+        scriptRevision = script.revision
+        parts = Dictionary(uniqueKeysWithValues: script.castParts.map { ($0.id, parts[$0.id] ?? PartState()) })
+        if lines {
+            listenedThrough = false
+            mixedFrom = nil
+        }
     }
 
     var chosenFingerprint: String {

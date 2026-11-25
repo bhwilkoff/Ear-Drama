@@ -430,7 +430,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
             if let head = structure.headLines[i] {
                 heading("", level: head.level, runs: ScriptReading.runsOf(line))
             } else if line.kind == .speech, line.parts != nil {
-                let layout = PlayPage.layoutOf(line, roles: roles)
+                let layout = PlayPage.layoutOf(line, roles: roles, emphasis: !script.isOwn)
                 for sp in layout.speeches {
                     let hue = hueByRole[sp.role] ?? -1
                     speechCount += 1
@@ -501,7 +501,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
                 }
                 ctxRole = nil
             } else {
-                let layout = PlayPage.layoutOf(line, roles: roles)
+                let layout = PlayPage.layoutOf(line, roles: roles, emphasis: !script.isOwn)
                 let row = layout.rows.first ?? PageRow(cue: false, indent: false, runs: [])
                 let s = out.length
                 let indent = gutterOn ? col : size * 1.5

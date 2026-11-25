@@ -1071,7 +1071,7 @@ no take.
 | Takes, one file per kept take, never overwritten | `Plays/<production>/takes/` as FLAC (if the floor OS cannot write FLAC, ALAC in CAF; to measure) | `filesDir/Plays/<production>/takes/` as 24-bit WAV (§4.5) | IndexedDB, `<production>/takes/`, 24-bit WAV, written with `add()` |
 | Room tone, per session | `Plays/<production>/roomtone/` | the same | IndexedDB, `<production>/roomtone/` |
 | The production record (parts, who took which part by the name they typed, what each take heard, the timeline) | `Plays/<production>/production.json` | the same | IndexedDB, `<production>/production.json`, the same fields |
-| A script the person added (§13): its castable shape, the working copy it is corrected in (cast by ear: its lines' times, the parts, the place), and the text as pasted | ⏳ (R4-6) `Scripts/<id>/` | ⏳ (R4-7) `filesDir/Scripts/<id>/` | IndexedDB `ed-plays`, object store `scripts`, keys `scripts/<id>/script.json`, `doc.json` and `row.json`; the text being added, `scripts/draft.json` |
+| A script the person added (§13): its castable shape, the working copy it is corrected in (cast by ear: its lines' times, the parts, the place), and the text as pasted | `Scripts/<id>/script.json`, `doc.json`, `row.json`, swapped in together; `Scripts/draft.json` (never on the TV) | ⏳ (R4-7) `filesDir/Scripts/<id>/` | IndexedDB `ed-plays`, object store `scripts`, keys `scripts/<id>/script.json`, `doc.json` and `row.json`; the text being added, `scripts/draft.json` |
 | The rendered mix of a finished play | `Plays/<production>/mix.m4a`, rebuilt from the takes whenever they change | the same | IndexedDB, `<production>/mix.wav`; `navigator.storage.persist()` is asked when a play is cast |
 | Stand-in audio, transcripts of takes, analytics | Never stored | Never stored | Never stored |
 | Apple TV | Nothing: it records nothing and stores no plays in phase 1 (tvOS writes only to Caches) | | |
@@ -1941,10 +1941,10 @@ The owner, 2026-11-24: *"You should be able to record your own version of
 anything you want with your own casting."* Research and frames:
 `docs/research/design/R4-record-anything.md`. Core: `js/own-core.js`
 (`R4-core-port-brief.md`). Built on the web: adding (R4-2), casting by ear (R4-3),
-sharing, classes and reading together (R4-5, over R4-4's Worker routes). Apple and
-Android are R4-6 and R4-7; until sharing is built on one of them, an own script and its
-productions there offer no Share, no Read together, no Invite and no Publish: the
-buttons are absent, never dead.
+sharing, classes and reading together (R4-5, over R4-4's Worker routes); on iPhone, iPad,
+the Duo and the Mac (R4-6's on-device half) and on Android (R4-7's), adding and casting by
+ear. Until sharing is built on one of them, an own script and its productions there offer
+no Share, no Read together, no Invite and no Publish: the buttons are absent, never dead.
 
 1. **An own script** is a script a person brought or cast by ear. It has the castable shape, an
    id `own-<uuid>`, line ids given once and never reused, and the catalog's

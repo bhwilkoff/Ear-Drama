@@ -149,7 +149,8 @@ nonisolated enum PlayPage {
     /// speech into the first ("Why not?\nGRACE" then ". Never mind why.", a parser miss the page still
     /// attributes). Verse keeps a row per printed line; prose is one row, broken only by a cue. A block gives one
     /// row, its enclosing brackets left undrawn. `roles` is the script's role names.
-    static func layoutOf(_ line: ScriptLine, roles: [String]) -> PageLine {
+    /// `emphasis` false: brackets in a person's own script are theirs, so "(laughing)" is never drawn as said.
+    static func layoutOf(_ line: ScriptLine, roles: [String], emphasis: Bool = true) -> PageLine {
         var runs = ScriptReading.runsOf(line).map { PageRun(kind: $0.kind, text: $0.text, at: $0.at, piece: $0.piece, said: $0.said) }
         let isSpeech = line.kind == .speech && line.parts != nil
         let parts = line.parts ?? []
@@ -159,7 +160,7 @@ nonisolated enum PlayPage {
         if isSpeech {
             var stressed = Set<Int>()
             for (i, p) in parts.enumerated() {
-                guard case let .direction(text) = p, i > 0, i + 1 < parts.count,
+                guard emphasis, case let .direction(text) = p, i > 0, i + 1 < parts.count,
                       case let .say(prev) = parts[i - 1], case let .say(next) = parts[i + 1] else { continue }
                 let words = text.replacingOccurrences(of: "_", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
                     .split(whereSeparator: \.isWhitespace)
@@ -361,8 +362,8 @@ nonisolated enum PlayPage {
 
     /// A verse speech's printed lines, said words only (cues and asides left out); nil for prose or a run-in speaker
     /// (the web's `ReaderCore.verseRows`).
-    static func verseRows(_ line: ScriptLine, roles: [String]) -> [String]? {
-        let lay = layoutOf(line, roles: roles)
+    static func verseRows(_ line: ScriptLine, roles: [String], emphasis: Bool = true) -> [String]? {
+        let lay = layoutOf(line, roles: roles, emphasis: emphasis)
         guard lay.verse, lay.speeches.count == 1 else { return nil }
         return lay.speeches[0].rows.filter { !$0.cue }.map { row in
             row.runs.filter(\.said).map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }.joined(separator: " ")

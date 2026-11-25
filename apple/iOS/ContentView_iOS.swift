@@ -53,6 +53,7 @@ struct ContentView_iOS: View {
             }
             #endif
         }
+        .modifier(OwnDoors())
         .fullScreenCover(item: $store.reading) { target in
             NavigationStack { ScriptReaderView(scriptID: target.scriptID, startLine: target.line, studio: target.studio) }
         }
@@ -104,12 +105,13 @@ private struct PlayerPresenter: ViewModifier {
 /// minimizes on a scroll down and the accessory joins it in one row.
 private struct PlayerAccessory: ViewModifier {
     @Environment(AudioPlayer.self) private var player
+    @Environment(AppStore.self) private var store
     @Environment(\.verticalSizeClass) private var height
 
     func body(content: Content) -> some View {
         if #available(iOS 26.1, *) {
             content
-                .tabViewBottomAccessory(isEnabled: player.item != nil) { MiniPlayerAccessory_iOS() }
+                .tabViewBottomAccessory(isEnabled: player.item != nil && !store.isCasting) { MiniPlayerAccessory_iOS() }
                 .tabBarMinimizeBehavior(height == .compact ? .onScrollDown : .automatic)
         } else {
             content
@@ -123,6 +125,7 @@ private struct PlayerAccessory: ViewModifier {
 private struct MiniPlayerInset: ViewModifier {
     @Environment(AudioPlayer.self) private var player
     @Environment(CatalogStore.self) private var catalog
+    @Environment(AppStore.self) private var store
 
     @State private var barHeight: CGFloat = 0
 
@@ -136,7 +139,7 @@ private struct MiniPlayerInset: ViewModifier {
     /// The player draws here only where the tab bar cannot carry it.
     private var playerHere: Bool {
         if #available(iOS 26.1, *) { return false }
-        return player.item != nil
+        return player.item != nil && !store.isCasting
     }
 
     /// The inset alone left the last rows of every list under the bar (iPhone 12, 2026-10-31: Library's

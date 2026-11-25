@@ -30,6 +30,8 @@ enum ReaderStore {
     }
 
     static func remember(_ entry: ReaderPosition, _ defaults: UserDefaults = .standard) {
+        // A scratch launch's scripts are gone at the next one: they take no place in the person's own list.
+        if LaunchDoors.current.scratch != nil, PlayScript.isOwnID(entry.id) { return }
         let kept = ReaderMath.remember(positions(defaults), entry)
         if let data = try? JSONEncoder().encode(kept) { defaults.set(data, forKey: positionsKey) }
     }
@@ -1349,7 +1351,7 @@ private struct ReaderLineView: View {
     // MARK: A speech
 
     private func speechBlocks(_ line: ScriptLine) -> some View {
-        let layout = PlayPage.layoutOf(line, roles: roles)
+        let layout = PlayPage.layoutOf(line, roles: roles, emphasis: !model.script.isOwn)
         let beside = gutter
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(layout.speeches.enumerated()), id: \.offset) { k, sp in
@@ -1415,7 +1417,7 @@ private struct ReaderLineView: View {
             var found: String?
             while j < model.script.lines.count, found == nil {
                 let l = model.script.lines[j]
-                if l.kind == .speech, l.parts != nil { found = PlayPage.layoutOf(l, roles: roles).speeches.first?.role }
+                if l.kind == .speech, l.parts != nil { found = PlayPage.layoutOf(l, roles: roles, emphasis: !model.script.isOwn).speeches.first?.role }
                 j += 1
             }
             next = found
@@ -1512,7 +1514,7 @@ private struct ReaderLineView: View {
     // MARK: A block
 
     private func block(_ line: ScriptLine) -> some View {
-        let layout = PlayPage.layoutOf(line, roles: roles)
+        let layout = PlayPage.layoutOf(line, roles: roles, emphasis: !model.script.isOwn)
         let row = layout.rows.first ?? PageRow(cue: false, indent: false, runs: [])
         let indent = gutter ? size * 9.5 : size * 1.5
         let names = DirectionNames(roles: roles)

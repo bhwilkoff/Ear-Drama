@@ -7,11 +7,13 @@ import SwiftUI
 
 struct RecordScreen: View {
     @Environment(PlaysLibrary.self) private var plays
+    @Environment(AppStore.self) private var app
     @State private var filter = PlayFilter()
 
     var body: some View {
         PageBody {
             YoursSection()
+            YourScriptsSection()
             switch plays.state {
             case .loading:
                 PageSection { ProgressView().frame(maxWidth: .infinity).gridRow() }
@@ -38,6 +40,19 @@ struct RecordScreen: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
         #endif
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { app.push(PlayRoute.addScript) } label: { Label("Add a Script", systemImage: "plus") }
+                    .help("Add a Script")
+                    .accessibilityIdentifier("add-script")
+            }
+        }
+        // A text file dropped on Record opens the page that reads it.
+        .dropDestination(for: URL.self) { urls, _ in
+            guard let url = urls.first, url.isFileURL else { return false }
+            app.post(.script(url))
+            return true
+        }
         .task { await plays.load() }
     }
 }

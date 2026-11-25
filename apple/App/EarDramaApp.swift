@@ -90,7 +90,7 @@ struct EarDramaApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             RootView()
                 .environment(store)
                 .environment(catalog)
@@ -123,6 +123,8 @@ struct EarDramaApp: App {
             GoCommands_macOS(store: store)
             PlaybackCommands_macOS(player: player, store: store, downloads: downloads, room: room, queue: queue)
             RecordingCommands_macOS()
+            CastingCommands_macOS()
+            ScriptCommands_macOS(store: store)
             ReaderCommands_macOS()
             HelpCommands_macOS()
         }
@@ -191,6 +193,11 @@ struct EarDramaApp: App {
     }
 
     private func open(_ url: URL) {
+        // A text file from Files, the share sheet or the Finder: Add a Script opens with it.
+        if url.isFileURL {
+            store.post(.script(url))
+            return
+        }
         switch DeepLink.parse(url) {
         #if os(tvOS)
         // The TV plays back only; an invite opens nothing there.
