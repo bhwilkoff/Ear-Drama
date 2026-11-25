@@ -261,7 +261,7 @@ shared code only after the core five are complete.
 
 | Platform | State | First screen | Notes |
 |---|---|---|---|
-| CarPlay | 🚧 builds | Continue, Stations, Browse, Downloads tabs (R17); Continue and Downloads play | Runs only once Apple grants the carplay-audio entitlement (Needs Ben) |
+| CarPlay | 🚧 builds | Continue; Stations (tonight and the genre stations through `LiveRadio`, at the clock's position); Browse (Shows you follow, Popular, Genres, By length; long shows by season); Downloads; art from the show's picture else the drawn label; 8 s folders with a text row; `no_recommend` out; pure model in Core (`CarLibraryTests`, `CarStationsTests`, `CarArtTests`, `CarSceneManifestTests`) | Runs only once Apple grants the carplay-audio entitlement (Needs Ben); not seen in a car or the simulator. No search screen (`CPSearchTemplate` is not for audio apps) |
 | watchOS | 🚧 builds | Continue, "Waiting on the phone" | watchOS 11 floor (pairs with iOS 18); not embedded in the phone app yet |
 | Android Auto | 🚧 built and browsed on a Pixel | Continue, Stations, Browse, Downloads (R17), search, spoken requests, resume, art | Browsed 2026-11-24 on the Pixel 8a by a media browser client (`CarBrowseProbeTest`); not seen in a car or the Desktop Head Unit. Every release with car support waits on Google's car review: internal or closed track only |
 | Android TV / Fire TV | 🚧 builds | Home, D-pad focus on the first row; Now Playing card in the background (TV-NP) | Banner art is a placeholder for the owner |
@@ -386,7 +386,7 @@ iOS app resized (`macos-platform-patterns`).
 | Predictive back | 🚧 enabled in the manifest | iOS swipe-back is fixed-animation |
 | Media3 notification and lock-screen controls | 🚧 | The MediaSession service |
 | Adaptive icon with a monochrome layer | 🚧 | The ring microphone on the icon red, with its own monochrome silhouette (`tools/render-app-icon.py`); not yet seen on a device |
-| Android Auto library tree | 🚧 four tabs (`CarLibrary`; owner 2026-11-24 "Fill in spaces on Android auto"): Continue; Stations (the app's own stations through `LiveRadio`, tuned at the clock's position, seen at 500 s in); Browse (Shows you follow, Popular, Genres, By length; a long show opens its seasons); Downloads; `onSearch`, spoken requests and `onPlaybackResumption`; art by `CarArtProvider` (served picture, else the drawn label, offline too); every folder answers within 8 s or with one text row; `CarLibraryTest`, `CarStationsTest`, `CarArtTest` | Genres is five levels deep (no published depth limit found). Downloads with entries, a followed show, a car and the Head Unit not seen. CarPlay's Stations and Browse are still placeholders |
+| Android Auto library tree | 🚧 four tabs (`CarLibrary`; owner 2026-11-24 "Fill in spaces on Android auto"): Continue; Stations (the app's own stations through `LiveRadio`, tuned at the clock's position, seen at 500 s in); Browse (Shows you follow, Popular, Genres, By length; a long show opens its seasons); Downloads; `onSearch`, spoken requests and `onPlaybackResumption`; art by `CarArtProvider` (served picture, else the drawn label, offline too); every folder answers within 8 s or with one text row; `CarLibraryTest`, `CarStationsTest`, `CarArtTest` | Genres is five levels deep (no published depth limit found). Downloads with entries, a followed show, a car and the Head Unit not seen.  |
 
 ---
 

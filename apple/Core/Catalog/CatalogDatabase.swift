@@ -496,6 +496,20 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         return resolved.compactMap { byID[$0] }
     }
 
+    /// Episodes by id as `episodes(ids:)` gives them, less those never recommended: for a list the app
+    /// chooses for the listener (the car's length bands).
+    func recommendableEpisodes(ids: [String]) -> [EpisodeRow] {
+        guard !ids.isEmpty else { return [] }
+        let resolved = ids.map(resolve)
+        let marks = Array(repeating: "?", count: resolved.count).joined(separator: ",")
+        let found = rows("""
+            SELECT \(Self.episodeColumns) FROM episodes e JOIN series s ON s.key = e.series_key
+            WHERE e.id IN (\(marks)) \(recommendAnd)
+            """, resolved.map { .text($0) }, decodeEpisode)
+        let byID = Dictionary(found.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        return resolved.compactMap { byID[$0] }
+    }
+
     /// Surprise's episode (iOS-DESIGN §4.11): one served episode with a
     /// recording, at random. It chooses for the listener, so `recommendAnd`.
     /// SQLite's own random(): nothing needs to match another device.
