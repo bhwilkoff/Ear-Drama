@@ -679,7 +679,7 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
                                     val s = container.plays.script(row.id) ?: throw IllegalStateException("not_castable")
                                     val prod: ReadProductionInfo = wire.classProduction(id, s.id, s.revision, s.lines.map { it.id to it.part.raw })
                                     // Not this screen's scope: the room outlives the page it was opened from.
-                val session = ReadSession(container.readWire, container.appScope)
+                                    val session = ReadSession(container.readWire, container.appScope)
                                     session.open(ReadClass.openingBody(s, classId = id, productionId = prod.id), teacher = true)
                                     session.state.value.code?.let { ReadHandover.hold(session); onOpenRoom(it) }
                                 } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }

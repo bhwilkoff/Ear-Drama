@@ -130,7 +130,7 @@ sealed interface OwnText {
             Charsets.UTF_8.newDecoder()
                 .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
                 .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
-                .decode(java.nio.ByteBuffer.wrap(b)).toString().removePrefix("﻿")
+                .decode(java.nio.ByteBuffer.wrap(b)).toString().removePrefix("\uFEFF")
         } catch (_: java.nio.charset.CharacterCodingException) {
             null
         }

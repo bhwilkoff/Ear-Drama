@@ -219,7 +219,7 @@ internal fun NameDialog(title: String, label: String, button: String, max: Int, 
 /** A step or a fact spoken by TalkBack and drawn nowhere. [n] makes the same words twice two announcements. */
 @Composable
 internal fun Announcer(words: String, n: Int) {
-    val mark = if (n % 2 == 0) "" else "​"
+    val mark = if (n % 2 == 0) "" else "\u200B"
     Box(Modifier.size(1.dp).semantics { liveRegion = LiveRegionMode.Polite; contentDescription = words + mark })
 }
 

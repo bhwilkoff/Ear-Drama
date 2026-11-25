@@ -25,10 +25,11 @@ import org.junit.Test
  * disk and a cut-short swap, folders of another version, export, Save as text, and what is refused unread. Real files in a
  * temporary folder; no network.
  *
- * Seen to fail, 2026-11-24, each rule broken in OwnScripts.kt or PlayFiles.kt and restored: see R4-7's commit for the list
- * (takes read only from chosen ones; adopt touching a shared production; adopt dropping the parts' states; a change of lines
- * leaving the play finished; the three files written in place; the swap not recovered; a newer format read; a file read past
- * the cap; Words changed with no date; the row's count of open lines; a kept undo list).
+ * Seen to fail, 2026-11-24, each rule broken alone in OwnScripts.kt or PlayFiles.kt, then restored: takes read only from
+ * chosen ones; adopt touching a shared production, dropping the parts' states, or leaving changed lines finished; a file or
+ * shared words read past the cap; a cut-short swap not recovered; a newer format opened or listed; Words changed with no date;
+ * a script sealed over a refusal; the row's count of open lines; two names the same; a failed write leaving its folder; a
+ * half-cast transcript's marks lost; an empty draft kept; an id that is none removed.
  */
 class OwnScriptsTest {
     private val text = """A LITTLE PLAY
