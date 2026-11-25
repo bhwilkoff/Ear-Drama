@@ -541,7 +541,7 @@ class Refiner:
     def _label_inside(self, m, it):
         left, right, role = it["text"][:m.start()], it["text"][m.end():], P._role(m.group("who"))
         level = lambda t: t.count("(") - t.count(")") or t.count("[") - t.count("]") or t.count("_") % 2
-        return role != it["role"] and self.n[role] >= CASTABLE and not level(left) and not level(m.group(0)) and bool(re.search(r"[a-z]", left)) and bool(re.search(r"\b[a-z]+\b", right.split("\n\n")[0][:60])) \
+        return role != it["role"] and self.n[role] >= 1 and not level(left) and not level(m.group(0)) and bool(re.search(r"[a-z]", left)) and bool(re.search(r"\b[a-z]+\b", right.split("\n\n")[0][:60])) \
             and not re.search(r"(?:\b(?:Mr|Mrs|Miss|Dr|Sir|St|Messrs)\.?|\b[A-Z][A-Z'’]+[.,]?)$", left.strip()) and not re.match(r"[A-Z][A-Z'’]+\b", right)
 
     def folded_role(self, m, it):
