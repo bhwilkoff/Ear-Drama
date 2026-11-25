@@ -41,6 +41,9 @@ sealed interface InboxRequest {
     /** `parts` (`https://eardrama.org/parts`): the "Your parts" screen, a seat's parts at home. Not on a TV. */
     data object Parts : InboxRequest
 
+    /** A text another app shared or opened here (ANDROID-DESIGN §4.23 item 1): Add a script, with it in the field. Not on a TV. */
+    data class AddScript(val incoming: com.example.appname.ui.screens.OwnIncoming) : InboxRequest
+
     /** APP_DOOR_SECONDS elapsed: end the door's activity (stop playback, leave the room). */
     data object EndDoor : InboxRequest
 }

@@ -80,6 +80,20 @@
                 <data android:scheme="eardrama" android:host="oauth" android:pathPrefix="/apple"/>
             </intent-filter>
 
+            <!-- A text shared from any app, or a text file opened from one, for Add a script
+                 (ANDROID-DESIGN §4.23 item 1; OwnIntents reads it, the inbox routes it). -->
+            <intent-filter android:label="@string/add_a_script">
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+            <intent-filter android:label="@string/add_a_script">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="content"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+
             <!-- The eardrama:// scheme, the https links' twin (DeepLink.parse routes it). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>

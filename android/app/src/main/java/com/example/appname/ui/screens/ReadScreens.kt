@@ -79,7 +79,42 @@ import kotlinx.serialization.json.buildJsonObject
 // page with its casting board. Rules are ReadCore's and the transport ReadSession's; these only draw the snapshot.
 
 /** Where the Library's classes and a play's Read together lead (provided once by AppRoot). */
-class ReadNav(val openClass: (String) -> Unit = {}, val openRoom: (String) -> Unit = {}, val showReading: () -> Unit = {}, val openParts: () -> Unit = {}, val openVoiceSettings: () -> Unit = {})
+class ReadNav(
+    val openClass: (String) -> Unit = {},
+    val openRoom: (String) -> Unit = {},
+    val showReading: () -> Unit = {},
+    val openParts: () -> Unit = {},
+    val openVoiceSettings: () -> Unit = {},
+    val exit: RoomExit = RoomExit(),
+)
+
+/**
+ * What a person's way out of a room does (PLAYS-DESIGN §12.13 rule 3): the room screen on top says it, and AppRoot's one `back`
+ * (Close, system back, a TV's Leave) runs it. A disposal never does.
+ */
+class RoomExit {
+    private var onLeave: (() -> Unit)? = null
+
+    fun set(leave: () -> Unit) { onLeave = leave }
+
+    fun clear(leave: () -> Unit) { if (onLeave === leave) onLeave = null }
+
+    fun leave() {
+        val run = onLeave
+        onLeave = null
+        run?.invoke()
+    }
+}
+
+@Composable
+private fun LeaveOnExit(session: ReadSession) {
+    val exit = LocalReadNav.current.exit
+    DisposableEffect(exit, session) {
+        val leave: () -> Unit = { session.leave() }
+        exit.set(leave)
+        onDispose { exit.clear(leave) }
+    }
+}
 
 val LocalReadNav = androidx.compose.runtime.staticCompositionLocalOf { ReadNav() }
 
@@ -94,7 +129,8 @@ fun ReadTogetherButton(script: PlayScript) {
         failure = null
         scope.launch {
             try {
-                val session = ReadSession(container.readWire, scope)
+                // Not this screen's scope: the room outlives the page it was opened from.
+                val session = ReadSession(container.readWire, container.appScope)
                 session.open(ReadClass.openingBody(script), teacher = false)
                 session.state.value.code?.let { ReadHandover.hold(session); nav.openRoom(it) }
             } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }
@@ -140,7 +176,7 @@ fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> U
     val nav = LocalReadNav.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
-    val session = remember { ReadHandover.take() ?: ReadSession(container.readWire, scope, diag = BuildConfig.DEBUG && LaunchDoors.diag) }
+    val session = remember { ReadHandover.take() ?: ReadSession(container.readWire, scope, diag = BuildConfig.DEBUG && LaunchDoors.diag, after = container.appScope) }
     val state by session.state.collectAsState()
     val prefs = remember { context.getSharedPreferences("ed.read", android.content.Context.MODE_PRIVATE) }
     var failure by remember { mutableStateOf<String?>(null) }
@@ -184,6 +220,7 @@ fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> U
     }
     LaunchedEffect(attempt, asking) { if (!asking && !needsSeat) join() }
     DisposableEffect(Unit) { onDispose { session.pause() } }
+    LeaveOnExit(session)
 
     val snap = state.snapshot
     val s = script
@@ -399,14 +436,15 @@ private fun ReadScreenBody(session: ReadSession, onBack: () -> Unit) {
 fun ReadScreenScreen(code: String, onBack: () -> Unit) {
     val container = LocalAppContainer.current
     val scope = rememberCoroutineScope()
-    val session = remember { ReadSession(container.readWire, scope, diag = BuildConfig.DEBUG && LaunchDoors.diag) }
+    val session = remember { ReadSession(container.readWire, scope, diag = BuildConfig.DEBUG && LaunchDoors.diag, after = container.appScope) }
     var failure by remember { mutableStateOf<String?>(null) }
     var attempt by remember { mutableIntStateOf(0) }
     LaunchedEffect(attempt) {
         val normal = ReadCore.normalizeCode(code) ?: run { failure = ReadCore.refusal("bad_code"); return@LaunchedEffect }
         try { session.join(normal, buildJsonObject { put("role", JsonPrimitive("screen")) }) } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }
     }
-    DisposableEffect(Unit) { onDispose { session.leave() } }
+    DisposableEffect(Unit) { onDispose { session.pause() } }
+    LeaveOnExit(session)
     Box(Modifier.fillMaxSize()) {
         ReadScreenBody(session, onBack)
         failure?.let { f ->
@@ -429,11 +467,12 @@ fun ReadPairScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val pairing = remember { com.example.appname.plays.ReadPairing(container.readWire, scope) }
     val st by pairing.state.collectAsState()
-    val session = remember { ReadSession(container.readWire, scope, diag = BuildConfig.DEBUG && LaunchDoors.diag) }
+    val session = remember { ReadSession(container.readWire, scope, diag = BuildConfig.DEBUG && LaunchDoors.diag, after = container.appScope) }
     DisposableEffect(pairing) {
         pairing.start()
-        onDispose { pairing.stop(); session.leave() }
+        onDispose { pairing.stop(); session.pause() }
     }
+    LeaveOnExit(session)
     LaunchedEffect(st.paired) { st.paired?.let { session.adopt(it) } }
     if (st.paired != null) ReadScreenBody(session, onBack) else PairContent(st.code, st.refusal, onBack)
 }
@@ -639,7 +678,8 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
                                 try {
                                     val s = container.plays.script(row.id) ?: throw IllegalStateException("not_castable")
                                     val prod: ReadProductionInfo = wire.classProduction(id, s.id, s.revision, s.lines.map { it.id to it.part.raw })
-                                    val session = ReadSession(container.readWire, scope)
+                                    // Not this screen's scope: the room outlives the page it was opened from.
+                val session = ReadSession(container.readWire, container.appScope)
                                     session.open(ReadClass.openingBody(s, classId = id, productionId = prod.id), teacher = true)
                                     session.state.value.code?.let { ReadHandover.hold(session); onOpenRoom(it) }
                                 } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }

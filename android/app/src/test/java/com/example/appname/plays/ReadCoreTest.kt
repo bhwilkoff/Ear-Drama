@@ -28,6 +28,7 @@ import org.junit.Test
  *   the harness over a golden copy with one expected value flipped: failures non-empty ([the harness sees a drift]).
  *   leaderGone letting a class hand the lead on: the leaderGone goldens failed.
  *   assignmentFor ignoring a range's `to`: partsOf/whoReads/nextMine goldens failed.
+ *   canRemove letting a class's leader remove (2026-11-24): the canRemove golden failed.
  *   recordRefusal without the holds check (T5, 2026-11-19, seen to fail with the other T5 rules broken in one run): the recordRefusal golden "not another part's line" failed.
  */
 class ReadCoreTest {
@@ -75,6 +76,7 @@ class ReadCoreTest {
             "codeFromBytes" -> JsonPrimitive(ReadCore.codeFromBytes(a[0].jsonArray.map { it.jsonPrimitive.int }))
             "clockOffset" -> ReadCore.clockOffset(a[0].jsonArray.map { ReadCore.ClockSample(num(it.jsonObject["t0"]), num(it.jsonObject["server_time"]), num(it.jsonObject["t1"])) })
                 ?.let(::JsonPrimitive) ?: JsonNull
+            "canRemove" -> JsonPrimitive(ReadCore.canRemove(room(a[0]), str(a[1])))
             "canLead" -> JsonPrimitive(ReadCore.canLead(room(a[0]), str(a[1])))
             "partsOf" -> JsonArray(ReadCore.partsOf(room(a[0]), member(a[1])).map(::range))
             "whoReads" -> {
@@ -100,7 +102,7 @@ class ReadCoreTest {
         }
     }
 
-    private val ported = setOf("normalizeCode", "codeFromBytes", "clockOffset", "canLead", "partsOf", "whoReads", "nextMine", "leaderGone", "cleanName", "receiverOf", "recordRefusal", "leaderName")
+    private val ported = setOf("normalizeCode", "codeFromBytes", "clockOffset", "canLead", "canRemove", "partsOf", "whoReads", "nextMine", "leaderGone", "cleanName", "receiverOf", "recordRefusal", "leaderName")
 
     /** JSON numbers compare by value, as the web's `JSON.stringify` and Swift's NSNumber compare them. */
     private fun same(x: JsonElement?, y: JsonElement?): Boolean = when {
@@ -143,6 +145,20 @@ class ReadCoreTest {
         assertEquals(k["LEADER_GONE_MS"]!!.jsonPrimitive.double.toLong(), ReadCore.LEADER_GONE_MS)
         assertEquals(k["POLL_MS"]!!.jsonPrimitive.double.toLong(), ReadCore.POLL_MS)
         assertEquals(k["MODES"]!!.jsonArray.map { it.jsonPrimitive.content }, ReadCore.MODES)
+    }
+
+    @Test fun `who may remove a member, and what each is called`() {
+        val members = listOf(ReadSnapshot.Member("t", "reader"), ReadSnapshot.Member("d1", "reader", seat = "s1", live = false), ReadSnapshot.Member("tv", "screen"), ReadSnapshot.Member("ann", "reader", name = "Ann"))
+        fun snap(you: ReadSnapshot.You, kind: String) = ReadSnapshot("ABC123", kind, "read", cursor = "l1", you = you, members = members, seats = listOf(ReadSnapshot.Seat("s1", "Lucy")))
+        assertEquals(
+            listOf(ReadCore.Removable("d1", "Lucy", false), ReadCore.Removable("tv", "A screen", true), ReadCore.Removable("ann", "Ann", true)),
+            ReadCore.removable(snap(ReadSnapshot.You("t", "reader", owner = true), "class")),
+        )
+        assertEquals("a student who leads removes nobody", emptyList<ReadCore.Removable>(), ReadCore.removable(snap(ReadSnapshot.You("d1", "reader", leads = true), "class")))
+        assertEquals("an adult room's leader does", listOf("d1", "tv", "ann"), ReadCore.removable(snap(ReadSnapshot.You("t", "reader", leads = true), "adult")).map { it.id })
+        assertEquals("a reader does not", emptyList<ReadCore.Removable>(), ReadCore.removable(snap(ReadSnapshot.You("ann", "reader"), "adult")))
+        assertEquals("You are no longer in this reading.", ReadCore.refusal("not_a_member"))
+        assertEquals("They already left.", ReadCore.refusal("no_such_member"))
     }
 
     /** The harness is a test only once it is seen to fail: one expected answer flipped must be caught. */

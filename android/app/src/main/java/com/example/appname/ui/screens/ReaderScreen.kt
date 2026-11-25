@@ -590,7 +590,7 @@ private fun buildBlocks(
             heading(i, head.level, ScriptReading.runsOf(line).joinToString("") { it.text })
             return@forEachIndexed
         }
-        val layout = PlayPage.layoutOf(line, roles)
+        val layout = PlayPage.layoutOf(line, roles, emphasis = !script.isOwn)
         if (line.kind == ScriptLine.Kind.Speech && line.parts != null) {
             for (sp in layout.speeches) {
                 speechCount++

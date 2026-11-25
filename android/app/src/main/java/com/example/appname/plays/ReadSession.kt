@@ -293,6 +293,8 @@ class ReadSession(
     private val scope: CoroutineScope,
     private val now: () -> Double = { System.currentTimeMillis().toDouble() },
     private val diag: Boolean = false,
+    /** Where a leaving device's last message is sent: the screen it was said from is closing. */
+    private val after: CoroutineScope = scope,
 ) : RoomLink {
     private val _state = MutableStateFlow(ReadState())
     override val state: StateFlow<ReadState> = _state
@@ -330,12 +332,25 @@ class ReadSession(
     /** This device's member key for the room; it never leaves memory and never goes in a URL. */
     override val memberKey: String? get() = key
 
+    /**
+     * Out of the room for good, by the person's act only (PLAYS-DESIGN §12.13 rule 3): the room is told, so the parts open and
+     * the lead passes on, and the key is dropped. A room that cannot be reached drops a quiet member after 2 minutes.
+     */
     fun leave() {
+        val code = _state.value.code
+        val k = key
+        if (code != null && k != null && _state.value.ended == null) {
+            val message = buildJsonObject { put("type", JsonPrimitive("leave")) }
+            val sock = socket
+            if (socketOpen && sock != null) sock.send(ShareJson.encodeToString(JsonObject.serializer(), message))
+            else after.launch { try { wire.send(code, k, message) } catch (e: CancellationException) { throw e } catch (_: Exception) { } }
+        }
         stopTransport()
         key = null
         _state.value = ReadState()
     }
 
+    /** Stops the transport and says nothing (a disposal, a rotation, a background): the room keeps this device's place. */
     fun pause() = stopTransport()
 
     private fun enter(joined: ReadJoined) {

@@ -133,7 +133,8 @@ fun rememberCast(source: DeviceVoiceSource, script: PlayScript?, productionId: S
     val muted = com.example.appname.navigation.LocalPlayerMuted.current
     // Behind a flag (PARITY "Downloadable voices"): none at all when off.
     val container = LocalAppContainer.current
-    val kokoro = container.takeIf { BuildConfig.KOKORO_VOICES }?.kokoro
+    // An own script has no published phonemes: its parts are read by the device's own voices (PLAYS-DESIGN §13 item 8).
+    val kokoro = container.takeIf { BuildConfig.KOKORO_VOICES && script?.isOwn != true }?.kokoro
     val defaultsStore = remember { PrefsDefaultsStore(context) }
     val handle = remember(source, script?.id, productionId) {
         script?.let {

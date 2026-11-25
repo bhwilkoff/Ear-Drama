@@ -283,7 +283,15 @@ private fun RightsLine(script: PlayScript) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScriptScreen(id: String, onBack: () -> Unit, onOpenProduction: (String) -> Unit, onRead: (String) -> Unit = {}) {
+fun ScriptScreen(
+    id: String,
+    onBack: () -> Unit,
+    onOpenProduction: (String) -> Unit,
+    onRead: (String) -> Unit = {},
+    onOpenEpisode: (String) -> Unit = {},
+    onEditOwn: (String) -> Unit = {},
+    onCastByEar: (String) -> Unit = {},
+) {
     val plays = LocalAppContainer.current.plays
     var attempt by remember { mutableIntStateOf(0) }
     val loaded by produceState<PlayLoad>(PlayLoad.Loading, id, attempt) {
@@ -301,7 +309,9 @@ fun ScriptScreen(id: String, onBack: () -> Unit, onOpenProduction: (String) -> U
             PlayLoad.Loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
             }
-            PlayLoad.Missing -> EmptyMessage("This play is not on this device.", Modifier.padding(padding))
+            PlayLoad.Missing -> EmptyMessage(
+                if (com.example.appname.plays.OwnScript.isOwnId(id)) "This script is not on this device." else "This play is not on this device.", Modifier.padding(padding),
+            )
             PlayLoad.Failed -> EmptyMessage(
                 "This play could not be loaded. Check the connection.", Modifier.padding(padding),
                 action = EmptyAction("Try again") { attempt++ },
@@ -309,7 +319,10 @@ fun ScriptScreen(id: String, onBack: () -> Unit, onOpenProduction: (String) -> U
             is PlayLoad.Ready -> {
                 val television = LocalIsTelevision.current
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-                    playPage(l.script, television, onOpenProduction, onRead = { onRead(l.script.id) })
+                    playPage(
+                        l.script, television, onOpenProduction, onRead = { onRead(l.script.id) },
+                        ownFoot = { OwnFoot(l.script, onDeleted = onBack, onOpenEpisode = onOpenEpisode, onEdit = onEditOwn, onCastByEar = onCastByEar) },
+                    )
                 }
             }
         }
@@ -332,10 +345,14 @@ fun LazyListScope.playPage(
     script: PlayScript,
     television: Boolean,
     onOpenProduction: (String) -> Unit,
-    start: @Composable () -> Unit = { StartEarDramaButton(script, onOpenProduction); ReadTogetherButton(script) },
+    start: @Composable () -> Unit = {
+        StartEarDramaButton(script, onOpenProduction)
+        if (!script.isOwn) ReadTogetherButton(script)
+    },
     onRead: (() -> Unit)? = null,
+    ownFoot: @Composable () -> Unit = {},
 ) {
-    item(key = "head") { PlayPageHead(script, kicker = if (script.kind == "stage") "Stage play" else "Radio play") }
+    item(key = "head") { PlayPageHead(script, kicker = playKicker(script)) }
     if (!television) {
         item(key = "actions") {
             ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
@@ -348,7 +365,14 @@ fun LazyListScope.playPage(
     item(key = "parts") {
         PartGrid(script.castParts) { part, modifier -> PartCard(script, part, Holder.DeviceVoice, recorded = false, modifier = modifier) }
     }
-    item(key = "rights") { Box(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S4.dp)) { RightsLine(script) } }
+    item(key = "rights") { Box(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S4.dp)) { if (script.isOwn) ownFoot() else RightsLine(script) } }
+}
+
+/** What a play is, over its title; a person's own script is never called a radio or a stage play (PLAYS-DESIGN §13 item 9). */
+internal fun playKicker(script: PlayListing): String = when (script.kind) {
+    "own" -> "Your script"
+    "stage" -> "Stage play"
+    else -> "Radio play"
 }
 
 private fun lineCount(n: Int) = lineCountText(n)
@@ -461,7 +485,8 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
             item(key = "listen") {
                 Box(Modifier.padding(top = Spacing.S3.dp)) { ListenThrough(production, script, sheet, castHandle, onReadAlong) }
             }
-            if (!television && link == null) {
+            // An own script's production is shared from nowhere yet (PLAYS-DESIGN §13): the button is absent, never dead.
+            if (!television && link == null && !script.isOwn) {
                 item(key = "share") {
                     ShareEntry(
                         signedIn = account != null,

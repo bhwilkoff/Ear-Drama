@@ -178,6 +178,22 @@ object ReadCore {
         return null
     }
 
+    /** Who may remove a member: an adult room's leader or opener; in a class only its teacher, never a student who leads (PLAYS-DESIGN §12.13). */
+    fun canRemove(room: Room, memberId: String?): Boolean =
+        !memberId.isNullOrEmpty() && (memberId == room.owner || (room.kind == "adult" && memberId == room.leader))
+
+    data class Removable(val id: String, val label: String, val live: Boolean)
+
+    /** The members this device may remove, named as the room names them: a seat, a given name, a screen. */
+    fun removable(snap: ReadSnapshot?): List<Removable> {
+        val you = snap?.you ?: return emptyList()
+        if (!(you.owner || (snap.kind == "adult" && you.leads))) return emptyList()
+        return snap.members.filter { it.id != you.id }.map { m ->
+            val seat = m.seat?.let { id -> snap.seats.firstOrNull { it.id == id }?.label }
+            Removable(m.id, seat ?: m.name?.takeIf { it.isNotEmpty() } ?: if (m.role == "screen") "A screen" else "A reader", m.live)
+        }
+    }
+
     fun leaderName(room: Room, members: List<Member>): String? {
         val lead = members.firstOrNull { it.id == room.leader }
         val seat = lead?.seat?.let { id -> room.seats.firstOrNull { it.id == id } }
@@ -280,6 +296,8 @@ object ReadCore {
         "bad_code" to "That is not a reading code.",
         "no_such_room" to "No reading with that code.",
         "room_ended" to "This reading has ended.",
+        "not_a_member" to "You are no longer in this reading.",
+        "no_such_member" to "They already left.",
         "room_full" to "This reading is full.",
         "joining_locked" to "Joining is locked.",
         "seat_in_use" to "Someone is already in on another device.",

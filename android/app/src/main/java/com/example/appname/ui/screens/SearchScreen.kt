@@ -53,6 +53,8 @@ fun SearchScreen(
     onOpenPerson: (String) -> Unit,
     incoming: String? = null,
     onIncomingTaken: () -> Unit = {},
+    onAddScript: () -> Unit = {},
+    onOpenOwn: (com.example.appname.plays.OwnRow) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     var query by rememberSaveable { mutableStateOf("") }
@@ -74,6 +76,9 @@ fun SearchScreen(
     }
     val allPlays = rememberCastableRows()
     val plays = remember(settled, allPlays) { playsMatching(allPlays, settled) }
+    val ownRows = rememberOwnRows()
+    val mine = remember(settled, ownRows) { if (settled.isEmpty()) emptyList() else playsMatching(ownRows, settled) }
+    val adds = !com.example.appname.ui.LocalIsTelevision.current && plays.isEmpty() && mine.isEmpty()
     val results by rememberCatalogQuery(settled) { db ->
         if (settled.isEmpty()) SearchResults(emptyList(), emptyList()) else db.search(settled)
     }
@@ -107,7 +112,9 @@ fun SearchScreen(
         LoadableContent(results) { found ->
             when {
                 settled.isEmpty() -> Unit
-                found.isEmpty && plays.isEmpty() -> EmptyMessage("No matches for “$settled”.")
+                found.isEmpty && plays.isEmpty() && mine.isEmpty() -> EmptyMessage(
+                    "No matches for “$settled”.", action = if (adds) com.example.appname.ui.EmptyAction("Add a script", onAddScript) else null,
+                )
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     if (found.series.isNotEmpty()) {
                         item(key = "series-h") { SectionHeader("Series") }
@@ -120,6 +127,13 @@ fun SearchScreen(
                         items(found.people, key = { "pe:" + it.person.id }) { row ->
                             PersonListItem(row, onOpen = { onOpenPerson(row.person.id) })
                         }
+                    }
+                    if (mine.isNotEmpty()) {
+                        item(key = "own-h") { SectionHeader("Your scripts") }
+                        items(mine, key = { "o:" + it.id }) { row -> OwnScriptRow(row, onOpen = { onOpenOwn(row) }) }
+                    }
+                    if (adds) {
+                        item(key = "own-add") { androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) { AddScriptButton(onAddScript) } }
                     }
                     if (plays.isNotEmpty()) {
                         item(key = "plays-h") { SectionHeader("Plays") }

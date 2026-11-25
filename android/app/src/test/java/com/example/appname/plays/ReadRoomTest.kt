@@ -484,6 +484,90 @@ class ReadRoomTest {
         assertFalse("time spent waiting is not a slow connection", session.state.value.slow)
     }
 
+    // ---- leaving and being removed (PLAYS-DESIGN §12.13) ----
+
+    private class LeaveWire(val room: ReadSnapshot, val socketed: Boolean) : ReadWire {
+        val said = mutableListOf<String>()
+        var polls = 0
+        var listener: ReadSocketListener? = null
+        var refusePolls: String? = null
+        override suspend fun create(body: JsonObject, teacher: Boolean) = error("unused")
+        override suspend fun join(code: String, body: JsonObject) = error("unused")
+        override suspend fun poll(code: String, key: String): ReadSnapshot {
+            polls += 1
+            refusePolls?.let { throw ReadFailure(it) }
+            return room
+        }
+        override suspend fun poll(code: String, key: String, gen: Int): ReadSnapshot {
+            polls += 1
+            refusePolls?.let { throw ReadFailure(it) }
+            kotlinx.coroutines.delay(20_000)
+            return room.copy(heldMs = 20_000.0)
+        }
+        override suspend fun send(code: String, key: String, message: JsonObject): ReadSnapshot? {
+            said += "$key:${message["type"]!!.jsonPrimitive.content}"
+            return null
+        }
+        override fun socket(code: String, listener: ReadSocketListener): ReadSocket? {
+            if (!socketed) return null
+            this.listener = listener
+            return object : ReadSocket {
+                override fun send(text: String): Boolean { said += text; return true }
+                override fun close() {}
+            }
+        }
+        override suspend fun sendTake(code: String, key: String, takeId: String, bytes: ByteArray, meta: JsonObject) = error("unused")
+        override suspend fun inbox(code: String, key: String) = error("unused")
+        override suspend fun pairStart() = error("unused")
+        override suspend fun pairPoll(pairCode: String, pairKey: String) = error("unused")
+        override suspend fun attach(code: String, key: String, pairCode: String) = error("unused")
+    }
+
+    @Test fun `closing the reading tells the room once, by polling or the socket, and a disposal tells it nothing`() = runTest {
+        for (socketed in listOf(false, true)) {
+            val wire = LeaveWire(snap("L0003"), socketed)
+            val screen = kotlinx.coroutines.CoroutineScope(backgroundScope.coroutineContext + kotlinx.coroutines.Job())
+            val session = ReadSession(wire, screen, now = { testScheduler.currentTime.toDouble() }, after = backgroundScope)
+            session.adopt(ReadJoined(snap("L0003"), "key-1", if (socketed) "socket" else "poll"))
+            runCurrent()
+            wire.listener?.onOpen()
+            runCurrent()
+            wire.said.clear()
+            session.pause()
+            runCurrent()
+            assertEquals("a rotation or a background says nothing", emptyList<String>(), wire.said)
+            assertEquals("and keeps the key", "key-1", session.memberKey)
+            session.adopt(ReadJoined(snap("L0003"), "key-1", if (socketed) "socket" else "poll"))
+            runCurrent()
+            wire.listener?.onOpen()
+            runCurrent()
+            wire.said.clear()
+            session.leave()
+            screen.coroutineContext[kotlinx.coroutines.Job]!!.cancel()
+            runCurrent()
+            assertEquals(if (socketed) listOf("{\"type\":\"leave\"}") else listOf("key-1:leave"), wire.said)
+            assertNull(session.memberKey)
+            session.leave()
+            runCurrent()
+            assertEquals("once", 1, wire.said.size)
+        }
+    }
+
+    @Test fun `a removed device says so, keeps no key, asks nothing more and tells the room nothing`() = runTest {
+        val wire = LeaveWire(snap("L0003"), socketed = false).apply { refusePolls = "not_a_member" }
+        val session = ReadSession(wire, backgroundScope, now = { testScheduler.currentTime.toDouble() })
+        session.adopt(ReadJoined(snap("L0003"), "key-1", "poll"))
+        runCurrent()
+        assertEquals("not_a_member", session.state.value.ended)
+        assertNull(session.memberKey)
+        val polls = wire.polls
+        advanceTimeBy(60_000); runCurrent()
+        assertEquals("it asks nothing more", polls, wire.polls)
+        session.leave()
+        runCurrent()
+        assertEquals(emptyList<String>(), wire.said)
+    }
+
     // ---- a TV's pairing ----
 
     private class PairWire(val answers: MutableList<Any?>) : ReadWire {
