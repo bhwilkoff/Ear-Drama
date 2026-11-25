@@ -330,3 +330,4 @@ GRW request sent or not.
   13-role play reads "2 voices" and can be Today's scene); 6,050 speeches in 344 plays open on the punctuation left behind a direction.
   Also seen (B24): iPhone rails stop at the margin with a curved cut on the last tile, and tiles in one rail differ in height.
 - 2026-11-25 08:20: B27 merged (voices count every speaking part on every platform; 8,783 speeches lose stray punctuation; 16 corrections; 22-play scene pool); library rebuilding. **B28** running: italic emphasis parsed as directions drops spoken words (about 7,000 candidates in 799 plays).
+- 2026-11-25 09:20: B27 live (plays-library-2026-11-25-3, Worker 3f2ea827); one Site deploy refused the old library until the new one was up (the shape check, as meant). 1.1.3 on TestFlight and Play internal (Play needed a second run: two dispatched back to back reused a versionCode). B28 running.
