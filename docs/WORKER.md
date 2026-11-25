@@ -51,6 +51,8 @@ Cloudflare, Apple, or Google is the owner's.
 | `worker/src/plays-audio.js` | a take's length and format, read from its own WAV or FLAC header, and `takeStream` (checked from its head, streamed, never held whole) |
 | `worker/src/plays-archive.js` | the archive.org uploader (Decision 073): the cron lays items out, removes lines, rewrites credits; `sendFile` streams each line's file from a device |
 | `worker/src/plays-castable.js` | which script a production, class production or read room is made from (the bundle's rows, then the published library's), and which may be published |
+| `worker/src/plays-own.js` | own scripts (Decision 088.4): made, sent once, read by the production's people, held, removed |
+| `worker/migrations/0013_own_scripts.sql` | `play_scripts`, the one-row total its triggers keep, what the owner removed, and `play_reports.script` |
 | `worker/src/plays-manifest.js` | a manifest row: how it is built and how it is checked when read back; shared with the site build |
 | `worker/src/castable-manifest.json` | the bundle's rows: each play's revisions, newest first |
 | `worker/tools/castable-manifest.mjs` | rebuilds the bundle's rows; `--library DIR` writes the published library's, `--check DIR` fails naming the plays when they lag it |
@@ -336,7 +338,7 @@ the room opened join the next room.
 
 | Method and path | Who | Body | Answer |
 |---|---|---|---|
-| `POST /v1/read` | anyone; a class room needs its teacher's bearer token | `{ script_id, script_revision, cast, mode?, kind?, class_id?, seats?, assignments?, production_id? }` | the snapshot with `member_key` and `transport` (`socket` or `poll`); the creator leads |
+| `POST /v1/read` | anyone; a class room needs its teacher's bearer token, and an own script its production and director's | `{ script_id, script_revision, cast, mode?, kind?, class_id?, seats?, assignments?, production_id? }` | the snapshot with `member_key` and `transport` (`socket` or `poll`); the creator leads |
 | `POST /v1/read/{code}/join` | anyone with the code; a class seat with its key | `{ role?: "reader" or "screen", seat?, seat_key?, move?, name? }` | the snapshot with `member_key`; `409 room_full`, `joining_locked`, `seat_in_use`; `400 seat_required`; `403 seat_key_required`; `422 bad_name`; `404 no_such_room`; `410 room_ended` |
 | `GET /v1/read/{code}?gen=N` | a member (`x-read-key`) | | the snapshot; a long poll: with `gen` at the room's generation the object holds the request until a change or 20 s (`LONG_POLL_MS`) and adds `held_ms`; behind, or with no `gen`, at once. A held poll is presence in memory, so it writes nothing |
 | `POST /v1/read/{code}/send` | a member | a message | the snapshot (and `reply` for a ping), or the refusal |
@@ -385,7 +387,8 @@ seats (Decision 082). Every route but the open reads and the seat routes takes
 a bearer token (Decision 057) and counts against `USER_LIMITER`. Only
 `archive/files` calls archive.org, streaming one line's file.
 
-**Castable only.** A production is made from a script id, its revision, and
+**A script from the manifest, or the production's own** ([Own scripts](#own-scripts-decision-0883-0884)).
+A production of a catalog play is made from a script id, its revision, and
 its cast sheet (`[{ id, part }]`, every line in script order, `part` being
 `role:NAME`, `sound`, or `directions` exactly as `js/plays-core.js`
 `linePart` gives it). The Worker checks all three against a **manifest row**
@@ -504,7 +507,7 @@ All under `/v1/plays`, all bearer except the open reads below. `:pid` is a produ
 | `POST /productions/:pid/publish` | the director | a class production: `{ credit_name?, performers_agreed: true, media_release: true }` | `201 { status: "queued", take_ids, created_at }`; again, `200` and the same job; after `failed`, `200` and queued again; `422 script_not_publishable`; `503 publishing_unavailable` without both keys; a class production also `403 under_13_never_published`, `422 confirmations_required` (either confirmation missing or not `true`; Decision 084), `422 credit_name_required` |
 | `DELETE /productions/:pid` | the director | | `204`: the production and every row of it (takes' fields, parts, members, invites, consents, casting, reviews); `409 submitted` once it has an archive job (a submitted production stays; its lines are removed one by one) |
 | `POST /productions/:pid/archive/lines/:lineId/remove` | the line's performer, or the director | `{ reason? }`: `withdrawn` (default) or a report reason | `202 { line_id, state }`; `404 not_published` before the item is |
-| `POST /reports` | a member | `{ production_id, take_id }` or `{ production_id, user_id }`, `reason`, `note?` | `201 { id }` |
+| `POST /reports` | a member | `{ production_id, take_id }`, `{ production_id, user_id }`, or `{ production_id, script: true }` (an own script; reason `copyright` too), `reason`, `note?` | `201 { id }` |
 | `POST /blocks`, `GET /blocks`, `DELETE /blocks/:userId` | anyone | `{ user_id }` | `204`; `{ blocked: [...] }`; `204` |
 | `POST /classes` | anyone (the teacher) | `{ name, under13? }` | `201 { id, name, code, under13, school_consent, ends_on, deletes_on }`; `ends_on` is the July 31 that closes the school year (August to July) it was made in |
 | `GET /classes` | anyone | | `{ teaching, member_of }`; each taught class carries `code`, `school_consent`, `ends_on`, and `deletes_on` (the date a 12-month idle notice runs out, else null) |
@@ -512,7 +515,7 @@ All under `/v1/plays`, all bearer except the open reads below. `:pid` is a produ
 | `GET /classes/:id` | the teacher or a member | | the teacher sees the code, `ends_on`, `deletes_on`, the account members, and `seats: [{ id, label, claimed, claimed_at }]`; a student, the name. The teacher's read restarts the idle clock and ends a notice |
 | `PATCH /classes/:id` | the teacher | `{ ends_on: "YYYY-MM-DD" }` (the class's last day) | `{ id, ends_on, deletes_on: null }`; `422 bad_end_date`, `end_date_past` (before yesterday), `end_date_too_far` (more than 400 days ahead) |
 | `DELETE /classes/:id` | the teacher | | `204`: see "Retention and deletion" |
-| `GET /classes/:id/export` | the teacher | | `{ format: "eardrama-class-export", version: 1, exported_at, audio, class: { id, name, under13, created_at, ends_on, school_authorization }, seats: [{ id, label }], productions: [{ id, title, script_id, script_revision, created_at, archive, assignments: [{ part, from, to, seat, seat_label }], progress, takes: [{ id, line_id, part, seat, seat_label, chosen, created, received_at, seconds, review }] }] }`; no audio (none is stored) |
+| `GET /classes/:id/export` | the teacher | | `{ format: "eardrama-class-export", version: 1, exported_at, audio, class: { id, name, under13, created_at, ends_on, school_authorization }, seats: [{ id, label }], productions: [{ id, title, script_id, script_revision, created_at, archive, assignments: [{ part, from, to, seat, seat_label }], progress, script? (an own script: `{ title, revision, source, episode_id, state }`; the teacher's app adds its lines from `GET /productions/:pid/script`), takes: [{ id, line_id, part, seat, seat_label, chosen, created, received_at, seconds, review }] }] }`; no audio (none is stored) |
 | `POST /classes/:id/seats` | the teacher | `{ labels: [...] }` or `{ text: "a pasted list" }` (one a line, or tab or semicolon apart) | `201 { seats, refused: [{ label, error }] }`; a name already there is skipped; `409 too_many_seats` past 64 |
 | `DELETE /classes/:id/seats/:seat` | the teacher | | `204`; the seat's casting goes, its takes stay the teacher's |
 | `POST /classes/:id/seats/:seat/release` | the teacher | | `204`; the device holding it is let go and the next may take it |
@@ -520,6 +523,67 @@ All under `/v1/plays`, all bearer except the open reads below. `:pid` is a produ
 | `GET /classes/:id/progress` | the teacher | | `{ class_id, productions: [{ id, title, seats: [{ seat, label, parts: [{ part, lines, recorded, approved, again }] }] }] }`: counts only, never a ranking |
 | `POST /classes/:id/school-consent` | the teacher | `{ reference }`: which school or district authorization (up to 120 characters) | `201`; `503 pending_owner_policy` until `SCHOOL_CONSENT_POLICY` is set; `422 reference_required` (the school or district decides, FTC COPPA FAQ N.3; Decision 084) |
 | `DELETE /classes/:id/members/:userId` | the teacher, or that student | | `204` |
+
+### Own scripts (Decision 088.3, 088.4)
+
+Owner, 2026-11-24: *"Yes, a shared script can be kept on our server."* A production (or class production) made with
+`own: true` holds its own text (`src/plays-own.js`, migration 0013). The Worker compares the SHA-256 of the body with
+`script_revision` and **never parses it**; the client checks that the lines match the cast sheet.
+
+| Method and path | Who | Body | Answer |
+|---|---|---|---|
+| `POST /productions`, `POST /classes/:id/productions` | as today | `{ own: true, title, script_id: "own-<uuid>", script_revision, cast, episode_id?, display_name? }` | `201` the record with `publishable: false` and `own_script: { state, by, episode_id }`; `422 bad_script_id`; `422 bad_name` (`detail` is `title` or the part's id); `413 script_too_long` (over 6,000 lines); `400 bad_request` (line ids are `L0001`, `L0001a`); `422 bad_request` (1 to 200 parts); `409 too_many_scripts` (20 an account); `410 script_removed` (this text, or this episode's transcript, was removed) |
+| `PUT /productions/:pid/script` | the director, once | the lines as canonical JSON (`js/own-core.js` `canonicalLines`), UTF-8; `Content-Length` | `204`; `411 length_required`, `413 script_too_long` (400,000 bytes, before a byte is read), `422 revision_mismatch` (`detail` is the production's), `409 already_there` (a repeat after a lost answer: it is the same text), `503 scripts_full` (250 MB kept in all), `400 bad_request` (not its length, not UTF-8, a raw control), `403 director_only`, `410 script_removed` |
+| `GET /productions/:pid/script` | a member | | the lines |
+| `GET /seat/productions/:pid/script` | a seat of its class | | the lines; any other method `403 teacher_only` |
+| `GET /open/invite/script` (`x-invite`) | whoever holds a live invite | | the lines; `410 invite_gone`, `409 script_reported` |
+| `GET /v1/read/:code/script` (`x-read-key`) | a member of a room that carries the production, a screen too | | the lines; `403 not_a_member`, `409 script_reported` |
+| `DELETE /v1/operator/scripts/:pid`, `DELETE /v1/operator/scripts?episode=ID` | the owner (Decision 085, `operator.yml`) | | `204`, `404 no_script`; `{ removed }` |
+
+**A read** answers the bytes as they were sent, `application/json`, with `ETag: "<revision>"` (`If-None-Match` answers
+`304`), `Cache-Control: private, no-store`, and `x-script: {"id","revision","title","episode_id"}` (ASCII JSON), so a
+device rebuilds the script from one answer. `404 no_script`: a catalog play, or the text is owed. `410 script_removed`:
+"This script was removed." Both headers and `x-take` are named in `Access-Control-Expose-Headers`; without that a page
+reads them as absent.
+
+- **`own_script.state`**: `owed` until the director sends it, `kept`, or `removed`. In the record, `by` is the user id of
+  who brought it; a seat's home and the open invite carry `{ state, episode_id }`. `publishable` is on every record.
+- **Nobody else reads one.** No route lists, searches, or finds a script by its id: the production decides, so a second
+  person who claims the same id has a production of their own and no text.
+- **Filter.** The title (300) and each part (40) pass `wordsRefusal` (`plays-names.js`): the name gate's links, unseen
+  characters and words, judged as whole words, so "The Grapes of Wrath" and a part named STAFF pass. The text is not
+  filtered (R4 §3.4).
+- **New people wait for it.** No invite is made, and no room opens, until the text is there (`409 no_script`).
+- **A read room** on an own script needs its `production_id`, opened by the director or the class's teacher, at the
+  production's own revision and cast sheet. Without one: `422 not_castable`. So nobody posts text here with no account.
+- **A report** takes `{ production_id, script: true }` and one more reason, `copyright`. The production is hidden from
+  its reporter while the text is here, and until the owner answers no invite is made, opened or claimed, no room opens,
+  and no invite or room reads the text (`409 script_reported`). Members and seats go on. `404 no_script` when there is
+  none, or it is the reporter's own.
+- **The owner's removal** drops the text and **holds** the production: reads, invites, claims, takes and rooms answer
+  `410 script_removed`; its reports are closed; members keep the record and their copies. The text's revision is
+  remembered (`play_removed_scripts`, no person) and refused at its next share and at a put already owed. The `episode`
+  form does this for every transcript of an episode a **take-down** names, and refuses that episode after.
+- **It goes** with its production or class on every path below, and with the account of the person who **brought** it:
+  the production passes on, its members go on with the copies they have, and nobody new comes in.
+- **It never publishes**: there is no row for an `own-` id, and `isPublishable` refuses one even if a row said so.
+- **Under 13**: a class's script is its teacher's to bring. A seat has no route that takes text.
+- **Cost.** A share writes 12 rows (a catalog production's 7, plus 3 to make the script's row and 2 to send the text),
+  a read writes none and reads 5. The global cap reads one row: triggers keep `play_script_total`.
+- **CPU** (2026-11-24, workerd 1.20261019, process CPU time over 60 to 400 repeats on an Apple M-series core, best of 3):
+
+| Work | CPU each |
+|---|---|
+| SHA-256 of 400,000 bytes, alone | 0.15 ms |
+| the whole `PUT` at 400,000 bytes: receive in 4 KB chunks, digest, decode, control check, the D1 request's JSON | 1.7 ms |
+| the whole read at 400,000 bytes: D1's answer parsed, the response encoded | 1.1 ms |
+| the production's cast sheet, parsed on every member route, at 6,000 lines | 0.4 ms |
+| making one at 6,000 lines and 200 parts, filter included (a catalog play of that size: 1.8) | 2.5 ms |
+| the same text stored as a D1 blob instead (a JSON array of numbers) | 6.8 ms more |
+
+  At three times that for Cloudflare's cores and a cold isolate, a share is about 6 ms and a read about 5 of the free
+  plan's 10, so one digest over the whole body fits: no streaming digest, no chunks. The largest bundled play is 275 KB
+  and 1,720 lines. Not measured on Cloudflare: look at the first real shares' CPU in the dashboard.
 
 ### Seats (no account; Decision 082)
 
@@ -653,7 +717,7 @@ ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
   (the record drops them and counts them in `hidden_takes`). An invite made by either of two people with a block between them
   does not work for the other. Blocking answers `204` whether or not the
   account exists.
-- **Reports.** A member reports a take or another member, with a reason
+- **Reports.** A member reports a take, another member, or the production's own script, with a reason
   (`offensive`, `harassment`, `personal_information`, `not_a_performance`,
   `other`) and an optional note of up to 500 characters. A reported take is
   hidden from its reporter at once. Reports wait in `play_reports`; an hourly
@@ -784,6 +848,9 @@ gh workflow run operator.yml -f action=delete-class -f class_id=<class id>
 gh run list --workflow operator.yml --limit 1   # then: gh run view <id> --log
 ```
 
+The run's log is public, and GitHub prints a step's `env:` before any mask takes effect, so the workflow reads its
+inputs from the event file and puts none in `env`. (Before 2026-11-24 the code and reference were in that block.)
+
 `list` finds the matching classes by the class code the teacher gives or by the
 school's authorization reference (exact, any case); the route answers id, name,
 code, under13, created_at, ends_on and reference (never a seat's name), and the
@@ -811,7 +878,7 @@ which `test/reports.test.js` and `archive.test.js` run on the Worker's database
 and judge by the Worker's routes: `dismiss`; `remove-take` and `remove-member`
 (a class seat's or a room reader's takes when the report names one of those)
 delete the rows and mark a published file `remove` with `removed_by: "owner"`,
-which the cron takes off the item; `unshare` revokes the invites and removes
+which the cron takes off the item; `remove-script` does what the operator's `DELETE` does (the suite runs both), and `read-script` prints a reported script for judging; `unshare` revokes the invites and removes
 every line, failing a publish that had sent nothing. A report is then `dismissed`
 or `acted` and holds nothing. A line the owner removed is not put back by its
 performer (`409 removed_by_director`), and its take is not published again
@@ -837,9 +904,12 @@ Times are milliseconds.
 | `play_members` | `(production_id, user_id)` | `display_name`, `joined_at` |
 | `play_invites` | `id` | `production_id`, `user_id` (its maker), `token_hash` (SHA-256), `created_at`, `expires_at`, `revoked` |
 | `play_parts` | `(production_id, part)` | `status` (`recording`, `done`, `silent`; no row is open), `user_id`, `claimed_at` |
+| `play_scripts` | `production_id` | `user_id` (who brought it), `bytes` (0 while owed or removed), `episode_id` (a cast transcript's), `created_at`, `held_at` (the owner removed it), `body` (the lines as sent) |
+| `play_script_total` | one row | `bytes`: all the text kept, by triggers |
+| `play_removed_scripts` | `key` (`revision:<12 hex>` or `episode:<id>`) | `removed_at`; no person column |
 | `play_takes` | `(production_id, id)` | `user_id` (a seat's take: the teacher), `seat_id`, `line_id`, `part`, `file`, `content_type`, `bytes`, `frames`, `sample_rate`, `capture` (`direct`, `aec`, `room`), `heard`, `loudness`, `peak`, `created`, `uploaded_at`, `chosen` (one per line); no audio, no object key |
 | `play_consents` | `(user_id, production_id, version)` | `consented_at` |
-| `play_reports` | `id` | `user_id` (the reporter), `production_id`, `target_user_id` (cleared when that account goes), `take_id`, `reason`, `note`, `created_at`, `status` (`open`, `dismissed`, `acted`) |
+| `play_reports` | `id` | `user_id` (the reporter), `production_id`, `target_user_id` (cleared when that account goes), `take_id`, `reason`, `note`, `created_at`, `status` (`open`, `dismissed`, `acted`), `script` (1: the report is of the production's own script) |
 | `play_blocks` | `(user_id, blocked_id)` | `created_at` |
 | `play_archive_jobs` | `production_id` | `user_id`, `status` (`queued`, `uploading`, `published`, `failed`), `take_ids`, `identifier`, `item_url`, `reason`, `attempts`, `next_attempt_at`, `lease_until`, `credits`, `published_at`, `created_at`, `updated_at`, `performers_agreed_at` and `media_release_at` (a class publish's two confirmations) |
 | `play_archive_files` | `(production_id, line_id)` | `seq`, `part`, `take_id`, `name`, `state` (`pending`, `sent`, `remove`, `removed`, `failed`), `stale_name`, `removed_by`, `reason`, `updated_at`; no person column |
@@ -852,7 +922,7 @@ Times are milliseconds.
 
 No email, name, or address is stored, and no provider token. A person is a
 provider and that provider's opaque `sub`. The two room tables, `read_rooms`,
-`play_archive_files`, and the seat, assignment and review tables hold no person at all: no `user_id` and no column that
+`play_archive_files`, the two script ledgers (`play_script_total`, `play_removed_scripts`), and the seat, assignment and review tables hold no person at all: no `user_id` and no column that
 references `users`. `ANONYMOUS_TABLES` in `rooms.js`, `READ_ANONYMOUS_TABLES` in `read-rooms.js`, and
 `PLAYS_ANONYMOUS_TABLES` in `plays.js` name them, and the deletion test fails
 on a table that is in neither list nor `USER_TABLES`, or that gains a person
@@ -937,8 +1007,8 @@ until a TV client signs in and the owner decides how they should.
 ```sh
 cd worker
 npm ci
-npm test                 # 533 tests in workerd with a local D1, local Durable Objects, and a fake archive.org
-npm run test:mutations   # 365 deliberate breaks; every one must turn the suite red
+npm test                 # 652 tests in workerd with a local D1, local Durable Objects, and a fake archive.org
+npm run test:mutations   # 491 deliberate breaks; every one must turn the suite red
 node test/mutations.mjs --check              # every break still matches its source, nothing run
 node test/mutations.mjs --only "name,name"   # just those, after fixing a survivor
 node tools/castable-manifest.mjs             # after every rebuild of the BUNDLED scripts; the library's rows build with the site
@@ -998,7 +1068,10 @@ production when the director's account goes. Retention (`test/retention.test.js`
 Delete production by their owner only, a submitted production kept whole but for who recorded
 what, the end date's default, limits and day-after rule, the idle notice and its clearing, idle
 accounts and the `deleted-account` row, the cron, the class export's contents, the operator
-route's token and finds, the 13+ confirmations, and the required school reference. The scripts come from the castable file by their data,
+route's token and finds, the 13+ confirmations, and the required school reference. Own scripts
+(`test/own-scripts.test.js`, R4-4): made, sent once and whole, each reader and each refusal on both room transports,
+the caps, reports, the owner's removal by both tools, every deletion path with the total checked after each, and that
+none publishes even with a forged row. The scripts come from the castable file by their data,
 never by name.
 `.github/workflows/worker-test.yml` runs `npm test` on any change under
 `worker/` or to the bundled scripts. It has no Cloudflare credential and no deploy step.

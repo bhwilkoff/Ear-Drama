@@ -10,12 +10,16 @@ on:
     paths:
       - 'worker/**'
       - 'catalog/plays/castable-scripts.json'
+      - 'js/own-core.js'
+      - 'catalog/tests/golden/own_script_ops.json'
       - '.github/workflows/worker-test.yml'
   push:
     branches: [main]
     paths:
       - 'worker/**'
       - 'catalog/plays/castable-scripts.json'
+      - 'js/own-core.js'
+      - 'catalog/tests/golden/own_script_ops.json'
       - '.github/workflows/worker-test.yml'
   workflow_dispatch:
 

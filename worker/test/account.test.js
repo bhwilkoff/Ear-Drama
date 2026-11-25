@@ -82,6 +82,13 @@ async function fillPlays(s) {
   await env.DB.prepare("INSERT INTO play_archive_jobs (production_id, user_id, status, take_ids, created_at, updated_at) VALUES (?1, ?2, 'queued', '[]', 1, 1)")
     .bind(filed.id, s.user_id)
     .run();
+  // Their own script, and its text (Decision 088.4).
+  const lines = new TextEncoder().encode('[{"id":"L0001","kind":"speech","parts":[{"say":"Who is there?"}],"role":"ANNA"}]');
+  const revision = [...new Uint8Array(await crypto.subtle.digest("SHA-256", lines))].map((x) => x.toString(16).padStart(2, "0")).join("").slice(0, 12);
+  const body = { own: true, title: "The Pipes", script_id: `own-${crypto.randomUUID()}`, script_revision: revision, cast: [{ id: "L0001", part: "role:ANNA" }] };
+  const mineToo = await (await call("POST", "/v1/plays/productions", { token: s.access_token, body })).json();
+  const sent = await call("PUT", `/v1/plays/productions/${mineToo.id}/script`, { token: s.access_token, body: lines, headers: { "content-length": String(lines.length) } });
+  expect(sent.status).toBe(204);
   // A report and a block, both about the partner, in the partner's production.
   const theirs = await createProduction(partner);
   const inv = await invite(partner, theirs.id);

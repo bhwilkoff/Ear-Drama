@@ -27,6 +27,7 @@ import { nameRefusal } from "./plays-names.js";
 import { cleanAssignments, MAX_SEATS } from "./read-protocol.js";
 import { chooseStatements, createProduction, normalizeClassCode, parseTakeMeta, production, receiveTake, receiverOf, takeOut, touch } from "./plays.js";
 import { partOf } from "./plays-relay.js";
+import { ownScriptOut, sendScript } from "./plays-own.js";
 
 export const SEAT_KEY_HEADER = "x-seat-key";
 export const REVIEW_STATES = ["approved", "again"];
@@ -333,11 +334,13 @@ async function seatHome(env, seat) {
       .bind(row.id, seat.id)
       .all();
     const reviews = await reviewsFor(env, row.id);
+    const own = await ownScriptOut(env, row);
     productions.push({
       id: row.id,
       title: row.title,
       scriptID: row.script_id,
       scriptRevision: row.script_revision,
+      ...(own ? { own_script: { state: own.state, episode_id: own.episode_id } } : {}),
       assignments,
       takes: takes.map((t) => {
         const { user_id, ...out } = takeOut(row.id, t);
@@ -400,6 +403,12 @@ export async function handleSeat(url, request, env, ip) {
   if (await limited(env.SEAT_LIMITER, `${seat.class_id}:${seat.id}`)) return problem(429, "rate_limited");
   if (!a && m === "GET") return seatHome(env, seat);
   if (a === "productions" && b && c === "takes" && d && seg.length === 4 && m === "PUT") return seatTake(request, env, seat, b, d, now);
+  if (a === "productions" && b && c === "script" && seg.length === 3) {
+    // The teacher brings the script; a student never sends text (Decision 088.4, R4 §3.5).
+    if (m !== "GET") return problem(403, "teacher_only");
+    const { p, error } = await seatProduction(env, seat, b);
+    return error || sendScript(request, env, p);
+  }
   if (a === "productions" && b && c === "receiver" && seg.length === 3 && m === "GET") {
     const { p, error } = await seatProduction(env, seat, b);
     return error || json(await receiverOf(env, p));

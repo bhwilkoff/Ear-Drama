@@ -34,7 +34,9 @@ export function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, PUT, POST, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, content-type, x-room-key, x-read-key, x-seat-key, x-take, x-invite",
+    "Access-Control-Allow-Headers": "authorization, content-type, x-room-key, x-read-key, x-seat-key, x-take, x-invite, if-none-match",
+    // Without this a page on our own site reads these headers as absent.
+    "Access-Control-Expose-Headers": "etag, x-script, x-take",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };

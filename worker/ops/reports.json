@@ -1,8 +1,9 @@
 {
   "about": "The owner's answers to a report (tools/reports.py), as D1 statements; the tool quotes each :name. worker/test/reports.test.js runs these same statements on the Worker's database and then asks the Worker's own routes what changed, so a schema or rule change that breaks an answer fails there.",
   "count": "SELECT COUNT(*) AS n FROM play_reports WHERE status = 'open'",
-  "list": "SELECT r.id, r.created_at, r.reason, CASE WHEN r.take_id IS NULL THEN 'member' ELSE 'take' END AS kind, p.title, p.class_id IS NOT NULL AS class, j.status AS archive FROM play_reports r LEFT JOIN play_productions p ON p.id = r.production_id LEFT JOIN play_archive_jobs j ON j.production_id = r.production_id WHERE r.status = 'open' ORDER BY r.created_at LIMIT 100",
-  "show": "SELECT r.id, r.status, r.created_at, r.reason, r.note, r.production_id, r.take_id, r.target_user_id, p.title, p.script_id, p.class_id, p.user_id = r.target_user_id AS names_director, rm.display_name AS reporter_name, tm.display_name AS target_name, t.line_id, t.part, t.seat_id AS seat, t.credit, t.uploaded_at, t.chosen, f.state AS file_state, f.name AS file_name, j.status AS archive, j.item_url, (SELECT COUNT(*) FROM play_invites i WHERE i.production_id = r.production_id AND i.revoked = 0 AND i.expires_at > :now) AS live_invites, (SELECT COUNT(*) FROM play_takes k WHERE k.production_id = r.production_id AND k.user_id = r.target_user_id) AS their_takes FROM play_reports r LEFT JOIN play_productions p ON p.id = r.production_id LEFT JOIN play_members rm ON rm.production_id = r.production_id AND rm.user_id = r.user_id LEFT JOIN play_members tm ON tm.production_id = r.production_id AND tm.user_id = r.target_user_id LEFT JOIN play_takes t ON t.production_id = r.production_id AND t.id = r.take_id LEFT JOIN play_archive_jobs j ON j.production_id = r.production_id LEFT JOIN play_archive_files f ON f.production_id = r.production_id AND f.take_id = r.take_id WHERE r.id = :id",
+  "list": "SELECT r.id, r.created_at, r.reason, CASE WHEN r.script = 1 THEN 'script' WHEN r.take_id IS NULL THEN 'member' ELSE 'take' END AS kind, p.title, p.class_id IS NOT NULL AS class, j.status AS archive FROM play_reports r LEFT JOIN play_productions p ON p.id = r.production_id LEFT JOIN play_archive_jobs j ON j.production_id = r.production_id WHERE r.status = 'open' ORDER BY r.created_at LIMIT 100",
+  "show": "SELECT r.id, r.status, r.created_at, r.reason, r.note, r.production_id, r.take_id, r.target_user_id, r.script, s.bytes AS script_bytes, s.episode_id, p.title, p.script_id, p.class_id, p.user_id = r.target_user_id AS names_director, rm.display_name AS reporter_name, tm.display_name AS target_name, t.line_id, t.part, t.seat_id AS seat, t.credit, t.uploaded_at, t.chosen, f.state AS file_state, f.name AS file_name, j.status AS archive, j.item_url, (SELECT COUNT(*) FROM play_invites i WHERE i.production_id = r.production_id AND i.revoked = 0 AND i.expires_at > :now) AS live_invites, (SELECT COUNT(*) FROM play_takes k WHERE k.production_id = r.production_id AND k.user_id = r.target_user_id) AS their_takes FROM play_reports r LEFT JOIN play_productions p ON p.id = r.production_id LEFT JOIN play_members rm ON rm.production_id = r.production_id AND rm.user_id = r.user_id LEFT JOIN play_members tm ON tm.production_id = r.production_id AND tm.user_id = r.target_user_id LEFT JOIN play_takes t ON t.production_id = r.production_id AND t.id = r.take_id LEFT JOIN play_archive_jobs j ON j.production_id = r.production_id LEFT JOIN play_archive_files f ON f.production_id = r.production_id AND f.take_id = r.take_id LEFT JOIN play_scripts s ON s.production_id = r.production_id WHERE r.id = :id",
+  "read-script": "SELECT body FROM play_scripts WHERE production_id = :production",
   "dismiss": [
     "UPDATE play_reports SET status = 'dismissed' WHERE id = :id AND status = 'open'"
   ],
@@ -27,6 +28,11 @@
     "DELETE FROM play_consents WHERE production_id = :production AND user_id = :target",
     "DELETE FROM play_members WHERE production_id = :production AND user_id = :target",
     "UPDATE play_invites SET revoked = 1 WHERE production_id = :production"
+  ],
+  "remove-script": [
+    "INSERT OR IGNORE INTO play_removed_scripts (key, removed_at) SELECT 'revision:' || p.script_revision, :now FROM play_scripts s JOIN play_productions p ON p.id = s.production_id WHERE s.production_id = :production AND s.bytes > 0",
+    "UPDATE play_scripts SET body = NULL, bytes = 0, held_at = :now WHERE production_id = :production AND held_at IS NULL",
+    "UPDATE play_reports SET status = 'acted' WHERE script = 1 AND status = 'open' AND production_id = :production"
   ],
   "unshare": [
     "UPDATE play_invites SET revoked = 1 WHERE production_id = :production",

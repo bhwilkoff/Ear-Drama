@@ -5,6 +5,8 @@
     show ID                    one report, with everything needed to answer it
     dismiss ID --yes           nothing is wrong; what it held may publish
     remove-take ID --yes       the reported take leaves the production, and archive.org if it is there
+    read-script ID             the reported script's words, to judge it by
+    remove-script ID --yes     the production's script leaves our server; nobody new comes in and nothing more is recorded
     remove-member ID --yes     the reported person leaves the production with their takes; its invites close
     unshare ID --yes           every invite closes and every published line leaves archive.org
 
@@ -30,7 +32,7 @@ import zoneinfo
 WORKER = pathlib.Path(__file__).resolve().parent.parent / "worker"
 OPS = json.loads((WORKER / "ops" / "reports.json").read_text())
 ID = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
-ANSWERS = ("dismiss", "remove-take", "remove-member", "unshare")
+ANSWERS = ("dismiss", "remove-take", "remove-script", "remove-member", "unshare")
 
 
 def q(v) -> str:
@@ -72,6 +74,14 @@ def plan(op: str, r: dict):
     if op == "unshare":
         return op, (f"close {r['live_invites']} live invite(s) and take every published line off archive.org; "
                     "the people already in it keep it")
+    if op == "remove-script":
+        if not r["script"]:
+            sys.exit("this report names a " + ("take" if r["take_id"] else "person") + ", not the script")
+        if not r["script_bytes"]:
+            sys.exit("that script is already gone: dismiss the report")
+        return op, "remove the script's words; nobody new can come in and nothing more is recorded; the people in it keep their copies"
+    if r["script"]:
+        sys.exit("this report names the script: remove-script, unshare or dismiss")
     if op == "remove-take":
         if not r["take_id"]:
             sys.exit("this report names a person, not a take: remove-member, unshare or dismiss")
@@ -95,6 +105,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list")
     sub.add_parser("show").add_argument("id")
+    sub.add_parser("read-script").add_argument("id")
     for op in ANSWERS:
         s = sub.add_parser(op)
         s.add_argument("id")
@@ -120,7 +131,9 @@ def main(argv=None):
             ("Report", f"{r['id']}, {r['status']}, {when(r['created_at'])}"),
             ("Reason", r["reason"]), ("Note", r["note"]), ("From", r["reporter_name"]),
             ("About", (r["credit"] or r["target_name"] or "-") + (" (the director)" if r["names_director"] else "")),
-            ("Play", r["title"]), ("Take", r["take_id"] and f"{r['part']}, line {r['line_id']}, {when(r['uploaded_at'])}"),
+            ("Play", r["title"]), ("Script", r["script"] and ((f"{r['script_bytes']} bytes, read-script prints it" if r["script_bytes"] else "already gone")
+                                                                + (f"; the transcript of {r['episode_id']}" if r["episode_id"] else ""))),
+            ("Take", r["take_id"] and f"{r['part']}, line {r['line_id']}, {when(r['uploaded_at'])}"),
             ("Class", r["class_id"] and "a class production: its teacher can act too"),
             ("Invites", f"{r['live_invites']} live"), ("archive.org", r["item_url"] or r["archive"]),
             ("File", r["file_name"]),
@@ -128,6 +141,12 @@ def main(argv=None):
             if v:
                 print(f"{label + ':':<13}{clean(v)}")
         print("The audio is on its makers' devices and, if published, archive.org; the Worker keeps none.")
+        return
+    if a.cmd == "read-script":
+        if not r["script"]:
+            sys.exit("this report is not of a script")
+        rows = d1(fill(OPS["read-script"], {"production": r["production_id"]}), a.local)
+        print(clean(rows[0]["body"]) if rows and rows[0]["body"] else "that script is already gone")
         return
     if r["status"] != "open":
         sys.exit(f"already {r['status']}")
