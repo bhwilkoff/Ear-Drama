@@ -486,7 +486,7 @@ final class EarModel {
         let before = (session.doc, rec)
         session.replace(doc)
         rec = next
-        save.flush()
+        _ = save.take()
         guard await write() else {
             session.replace(before.0)
             rec = before.1
@@ -504,7 +504,8 @@ final class EarModel {
         if sample != nil { endSample(goOn: true) }
         undoManager?.removeAllActions(withTarget: self)
         if let rec, !done {
-            if save.pending { save.flush() } else if abs((rec.ear?.place ?? 0) - nowMs) > 1000 { Task { await write() } }
+            // The write holds the model: the page that had it may already be gone.
+            if save.take() || abs((rec.ear?.place ?? 0) - nowMs) > 1000 { Task { await self.write() } }
         }
         if mine { audio.release() }
         mine = false

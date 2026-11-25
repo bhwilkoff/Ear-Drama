@@ -68,7 +68,7 @@ MUTANTS = [
     (P + "PlaysLibrary.swift", "        if PlayScript.isOwnID(id) { return own.script(id) }\n", "", "the network is never asked"),
     (P + "KokoroEngine.swift", "        if PlayScript.isOwnID(playID) { return false }  // an own script has none to ask for\n", "", "no phonemes asked for"),
     (P + "PlayPage.swift", "guard emphasis, case let .direction(text)", "guard case let .direction(text)", "brackets are the person's own"),
-    (P + "OwnPartsModel.swift", "        undoManager?.removeAllActions(withTarget: self)\n        if !finished { save.flush() }", "        undoManager?.removeAllActions(withTarget: self)", "what was waiting when the page closed"),
+    (P + "OwnPartsModel.swift", "        undoManager?.removeAllActions(withTarget: self)\n        if !finished { flush() }", "        undoManager?.removeAllActions(withTarget: self)", "what was waiting when the page closed"),
     (P + "OwnPartsModel.swift", "            rec = before\n            refresh()\n            return false", "            return false", "the page keeps the work"),
     (P + "OwnPartsModel.swift", "if !fromManager, let undoManager, undoManager.canUndo {", "if !fromManager, let undoManager, undoManager.canUndo, undoManager.canRedo {", "one Undo, not two"),
     ("apple/Core/Store/LaunchDoors.swift", "environment[\"APP_START_OWN\"] != nil || environment[\"APP_START_CAST\"] != nil ? \"1\" : nil", "nil", "a door is always scratch"),

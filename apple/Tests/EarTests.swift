@@ -291,7 +291,9 @@ private final class FakeAudio: EarAudio {
     }
     func resume() { isPlaying = true; log.append("resume") }
     func pause() { isPlaying = false; log.append("pause") }
-    func seek(to seconds: Double) { settledSeconds = seconds; jumps += 1; log.append("seek \(seconds)") }
+    /// A seek that has not landed leaves no place to read.
+    var lands = true
+    func seek(to seconds: Double) { settledSeconds = lands ? seconds : nil; jumps += 1; log.append("seek \(seconds)") }
 }
 
 @MainActor @Suite struct EarModelTests {
@@ -407,11 +409,14 @@ private final class FakeAudio: EarAudio {
         r.audio.seek(to: 8.1)
         m.sync()
         #expect(cast(m.session) == ["A", nil, nil, nil, nil, nil, nil])
+        r.audio.lands = false
+        let heard = m.session.doc.heard
         m.back()
-        #expect(abs((r.audio.settledSeconds ?? 0) - 3.1) < 0.001)
-        r.audio.settledSeconds = nil
         m.sync()
-        #expect(m.lit == 2, "a seek in flight has no place: the page stands where it asked to be")
+        #expect(m.session.doc.heard == heard && m.lit == 5, "a seek in flight has no place: nothing is heard until it lands")
+        r.audio.settledSeconds = 3.1
+        m.sync()
+        #expect(m.lit == 2 && m.session.doc.heard == heard + [2])
     }
 
     @Test func aCopyJustLoadedIsMovedToThePlaceItWasLeft() async throws {

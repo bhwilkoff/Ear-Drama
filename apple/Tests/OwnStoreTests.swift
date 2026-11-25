@@ -352,6 +352,8 @@ private func speech(_ rec: OwnRecord, _ role: String, _ n: Int = 0) -> OwnLine {
         let handle = try FileHandle(forWritingTo: big)
         try handle.truncate(atOffset: 5_000_000_000)
         try handle.close()
+        // Unreadable as well as long: only its size can say why.
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: big.path)
         #expect(OwnIncoming(big).read() == .failure(.too_long), "five gigabytes are refused by their size, unread")
         try Data("ANNA: Hello".utf8).write(to: ok)
         #expect(OwnIncoming(ok).read() == .success(.init(title: "My Play", text: "ANNA: Hello")))
@@ -557,14 +559,16 @@ private func speech(_ rec: OwnRecord, _ role: String, _ n: Int = 0) -> OwnLine {
 
     @Test func everyStepIsKeptAsItIsMade() async throws {
         let env = Env(); defer { env.clean() }
-        let m = try await model(env)
-        m.give(m.lines[0].k, .kind("direction"))
+        var page: OwnPartsModel? = try await model(env)
+        let first = page!.lines[0].k, fourth = page!.lines[3].k
+        page!.give(first, .kind("direction"))
         for _ in 0..<100 where env.own.rows.first?.open != 1 { try await Task.sleep(for: .milliseconds(20)) }
         #expect(env.own.rows.first?.open == 1)
-        m.give(m.lines[3].k, .kind("sound"))
-        m.leave()
+        page!.give(fourth, .kind("sound"))
+        page!.leave()
+        page = nil
         for _ in 0..<50 where env.own.rows.first?.open != 0 { try await Task.sleep(for: .milliseconds(20)) }
-        #expect(env.own.rows.first?.open == 0, "and what was waiting when the page closed")
+        #expect(env.own.rows.first?.open == 0, "and what was waiting when the page closed, its model already gone")
     }
 }
 

@@ -25,12 +25,17 @@ final class OwnLater {
         }
     }
 
-    /// Now, when one is waiting.
-    func flush() {
-        guard task != nil else { return }
+    /// Takes back a waiting call; whether there was one.
+    func take() -> Bool {
+        guard task != nil else { return false }
         task?.cancel()
         task = nil
-        Task { await act() }
+        return true
+    }
+
+    /// Now, when one is waiting.
+    func flush() {
+        if take() { Task { await act() } }
     }
 }
 
@@ -191,7 +196,10 @@ final class OwnPartsModel {
         }
     }
 
-    func flush() { save.flush() }
+    /// What is waiting, now. The write holds the model: the page that had it may already be gone.
+    func flush() {
+        if save.take() { Task { await self.write() } }
+    }
 
     /// Done: lines with no part become directions and each line gets its id, once. True when it is a script.
     func finish() async -> Bool {
@@ -204,7 +212,7 @@ final class OwnPartsModel {
         }
         let before = rec
         rec = next
-        save.flush()
+        _ = save.take()
         guard await write() else {
             rec = before
             refresh()
@@ -218,7 +226,7 @@ final class OwnPartsModel {
 
     func leave() {
         undoManager?.removeAllActions(withTarget: self)
-        if !finished { save.flush() }
+        if !finished { flush() }
     }
 }
 #endif
