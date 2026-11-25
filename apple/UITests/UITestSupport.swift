@@ -164,4 +164,6 @@ enum Fixture {
     /// An episode of 25 to 35 minutes whose show has a served picture, and that show's name: the show-art test.
     static var faced: String { value("faced", "gunsmoke|1952-04-26") }
     static var facedSeries: String { value("facedSeries", "Gunsmoke") }
+    /// An episode with a shown transcript and no script: the cast-by-ear test.
+    static var spoken: String { let v = value("spoken", "planetman|n53"); return v.isEmpty ? "planetman|n53" : v }
 }

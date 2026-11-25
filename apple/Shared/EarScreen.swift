@@ -580,7 +580,7 @@ private struct EarRail: View {
                         .frame(width: 20)
                     PartFace(hue: model.hue(part.name), holder: .person(part.name))
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(verbatim: part.name).font(TypeRamp.bodyStrong).foregroundStyle(Color.brandText).lineLimit(2).minimumScaleFactor(0.7)
+                        Text(verbatim: part.name).font(TypeRamp.bodyStrong).foregroundStyle(Color.brandText).lineLimit(1).minimumScaleFactor(0.6)
                         Text(verbatim: OwnText.count(part.lines, "line", "lines")).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
                     }
                     Spacer(minLength: 0)

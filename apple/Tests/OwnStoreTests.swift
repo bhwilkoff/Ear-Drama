@@ -580,6 +580,18 @@ private func speech(_ rec: OwnRecord, _ role: String, _ n: Int = 0) -> OwnLine {
         #expect(LaunchDoors.from(environment: ["APP_START_OWN": "nonsense"], arguments: []).own == nil)
     }
 
+    @MainActor @Test func aTextFileHandedToTheAppWaitsInTheInboxForAddAScript() throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: "Handed-\(UUID().uuidString).txt")
+        try Data("ANNA: Hello".utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let store = AppStore()
+        store.post(.script(file))
+        #expect(store.incomingScript == nil && !store.wantsAddScript, "nothing is read before the root takes it")
+        #expect(store.drainInbox().isEmpty)
+        #expect(store.wantsAddScript && store.incomingScript?.read() == .success(.init(title: file.deletingPathExtension().lastPathComponent, text: "ANNA: Hello")))
+        #expect(FileManager.default.fileExists(atPath: file.path), "a file that is not the system's copy is left where it is")
+    }
+
     /// Open In never makes Ear Drama what a text file opens with, and the TV opens none.
     @Test func theDocumentTypeIsAnAlternateAndTheTVHasNone() throws {
         let root = URL(fileURLWithPath: #filePath).resolvingSymlinksInPath().deletingLastPathComponent().deletingLastPathComponent()
