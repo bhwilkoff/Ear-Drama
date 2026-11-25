@@ -283,3 +283,7 @@ GRW request sent or not.
   read). **R4-2c**, every stack: Add a script checks the built size at Next (a 280 KB text passes, Done refuses it); Delete on a
   script not yet Done; the parts label's "+51" over its bars; Android tab labels break mid-word at font scale 200%. Not seen
   on a device: room Remove, TalkBack, a take of an own script. R4-5 web started.
+- 2026-11-24 21:00: **R4-6 merged** (Apple: Add a Script, Cast by Ear; 654 tests, 53 mutants, 14 frames read). 1.1.0 (172), a minor
+  bump for what is new. Follow-ups (B26): part colors differ between the parts page and the script's page (BEN teal, then blue);
+  Apple room Remove/leave; Mac Save as Text only by Share; Apple seek accuracy by ear. The owner must answer a standing macOS prompt
+  ("Ear Drama" wants Documents: Don't Allow); until then run xctest from a /private/tmp clone.
