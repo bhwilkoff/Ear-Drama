@@ -292,3 +292,7 @@ GRW request sent or not.
   fix in Gradle (resolve the jars as a configuration, Robolectric offline). B26 additions: web (and check Apple) auto-cast picks
   macOS novelty voices (Bahh, Bells, Boing) as Defaults; `.os-sheet` backdrop lightens dark pages; an orphan share counts to 20.
   Next: R4-5 on Apple and Android with the B26 follow-ups.
+- 2026-11-24 21:35: **R4-9 designed** (docs/research/design/R4-9-originality.md). **R4-9a, first (verified by the main thread)**: the public
+  catalog Releases' `harvest-cache.tar.xz` holds 1,028 Generic Radio Workshop texts (and the database 251,775 `script_cues`), on
+  every dated catalog Release since 10-21. New Release without them, a guard test, then the old assets deleted (owner's yes
+  needed: permanent). 1.1.0 (172): TestFlight and Play internal green; Android Build rerun (Robolectric download).
