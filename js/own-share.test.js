@@ -169,8 +169,7 @@ test('a sending that can never pass undoes the share, on the Worker and here', a
   eq([W.count('put'), d.plays.share(local.id)], [0, null], 'no text was sent');
 });
 
-test('a share whose creation answer was lost is adopted when it can be, deleted when it is an hour old, else left; asked once a page, never polled', async () => {
-  const NOW = 10 * 3600 * 1000;
+test('a share whose creation answer was lost is adopted when it can be, else left; asked once a page, never polled', async () => {
   const lost = async (W, d, title) => {
     const s = await made(d, title), local = await d.plays.create(s);
     W.lose = true;
@@ -179,7 +178,7 @@ test('a share whose creation answer was lost is adopted when it can be, deleted 
   };
   const run = async (W, d, checked = new Set()) => {
     const remote = (await W.api.list()).productions;
-    return S.reconcileOwed({ api: W.api, store: d.plays, remote, me: 'me', scripts: d.own, now: NOW, checked });
+    return S.reconcileOwed({ api: W.api, store: d.plays, remote, me: 'me', scripts: d.own, checked });
   };
   // Adopt: one unshared production of that script here.
   let W = worker(), d = await device();
@@ -190,18 +189,18 @@ test('a share whose creation answer was lost is adopted when it can be, deleted 
   eq([d.plays.share(local.id), W.count('put'), W.rows.get('P1').bytes !== null], [{ pid: 'P1' }, 1, true], 'linked, and the text sent');
   eq([await run(W, d, checked), W.count('get')], [false, 1], 'asked once a page: the second pass asks nothing');
   eq(await run(W, d), false, 'a linked production is not fetched again');
-  // An old orphan with nothing here: deleted. A young one: left. A catalog row, another person's row: never fetched.
+  // With nothing here it is left, however old: another device may still owe the text. A catalog row, another person's row: never fetched.
   W = worker(); d = await device();
-  await lost(W, d, 'Old'); await lost(W, d, 'Young');
+  await lost(W, d, 'Old');
   for (const p of [...d.plays.productions]) await d.plays.delete(p.id);
-  W.rows.get('P1').at = NOW - 2 * 3600 * 1000; W.rows.get('P2').at = NOW - 60 * 1000;
+  W.rows.get('P1').at = 0;
   W.rows.set('P3', { body: { script_id: 'gut-1', script_revision: 'r', cast: [] }, bytes: null, title: 'Catalog' });
   W.rows.set('P4', { body: { script_id: 'own-x', script_revision: 'r', cast: [], own: true }, bytes: null, title: 'Theirs', director: 'you' });
   const page = new Set();
-  eq(await run(W, d, page), true, 'changed');
-  eq(await run(W, d, page), false, 'the same page asks about the young one once');
-  eq([...W.rows.keys()], ['P2', 'P3', 'P4'], 'the old orphan is gone from the Worker; the young one, a catalog row and another person\'s stay');
-  eq(W.calls.filter(c => c[0] === 'get').map(c => c[1]), ['P1', 'P2'], 'only this person\'s own rows are fetched');
+  eq(await run(W, d, page), false, 'nothing changed');
+  eq(await run(W, d, page), false, 'the same page asks about it once');
+  eq([...W.rows.keys()], ['P1', 'P3', 'P4'], 'nothing is deleted');
+  eq(W.calls.filter(c => c[0] === 'get').map(c => c[1]), ['P1'], 'only this person\'s own rows are fetched');
   // A refusal that can never pass undoes the adopted share, here and there.
   W = worker(); d = await device();
   ({ s, local } = await lost(W, d, 'Never'));

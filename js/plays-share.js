@@ -299,14 +299,13 @@ const PlaysShare = (() => {
   }
 
   const reconciled = new Set();
-  const ORPHAN_AFTER_MS = 60 * 60 * 1000;
   /**
    * An own-script share whose creation answer was lost (§13 item 11a): the Worker holds a production of this person's
    * with the text `owed` and this device holds no link to it. Run once a page over the list the screen already read, so
-   * nothing polls. One unshared production of that script at that revision here adopts it and sends the text; else, once
-   * it is an hour old (another device may be sending it), it is deleted: it counts toward 20 and its text can never come.
+   * nothing polls. One unshared production of that script at that revision here adopts it and sends the text; any other is
+   * left: an owed text may be another device's, offline or full and still trying, and deleting it would end that share.
    */
-  async function reconcileOwed({ api, store, remote, me, scripts = ownScripts(), now = Date.now(), checked = reconciled }) {
+  async function reconcileOwed({ api, store, remote, me, scripts = ownScripts(), checked = reconciled }) {
     let changed = false;
     for (const r of remote || []) {
       if (!isOwnId(r.script_id) || !me || r.director !== me || checked.has(r.id) || store.findShared(r.id)) continue;
@@ -321,9 +320,6 @@ const PlaysShare = (() => {
           await store.setShare(here[0].id, { pid: r.id });
           const err = await sendOrUndo({ api, pid: r.id, script, scripts });
           if (err && !passes(err)) await store.unshare(here[0].id);
-          changed = true;
-        } else if (now - (r.updated_at || 0) > ORPHAN_AFTER_MS) {
-          await api.deleteProduction(r.id);
           changed = true;
         }
       } catch (e) { console.error(e); checked.delete(r.id); }

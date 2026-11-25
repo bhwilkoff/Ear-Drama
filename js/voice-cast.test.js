@@ -329,8 +329,7 @@ test('novelty voices are never a Default unless ticked; the web, Apple and Andro
   const apple = names(swift, 'noveltyNames');
   const droid = names(kt, 'val NOVELTY');
   eq(apple, web, 'Apple noveltyNames = web NOVELTY');
-  // Android's list lacks two names Apple has (Deranged, Hysterical); web work does not edit Kotlin, so the gap is pinned: any other drift, or the fix landing, fails this line.
-  eq(web.filter(n => !droid.includes(n)).concat(droid.filter(n => !web.includes(n))), ['deranged', 'hysterical'], 'Android NOVELTY = web NOVELTY less the pinned gap');
+  eq(droid, web, 'Android NOVELTY = web NOVELTY');
 });
 
 test('untouched parts read Default at the defaults\' speed; a choice overrides and Default takes it back', () => {

@@ -2046,8 +2046,9 @@ no Share, no Read together, no Invite and no Publish: the buttons are absent, ne
    - **A share whose creation answer was lost** (web 2026-11-25; Apple and Android follow): the Worker holds a
      production of the person's with the text `owed` and this device holds no link to it, and it counts toward 20.
      Once a page, over the list the screen already read (no polling), each such production is looked at once: exactly
-     one unshared production of that script at that revision here adopts it (linked, the text sent); else, once it is
-     an hour old (another device may be sending it), it is deleted. Nothing is said on screen.
+     one unshared production of that script at that revision here adopts it (linked, the text sent). Any other is left
+     as it is: the text may be owed by another device that is offline and still trying, so nothing but a person deletes
+     it. Nothing is said on screen.
    - **One resolver** answers "the script of this production or room" for a member, an invite, a class, a seat and
      a room (web `PlaysShare.scriptOf`). A catalog play is the library's, at the recorded revision. An own script is
      this device's copy in the production, then this device's script at that revision, then the Worker's. What the

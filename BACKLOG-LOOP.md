@@ -310,3 +310,6 @@ GRW request sent or not.
   catalog-2026-11-24 green). 1.1.1 (173) shipped to TestFlight + Play internal. The site is about 1.2 GB, over Pages' 1 GB guideline
   (Kokoro model 340 MB, library 480 MB): plan to move one before it grows. About 12 million agent tokens on 11-24: from here Sonnet,
   one agent at a time. Next: B26 web leftovers, then R4-9 build, then daytime device work (B20, B24; iPhone before 21:00).
+- 2026-11-25 00:45: B26 web merged (one part-color rule, novelty voices off on three stacks, dark sheet veil, web_fit_home deterministic, a
+  lost share adopted; its deletion of old orphans removed by the main thread: another device may still owe the text). A person
+  without a copy of a production at an old revision has no text: 2 productions and 1 class exist, so listed, not built.

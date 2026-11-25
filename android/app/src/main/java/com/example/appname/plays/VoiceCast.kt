@@ -148,7 +148,7 @@ object VoiceCasting {
 
     /** Voices made for fun, not for reading a play (macOS's novelty set): never picked by Defaults, though a person may tick one. */
     val NOVELTY = setOf(
-        "albert", "bad news", "bahh", "bells", "boing", "bubbles", "cellos", "good news", "jester", "organ", "superstar", "trinoids", "whisper", "wobble", "zarvox",
+        "albert", "bad news", "bahh", "bells", "boing", "bubbles", "cellos", "deranged", "good news", "hysterical", "jester", "organ", "superstar", "trinoids", "whisper", "wobble", "zarvox",
     )
 
     fun isNovelty(name: String): Boolean = name.trim().lowercase(Locale.ROOT) in NOVELTY

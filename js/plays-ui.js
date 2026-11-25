@@ -138,7 +138,7 @@ const PlaysUI = (() => {
   const canShare = () => API.plays.available() && API.account.signedIn();
   const signIn = () => { if (typeof AccountUI !== 'undefined') AccountUI.openSheet(); };
 
-  /** This person's productions on the Worker; an own share whose creation answer was lost is adopted or deleted first (§13 item 11a), and the list read again. */
+  /** This person's productions on the Worker; an own share whose creation answer was lost is adopted first (§13 item 11a), and the list read again. */
   async function listed() {
     const read = async () => (await API.plays.list()).productions || [];
     let remote = await read();
