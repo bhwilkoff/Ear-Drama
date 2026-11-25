@@ -306,3 +306,7 @@ GRW request sent or not.
   Phoneme env + library build running, no upload. Then: publish the library, bump, ship. Known leftovers: gut-1537 Gower after the dumb
   show reads as a direction; gut-56266-1 "Reception-room in the Palace" as PAL. Owner rulings: old Release assets; Goldin plots,
   Haendiges pages, OTRRpedia synopses, archive.org reviews and transcripts in the public cache (inventory).
+- 2026-11-25 00:15: **library of 1,194 plays live** (391 new, footnotes gone; a room opened on a new play; all CI green; catalog publish from
+  catalog-2026-11-24 green). 1.1.1 (173) shipped to TestFlight + Play internal. The site is about 1.2 GB, over Pages' 1 GB guideline
+  (Kokoro model 340 MB, library 480 MB): plan to move one before it grows. About 12 million agent tokens on 11-24: from here Sonnet,
+  one agent at a time. Next: B26 web leftovers, then R4-9 build, then daytime device work (B20, B24; iPhone before 21:00).
