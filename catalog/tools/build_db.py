@@ -1742,9 +1742,11 @@ def main():
                     wants.append((k, dt, e["title"], e.get("length")))
 
     # Scripts: the Generic Radio Workshop (GRW: "Assume Copyright"), matched on
-    # series + air date. Text is for search; a client shows it in full only for
-    # a clean episode, and otherwise links to the GRW page.
+    # series + air date. No step of the build reads a script's words: the text
+    # is never in the public cache (tools/cache_denylist.txt), only the ids of
+    # the scripts the harvest holds, and no client shows it.
     grw = load(os.path.join(ia.CACHE, "grw", "scripts.json"), {"scripts": []})
+    held = ES.held_ids(os.path.join(ia.CACHE, "grw"))
     script_rows = []
     for sc in grw["scripts"]:
         k = canon(sc["series"])
@@ -1757,9 +1759,8 @@ def main():
                 ep = cand
             if ep is None and nt:
                 ep = next((e for e in by_date.get(sc["date"], []) if A.norm_title(e.get("title")) == nt), None)
-        txt = os.path.join(ia.CACHE, "grw", "text", sc["id"] + ".txt")
         script_rows.append([sc["id"], "genericradio.com", k, sc.get("date"), sc["title"], sc["url"],
-                            os.path.exists(txt), ep["id"] if ep else None])
+                            sc["id"] in held, ep["id"] if ep else None])
         stats["scripts"] += 1
         stats["scripts_matched"] += bool(ep)
 
@@ -1835,7 +1836,6 @@ def main():
     for r in script_rows:
         display = "full" if r[7] and states.get(r[7]) == "keep_clean" else "link"
         db.execute("INSERT INTO scripts VALUES (?,?,?,?,?,?,?,?,?)", (*r, display))
-    stats["script_cues"] = ES.write_cues(db, os.path.join(ia.CACHE, "grw", "text"))   # read-along groundwork, DECISIONS 030
     db.executemany("INSERT INTO wants VALUES (?,?,?,?)", wants)
     stats["otrr_rows"] = len(otrr_rows)
     stats["otrr_files"] = len(otrr_by_file)

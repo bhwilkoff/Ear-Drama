@@ -8,11 +8,13 @@ branch and moved here, with its history, on 2026-10-22. `editorial/film_renewals
 
 ## Start from the published snapshot
 
-The built database and every harvest cache are on the
-[`catalog-2026-10-21` Release](https://github.com/bhwilkoff/Ear-Drama/releases/tag/catalog-2026-10-21),
+The built database and the harvest caches are on the newest
+[`catalog-YYYY-MM-DD` Release](https://github.com/bhwilkoff/Ear-Drama/releases),
 never in git. From this folder:
 
-    gh release download catalog-2026-10-21 -R bhwilkoff/Ear-Drama -D dist
+    tag=$(gh release list -R bhwilkoff/Ear-Drama --limit 100 --json tagName \
+      --jq '[.[].tagName | select(test("^catalog-[0-9]{4}-"))] | sort | last')
+    gh release download "$tag" -R bhwilkoff/Ear-Drama -D dist
     (cd dist && shasum -a 256 -c SHA256SUMS)
     mkdir -p out .cache && xz -dc dist/radio-catalog.sqlite.xz > out/radio-catalog.sqlite
     xz -dc dist/harvest-cache.tar.xz | tar -x -C .cache    # rebuild without re-harvesting
@@ -56,13 +58,20 @@ when someone cuts a new dated Release (database, `harvest-cache.tar.xz`,
 The owner runs the cut and the dispatch; an agent stages the folder. Build the
 folder from the newest dated Release, never from a working `.cache/`, which drifts:
 
-    gh release download catalog-2026-10-21 -R bhwilkoff/Ear-Drama -D old
+    gh release download "$tag" -R bhwilkoff/Ear-Drama -D old        # $tag: the newest, as above
     (cd old && shasum -a 256 -c SHA256SUMS)
     mkdir cache && xz -dc old/harvest-cache.tar.xz | tar -x -C cache
     cp <each changed harvest file> cache/<its path>      # only what the harvest changed
-    xz -dc old/harvest-cache.tar.xz | tar -t > order.txt
+    xz -dc old/harvest-cache.tar.xz | tar -t > order.txt        # plus a line for each new file
     COPYFILE_DISABLE=1 tar -c -n --no-xattrs --no-mac-metadata --uid 0 --gid 0 --uname root --gname root \
       -f - -C cache -T order.txt | xz -9 -T0 > staged/harvest-cache.tar.xz
+
+**The Releases are public.** Nothing on `tools/cache_denylist.txt` goes in: today the
+Generic Radio Workshop's script texts (`grw/text`; `grw/text_ids.json` stands for them) and
+any `script_cues` table (DECISIONS 043). The cut opens both `.xz` files and refuses them, and
+refuses a database with free pages, where a dropped table's words stay: make one with
+`VACUUM INTO`. A harvester whose source's words we may not republish adds its path to the
+list, and a row to `docs/research/data/public-cache-inventory.md`, in the same change.
 
 Then prove the change is only what you meant: list both tarballs (`tar -tv`), diff
 the names and sizes, and `diff -rq` the unpacked trees. Rebuild from each cache

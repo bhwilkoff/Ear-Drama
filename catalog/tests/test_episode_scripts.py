@@ -14,9 +14,13 @@ Broken controls, 2026-10-24, each run against a mutated copy of episode_scripts.
     link_outs() drops the https test               1 failed
     write_cues() stores the printed line, not the spoken words   1 failed
     scheme_id() returns the bundle id unchanged    1 failed
+2026-11-24 (R4-9a):
+    write_cues() writes into the research database   no such table: script_cues
+    held_ids() ignores the list / the local texts    2 failed / 4 failed
 """
 import json
 import os
+import shutil
 import sqlite3
 import sys
 import tempfile
@@ -123,13 +127,30 @@ with tempfile.TemporaryDirectory() as tmp:
             f"FIBBER: Line {i} about the closet and the hall and the porch today.\n\n"
             f"MOLLY: Answer {i}, dearie, and do not open that door again tonight. [SOUND: CRASH]"
             for i in range(30)) + "\n")
-    counts = E.write_cues(s, text_dir)
-    cues = list(s.execute("SELECT script_id, ord, kind, speaker, text FROM script_cues ORDER BY script_id, ord"))
+    before = {r[0] for r in s.execute("SELECT name FROM sqlite_master")}
+    cue_db = sqlite3.connect(os.path.join(tmp, "script-cues.sqlite"))
+    counts = E.write_cues(s, text_dir, cue_db)
+    cues = list(cue_db.execute("SELECT script_id, ord, kind, speaker, text FROM script_cues ORDER BY script_id, ord"))
     check("cues are written for a matched script with cached text, keyed by its id, in order",
           (counts.get("parsed"), cues[0][:4], cues[1][3], {c[0] for c in cues}),
           (1, ("grw:A1", 1, "speech", "FIBBER"), "MOLLY", {"grw:A1"}))
     check("a cue's text is the spoken words only", cues[0][4], "Line 0 about the closet and the hall and the porch today.")
     check("control: a matched script without cached text writes no cues", counts.get("no_text"), 5)
+    check("the cues never enter the research database, which is public",
+          {r[0] for r in s.execute("SELECT name FROM sqlite_master")}, before)
+    cue_db.close()
+    grw = os.path.join(tmp, "grw")
+    os.makedirs(os.path.join(grw, "text"))
+    check("no list and no text: no script is held", E.held_ids(grw), set())
+    for n in ("A1.txt", "H1.txt", "notes.md"):
+        open(os.path.join(grw, "text", n), "w").close()
+    check("texts here are held by their ids", E.held_ids(grw), {"A1", "H1"})
+    check("the list is written from them", E.write_held_ids(grw), 2)
+    shutil.rmtree(os.path.join(grw, "text"))
+    check("the list alone, as the public cache has it, holds the same ids", E.held_ids(grw), {"A1", "H1"})
+    check("a list is never shrunk by a machine without the texts", E.write_held_ids(grw), 2)
+    with open(os.path.join(grw, E.HELD)) as f:
+        check("the list is ids and nothing else", sorted(json.load(f)), ["_about", "ids"])
     check("control: no link out where the titles disagree, the episode is hidden, or the date differs",
           {"fibber|1947-05-13", "fibber|1947-06-03", "fibber|1947-06-10"} & set(outs), set())
     s.execute("UPDATE scripts SET url = 'http://www.genericradio.com/show/X' WHERE id = 'N1'")

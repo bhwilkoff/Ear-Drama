@@ -1,6 +1,7 @@
 """Which served episodes carry a script a person may record from (Decision 068).
 
     python3 tools/episode_scripts.py          # the counts, from out/radio-catalog.sqlite and the bundle
+    python3 tools/episode_scripts.py --cues   # out/script-cues.sqlite, on a machine that holds the texts
 
 An episode's `script` is a castable script's id, and it is set only when all of
 these hold, so a wrong match is never published:
@@ -154,9 +155,38 @@ def link_outs(s, served):
     return out
 
 
+HELD = "text_ids.json"
+
+
+def held_ids(grw_dir):
+    """The scripts the harvest holds a text for: grw/text_ids.json (ids only, what the public cache
+    carries in place of the words) and any text on this machine."""
+    ids = set()
+    try:
+        with open(os.path.join(grw_dir, HELD), encoding="utf-8") as f:
+            ids.update(json.load(f)["ids"])
+    except FileNotFoundError:
+        pass
+    try:
+        ids.update(n[:-4] for n in os.listdir(os.path.join(grw_dir, "text")) if n.endswith(".txt"))
+    except FileNotFoundError:
+        pass
+    return ids
+
+
+def write_held_ids(grw_dir):
+    """Write grw/text_ids.json: the ids already listed and every text here. Returns the count."""
+    ids = sorted(held_ids(grw_dir))
+    with open(os.path.join(grw_dir, HELD), "w", encoding="utf-8") as f:
+        json.dump({"_about": "Scripts of grw/scripts.json whose text the harvest read. Ids only: the text is "
+                             "never packed (tools/cache_denylist.txt).", "ids": ids}, f, indent=0)
+        f.write("\n")
+    return len(ids)
+
+
 CUES_DDL = """
 DROP TABLE IF EXISTS script_cues;
-CREATE TABLE script_cues (       -- research only, never published: a parsed matched script, for read-along
+CREATE TABLE script_cues (       -- this machine only, in a file of its own: a parsed matched script, for read-along
   script_id TEXT NOT NULL,       -- episode_scripts.scheme_id ("grw:<GRW id>")
   ord INTEGER NOT NULL,          -- the cue's place in the script, from 1
   line_id TEXT,                  -- script_parse's line id ("L0007")
@@ -168,12 +198,13 @@ CREATE TABLE script_cues (       -- research only, never published: a parsed mat
 """
 
 
-def write_cues(db, text_dir):
-    """Parse every matched script whose text the harvest cached (script_parse.parse, radio) into
-    `script_cues`, keyed by its scheme id: the cue structure a later alignment step pairs with the
-    episode's timed automatic transcript. Returns {status: count}."""
+def write_cues(db, text_dir, out):
+    """Parse every matched script (`db`, the research database, only read) whose text this machine
+    holds (script_parse.parse, radio) into `script_cues` of `out`, another database that is never
+    packed (tools/cache_denylist.txt), keyed by its scheme id: the cue structure a later alignment
+    step pairs with the episode's timed automatic transcript. Returns {status: count}."""
     import script_parse as SP
-    db.executescript(CUES_DDL)
+    out.executescript(CUES_DDL)
     counts = {}
     rows = list(db.execute("SELECT DISTINCT id, source FROM scripts WHERE episode_id IS NOT NULL ORDER BY id"))
     for sid, source in rows:
@@ -188,7 +219,7 @@ def write_cues(db, text_dir):
         for n, ln in enumerate(got.get("lines") or [], 1):
             text = (" ".join(p["say"] for p in ln.get("parts", []) if "say" in p) if ln["kind"] == "speech"
                     else ln["source"])
-            db.execute("INSERT INTO script_cues VALUES (?,?,?,?,?,?)",
+            out.execute("INSERT INTO script_cues VALUES (?,?,?,?,?,?)",
                        (key, n, ln["id"], ln["kind"], ln.get("role"), text))
     return counts
 
@@ -206,6 +237,12 @@ def check(projection, bundle):
 def main():
     import ia_lib as ia
     s = sqlite3.connect(f"file:{os.path.join(ia.OUT, 'radio-catalog.sqlite')}?mode=ro", uri=True)
+    if "--cues" in sys.argv[1:]:
+        out = sqlite3.connect(os.path.join(ia.OUT, "script-cues.sqlite"))
+        print(json.dumps(write_cues(s, os.path.join(ia.CACHE, "grw", "text"), out), indent=1))
+        out.commit()
+        out.close()
+        return
     served = {r[0] for r in s.execute("SELECT id FROM episodes WHERE state IN ('keep_clean', 'keep_unclaimed')")}
     bundle = load_bundle()
     _, report = links(s, served, bundle)

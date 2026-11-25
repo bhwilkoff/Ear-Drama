@@ -54,7 +54,7 @@ CREATE INDEX rec_item ON recordings(archive_id);
 CREATE TABLE scripts (
   id TEXT PRIMARY KEY, source TEXT, series_key TEXT, air_date TEXT, title TEXT,
   url TEXT,                      -- the source's own page; clients link here
-  text_cached INTEGER,           -- text held for search and matching only
+  text_cached INTEGER,           -- the harvest read its text (grw/text_ids.json); the text itself is never packed
   episode_id TEXT,               -- matched broadcast, on series + air date
   display TEXT                   -- full (clean episode) | link (everything else)
 );
