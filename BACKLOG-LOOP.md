@@ -324,3 +324,8 @@ GRW request sent or not.
 - 2026-11-25 07:10 (owner): **Home has no doors** (Decision 089; every platform, web check with a negative control, 716 Apple tests, Android lint clean).
   The build with CarPlay tabs launched on the iPhone 12 (Release, frame read). `reports.yml` fired on its schedule for the first time at
   03:25. 1.1.2 (174) dispatched.
+- 2026-11-25 07:25: found on the iPhone while checking the doors: Home's Record a play (and Open parts, Made here, Library's Classes; on the TV
+  Today's Scene and shared Ear dramas) never loaded, since a List never runs an empty section's task. Fixed, a 17th design rule with
+  four old files caught; 716 tests, tvOS build; frame read. 1.1.3 (175). Data found on the way (**B27**): `voices` counts only big parts (a
+  13-role play reads "2 voices" and can be Today's scene); 6,050 speeches in 344 plays open on the punctuation left behind a direction.
+  Also seen (B24): iPhone rails stop at the margin with a curved cut on the last tile, and tiles in one rail differ in height.
