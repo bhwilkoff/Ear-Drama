@@ -20,6 +20,7 @@ export default defineConfig(async () => {
         },
       }),
     ],
-    test: { setupFiles: ["./test/apply-migrations.js"] },
+    // 5 s, the default, failed passing tests on a Mac under load (2026-11-15, 2026-11-24).
+    test: { setupFiles: ["./test/apply-migrations.js"], testTimeout: 30_000, hookTimeout: 30_000 },
   };
 });
