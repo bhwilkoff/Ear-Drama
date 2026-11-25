@@ -130,6 +130,19 @@ def a_single_piece_cut_removes_a_caption_and_a_dropped_piece_a_warning():
 
 
 @case
+def a_start_the_line_prints_twice_is_named_by_its_place():
+    lines = [sp("L0001", "MILLER", "Yes.\nFIRST CLERK", {"direction": "bowing"}, {"say": ". Just so.\nSECOND CLERK. Even so.\nFIRST CLERK. Just so again."})]
+    e = entry(lines)
+    pieces = [{"as": "speech", "role": "MILLER"}, {"as": "speech", "role": "FIRST CLERK", "from": "FIRST CLERK", "nth": 1, "cut": "FIRST CLERK"},
+              {"as": "speech", "role": "SECOND CLERK", "from": "SECOND CLERK.", "cut": "SECOND CLERK."},
+              {"as": "speech", "role": "FIRST CLERK", "from": "FIRST CLERK", "nth": 2, "cut": "FIRST CLERK"}]
+    out = run(e, corr(e, "L0001", "split", evidence="Yes. FIRST CLERK bowing", pieces=pieces))
+    assert [(l["role"], l["parts"]) for l in out["lines"]][-1] == ("FIRST CLERK", [{"say": ". Just so again."}])
+    assert "not 3 times" in refused(e, corr(e, "L0001", "split", evidence="Yes.", pieces=[pieces[0], {**pieces[1], "nth": 3}]))
+    assert "2 times, not once" in refused(e, corr(e, "L0001", "split", evidence="Yes.", pieces=[pieces[0], {k: v for k, v in pieces[3].items() if k != "nth"}]))
+
+
+@case
 def a_split_never_adds_a_word():
     """Every letter of the pieces is a letter of the line, less the quoted cut and the dropped piece."""
     e = entry()
@@ -197,6 +210,42 @@ def a_missing_line_a_second_correction_and_a_bad_split_are_refused():
     assert "once" in refused(e, corr(e, "L0002", "split", evidence="Hector is slain.", pieces=[{"as": "speech", "role": "A"}, {"as": "speech", "role": "B", "from": "no such words"}]))
     assert "begin with the cut" in refused(e, corr(e, "L0002", "split", evidence="Hector is slain.", pieces=[{"as": "speech", "role": "A"}, {"as": "speech", "role": "B", "from": "ALL. Hector", "cut": "ZZZ."}]))
     assert refused(e, corr(e, "L0002", "split", evidence="Hector is slain.", pieces=[{"as": "speech", "role": "A"}]))
+
+
+@case
+def two_labels_for_one_part_become_one_and_the_roles_follow():
+    lines = [sp("L0001", "JOE'S MOTHER", "Let us hope."), sp("L0002", "JOE", "Yes."), sp("L0003", "JOE'S M", "So laudable his wish."),
+             {"id": "L0004", "kind": "direction", "source": "Exit."}, sp("L0005", "JOE'S M", "Away.")]
+    e = entry(lines)
+    out = run(e, corr(e, "L0003", "merge", role="JOE'S MOTHER", **{"from": "JOE'S M"}, evidence="So laudable his wish."))
+    assert [l.get("role") for l in out["lines"]] == ["JOE'S MOTHER", "JOE", "JOE'S MOTHER", None, "JOE'S MOTHER"]
+    assert {r["name"]: r["lines"] for r in out["roles"]} == {"JOE'S MOTHER": 3, "JOE": 1} and out["revision"] != e["revision"]
+    assert [l["parts"] for l in out["lines"] if l["kind"] == "speech"] == [l["parts"] for l in lines if l["kind"] == "speech"], "no word moves"
+    assert [l["id"] for l in out["lines"]] == [l["id"] for l in lines], "no id moves"
+
+
+@case
+def a_merge_keeps_a_label_the_play_prints_and_starts_at_the_label_it_takes_away():
+    lines = [sp("L0001", "JOE'S MOTHER", "Let us hope."), sp("L0002", "JOE'S M", "So laudable his wish.")]
+    e = entry(lines)
+    merge = lambda line, keep, gone: corr(e, line, "merge", role=keep, evidence="So laudable his wish.", **{"from": gone})
+    assert "keeps a label the play prints" in refused(e, merge("L0002", "JOE'S MA", "JOE'S M"))
+    assert "keeps a label the play prints" in refused(e, merge("L0001", "JOE'S M", "JOE'S M"))
+    assert "keeps a label the play prints" in refused(e, merge("L0001", "JOE'S MOTHER", "JOE'S M"))
+    assert "names the label" in refused_load({"play": "gut-1", "revision": "r", "line": "L0002", "op": "merge", "evidence": "x", "why": "y", "role": "A"})
+
+
+def refused_load(c):
+    import tempfile
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+        json.dump({"format": PC.FORMAT, "corrections": [c]}, f)
+    try:
+        PC.load(f.name)
+    except PC.Refused as err:
+        return str(err)
+    finally:
+        os.unlink(f.name)
+    raise AssertionError("a malformed correction was loaded")
 
 
 @case

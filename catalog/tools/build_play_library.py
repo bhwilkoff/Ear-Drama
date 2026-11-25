@@ -44,6 +44,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import build_castable_scripts as B
 import play_corrections as PC
 import play_layouts as PL
+import play_punctuation as PN
 import script_parse as P
 import script_rights as R
 
@@ -221,10 +222,10 @@ def prefer(entry, protect):
     """Higher wins: a bundled play (never reissued), then the better edition (full speaker names, then
     verse lines kept: `edition`), then a single-play text over a volume's play, then the fuller cast list,
     then the longer text, then the lower ebook number."""
-    voices = sum(1 for r in entry["roles"] if r["lines"] >= P.CASTABLE_LINES)
+    main_parts = sum(1 for r in entry["roles"] if r["lines"] >= P.CASTABLE_LINES)
     words = sum(r["words"] for r in entry["roles"])
     ebook = [int(x) for x in entry["id"][4:].split("-")]
-    return (entry["id"] in protect, edition(entry), "collection" not in entry or entry["id"][4:].isdigit(), voices, words,
+    return (entry["id"] in protect, edition(entry), "collection" not in entry or entry["id"][4:].isdigit(), main_parts, words,
             [-x for x in ebook])
 
 
@@ -317,7 +318,8 @@ def opening_of(entry):
 
 
 def index_row(entry):
-    voices = sum(1 for r in entry["roles"] if r["lines"] >= P.CASTABLE_LINES)
+    # Every part with a spoken line is a voice a reading needs: a play of thirteen roles is not "two voices".
+    voices = sum(1 for r in entry["roles"] if r["lines"] >= 1)
     words = sum(r["words"] for r in entry["roles"])
     row = {
         "id": entry["id"],
@@ -706,7 +708,7 @@ def refined(entry):
     """The kept play with its roles mended (play_roles, catalog DECISIONS 044). Which plays are kept, and which edition, was
     settled on the readings as they were; a play nothing is mended in is the same entry, byte for byte."""
     read, args = entry.pop("_read")
-    return PC.apply(B.refined_entry(entry, read(*args, refine=True)))
+    return PN.mend(PC.apply(B.refined_entry(entry, read(*args, refine=True))))
 
 
 def same_title_words(a, b):

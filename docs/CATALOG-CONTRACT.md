@@ -858,8 +858,11 @@ offline floor.
   split from a volume is `gut-<ebook>-<n>`), `revision` (hash of the lines; a changed text keeps its
   id and changes this), `title`, `sort_name`, `kind` (`stage` | `radio`), `authors` (display names),
   `year` (only when the record carries evidence of one; otherwise absent), `collection` (when the
-  play comes from a volume: the record's own volume title), `voices` (roles with at least
-  `script_parse.CASTABLE_LINES` speeches, five, MEASURED 2026-11-14: the ones a person can cast),
+  play comes from a volume: the record's own volume title), `voices` (the speaking roles a
+  reading needs: every role with at least one spoken line, a group such as ALL or CHORUS counted as the
+  part the print names; since 2026-11-25, before that only roles with `script_parse.CASTABLE_LINES`
+  speeches, five, so a play of thirteen roles read "2 voices"; equal to `roles` in a built library, and
+  checked against the script by `check_play_library`),
   `roles` (all named speakers), `cast` (each named speaker's speeches, largest first, one number per
   role: what a list draws as the cast window and fingerprint without the script; Decision 076),
   `lines` (speeches),

@@ -89,11 +89,11 @@ const PlaysCore = (() => {
    * (contract §4.1: `voices`, `minutes`, `cast`, display-name `authors`), so a list of 1,500
    * plays never fetches a script. The index's own numbers win; a full script computes the same.
    */
-  /** The voices a person can cast: the index's `voices`, else roles with CASTABLE_LINES speeches. */
+  /** The voices a reading needs: the index's `voices`, else every role with a spoken line (as the index counts them). */
   function voicesOf(script) {
     if (typeof script.voices === 'number') return script.voices;
     const roles = script.roles || [];
-    if (roles.length && roles.every(r => typeof r.lines === 'number')) return roles.filter(r => r.lines >= CASTABLE_LINES).length;
+    if (roles.length && roles.every(r => typeof r.lines === 'number')) return roles.filter(r => r.lines >= 1).length;
     return roles.length ? roles.length : castParts(script).filter(x => isSpeaking(x.id)).length;
   }
   /** Minutes from the words its parts speak, at least 1 (the index's `minutes` when it has them). */

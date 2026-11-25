@@ -55,6 +55,7 @@ def check_library(root, min_plays=1, min_phoneme_share=0.0):
         s = doc["scripts"][0]
         assert s["id"] == p["id"] and s["revision"] == p["revision"] and s["title"] == p["title"]
         assert len(s["roles"]) == p["roles"] and s["rights"] == p["rights"]
+        assert p["voices"] == sum(1 for r in s["roles"] if r["lines"] >= 1), (p["id"], "voices is the parts with a spoken line")
         speech = [l for l in s["lines"] if l["kind"] == "speech"]
         assert len(speech) == p["lines"]
         assert all(l["role"] and l["parts"] for l in speech)
