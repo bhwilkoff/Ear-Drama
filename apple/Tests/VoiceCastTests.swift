@@ -71,6 +71,20 @@ private func caster(_ key: String, _ script: PlayScript, _ voices: Voices, _ sto
 
 private let molly = PartID.role("MOLLY"), fibber = PartID.role("FIBBER"), doc = PartID.role("DOC")
 
+struct NoveltyVoiceTests {
+    ///   Broken control: castable() trusting the trait alone: the Mac's Bahh and Bells stayed in the list.
+    @Test func theKnownNoveltyIdentifiersAreNeverDefaults() {
+        for id in ["com.apple.speech.synthesis.voice.Bahh", "com.apple.speech.synthesis.voice.Bells", "com.apple.speech.synthesis.voice.Boing",
+                   "com.apple.speech.synthesis.voice.Zarvox", "com.apple.speech.synthesis.voice.BadNews", "com.apple.speech.synthesis.voice.Trinoids"] {
+            #expect(DeviceVoices.isNovelty(identifier: id), "\(id)")
+        }
+        for id in ["com.apple.voice.premium.en-US.Zoe", "com.apple.voice.enhanced.en-GB.Daniel", "com.apple.ttsbundle.siri_Nicky_en-US_compact", ""] {
+            #expect(!DeviceVoices.isNovelty(identifier: id), "\(id)")
+        }
+        #expect(DeviceVoices.castable().allSatisfy { !DeviceVoices.isNovelty(identifier: $0.id) }, "and none is in the device's castable list")
+    }
+}
+
 struct VoiceCastTests {
     // MARK: The voice list
 

@@ -12,10 +12,21 @@ struct OwnPartsScreen: View {
     @State private var model: OwnPartsModel?
     @State private var missing = false
     @State private var failed = false
+    @State private var frozen = false
+    @State private var copyFailure: String?
+    @Environment(AppStore.self) private var app
 
     var body: some View {
         Group {
-            if let model {
+            if frozen {
+                // Shared once, a script is what people were sent: its page has Edit a Copy (§13 item 12).
+                VStack(spacing: Spacing.s3) {
+                    EmptyState(OwnText.shared, systemImage: "person.2")
+                    Button("Edit a Copy") { Task { await copy() } }.buttonStyle(.bordered).accessibilityIdentifier("own-edit-copy")
+                    if let copyFailure { Text(verbatim: copyFailure).font(TypeRamp.caption).foregroundStyle(Color.semanticError) }
+                }
+                .navigationTitle("Parts")
+            } else if let model {
                 OwnPartsPage(model: model)
             } else if missing {
                 EmptyState("This script is not on this device.", systemImage: "questionmark.square.dashed")
@@ -34,10 +45,21 @@ struct OwnPartsScreen: View {
         .onDisappear { model?.leave() }
     }
 
+    private func copy() async {
+        guard let script = plays.own.script(id) else { copyFailure = OwnText.notKept(OwnKeepFailure.unreadable); return }
+        do {
+            let made = try await plays.own.copy(script)
+            app.push(PlayRoute.parts(made.id))
+        } catch {
+            copyFailure = OwnText.notKept(error)
+        }
+    }
+
     private func load() {
         failed = false
         do {
             guard let rec = try plays.own.get(id) else { missing = true; return }
+            if rec.shared != nil { frozen = true; return }
             let made = OwnPartsModel(rec, store: plays.own)
             #if DEBUG
             if let line = LaunchDoors.current.ownLine { made.current = made.lines.indices.contains(line) ? made.lines[line].k : made.current }
@@ -61,6 +83,9 @@ private struct OwnPartsPage: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var openLine: Int?
     @State private var small: OwnSmall?
+    @State private var deleting = false
+    @State private var deleteFailed = false
+    @Environment(\.dismiss) private var pageDismiss
     @State private var moreParts = false
     @State private var target: Int?
     @State private var showsParts = true
@@ -335,6 +360,24 @@ private struct OwnPartsPage: View {
                     if let why = model.rename(title: raw) { return OwnText.say(why) }
                     small = nil
                     return nil
+                }
+                // A script not yet Done has no page of its own to delete from: here is its way out (§13 item 11).
+                if !model.rec.done {
+                    Button("Delete", role: .destructive) { deleting = true }
+                        .pageAction()
+                        .accessibilityIdentifier("own-delete-notdone")
+                        .confirmationDialog("Delete \(model.rec.title)?", isPresented: $deleting, titleVisibility: .visible) {
+                            Button("Delete", role: .destructive) {
+                                Task {
+                                    do {
+                                        try await model.delete()
+                                        small = nil
+                                        pageDismiss()
+                                    } catch { deleteFailed = true }
+                                }
+                            }
+                        }
+                        .alert("This device could not delete it.", isPresented: $deleteFailed) {}
                 }
             }
         case .newPart:

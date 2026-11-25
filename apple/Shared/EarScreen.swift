@@ -516,11 +516,34 @@ private struct EarDock: View {
         ForEach(model.parts, id: \.name) { part in
             OwnPartChip(name: part.name, hue: model.hue(part.name), selected: model.who == .role(part.name)) { model.give(part.name) }
                 .accessibilityHint(model.hint)
+                .modifier(RenamePart(model: model, name: part.name))
                 .id(part.name)
         }
     }
 
     @ViewBuilder private var verbs: some View { EarVerbs(model: model, name: name) }
+}
+
+/// Rename on a part's chip (long press, or the context menu): its name changes on every line of theirs, one Undo step.
+private struct RenamePart: ViewModifier {
+    let model: EarModel
+    let name: String
+    @State private var renaming = false
+
+    func body(content: Content) -> some View {
+        content
+            .contextMenu { Button("Rename") { model.openSheet(); renaming = true } }
+            .accessibilityAction(named: "Rename") { model.openSheet(); renaming = true }
+            .sheet(isPresented: $renaming, onDismiss: { model.closeSheet() }) {
+                OwnSmallSheet(title: "Rename Part") {
+                    OwnNameForm(label: "Name", value: name, button: "Rename") { raw in
+                        if let why = model.rename(name, to: raw) { return why }
+                        renaming = false
+                        return nil
+                    }
+                }
+            }
+    }
 }
 
 private extension EarModel {

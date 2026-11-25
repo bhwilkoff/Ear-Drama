@@ -100,6 +100,24 @@ struct LabelSpecTests {
         #expect(Self.difference(try Self.json(rimless), c["want"], tolerance: Self.tolerance) != nil)
     }
 
+    /// js/label.test.js's twin: a play's "+N" never stands on its bars, and the bars keep their shares.
+    ///   Broken control: the room ignored (`more > 99`): the 58-part cast's bars ran under its "+51".
+    @Test func aPlaysMoreNeverStandsOnItsBars() throws {
+        let casts: [[Int]] = [Array(repeating: 8, count: 58), Array(repeating: 3, count: 120), [40, 38, 36, 30, 28, 27, 26, 25, 1], [9, 9, 9, 9, 9, 9, 9, 1]]
+        for cast in casts {
+            let spec = LabelSpec.make(LabelItem(kind: .play, voices: cast.count, cast: cast), size: 48)
+            let t = try #require(spec.text.first), bars = try #require(spec.cast?.bars), last = try #require(bars.last)
+            let left = t.x - t.size * LabelSpec.em(t.s, "body")
+            #expect(last.x + last.w <= left + 0.01, "+\(cast.count - 7) on its bars")
+            for (i, b) in bars.enumerated() {
+                let want = (100 * Double(cast[i]) / Double(cast[0])).rounded() / 100
+                #expect(abs(b.w / bars[0].w - want) < 0.01, "bar \(i)'s share")
+            }
+        }
+        let fits = LabelSpec.make(LabelItem(kind: .play, voices: 3, cast: [30, 20, 10]), size: 48)
+        #expect(fits.cast?.bars.first?.w == 76, "a cast that fits draws full width")
+    }
+
     @Test func tiersFollowTheWindow() {
         #expect(LabelSpec.make(LabelItem(name: "A"), size: 95).tier == "S")
         #expect(LabelSpec.make(LabelItem(name: "A"), size: 96).tier == "M")

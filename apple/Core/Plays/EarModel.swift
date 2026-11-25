@@ -323,6 +323,19 @@ final class EarModel {
         return nil
     }
 
+    /// Renames a part on every line of theirs while the episode is cast (one Undo step); its refusal in essential words, or nil.
+    func rename(_ from: String, to raw: String) -> String? {
+        if let rec { session.takes = store.takes(rec.id) }
+        let before = session.doc.undo.count
+        let why = session.rename(from, raw).refusal
+        if let why { return OwnText.name(why) }
+        if session.doc.undo.count > before { registerUndo() }
+        changes += 1
+        paint()
+        save()
+        return nil
+    }
+
     private func registerUndo() {
         undoManager?.registerUndo(withTarget: self) { model in MainActor.assumeIsolated { model.undo(fromManager: true) } }
     }
@@ -361,11 +374,8 @@ final class EarModel {
 
     func isLocked(_ line: OwnLine) -> Bool { line.id.map(session.takes.contains) ?? false }
 
-    /// The parts keep the order they were named in, which is their number and their hue here.
-    func hue(_ name: String?) -> String? {
-        guard let name, let i = parts.firstIndex(where: { $0.name == name }), i < PlayScript.partHues.count else { return nil }
-        return PlayScript.partHues[i]
-    }
+    /// The parts keep the order they were named in; their color is the one the script's own page gives them, by size.
+    func hue(_ name: String?) -> String? { EarCore.hue(name, in: parts) }
 
     // MARK: Sheets: the audio waits while one is open
 

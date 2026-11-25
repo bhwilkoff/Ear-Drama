@@ -131,7 +131,7 @@ extension LabelSpec {
     }
 
     // Text: a line's width from the glyph table, so every stack fits the same size.
-    private static func em(_ s: String, _ face: String) -> Double {
+    static func em(_ s: String, _ face: String) -> Double {
         s.unicodeScalars.reduce(0.0) { $0 + T["glyphs"][face].glyph(String($1)) + T["glyphs"]["tracking"].d() }
     }
     private static func fit(_ s: String, _ face: String, _ maxW: Double, _ maxCap: Double) -> Double {
@@ -295,14 +295,17 @@ extension LabelSpec {
         let most = Double(shown.first ?? 1)
         let total = shown.isEmpty ? 0 : C["hFirst"].d() + Double(shown.count - 1) * (C["h"].d() + C["gap"].d())
         var y = 50 - total / 2
+        let more = all.count - shown.count
+        func share(_ n: Int) -> Double { max(C["minW"].d(), ((100 * Double(n)) / most).rounded(.toNearestOrAwayFromZero)) / 100 }
+        // "+N" stands at the last bar's end. Every bar is drawn to the same shorter scale when that one would reach it.
+        let room = more > 0 ? C["more"]["x"].d() - C["more"]["size"].d() * em("+\(more)", "body") - C["gap"].d() - C["x"].d() : C["w"].d()
+        let scale = shown.last.map { min(C["w"].d(), max(0, room) / share($0)) } ?? C["w"].d()
         let bars = shown.enumerated().map { i, n -> Bar in
             let h = i > 0 ? C["h"].d() : C["hFirst"].d()
-            let pct = max(C["minW"].d(), ((100 * Double(n)) / most).rounded(.toNearestOrAwayFromZero))
-            let bar = Bar(x: C["x"].d(), y: r2(y), w: r2(C["w"].d() * pct / 100), h: h)
+            let bar = Bar(x: C["x"].d(), y: r2(y), w: r2(scale * share(n)), h: h)
             y += h + C["gap"].d()
             return bar
         }
-        let more = all.count - shown.count
         base.ground = groundOf(g)
         base.on = onOf(g)
         base.cast = bars.isEmpty ? nil : Cast(bars: bars)

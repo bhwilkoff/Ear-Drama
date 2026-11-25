@@ -55,6 +55,8 @@ final class OwnPartsModel {
     /// The line Next goes on from.
     var current = 0
     private(set) var finished = false
+    /// The person deleted this script from its title sheet: nothing waiting is written back over it.
+    private(set) var deleted = false
     /// Moves on every change, for the haptic.
     private(set) var changes = 0
     @ObservationIgnored weak var undoManager: UndoManager?
@@ -86,10 +88,7 @@ final class OwnPartsModel {
     }
 
     /// The first seven parts' hues, largest first, as the cast sheet gives them.
-    func hue(_ name: String?) -> String? {
-        guard let name, let i = parts.firstIndex(where: { $0.name == name && $0.lines > 0 }), i < PlayScript.partHues.count else { return nil }
-        return PlayScript.partHues[i]
-    }
+    func hue(_ name: String?) -> String? { EarCore.hue(name, in: parts) }
 
     private func refresh() {
         let order = OwnScript.partsOf(lines)
@@ -198,7 +197,15 @@ final class OwnPartsModel {
 
     /// What is waiting, now. The write holds the model: the page that had it may already be gone.
     func flush() {
-        if save.take() { Task { await self.write() } }
+        if save.take(), !deleted { Task { await self.write() } }
+    }
+
+    /// Delete before Done (§13 item 11): the script and what the page held go together.
+    func delete() async throws {
+        deleted = true
+        _ = save.take()
+        undoManager?.removeAllActions(withTarget: self)
+        try await store.remove(rec.id)
     }
 
     /// Done: lines with no part become directions and each line gets its id, once. True when it is a script.
@@ -226,7 +233,7 @@ final class OwnPartsModel {
 
     func leave() {
         undoManager?.removeAllActions(withTarget: self)
-        if !finished { flush() }
+        if !finished, !deleted { flush() }
     }
 }
 #endif

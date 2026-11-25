@@ -25,6 +25,16 @@ nonisolated enum EarCore {
         return doc.lines.count > OwnScript.maxLines ? .too_many_lines : nil
     }
 
+    /// A part's hue key by the one rule every surface shares (`PlayScript.partHue`): the first seven speaking parts, largest first,
+    /// ties by who came first. A part with no line yet has none. `parts` is in the order they were named.
+    static func hue(_ name: String?, in parts: [OwnPart]) -> String? {
+        guard let name else { return nil }
+        let ranked = parts.enumerated().filter { $0.element.lines > 0 }
+            .sorted { $0.element.lines != $1.element.lines ? $0.element.lines > $1.element.lines : $0.offset < $1.offset }
+        guard let i = ranked.firstIndex(where: { $0.element.name == name }), i < PlayScript.partHues.count else { return nil }
+        return PlayScript.partHues[i]
+    }
+
     /// The parts in the order they were named, which is their number and their hue: `names`, then any the lines hold.
     static func parts(_ doc: OwnDoc, names: [String]) -> [OwnPart] {
         let cast = OwnScript.castOf(doc)
@@ -102,6 +112,8 @@ nonisolated struct EarSession: Sendable {
     /// The last line the audio reached without a jump.
     private var from = 0
     private var sampled: [String: Int] = [:]
+    /// The order of the names before each rename, with the undo depth it made, for its Undo.
+    private var renames: [(depth: Int, names: [String])] = []
 
     init(doc: OwnDoc, names: [String] = [], takes: Set<String> = []) {
         self.doc = doc
@@ -155,7 +167,29 @@ nonisolated struct EarSession: Sendable {
         return (name, refusal)
     }
 
-    mutating func undo() -> OwnRefusal? { take(OwnScript.apply(doc, OwnOp(op: .undo))) }
+    mutating func undo() -> OwnRefusal? {
+        let why = take(OwnScript.apply(doc, OwnOp(op: .undo)))
+        while why == nil, let last = renames.last, last.depth > doc.undo.count { names = last.names; renames.removeLast() }
+        return why
+    }
+
+    /// A part's name on every line of theirs, and in its place in the order; a name another part has joins the two. One step.
+    mutating func rename(_ from: String, _ raw: String) -> (name: String, refusal: OwnRefusal?) {
+        let name = OwnScript.partName(OwnScript.normalize(raw))
+        let all = parts
+        let held = all.first { $0.name == from }
+        if let why = OwnScript.partNameRefusal(name) { return (name, why) }
+        guard let held else { return (name, .no_such_part) }
+        if name == from { return (name, nil) }
+        let before = names
+        if held.lines > 0 {
+            if let refusal = take(OwnScript.apply(doc, OwnOp(op: .rename, part: from, rename: name), env)) { return (name, refusal) }
+            renames.append((doc.undo.count, before))
+        }
+        let order = all.map(\.name)
+        names = order.contains(name) ? order.filter { $0 != from } : order.map { $0 == from ? name : $0 }
+        return (name, nil)
+    }
     /// One line alone, from its sheet: a part, Direction or Sound. The line after it keeps the cast it had.
     mutating func assign(_ k: Int, _ to: OwnTarget) -> OwnRefusal? { take(OwnScript.apply(doc, OwnOp(op: .assign, line: k, to: to), env)) }
     mutating func leaveOutLine(_ k: Int) -> OwnRefusal? { take(OwnScript.leaveOutHeard(doc, k, env)) }
