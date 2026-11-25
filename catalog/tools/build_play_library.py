@@ -160,6 +160,7 @@ def volume_entries(record, rights, raw, report):
             report["split_failures"][why] = report["split_failures"].get(why, 0) + 1
             continue
         entry = B.script_entry({**record, "id": f"{record['id']}-{n}"}, rights, parsed)
+        entry["_read"] = (P.parse, (text, "stage", title))
         entry["collection"] = B.clean_title(record["title"])
         entry["title"] = B.clean_title(printed)
         entry["sort_name"] = B.sort_name(entry["title"])
@@ -365,7 +366,43 @@ NOT_THE_TITLE = re.compile(r"^(?:A |AN |THE )?(?:COMEDY|TRAGEDY|DRAMA|FARCE|PLAY
 # Second-reader plays held after a read against the source found a fault no test catches yet (2026-11-24).
 READ_AND_HELD = {"gut-40559": "a parallel text: the same speeches in Spanish and Nahuatl and in English",
                  "gut-35389": "a picture's caption is read as its first two speeches",
-                 "gut-47609-106": "a heading (THE WIGWAM) is read as a speaker"}
+                 "gut-47609-106": "a heading (THE WIGWAM) is read as a speaker",
+                 # read 2026-11-24 (B16c), after play_roles
+                 "gut-12098": "The Elder Brother with the quarto's text after it, under the title Francis Beaumont",
+                 "gut-14467": "a label (L. Rod.) is read as the words before it, and a direction (The Trades-People enter) as a speaker",
+                 "gut-21350": "labels printed inside the verse (T. Trusty, M. Mery, Tib. Talk.) are read as words of the speech before them, 53 times",
+                 "gut-39045-12": "a label (C.'s M.) is read as a direction, so the Mother's lines are Conrad's",
+                 "gut-50031-1": "speakers printed as a number alone (_1._, _2._) are read as the speech before them",
+                 "gut-51282-103": "eleven lines of Theano (_The._) are read as the speech before them",
+                 "gut-53896": "a song's tune (TUNE) is read as a speaker, its name aloud",
+                 "gut-55294-2": "three speakers of the Chorus (3rd., 4th., 5th.) are read as the 2nd",
+                 "gut-56851": "answers quoted from Shakespeare under the plays' names, not a play",
+                 "gut-58546-1": "two songs' authors (LYDIA AVERY COONLEY, KATE L. BROWN) are read as speakers",
+                 "gut-10541-117": "the cast list's footnotes are read as the first three speeches",
+                 "gut-34360-102": "an actor's picture (Ebeling is seated) is read as MARGOT's words",
+                 "gut-39243-102": "the cast list is read as CAFOUR's first words",
+                 "gut-68984-117": "the costume list is read as RAIN's and MOON's first words",
+                 "gut-77284": "the costume list is read as MRS. GOSSIP's words",
+                 "gut-47609-111": "the cast list is in the play, and one part is under two names (H, HERALD; G, GODMOTHER)",
+                 "gut-51180": "the costume list is read as SAND-MAN's and WISH-BONE's first words",
+                 "gut-58546-6": "a direction ('with a lighted candle') is read as MOTHER's words",
+                 "gut-65920-110": "the setting is read as FLICK AND FLOCK's words",
+                 "gut-12166-103": "CEL's label is in another's speech (L0627)",
+                 "gut-12687": "CULVER's label is in another's speech (L0586)",
+                 "gut-14484-105": "the Chorus's label is in another's speech (L0169)",
+                 "gut-31029": "OLIVER's label is in another's speech (L0331)",
+                 "gut-34359-102": "a cast list is spoken (L0059)",
+                 "gut-50712": "ANNE's label is in another's speech (L0439)",
+                 "gut-52348-105": "the positions of a tableau are spoken (L0080)",
+                 "gut-53041": "CAIUS MARIUS's label is in another's speech (L0008)",
+                 "gut-55922-103": "FRED's label is in another's speech (L0139)",
+                 "gut-7108-101": "BERINTHIA's label is in another's speech (L0193)",
+                 "gut-7108-102": "SNEER's label is in DANGLE's speech (L0026)",
+                 "gut-71902": "the positions of a tableau are spoken (L0607)",
+                 "gut-74309": "two labels are in another's speech (L1542)",
+                 "gut-53236": "a label (MOTHER) is read as the words of THIRD GOBLIN",
+                 "gut-58546-5": "a song's stanza number (V) is read as a speaker",
+                 "gut-6043": "two labels (KING., EM.) are read as directions inside another speaker's lines"}
 ANTHOLOGY = re.compile(r"Collection of Old English Plays|\bAnthology\b|\bMasterpieces\b|German Classics|World's Greatest|\bLibrary of\b|Plays by Modern Authors|"
                        r"Contemporary One-Act|Modern Plays|Old Miracle|\bReadings\b|St\. Nicholas Book", re.I)
 
@@ -373,6 +410,8 @@ ANTHOLOGY = re.compile(r"Collection of Old English Plays|\bAnthology\b|\bMasterp
 def good_case(title):
     """The case B.cased_title loses: a roman numeral, "Mc", the first letter after a quotation mark."""
     title = re.sub(r"\b(?=[IVXivx]{2,}\b)((?:[Xx]{0,2})(?:[Ii][Xx]|[Ii][Vv]|[Vv]?[Ii]{0,3}))\b", lambda m: m.group(1).upper() if m.group(1) else m.group(0), title)
+    if re.search(r"[A-Z]{2}[OAU]e[A-Z]", title) and re.sub(r"([OAU])e(?=[A-Z])", r"\1", title).isupper():
+        title = title.title()  # "ROSMERSHOeLM"
     title = re.sub(r"\bMc([a-z])", lambda m: "Mc" + m.group(1).upper(), title)
     return re.sub(r"([“\"‘]|(?<=\s)')([a-z])", lambda m: m.group(1) + m.group(2).upper(), title)
 
@@ -434,6 +473,7 @@ def second_whole(record, rights, text):
     if not B.offered(rights, parsed):
         return None, next((i for i in parsed["issues"] if i not in ("possible_aliases",)), "unclean"), parsed
     entry = B.script_entry(record, rights, parsed)
+    entry["_read"] = (PL.parse, (text, record.get("title")))
     if VOLUME_TITLE.search(record["title"]):
         printed = second_title(parsed.get("printed_title"), record) if parsed.get("printed_title") else None
         if printed:
@@ -477,6 +517,7 @@ def second_volume(record, rights, text, have, joint, held, report):
             held.append({**row, "why": "another_author_printed"})
             return
         entry = B.script_entry({**record, "id": f"{record['id']}-{n}", **({} if team else {"authors": [{"name": who}]})}, rights, parsed)
+        entry["_read"] = (PL.parse, (text, title))
         entry["collection"] = B.clean_title(record["title"])
         entry["title"] = printed
         entry["sort_name"] = B.sort_name(entry["title"])
@@ -516,7 +557,7 @@ def mend(entry, record, rights, text):
             [(r["name"], r["lines"]) for r in fresh["roles"]] != [(r["name"], r["lines"]) for r in entry["roles"]] or \
             [l.get("role") for l in fresh["lines"]] != [l.get("role") for l in entry["lines"]]:
         return entry
-    return {**entry, "lines": fresh["lines"], "revision": fresh["revision"], "roles": fresh["roles"],
+    return {**entry, "_read": (P.parse, (part, record["kind"], title)), "lines": fresh["lines"], "revision": fresh["revision"], "roles": fresh["roles"],
             **({"sections": fresh["sections"]} if "sections" in fresh else {})}
 
 
@@ -547,6 +588,8 @@ def build(plays, ctx, read_text, protect=(), read_as_published=None):
             volumes.append((p, record, rights, right, split))
             continue
         entry = B.script_entry(record, rights, parsed) if B.offered(rights, parsed) else None
+        if entry:
+            entry["_read"] = (P.parse, (text, record["kind"], record.get("title")))
         if entry and VOLUME_TITLE.search(entry["title"]):
             printed = volume_play_title(parsed.get("printed_title"), record)
             if printed:
@@ -644,6 +687,7 @@ def build(plays, ctx, read_text, protect=(), read_as_published=None):
         works[who].append((title, e))
     entries, more, same_title = dedupe(entries + fresh, set(protect) | first)
     assert first <= {e["id"] for e in entries}, "the second reader displaced a first-reader play"
+    entries = [refined(e) for e in entries]
     entries.sort(key=lambda s: (s["sort_name"], s["id"]))
     # The report in the index is counts: phones load it. The rows are held.json.
     report.update({"rights_cleared_uncached": uncached, "parsed": seen, "clean": len(entries),
@@ -655,6 +699,13 @@ def build(plays, ctx, read_text, protect=(), read_as_published=None):
     report["_held"] = {"held": sorted(held, key=lambda r: r["id"]), "duplicates_dropped": dups + more,
                        "same_title_and_author_different_text_kept": same_title}
     return entries, report
+
+
+def refined(entry):
+    """The kept play with its roles mended (play_roles, catalog DECISIONS 044). Which plays are kept, and which edition, was
+    settled on the readings as they were; a play nothing is mended in is the same entry, byte for byte."""
+    read, args = entry.pop("_read")
+    return B.refined_entry(entry, read(*args, refine=True))
 
 
 def same_title_words(a, b):

@@ -464,7 +464,7 @@ def parse_family(raw, title, fam):
     return read(raw, t, title, fam)
 
 
-def read(raw, t, title, fam):
+def read(raw, t, title, fam, refine=False):
     ok, total, top, inner = speakers(t, fam)
     # the author on the title page is not a speaker
     authors = {norm(x) for x in re.findall(r"^Authors?:[ \t]*(.+)$", raw[:3000], re.M)}
@@ -887,7 +887,7 @@ def read(raw, t, title, fam):
     _names_at_the_end(items)
     _preface(items)
     _same_name(items)
-    r = P.assemble(raw, t.body, items, plays_in(blocks), "stage", title)
+    r = P.assemble(raw, t.body, items, plays_in(blocks), "stage", title, refine)
     if r.get("status") != "parsed":
         return r
     r["layout"] = fam.key
@@ -1243,7 +1243,7 @@ def refuse(r, items, fam):
 ORDER_MIN = 20
 
 
-def parse(raw, title=None):
+def parse(raw, title=None, refine=False):
     """The best reading of a stage text over the layout families, or None. Clean first, then most speeches."""
     t = Text(P.gutenberg_body(raw))
     if t.words < P.MIN_WORDS:
@@ -1268,6 +1268,8 @@ def parse(raw, title=None):
             best = r
         elif best is None or (not best["clean"] and r["score"] > best["score"]):
             best = r
+    if best and refine:
+        return read(raw, t, title, next(f for f in FAMILIES if f.key == best["layout"]), True)
     return best
 
 

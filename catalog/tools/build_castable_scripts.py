@@ -109,6 +109,25 @@ def script_entry(record, rights, parsed):
     }
 
 
+def refined_entry(entry, parsed):
+    """The entry with its lines as play_roles mends them (catalog DECISIONS 044), or the entry itself when nothing changes.
+    No line moves: every line kept has the id, and the place, it had, and a line added has an id no line had."""
+    lines = [compact_line(l) for l in parsed["lines"]]
+    if lines == entry["lines"]:
+        return entry
+    before, now = [l["id"] for l in entry["lines"]], [l["id"] for l in lines]
+    kept = set(now) & set(before)
+    if len(set(now)) != len(now) or [i for i in before if i in kept] != [i for i in now if i in kept]:
+        raise ValueError(f"{entry['id']}: refining moved a line id")
+    body = json.dumps(lines, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    out = {**entry, "revision": hashlib.sha256(body.encode()).hexdigest()[:12], "lines": lines,
+           "roles": [{"name": r["name"], "lines": r["lines"], "words": r["words"]} for r in parsed["roles"]]}
+    out.pop("sections", None)
+    if parsed.get("sections"):
+        out["sections"] = parsed["sections"]
+    return out
+
+
 def offered(rights, parsed):
     return rights["castable"] and parsed.get("status") == "parsed" and parsed.get("clean") is True
 
@@ -132,7 +151,8 @@ def main():
         rights = R.judge(record, ctx)
         parsed = P.parse(P.read_text(path), record["kind"], record.get("title"))
         if offered(rights, parsed):
-            scripts.append(script_entry(record, rights, parsed))
+            text = P.read_text(path)
+            scripts.append(refined_entry(script_entry(record, rights, parsed), P.parse(text, record["kind"], record.get("title"), refine=True)))
         else:
             why = rights["bucket"] if not rights["castable"] else "parse_" + parsed.get("status", "?") + (
                 "_unclean" if parsed.get("status") == "parsed" else "")

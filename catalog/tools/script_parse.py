@@ -954,8 +954,9 @@ def _one_speaker_one_role(items):
         it["role"] = rename.get(it["role"], it["role"])
 
 
-def parse(raw, kind, title=None):
-    """kind: "radio" (a broadcast script) or "stage" (a Gutenberg play text)."""
+def parse(raw, kind, title=None, refine=False):
+    """kind: "radio" (a broadcast script) or "stage" (a Gutenberg play text). refine: play_roles mends the roles of a
+    play already judged clean (catalog DECISIONS 044); the clean test is always the unrefined reading's."""
     text = gutenberg_body(raw) if kind == "stage" or GUT_START.search(raw) else raw
     if kind == "radio":
         text = clean_html(text)
@@ -968,7 +969,7 @@ def parse(raw, kind, title=None):
         _mark_commercials(items)
     else:
         items, casts = _stage_items(text)
-    return assemble(raw, text, items, casts, kind, title)
+    return assemble(raw, text, items, casts, kind, title, refine)
 
 
 # A row of the title page, a program note or a publisher's list, read as a speaker ("BETWEEN / Dean Swift and Tho. Prior, Esq;",
@@ -997,7 +998,7 @@ def _title_rows(items):
             it["gone"] = True
 
 
-def assemble(raw, text, items, casts, kind, title=None):
+def assemble(raw, text, items, casts, kind, title=None, refine=False):
     """Items in text order -> the parse: line ids, roles, sections, and the clean test. An item may carry its own
     `parts` (play_layouts, the second reader); otherwise they are split from its `text`."""
     stub = stub_check(text, items)
@@ -1009,11 +1010,21 @@ def assemble(raw, text, items, casts, kind, title=None):
         _title_block_is_not_a_speech(raw, items, title)
         _one_speaker_one_role(items)
         _title_rows(items)
+        if refine:
+            import play_roles
+            items = play_roles.refine(items, text, title, raw)
     lines, roles, unclassified = [], collections.OrderedDict(), []
     sections, pending, numbered, letters, pictures = [], [], 0, 0, 0
     # A play whose notes were spoken loses them all: a note that stood as a direction keeps its id used, as a picture
     # does, and the marks that pointed to notes ("area.(1)") are no longer directions. No other play changes.
     noted = any(it.get("spoken") for it in items)
+    # A speech play_roles found inside another takes the next letter the published reading did not use for that line.
+    taken, at = collections.Counter(), 0
+    for it in items:
+        if it["kind"] in ("cast", "heading", "note", "front", "back", "other") or it.get("split") == "new":
+            continue
+        at += not it.get("split")
+        taken[at] += bool(it.get("split"))
     for it in items:
         if it["kind"] == "heading" and section_level(it["source"]):
             pending.append(it["source"])
@@ -1028,7 +1039,10 @@ def assemble(raw, text, items, casts, kind, title=None):
             numbered, letters = (numbered, letters + 1) if it.get("split") else (numbered + 1, 0)
             pictures += 1
             continue
-        if it.get("split"):
+        if it.get("split") == "new":
+            taken[numbered] += 1
+            lid = f"L{numbered:04d}{_letters(taken[numbered])}"
+        elif it.get("split"):
             letters += 1
             lid = f"L{numbered:04d}{_letters(letters)}"
         else:
@@ -1041,7 +1055,8 @@ def assemble(raw, text, items, casts, kind, title=None):
             found = it["parts"] if "parts" in it else (it.get("lead") or []) + split_parts(it["text"], italic=kind == "stage")
             parts = [p for p in found
                      if "say" in p or not ILLUSTRATION_PART.fullmatch(next(iter(p.values())).strip())
-                     and not (noted and re.fullmatch(r"\d{1,3}", next(iter(p.values())).strip()))]
+                     and not (noted and re.fullmatch(r"\d{1,3}", next(iter(p.values())).strip()))
+                     and not (refine and "say" not in p and re.fullmatch(r"n?\d{1,3}", next(iter(p.values())).strip(" []()_")))]
             if not parts:
                 pictures += 1  # nothing but a picture marker under a name (gut-75857-2 L0330): no line, its id stays used
                 continue

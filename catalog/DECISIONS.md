@@ -1637,3 +1637,29 @@ the first reader fails. Never widen the first reader for a layout: it would renu
 published script is fixed in `script_parse` so that every other line keeps its id: a line that should not be one keeps
 its id used (`gone`, as a picture does), a note inside a speech leaves the speech its id. A Latin-1 file is mended only
 where no id, role or speaker moves (`mend`); gut-8499-1, gut-8499-3, gut-8688-4 and gut-8689-3 wait for a ruling.
+
+## 044 — A play's roles are mended after it is judged clean, without moving an id (B16c)
+
+**Rule**: `play_roles.refine` runs over the items of a play that is kept, after both readers and after the clean test, the
+dedupe and the choice of edition, which all read it as it was. It finds what was read as a speaker and is not (a heading, a
+place, a direction, a title page, a cast list, a note, a notice, the first word of a sentence, half of a label) and what is a
+speaker and was read as something else (an italic label read as a direction, a label folded into the speech above it). Each
+rule does one of four things: the line becomes a direction with its words; the line is set aside and its id stays used; the line
+goes to the speaker the print names; or a speech takes a line of its own, `split: "new"`, with the next letter the published
+reading left free after that number (`L0730d` between `L0730` and `L0730a`). An entry nothing changes in is returned as it
+was, byte for byte (`build_castable_scripts.refined_entry`, which also refuses a reading that moves an id). What no rule
+settles: an unpublished play is held (`READ_AND_HELD`), a published one is served and listed in `plays/known-faults.json`.
+
+**Why**: the owner, 2026-11-24: "All radio and regular play scripts should be able to be re-recorded." Every play's cast and
+edges were read and the faults listed, but the sheets that were read printed no words (`line["text"]`, a key no line has), so
+only labels were judged. Reading the words found more than the labels showed: 6,800 speeches printed `_Name._ ...` shown as
+directions (A Doll's House, Troilus, The Lady of Pleasure), 4,000 folded into the speech above (Ghosts, Rosmersholm, An Enemy
+of the People, You Never Can Tell), and two people under one cut label ("DON" for Donna Louisa and Donna Clara). A scan for the
+shape found in one play, over all of them, is worth more than the fault itself. The gate reads the play unrefined so that a
+mended role can never bring a play in, drop one, or change which edition is given.
+
+**How to apply**: a new class of fault is a step in `play_roles`, a fixture in `tests/test_play_roles.py` that shows the fault
+unrefined, and its line in `tests/mutate_play_roles.py`. Run it over every play and read what changed, grouped by class, before
+the fixture: a rule that is right for one play renames a Justice called Silence in another. A label is never guessed from sense:
+the role is one the print names (its own label, a name it alone shortens, the label standing over it in the text). Songs under a
+bare SONG or AIR keep that label, because the print does not say who sings.
