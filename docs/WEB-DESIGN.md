@@ -54,6 +54,7 @@ web app follows today.
   `?view=surprise`; `?view=browse&genre=&decade=&network=&script=1&sort=`,
   `?view=record&voices=&length=&kind=&sort=` (§4.15), `?view=record&add=1` and
   `?script={own script id}&edit=parts` (§4.21, on this browser only: no path twin, no app link),
+  `?cast={episode id}` (§4.22, the same),
   `?series={key}&season=`, `?item={episode id}`, `?person={person id}&order=newest`
   (§4.14), `?view=search&q=`,
   `?view=library&side=listen|make&list=upnext|history|marks&productions={script id}&section=voices` (§4.7; the older `&tab=continue|queue|following|history|dramas` still opens, read as the side or list it became), the script reader (§4.16) `?read={script id}` with an
@@ -309,7 +310,8 @@ web app follows today.
   recordings, and the rights line. **Record this** (outline, beside Play;
   Decision 075, was "Start an ear drama") joins the actions when the
   Detail row's `script` names a script in this browser's castable file,
-  never on a TV. Every part draws only from
+  never on a TV. With no such script and a `transcript`, it opens `?cast={episode id}` (§4.22),
+  once that page is sure to open. Every part draws only from
   data, and a part with no data is absent, never a placeholder:
   - No title: the episode's number names it ("No. 90"), else "Untitled";
     an id never reaches the screen.
@@ -749,8 +751,9 @@ web app follows today.
      play, below, never a sentence about recording.
   1a. **Your scripts** (Decision 088.3): own scripts on this browser, newest
      first, each a 64 px row (the title block, the title, "N parts · N lines",
-     or "N lines have no part" while it is being corrected). Absent when none.
-     A row opens `?play=own-…`, or the parts page until it is Done.
+     "N lines have no part" while it is being corrected, or "N of N lines cast" while a
+     transcript is cast in part). Absent when none. A row opens `?play=own-…`, or the parts
+     page (the casting page) until it is Done.
   2. **Today's scene**: the same card as Home's (§4.2 item 7), with
      **Try a line**, **Hear it** and **Read**. (*Replaced* 2026-11-15:
      Today's play's board with Record this, Read and Parts.)
@@ -1314,13 +1317,13 @@ web app follows today.
      subgrid, §4.15; nothing here shares rows.) Gate: no step on a 1,700-line play redraws more than a tenth of its lines.
   5. **The line sheet**: one native `<dialog>`, at the foot on a phone, centered from 860 px: the words with the
      cut, the parts (the line's own, its nearest, **All parts** with a field for a new one), Direction, Sound; Split
-     here, Join to line above, Edit words, Leave out. The cut is a slider over the words: a tap
+     here, Join to line above, Edit words, Leave out, **More** (Leave out everything above, Leave out everything below: one step, one Undo). The cut is a slider over the words: a tap
      between two words places it, Left and Right move it a word. A locked line keeps its words, "This line has
      a take." and Edit words. Focus returns to the line.
   6. **Keys**: the lines are one tab stop (Up and Down, Home and End, Enter opens); a No part line's chips join
      the tab order when it is the current line; Control or Command-Z is Undo. The count and each step are announced.
   7. **An own script's page** (`?play=own-…`) is the play's page (§4.10) with the kicker "Your script", its opening
-     as a page, Record this and Read, its Parts, then "Added by you · Kept on this device" and "This script can't be
+     as a page (whole speeches only), Record this and Read, its Parts, then "Added by you · Kept on this device" and "This script can't be
      published.", and Edit, Save as text, Delete (the browser's own confirmation). No Share and no Read together
      here or on its productions (PLAYS-DESIGN §13).
   8. **States**: loading is the spinner; a script not here is "This script is not in this browser."; a failed
@@ -1330,6 +1333,35 @@ web app follows today.
   9. **Storage**: `ed-plays` version 2 adds the object store `scripts`; version 1's `files` is untouched. A tab still
      open on version 1 keeps the new one out: "Close Ear Drama's other tabs." A connection now closes itself when a newer
      page asks (`versionchange`). `navigator.storage.persist()` is asked when a script is first kept.
+- **§4.22 Casting by ear** (`?cast={episode id}`; PLAYS-DESIGN §13 item 10 binding; Decision 088.3). Code:
+  `js/ear-ui.js` (the page), `js/ear-core.js` (what is lit, heard, and tapped), `js/own-core.js` and
+  `js/own-store.js` as §4.21; tests `js/ear.test.js`; frames and gate `tools/web_fit_ear.py`. Not on a TV.
+  1. **The page** is §4.21's: Close, the episode's title over "37 of 149 lines cast", Undo, Done. "Automatic
+     transcript" heads the lines. A name stands over the first line of its run, in its hue; a line of nobody's is muted;
+     a left-out line is struck under "Left out". The line being said is outlined in ink.
+  2. **The player is the app's own** (`Player`), never a second audio element, and the mini player gives way to the
+     page's transport. Nothing plays before a press. `Player.hold` keeps it on the episode at the page's speed (0.75×
+     at first, then the last chosen here, never the person's own), and the episode's end starts nothing; leaving lets
+     go, and what is playing plays on. Only the default copy is played: a fall to another would put every time off.
+     Opening the page pauses another episode. A Listen Together guest is told "Leave Listen together to play this."
+  3. **Below 860 px** the parts (chips; from five, two rows that scroll, the speaker's own in sight), **+ Part**, **Leave out** (always in reach) and the transport (the
+     clock, back 5 seconds, play, the speed as a native select) dock at the foot. **From 860 px** they are a right rail:
+     each part with its number, its count, and a play button that plays the next of its lines and goes back to the place.
+     Parts keep the order they were named in, which is their number and their hue here.
+  4. **Following** is the reader's (§4.16a): the lit line stays in view; the person's own scroll stops it, with
+     **Back to the line**.
+  5. **Keys**: 1 to 9 the parts, Space, Left, U (and Control or Command-Z), before the player's own; a control the
+     keyboard is on keeps its Space, and a press with the pointer leaves the keyboard where it was. The lines are one tab stop (Up,
+     Down, Home, End, Enter). The lit line is announced only while paused.
+  6. **The line sheet** (§4.21 item 5's): the words with the cut, the parts, Direction, Sound, Hear it (the line, then
+     back), Edit words, Split here, Join to line above, Leave out, Play from here. What it gives a line is that
+     line's alone. The episode waits while a sheet is open. A line with a take keeps Hear it, Edit words, Play from here.
+  7. **Times** are `API.transcriptCues`: the `.vtt` at archive.org's `/cors/`, the only path it lets a browser read.
+     The episode page reads it before it offers the door; when it cannot be had there is no door.
+  8. **States** stand in the page's own bar, so Close is there on a phone: loading is the spinner; no times and nothing begun here, "This did not load." with Try again (offline, "You are
+     offline."); an episode the catalog does not serve, "Not in the catalog."; a recording that fails, "This recording did not
+     load." above the lines with Try again, the casting kept; a transcript or copy remade since, a caption under the
+     bar, in sight wherever casting is taken up; a write that fails, as §4.21 item 8. With no network a casting begun here opens if its episode's data was read before.
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
   scroll except Home's (Decision 075) and Library's, whose About Ear Drama row holds the same pages (Decision 087), and on each site page: Credits, Privacy, Take-down requests,
   Delete an account (§4.11).
@@ -1500,7 +1532,7 @@ web app follows today.
 ## §5 The player
 
 - **§5.1 One `<audio>` element** owned by `js/player.js`; the views draw
-  it. The one exception is a play's listen-through (§4.10), which is not an
+  it (casting by ear holds it: §4.22 item 2). The one exception is a play's listen-through (§4.10), which is not an
   episode. The bar is a flex child above the tab bar, never `position: fixed`
   (§6.3). Now Playing is a `<dialog showModal>`, full screen on a phone.
 - **§5.2 Speed, the sleep timer, and skip live on the player** (R18):
@@ -1897,8 +1929,9 @@ web app follows today.
      gives way to the label.
   3. **Which picture.** A series: `series.hero` when it is wide (contract §3.3a, R3b §5.5), else
      `series.picture`, else the label (`API.seriesLead`). A person: the portrait, else the groove-ring
-     label. A play: `play.titlePage`, else `play.authorArt`, else its opening as a page (four speeches,
-     body type, the voice bands at its foot; `API.playLead`). A finished ear drama: always its
+     label. A play: `play.titlePage`, else `play.authorArt`, else its opening as a page (up to four
+     speeches, body type, the voice bands at its foot; only speeches that fit whole above the foot, so no
+     name or line is cut by it, 2026-11-24; `API.playLead`). A finished ear drama: always its
      part-color disc (never an uploaded picture, §6.4r).
   4. **An episode's head is the episode's** (R3a §4.3). The window is its own dated label (its show's
      disc with the date block on the label), the kicker is the show (a link), the name is the episode's

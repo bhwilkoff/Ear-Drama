@@ -8,6 +8,7 @@
  *   scripts/<id>/script.json  the castable shape, once Done: what the reader and the recorder read
  *   scripts/<id>/row.json     what Record's Your scripts draws without opening either
  *   scripts/draft.json        the text being added, before Next
+ * A script cast by ear (PLAYS-DESIGN §13 item 10) also carries `episode` ({ id, url }) and `ear` ({ sig, copy, place }).
  * A script's three files are written in one transaction, so a full disk never leaves half of one.
  */
 const OwnScripts = (() => {
@@ -24,7 +25,7 @@ const OwnScripts = (() => {
     const store = {
       backend,
 
-      /** Your scripts, the last one changed first: `{ id, title, parts, lines, open, done, cast, voices, created, updated }`. */
+      /** Your scripts, the last one changed first: `{ id, title, parts, lines, open, done, cast, voices, created, updated }`, and one cast by ear its `episode` and `ear` (`{ cast, lines }`). */
       async list() {
         const keys = (await backend.keys('scripts/')).filter(k => k.endsWith('/row.json'));
         const rows = (await Promise.all(keys.map(k => backend.get(k)))).map(parse).filter(r => r && O.OWN_ID.test(r.id));
@@ -41,11 +42,20 @@ const OwnScripts = (() => {
       async create({ title, text }) {
         const read = O.parse(text);
         const at = now();
-        const rec = { id: `own-${C.uuid().toLowerCase()}`, title: O.trim(O.normalize(title)), original: read.text,
+        const rec = { id: `own-${C.uuid().toLowerCase()}`, title: O.trim(O.normalize(title)), original: O.normalize(text),
                       doc: O.newDoc(read.lines), extras: [], created: at, updated: at, done: false };
         await store.keep(rec);
         return rec;
       },
+
+      /** A script begun by casting an episode's transcript: `doc` as OwnCore.fromCues made it. Not kept until keep(). */
+      begin({ title, doc, episode, ear }) {
+        const at = now();
+        return { id: `own-${C.uuid().toLowerCase()}`, title: O.trim(O.normalize(title)), original: '', doc, extras: [], created: at, updated: at,
+                 done: false, episode: { ...episode }, ear: { ...ear } };
+      },
+      /** The row of the script being cast from one of `ids` (an episode's own, and what it was called before), or null. */
+      async ofEpisode(ids) { return (await store.list()).find(r => r.episode && ids.includes(r.episode)) || null; },
 
       /**
        * Keeps `rec` as it stands. A Done script's castable shape is sealed and its productions follow;
@@ -81,8 +91,8 @@ const OwnScripts = (() => {
           if (!rec) continue;
           const script = rec.done ? await store.script(row.id) : null;
           out.push({
-            id: rec.id, title: rec.title, source: script ? script.source.name : 'Added by you', created: new Date(rec.created).toISOString(), done: !!rec.done,
-            lines: script ? script.lines : rec.doc.lines.map(l => (l.kind === 'speech'
+            id: rec.id, title: rec.title, source: rec.episode ? 'Automatic transcript' : 'Added by you', ...(rec.episode ? { episode: rec.episode.id } : {}), created: new Date(rec.created).toISOString(), done: !!rec.done,
+            lines: script ? script.lines : O.settle(rec.doc).lines.map(l => (l.kind === 'speech'
               ? { kind: l.kind, role: l.role, parts: O.pieces(l.text) } : { kind: l.kind, source: l.text })),
           });
         }
@@ -91,11 +101,13 @@ const OwnScripts = (() => {
     };
 
     async function write(snap) {
-      const parts = O.partsOf(snap.doc.lines).map(p => p.lines).sort((a, b) => b - a);
+      const settled = O.settle(snap.doc).lines;
+      const parts = O.partsOf(settled).map(p => p.lines).sort((a, b) => b - a);
       let script = null, refusal = null;
       if (snap.done) {
         const taken = new Set(await store.takes(snap.id));
-        const built = O.toScript(O.done(snap.doc), { id: snap.id, title: snap.title });
+        // A transcript half cast keeps its lines open: the script's are directions until they are somebody's.
+        const built = O.toScript(O.done(snap.doc, { keepOpen: !!snap.ear }), { id: snap.id, title: snap.title, ...(snap.episode ? { episode: snap.episode } : {}) });
         refusal = O.refusalOf(built);
         if (!refusal) {
           script = await O.seal(built);
@@ -103,9 +115,10 @@ const OwnScripts = (() => {
           script.edits = editsOf(await store.script(snap.id), script, taken);
         }
       }
-      const row = { id: snap.id, title: snap.title, parts: parts.length, lines: snap.doc.lines.length,
-                    open: snap.doc.lines.filter(l => l.kind === 'open').length, done: snap.done, cast: parts,
-                    voices: parts.filter(n => n >= C.CASTABLE_LINES).length, created: snap.created, updated: snap.updated };
+      const row = { id: snap.id, title: snap.title, parts: parts.length, lines: settled.length,
+                    open: settled.filter(l => l.kind === 'open').length, done: snap.done, cast: parts,
+                    voices: parts.filter(n => n >= C.CASTABLE_LINES).length, created: snap.created, updated: snap.updated,
+                    ...(snap.episode ? { episode: snap.episode.id } : {}), ...(snap.ear ? { ear: O.castCount(snap.doc) } : {}) };
       await backend.putAll([[`${folder(snap.id)}doc.json`, JSON.stringify(snap)], [`${folder(snap.id)}row.json`, JSON.stringify(row)],
         ...(script ? [[`${folder(snap.id)}script.json`, JSON.stringify(script)]] : [])]);
       if (script && plays) await (await plays()).adopt(script);

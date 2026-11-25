@@ -14,7 +14,7 @@ a full disk (the banner, then Try again); Done; the script's page (no Share, no 
 stub microphone; a reload; the locked line (its refusal, and only Edit words); Words changed in the take list; Save as text; Export my
 data; Search; Delete with its productions named.
 
-Fails on: a sideways scroll; a control of these pages under 44 px; the wrong focus order on either page; focus lost after a
+Fails on: the opening on the script's page, or on a bundled play's, cutting a speech or a name; a sideways scroll; a control of these pages under 44 px; the wrong focus order on either page; focus lost after a
 step; a step that redraws more than a tenth of the lines
 (its time is printed, never graded: this Mac's load decides it); a page error; and any of the above not happening.
 
@@ -34,6 +34,7 @@ import web_fit_studio as FS  # noqa: E402
 
 WIDTHS = (320, 375, 768, 1440)
 BUNDLE = FS.BUNDLE
+PLAYS = [s['id'] for s in json.load(open(BUNDLE))['scripts']][:6]
 CACHED = os.path.join(ROOT, 'catalog', '.cache', 'gutenberg', 'text', '2765.txt')
 
 EXTRA = r"""(() => {
@@ -68,6 +69,14 @@ FIT = r"""JSON.stringify((() => {
     if (r.right > innerWidth + 1 || r.left < -1) out.over.push(t);
   }
   return out; })())"""
+
+
+# The opening on a play's page: whole speeches only (WEB-DESIGN 6.4g), above the voice bands at its foot.
+OPENING = r"""(() => { const w = document.querySelector('.pl-open-hero'); if (!w) return 'no opening';
+  const r = w.getBoundingClientRect(), foot = w.querySelector('.lb-overlay rect'), end = foot ? foot.getBoundingClientRect().top : r.bottom;
+  const on = [...w.querySelectorAll('.pl-open-sp')].map(s => [s.querySelector('b').textContent, s.getBoundingClientRect()]).filter(([, q]) => q.left < r.right - 1);
+  if (!on.length) return 'every speech';
+  return on.filter(([, q]) => q.bottom > end + 1 || q.right > r.right).map(([n]) => n).join(); })()"""
 
 
 def the_text():
@@ -381,6 +390,8 @@ def main():
             for words in ('Read together', 'Share', 'Stage play', 'Radio play'):
                 if words.lower() in page.lower(): bad(f'{words} is offered on the script\'s page')
             fit("the script's page")
+            cut = ev(OPENING)
+            if cut: bad(f'the opening cuts {cut}')
             shot('script')
             ev("document.querySelector('.os-own').scrollIntoView({ block: 'end' })")
             if w in (375, 1440): shot('script-foot')
@@ -402,6 +413,16 @@ def main():
             wait("document.querySelector('.os-list .os-line')", 'the parts page after Try again')
             ev("document.querySelector('.os [aria-label=Back]').click()")
             wait("document.querySelector('.os-own')", "the script's page again")
+            # A bundled play's page draws its opening by the same rule.
+            for pid_ in PLAYS:
+                go(f'?play={pid_}')
+                wait("document.querySelector('#plays-body .g-head-hero')", "a bundled play's page")
+                settle()
+                if ev("!!document.querySelector('.pl-open-hero')"):
+                    cut = ev(OPENING)
+                    if cut: bad(f'the opening of {pid_} cuts {cut}')
+            go(f'?play={sid}')
+            wait("document.querySelector('.os-own')", "the script's page, back")
             # Read.
             ev("[...document.querySelectorAll('#view-plays a.btn')].find(b => b.textContent === 'Read').click()")
             wait("document.querySelector('.rd-line')", 'the reader')

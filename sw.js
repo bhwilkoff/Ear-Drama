@@ -62,6 +62,8 @@ const SHELL = [
   'js/read-ui.js',
   'js/class-ui.js',
   'js/own-ui.js',
+  'js/ear-core.js',
+  'js/ear-ui.js',
   'js/marks-core.js',
   'js/marks.js',
   'js/studio-core.js',

@@ -12,6 +12,7 @@
  *   ?item={episode id}                episode Detail
  *   ?view=search&q=                   Search
  *   ?view=library&side=listen|make&list=upnext|history|marks&productions=&section=voices    Library (this device; Decision 087; the old &tab= still opens)
+ *   ?cast={episode id}                casting an episode by ear (js/ear-ui.js; this browser only)
  *   ?play={script id}, ?production={id}, ?production={id}&part={part id}
  *                                     an ear drama (js/plays-ui.js; this browser only)
  * Older names are rewritten in place: listen, series, radio; plays and browse&kind=plays open Record.
@@ -560,7 +561,7 @@
     if (p.get('class')) return { view: 'class', p };
     if (p.get('read')) return { view: 'reader', id: p.get('read'), p };
     if (p.get('production') || p.get('play')) return { view: 'plays', p };
-    if ((p.get('script') || '').startsWith('own-') || (p.get('view') === 'record' && p.get('add'))) return { view: 'own', p };
+    if (p.get('cast') || (p.get('script') || '').startsWith('own-') || (p.get('view') === 'record' && p.get('add'))) return { view: 'own', p };
     const old = p.get('view');
     const playsInBrowse = old === 'browse' && p.get('kind') === 'plays';
     if (RENAMED[old] || playsInBrowse) {
@@ -583,7 +584,8 @@
     document.body.classList.toggle('reading', r.view === 'reader');
     // Adding and correcting a script (§4.21) are full-height too; the sidebar stays.
     document.body.classList.toggle('scripting', r.view === 'own');
-    if (r.view !== 'own') OwnUI.leave();
+    if (r.view !== 'own' || r.p.get('cast')) OwnUI.leave();
+    if (r.view !== 'own' || !r.p.get('cast')) EarUI.leave();
     if (r.view !== 'reader' && r.view !== 'readroom') Reader.close();
     if (r.view !== 'readroom') ReadUI.pause();
     if (r.view !== 'class') ClassUI.leave();
@@ -597,7 +599,7 @@
     });
     if (r.view !== 'plays' && r.view !== 'invite' && r.view !== 'drama') PlaysUI.leave();
     ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode, person: renderPerson,
-       radio: renderRadio, surprise: renderSurprise, record: renderRecord, own: (r) => OwnUI.render(r, playsHelpers), plays: renderPlays, reader: renderReader, readroom: (r) => ReadUI.render(r, playsHelpers), class: (r) => ClassUI.render(r, playsHelpers), invite: renderInvite, drama: renderDrama, search: renderSearch,
+       radio: renderRadio, surprise: renderSurprise, record: renderRecord, own: (r) => (r.p.get('cast') ? EarUI : OwnUI).render(r, playsHelpers), plays: renderPlays, reader: renderReader, readroom: (r) => ReadUI.render(r, playsHelpers), class: (r) => ClassUI.render(r, playsHelpers), invite: renderInvite, drama: renderDrama, search: renderSearch,
        library: renderLibrary })[r.view](r);
     if (!firstRoute) {
       $('main-content').scrollTop = 0;
@@ -1062,9 +1064,10 @@
   function openingWindow(script, hero = false) {
     const lines = PlaysCore.openingOf(script, hero ? 4 : 2, ReaderCore);
     if (!lines.length) return null;
-    return el('span', { class: `g-window pl-open${hero ? ' pl-open-hero' : ''}`, 'aria-hidden': 'true', dataset: { art: 'label' } },
+    const spec = LabelCore.labelSpec({ kind: 'play', voices: PlaysCore.voicesOf(script), opening: true }, 200);
+    return el('span', { class: `g-window pl-open${hero ? ' pl-open-hero' : ''}${spec.rules ? ' pl-open-foot' : ''}`, 'aria-hidden': 'true', dataset: { art: 'label' } },
       ...lines.map(l => el('span', { class: 'pl-open-sp' }, el('b', {}, l.name), saidNode('pl-open-said', l))),
-      Label.svg(LabelCore.labelSpec({ kind: 'play', voices: PlaysCore.voicesOf(script), opening: true }, 200), { overlay: true }));
+      Label.svg(spec, { overlay: true }));
   }
   function playTile(script) {
     const win = openingWindow(script) || castWindow(script);
@@ -1918,6 +1921,13 @@
       d.scriptSource ? ` \u00b7 ${d.scriptSource}` : null);
   }
 
+  /**
+   * An episode's title on its own page. Raw upload text never shows (AGENTS.md): a title still carrying an upload's catalog
+   * number or identifier gives way to one composed from the record, its date, else its number, else its show.
+   */
+  const shownTitle = (d, seriesName) => (d.title && API.uploadTagged(d.title)
+    ? (d.date ? fmtLongDate(d.date) : d.num !== null && d.num !== undefined ? `No. ${d.num}` : seriesName) : epTitle(d));
+
   function renderEpisode(r) {
     const body = $('episode-body');
     load(body, async () => {
@@ -1933,10 +1943,7 @@
     }, ({ d, s, genre, rightsLine, m, script }) => {
       if (d.id !== r.id) history.replaceState(history.state, '', `?item=${encodeURIComponent(d.id)}`);
       const seriesName = s ? s.name : d.series;
-      // Raw upload text never shows (AGENTS.md): a title still carrying an upload's catalog number or
-      // identifier gives way to one composed from the record, its date, else its number, else its show.
-      const title = d.title && API.uploadTagged(d.title)
-        ? (d.date ? fmtLongDate(d.date) : d.num !== null && d.num !== undefined ? `No. ${d.num}` : seriesName) : epTitle(d);
+      const title = shownTitle(d, seriesName);
       setTitle(title, API.mediumDate(d.date), seriesName);
       let chosen = 0;
       const card = () => ({ id: d.id, title, series: d.series, seriesName, date: d.date, network: d.network || null,
@@ -1982,16 +1989,19 @@
           el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, seriesName),
             eventLine(API.showFacts(s, years(s.first, s.last), plural(s.episodes.length, 'episode', 'episodes')))))) : null;
       const startBtn = script ? PlaysUI.startButton(script, playsHelpers) : null;
+      // §4.22's door: filled only once the transcript's times were read.
+      const castBox = script || onTV() ? null : el('div', { class: 'actions actions-one actions-start', hidden: true });
       body.append(...[head,
         d.aka ? el('p', { class: 'caption ep-aka' }, `Also titled ${d.aka}`) : null,
         scriptLink(d),
         el('div', { class: 'actions actions-one' }, playBtn, queueBtn, shareBtn),
-        startBtn ? el('div', { class: 'actions actions-one actions-start' }, startBtn) : null,
+        startBtn ? el('div', { class: 'actions actions-one actions-start' }, startBtn) : castBox,
         showRow, showRow ? pictureCredit([showPic]) : null].filter(Boolean));
 
       // R16: the automatic transcript, only where the gate passed (the row's `transcript`
       // is null otherwise), fetched from archive.org the first time it is opened.
       if (d.transcript) body.append(transcriptBlock(d.transcript));
+      if (castBox) EarUI.door(castBox, d, playsHelpers);
 
       if (d.credits.length) {
         const air = API.onAirOf(d.credits);
@@ -2351,7 +2361,7 @@
      PLAYS (js/plays-ui.js draws them with these helpers)
   ================================================================ */
 
-  const playsHelpers = { inApp, playWindow: (s) => pictureWindow(playArt(s), 48), el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine, showTile, share, openingWindow, heroCredit };
+  const playsHelpers = { inApp, playWindow: (s) => pictureWindow(playArt(s), 48), el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine, showTile, share, openingWindow, heroCredit, shownTitle };
   function renderPlays(r) {
     PlaysUI.render(r, playsHelpers);
   }
