@@ -321,3 +321,6 @@ GRW request sent or not.
   device passes by day (iPhone before 21:00; the Duo only when nothing plays on it); (4) R4-9c on, after the cache ruling; (5) B21 leftovers
   (reader and Google sign-in on Apple TV); Apple export of shared scripts; the site over 1 GB. Waiting on the owner: delete the 11 old
   Release assets (then the GRW email); other third-party text in the public cache; macOS Documents prompt: Don't Allow.
+- 2026-11-25 07:10 (owner): **Home has no doors** (Decision 089; every platform, web check with a negative control, 716 Apple tests, Android lint clean).
+  The build with CarPlay tabs launched on the iPhone 12 (Release, frame read). `reports.yml` fired on its schedule for the first time at
+  03:25. 1.1.2 (174) dispatched.
