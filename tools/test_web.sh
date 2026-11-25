@@ -9,7 +9,7 @@
 # from worker/src/room-protocol.js (join, leave, drift, handoff, an ended
 # room, the core golden-checked against the protocol), the label (its golden specs, shared with Swift and
 # Kotlin, and a mutant that must fail them), reading together (the read room's client golden-checked against
-# worker/test/read-golden.json with a mutant, the socket and its polling fallback against a stub Worker, the casting board), the library's castable manifest (built from the library it names, its drift caught by name), and two checks a browser
+# worker/test/read-golden.json with a mutant, the socket and its polling fallback against a stub Worker, the casting board), the library's castable manifest (built from the library it names, its drift caught by name), a person's own scripts on the device (what is kept, the locks a take puts on a line, the database's version 1 to 2, a full disk, export), an episode cast by ear (what is lit, heard, carried, undone and taken up again, the keys, the times' address, the player held), and two checks a browser
 # will not show you. Each suite runs the SHIPPED files, so a test can never
 # drift from what actually runs.
 #
@@ -39,6 +39,9 @@ DEFAULT_SUITES="js/api.test.js
   js/read.test.js
   js/relay.test.js
   js/label.test.js
+  js/own-core.test.js
+  js/own.test.js
+  js/ear.test.js
   tools/test_tv_focus.mjs
   tools/test_no_third_party_code.mjs
   tools/test_tv_ua.mjs

@@ -12,6 +12,7 @@
  *   ?item={episode id}                episode Detail
  *   ?view=search&q=                   Search
  *   ?view=library&side=listen|make&list=upnext|history|marks&productions=&section=voices    Library (this device; Decision 087; the old &tab= still opens)
+ *   ?cast={episode id}                casting an episode by ear (js/ear-ui.js; this browser only)
  *   ?play={script id}, ?production={id}, ?production={id}&part={part id}
  *                                     an ear drama (js/plays-ui.js; this browser only)
  * Older names are rewritten in place: listen, series, radio; plays and browse&kind=plays open Record.
@@ -40,13 +41,13 @@
   const $ = (id) => document.getElementById(id);
   /* Views are named by their section ids in index.html (view-listen is Home, view-series Browse,
      view-radio Stations); the URL and the nav use the section names. */
-  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'record', 'plays', 'reader', 'readroom', 'class', 'invite', 'drama', 'search', 'library'];
+  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'record', 'own', 'plays', 'reader', 'readroom', 'class', 'invite', 'drama', 'search', 'library'];
   const VIEW_OF = { home: 'listen', browse: 'series', stations: 'radio', surprise: 'surprise', record: 'record', search: 'search',
                     library: 'library', invite: 'invite' };
   /* Decision 075: five sections. Stations and Surprise are pages Home opens, so they light Home;
      a play and a production light Record. */
   const TAB_OF = { listen: 'home', series: 'browse', show: 'browse', episode: 'browse', person: 'browse', radio: 'home',
-                   surprise: 'home', record: 'record', plays: 'record', reader: 'record', readroom: 'record', class: 'library', invite: 'record', drama: 'browse', search: 'search', library: 'library' };
+                   surprise: 'home', record: 'record', own: 'record', plays: 'record', reader: 'record', readroom: 'record', class: 'library', invite: 'record', drama: 'browse', search: 'search', library: 'library' };
   /** Older names (Decisions 068, 075): an old ?view= opens the new section, and the address is rewritten. */
   const RENAMED = { listen: 'home', series: 'browse', radio: 'stations', plays: 'record' };
   const PAGE = 60;
@@ -560,6 +561,7 @@
     if (p.get('class')) return { view: 'class', p };
     if (p.get('read')) return { view: 'reader', id: p.get('read'), p };
     if (p.get('production') || p.get('play')) return { view: 'plays', p };
+    if (p.get('cast') || (p.get('script') || '').startsWith('own-') || (p.get('view') === 'record' && p.get('add'))) return { view: 'own', p };
     const old = p.get('view');
     const playsInBrowse = old === 'browse' && p.get('kind') === 'plays';
     if (RENAMED[old] || playsInBrowse) {
@@ -580,6 +582,10 @@
     stopScene();
     // The reader (WEB-DESIGN §4.16) takes the whole height: the tab bar and sidebar step aside.
     document.body.classList.toggle('reading', r.view === 'reader');
+    // Adding and correcting a script (§4.21) are full-height too; the sidebar stays.
+    document.body.classList.toggle('scripting', r.view === 'own');
+    if (r.view !== 'own' || r.p.get('cast')) OwnUI.leave();
+    if (r.view !== 'own' || !r.p.get('cast')) EarUI.leave();
     if (r.view !== 'reader' && r.view !== 'readroom') Reader.close();
     if (r.view !== 'readroom') ReadUI.pause();
     if (r.view !== 'class') ClassUI.leave();
@@ -593,7 +599,7 @@
     });
     if (r.view !== 'plays' && r.view !== 'invite' && r.view !== 'drama') PlaysUI.leave();
     ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode, person: renderPerson,
-       radio: renderRadio, surprise: renderSurprise, record: renderRecord, plays: renderPlays, reader: renderReader, readroom: (r) => ReadUI.render(r, playsHelpers), class: (r) => ClassUI.render(r, playsHelpers), invite: renderInvite, drama: renderDrama, search: renderSearch,
+       radio: renderRadio, surprise: renderSurprise, record: renderRecord, own: (r) => (r.p.get('cast') ? EarUI : OwnUI).render(r, playsHelpers), plays: renderPlays, reader: renderReader, readroom: (r) => ReadUI.render(r, playsHelpers), class: (r) => ClassUI.render(r, playsHelpers), invite: renderInvite, drama: renderDrama, search: renderSearch,
        library: renderLibrary })[r.view](r);
     if (!firstRoute) {
       $('main-content').scrollTop = 0;
@@ -953,13 +959,13 @@
   function sceneCard({ row, whole }, { wide = false } = {}) {
     const script = whole || row;
     const id = row.id;
-    const lines = PlaysCore.openingOf(script, 4);
+    const lines = PlaysCore.openingOf(script, 4, ReaderCore);
     const v = PlaysCore.voicesOf(row);
     const facts = [PlaysCore.authorLine(row), `${num.format(v)} ${v === 1 ? 'voice' : 'voices'}`, `About ${num.format(PlaysCore.minutesOf(row))} min`];
     const hueOf = (part) => (whole ? PlaysCore.partHue(whole, part) : '') || 'none';
     const page = el('ol', { class: 'pl-scene-page', 'aria-label': 'The opening' },
       ...lines.map(l => el('li', { class: 'pl-scene-sp', dataset: { hue: hueOf(l.part) } },
-        el('span', { class: 'pl-scene-who' }, l.name), el('span', { class: 'pl-scene-said' }, l.text))));
+        el('span', { class: 'pl-scene-who' }, l.name), saidNode('pl-scene-said', l))));
     // The voice you take is the one that answers: the second speaker in the opening, else the second part.
     const speakers = [...new Set(lines.map(l => l.part))];
     const parts = whole ? PlaysCore.castParts(whole).map(p => p.id).filter(p => p.startsWith('role:')) : speakers;
@@ -1050,13 +1056,18 @@
     win.classList.add('pl-cast');
     return win;
   }
+  /** An opening speech's words: a verse speech keeps its printed lines, a turned-over one indented (§4.2 item 7). */
+  const saidNode = (cls, l) => (l.verse
+    ? el('span', { class: `${cls} pl-verse` }, ...l.verse.map(row => el('span', { class: 'pl-verse-row' }, row)))
+    : el('span', { class: cls }, l.text));
   /** A play tile's window: its opening speeches as a page (the row's `opening`), else its cast drawn. */
   function openingWindow(script, hero = false) {
-    const lines = PlaysCore.openingOf(script, hero ? 4 : 2);
+    const lines = PlaysCore.openingOf(script, hero ? 4 : 2, ReaderCore);
     if (!lines.length) return null;
-    return el('span', { class: `g-window pl-open${hero ? ' pl-open-hero' : ''}`, 'aria-hidden': 'true', dataset: { art: 'label' } },
-      ...lines.map(l => el('span', { class: 'pl-open-sp' }, el('b', {}, l.name), el('span', { class: 'pl-open-said' }, l.text))),
-      Label.svg(LabelCore.labelSpec({ kind: 'play', voices: PlaysCore.voicesOf(script), opening: true }, 200), { overlay: true }));
+    const spec = LabelCore.labelSpec({ kind: 'play', voices: PlaysCore.voicesOf(script), opening: true }, 200);
+    return el('span', { class: `g-window pl-open${hero ? ' pl-open-hero' : ''}${spec.rules ? ' pl-open-foot' : ''}`, 'aria-hidden': 'true', dataset: { art: 'label' } },
+      ...lines.map(l => el('span', { class: 'pl-open-sp' }, el('b', {}, l.name), saidNode('pl-open-said', l))),
+      Label.svg(spec, { overlay: true }));
   }
   function playTile(script) {
     const win = openingWindow(script) || castWindow(script);
@@ -1099,11 +1110,13 @@
     const yoursList = el('div');
     const yours = el('section', { class: 'block', 'aria-labelledby': 'yours-h' },
       el('h2', { class: 'section-header', id: 'yours-h' }, 'Yours'), yoursList);
+    const ownBox = el('div');
+    OwnUI.yours(playsHelpers).then((sec) => { if (sec) ownBox.replaceChildren(sec); }).catch((e) => console.error(e));
     const todayBox = el('div');
     const playsBox = el('div');
     const madeBox = el('div');
     const classBox = el('div');
-    body.replaceChildren(yours, todayBox, playsBox, classBox, madeBox);
+    body.replaceChildren(yours, ownBox, todayBox, playsBox, classBox, madeBox);
     PlaysUI.renderMine(yoursList, playsHelpers, { classes: false, onEmpty: () => yours.remove() });
     PlaysUI.classDoor(classBox, playsHelpers).catch(e => console.error('class door', e));
 
@@ -1908,6 +1921,13 @@
       d.scriptSource ? ` \u00b7 ${d.scriptSource}` : null);
   }
 
+  /**
+   * An episode's title on its own page. Raw upload text never shows (AGENTS.md): a title still carrying an upload's catalog
+   * number or identifier gives way to one composed from the record, its date, else its number, else its show.
+   */
+  const shownTitle = (d, seriesName) => (d.title && API.uploadTagged(d.title)
+    ? (d.date ? fmtLongDate(d.date) : d.num !== null && d.num !== undefined ? `No. ${d.num}` : seriesName) : epTitle(d));
+
   function renderEpisode(r) {
     const body = $('episode-body');
     load(body, async () => {
@@ -1923,10 +1943,7 @@
     }, ({ d, s, genre, rightsLine, m, script }) => {
       if (d.id !== r.id) history.replaceState(history.state, '', `?item=${encodeURIComponent(d.id)}`);
       const seriesName = s ? s.name : d.series;
-      // Raw upload text never shows (AGENTS.md): a title still carrying an upload's catalog number or
-      // identifier gives way to one composed from the record, its date, else its number, else its show.
-      const title = d.title && API.uploadTagged(d.title)
-        ? (d.date ? fmtLongDate(d.date) : d.num !== null && d.num !== undefined ? `No. ${d.num}` : seriesName) : epTitle(d);
+      const title = shownTitle(d, seriesName);
       setTitle(title, API.mediumDate(d.date), seriesName);
       let chosen = 0;
       const card = () => ({ id: d.id, title, series: d.series, seriesName, date: d.date, network: d.network || null,
@@ -1972,16 +1989,19 @@
           el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, seriesName),
             eventLine(API.showFacts(s, years(s.first, s.last), plural(s.episodes.length, 'episode', 'episodes')))))) : null;
       const startBtn = script ? PlaysUI.startButton(script, playsHelpers) : null;
+      // §4.22's door: filled only once the transcript's times were read.
+      const castBox = script || onTV() ? null : el('div', { class: 'actions actions-one actions-start', hidden: true });
       body.append(...[head,
         d.aka ? el('p', { class: 'caption ep-aka' }, `Also titled ${d.aka}`) : null,
         scriptLink(d),
         el('div', { class: 'actions actions-one' }, playBtn, queueBtn, shareBtn),
-        startBtn ? el('div', { class: 'actions actions-one actions-start' }, startBtn) : null,
+        startBtn ? el('div', { class: 'actions actions-one actions-start' }, startBtn) : castBox,
         showRow, showRow ? pictureCredit([showPic]) : null].filter(Boolean));
 
       // R16: the automatic transcript, only where the gate passed (the row's `transcript`
       // is null otherwise), fetched from archive.org the first time it is opened.
       if (d.transcript) body.append(transcriptBlock(d.transcript));
+      if (castBox) EarUI.door(castBox, d, playsHelpers);
 
       if (d.credits.length) {
         const air = API.onAirOf(d.credits);
@@ -2188,17 +2208,18 @@
     if (!words.length) { body.replaceChildren(); return; }
     body.replaceChildren(stateBox('loading'));
     try {
-      const [series, numbers, scripts, people, aired, saidAll] = await Promise.all([API.searchSeries(q),
+      const [series, numbers, scripts, people, aired, saidAll, mine] = await Promise.all([API.searchSeries(q),
         API.searchEpisodeNumbers(q), onTV() ? [] : castable(), API.searchPeople(q), API.searchAired(q),
-        API.searchSaidNumbers(q)]);
+        API.searchSaidNumbers(q), onTV() ? [] : OwnUI.matching(words).catch((e) => { console.error(e); return []; })]);
       if (seq !== searchSeq) return;
       const plays = scriptsMatching(scripts, words);
       const titled = new Set(numbers);
       const said = saidAll.filter(n => !titled.has(n));
       body.replaceChildren();
+      const addOwn = !plays.length && !mine.length && !onTV() ? el('div', { class: 'actions' }, OwnUI.addLink(playsHelpers, 'btn')) : null;
       if (!series.total && !people.total && !numbers.length && !plays.length && !(aired && aired.rows.length)
-          && !said.length) {
-        body.append(stateBox('empty', { text: `No matches for “${q.trim()}”.` }));
+          && !said.length && !mine.length) {
+        body.append(stateBox('empty', { text: `No matches for “${q.trim()}”.` }), ...[addOwn].filter(Boolean));
         return;
       }
       if (series.total) {
@@ -2218,6 +2239,12 @@
           el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'rp-h' }, 'Plays'),
             el('span', { class: 'caption' }, plural(plays.length, 'play', 'plays'))),
           el('ul', { class: 'series-list' }, plays.map(playRow))));
+      }
+      if (mine.length) {
+        body.append(el('section', { class: 'block', 'aria-labelledby': 'ro-h' },
+          el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'ro-h' }, 'Your scripts'),
+            el('span', { class: 'caption' }, plural(mine.length, 'script', 'scripts'))),
+          el('ul', { class: 'series-list' }, mine.map(row => OwnUI.scriptRow(row, playsHelpers)))));
       }
       if (aired && aired.rows.length) {
         const { byKey } = await API.seriesIndex();
@@ -2261,6 +2288,7 @@
         body.append(pagedEpisodes('rt-h', API.transcriptLabel, said.length,
           (from, to) => API.searchDocs(said.slice(from, to)), byKey, seq, q, 10, (ep, row) => quoteInto(ep, row, heard)));
       }
+      if (addOwn) body.append(addOwn);
     } catch (err) {
       if (seq !== searchSeq) return;
       console.error(err);
@@ -2333,7 +2361,7 @@
      PLAYS (js/plays-ui.js draws them with these helpers)
   ================================================================ */
 
-  const playsHelpers = { el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine, showTile, share, openingWindow, heroCredit };
+  const playsHelpers = { inApp, playWindow: (s) => pictureWindow(playArt(s), 48), el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine, showTile, share, openingWindow, heroCredit, shownTitle };
   function renderPlays(r) {
     PlaysUI.render(r, playsHelpers);
   }
@@ -2395,6 +2423,7 @@
       body.replaceChildren(stateBox(problem(err), { retry: () => renderReader(r) }));
     });
   }
+  OwnUI.dropOn($('view-record'), playsHelpers);
   function renderInvite() {
     setTitle('Invitation');
     PlaysUI.renderInvite($('invite-body'), playsHelpers);
@@ -2502,7 +2531,9 @@
       let productions = [];
       try { const s = PlayStore.open(); await s.load(); productions = s.productions; } catch { /* no ear dramas to list */ }
       const marks = typeof MarksCore !== 'undefined' ? (() => { try { return MarksCore.exportRows(localStorage); } catch { return []; } })() : [];
-      return DataExport.build(Store, productions, Date.now(), marks);
+      let scripts = [];
+      try { scripts = await OwnScripts.shared().exportRows(); } catch (e) { console.error(e); }
+      return DataExport.build(Store, productions, Date.now(), marks, scripts);
     };
     row.replaceChildren(
       el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {

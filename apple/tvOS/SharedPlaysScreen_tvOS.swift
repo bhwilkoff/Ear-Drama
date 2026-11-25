@@ -66,7 +66,10 @@ struct SharedPlayScreen_tvOS: View {
     @State private var blocking: SharedRecord.Member?
     @FocusState private var listenFocused: Bool
 
-    private static let scripts = CastableLibrary.load()?.scripts ?? []
+    /// The play at the revision the production was cast from: the published library's, else the bundle's.
+    @State private var script: PlayScript?
+    @State private var scriptLine: String?
+    @State private var scriptLoading = false
     private let api = WorkerPlays(api: .shared)
     private var me: String? { APIClient.shared.storedSession()?.userId }
 
@@ -82,6 +85,7 @@ struct SharedPlayScreen_tvOS: View {
             }
         }
         .task(id: load) { await read() }
+        .task(id: "\(rec?.scriptID ?? "")#\(rec?.scriptRevision ?? "")#\(load)") { await readScript() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, !live.isRunning { load += 1 }
         }
@@ -89,7 +93,6 @@ struct SharedPlayScreen_tvOS: View {
     }
 
     @ViewBuilder private func content(_ rec: SharedRecord) -> some View {
-        let script = Self.scripts.first { $0.id == rec.scriptID && $0.revision == rec.scriptRevision }
         List {
             Section {
                 Text(rec.title).font(TypeRamp.pageTitle)
@@ -104,8 +107,10 @@ struct SharedPlayScreen_tvOS: View {
                     .accessibilityIdentifier("shared-listen")
                     if fetching { ProgressView() }
                     if let entry = live.current { ReadAlongPanel_tvOS(lineID: entry.lineID, deviceVoice: entry.isDeviceVoice, script: script) }
+                } else if scriptLoading {
+                    ProgressView()
                 } else {
-                    Text(PlaysShare.line(PlaysRefusal.code("revision_mismatch"))).foregroundStyle(Color.brandTextMuted)
+                    Text(scriptLine ?? PlaysShare.line(PlaysRefusal.code("revision_mismatch"))).foregroundStyle(Color.brandTextMuted)
                 }
                 if let archive = PlaysShare.archiveLine(rec) {
                     switch archive {
@@ -168,6 +173,22 @@ struct SharedPlayScreen_tvOS: View {
             refusal = nil
         } catch {
             if rec == nil { refusal = PlaysShare.line(error) } else { line = PlaysShare.line(error) }
+        }
+    }
+
+    private func readScript() async {
+        guard let rec else { return }
+        if let have = script, have.id == rec.scriptID, have.revision == rec.scriptRevision { return }
+        script = nil
+        scriptLine = nil
+        scriptLoading = true
+        defer { scriptLoading = false }
+        do {
+            script = try await LibraryScripts.script(id: rec.scriptID, revision: rec.scriptRevision)
+            if script == nil { scriptLine = PlaysShare.line(PlaysRefusal.code("revision_mismatch")) }
+        } catch is CancellationError {
+        } catch {
+            scriptLine = PlaysShare.line(error)
         }
     }
 

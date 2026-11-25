@@ -27,6 +27,7 @@ import { json, problem } from "./http.js";
 import { sha256Hex } from "./jwt.js";
 import { castParts, next, statusOf } from "./plays-relay.js";
 import { madeFrom } from "./plays-castable.js";
+import { newPersonRefusal, ownScriptOut, sendScript } from "./plays-own.js";
 
 export const INVITE_HEADER = "x-invite";
 export const FINISHED_DEFAULT = 20;
@@ -60,7 +61,7 @@ const gone = () => json({ error: "invite_gone" }, 410, { "cache-control": INVITE
 /** Takes a viewer with no account must not hear: see the header of this file. */
 async function withheld(env, pid, inviter) {
   const [reports, blocks] = await Promise.all([
-    env.DB.prepare("SELECT take_id, target_user_id, status FROM play_reports WHERE production_id = ?1")
+    env.DB.prepare("SELECT take_id, target_user_id, status, script FROM play_reports WHERE production_id = ?1")
       .bind(pid)
       .all()
       .then((r) => r.results),
@@ -70,7 +71,7 @@ async function withheld(env, pid, inviter) {
       .then((r) => r.results),
   ]);
   const takes = new Set(reports.filter((r) => r.take_id).map((r) => r.take_id));
-  const people = new Set(reports.filter((r) => !r.take_id && r.status === "open" && r.target_user_id).map((r) => r.target_user_id));
+  const people = new Set(reports.filter((r) => !r.take_id && !r.script && r.status === "open" && r.target_user_id).map((r) => r.target_user_id));
   for (const b of blocks) people.add(b.user_id === inviter ? b.blocked_id : b.user_id);
   return (t) => takes.has(t.id) || people.has(t.user_id);
 }
@@ -88,6 +89,9 @@ async function viewOpenInvite(request, env, now) {
   if (!found) return problem(404, "invite_not_found");
   if (found.gone) return gone();
   const { p, inviter } = found;
+  const shut = await newPersonRefusal(env, p);
+  if (shut) return shut;
+  const own = await ownScriptOut(env, p);
   const [rows, members, job] = await Promise.all([
     env.DB.prepare("SELECT part, status, user_id, claimed_at FROM play_parts WHERE production_id = ?1")
       .bind(p.id)
@@ -110,6 +114,7 @@ async function viewOpenInvite(request, env, now) {
       scriptRevision: p.script_revision,
       title: p.title,
       source: madeFrom(p)?.source ?? null,
+      ...(own ? { own_script: { state: own.state, episode_id: own.episode_id } } : {}),
       parts: castParts(p.cast).map(({ id, lineCount }) => {
         const status = statusOf(rows, id, now);
         const part = { id, lineCount, status };
@@ -133,6 +138,13 @@ async function viewOpenInvite(request, env, now) {
     200,
     { "cache-control": INVITE_CACHE },
   );
+}
+
+/** GET /v1/plays/open/invite/script: an own script's text, for whoever holds a live invite to it. */
+async function inviteScript(request, env, now) {
+  const found = await openInvite(env, request.headers.get(INVITE_HEADER), now);
+  if (!found) return problem(404, "invite_not_found");
+  return found.gone ? gone() : sendScript(request, env, found.p, { newPerson: true });
 }
 
 /* ---- Finished ear dramas ---- */
@@ -228,5 +240,6 @@ export async function handleOpen(url, request, env) {
   if (a === "finished" && !b) return listFinished(url, env);
   if (a === "finished" && b && !c) return getFinished(env, b);
   if (a === "open" && b === "invite" && !c) return viewOpenInvite(request, env, Date.now());
+  if (a === "open" && b === "invite" && c === "script" && seg.length === 3) return inviteScript(request, env, Date.now());
   return problem(404, "not_found");
 }

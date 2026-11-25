@@ -194,6 +194,9 @@ struct PlayScriptScreen: View {
         Group {
             if let script {
                 ScrollView { PlayPageBody(script: script) }
+                    #if os(iOS)
+                    .background(Color(uiColor: .systemGroupedBackground))
+                    #endif
                     .navigationTitle(script.title)
             } else if failed {
                 VStack(spacing: Spacing.s3) {
@@ -244,8 +247,14 @@ struct PlayPageBody: View {
             }
             RightsLine(script: script)
         }
-        .padding(Spacing.s4)
+        .padding(.vertical, Spacing.s4)
+        .pageBarPadding()
+        // The page margin and the episode page's measure (§3.6a): 720 left the open Duo 90 pt of empty margin.
+        #if os(iOS)
+        .modifier(ReadableColumn(width: 960))
+        #else
         .modifier(ReadableColumn())
+        #endif
     }
 }
 
@@ -258,12 +267,24 @@ struct PlayOpeningWindow: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             LabelView(item: script.pageLabel, side: side)
-            ScenePage(opening: script.opening(n: 4), hue: { SceneScript.hue(script, $0) }, current: nil, lines: 2)
-                .padding(.bottom, side * 0.18)
+            // As many whole speeches as stand above the voice bands: a larger text size shows fewer, never one cut.
+            let opening = script.opening(n: 4)
+            ViewThatFits(in: .vertical) {
+                page(opening)
+                page(Array(opening.prefix(3)))
+                page(Array(opening.prefix(2)))
+                page(Array(opening.prefix(1)))
+            }
+            .frame(height: side * 0.86, alignment: .top)
+            .clipped()
         }
         .frame(width: side, height: side, alignment: .topLeading)
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .accessibilityLabel("The opening")
+    }
+
+    private func page(_ opening: [OpeningSpeech]) -> some View {
+        ScenePage(opening: opening, hue: { SceneScript.hue(script, $0) }, current: nil, lines: 2, framed: false)
     }
 }
 

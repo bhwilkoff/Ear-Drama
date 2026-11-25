@@ -47,12 +47,29 @@ class ItemLeadTest {
         assertNull("a picture with no published size is not shown", ItemLead.shown(pic("n", null, null)))
     }
 
+    /** B15b: This Is Your FBI's picture left 13 pt of board beside it on an iPhone 12; the twin of ItemLeadTests.aPictureThatNearlyFillsTheBoardFillsIt. */
+    @Test fun aPictureThatNearlyFillsTheBoardFillsIt() {
+        val near = ItemLead.window(pic("n", 850, 1000), 358f)
+        assertEquals(358f, near.width, 0.01f)
+        assertEquals(358f / 0.85f, near.height, 0.01f)
+        val plate = ItemLead.window(pic("w", 1200, 1000), 440f)
+        assertTrue(plate.plate && plate.width == 440f)
+        val narrow = ItemLead.window(pic("t", 700, 1000), 358f)
+        assertEquals("an upright print keeps its cap, the board plainly beside it", 280f, narrow.width, 0.01f)
+        assertEquals(400f, narrow.height, 0.01f)
+        val wide = ItemLead.window(pic("w", 1500, 1000), 900f)
+        assertEquals(440f, wide.height, 0.01f)
+        assertEquals("a capped plate sits at the start", 660f, wide.width, 0.01f)
+        assertEquals("beside the words the column is the slot", 320f, ItemLead.window(pic("n", 850, 1000), 900f).width, 0.01f)
+        assertEquals("a TV's cap is never lifted", 216f, ItemLead.window(pic("w", 1200, 1000), 260f, plateMax = 216f).height, 0.01f)
+    }
+
     /** V8: on a TV a wide plate is capped so the name and the buttons stay on the first screen; the shape holds. */
     @Test fun aTvCapsTheWidePlateAndKeepsItsShape() {
         val tv = ItemLead.window(pic("w", 1600, 800), 960f, plateMax = 216f)
         assertEquals(216f, tv.height, 0.01f)
         assertEquals(432f, tv.width, 0.01f)
-        assertEquals(440f, ItemLead.window(pic("w", 1600, 800), 960f).height, 0.01f)
+        assertEquals("a plate the cap leaves at 92% of the board spans it (the 85% rule), 440 lifted by at most 1/0.85", 480f, ItemLead.window(pic("w", 1600, 800), 960f).height, 0.01f)
     }
 
     /** V8 follow-up: a TV's capped plate stands beside the words; a full-width plate, and any phone's, stays over them. */

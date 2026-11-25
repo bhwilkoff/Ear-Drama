@@ -258,6 +258,10 @@ the DEBUG door `APP_SCROLL_Y`.
   Queue on the right, Close, queue, share and transcript in the strip), on the iPad Pro
   12.9 (the same two panes) and on the iPhone 12 (the sheet, unchanged). Frames local.
   Not seen: a queue with items, an arc's next part, the live lineup, portrait, folded.
+- **B15b, 2026-11-24** (open, landscape, dark; frames local): the mini player as the tab bar's accessory
+  (a glass capsule on the content, 25 pt inside the page margin; the Library's end clears it), the play
+  page (now the 24 pt page margin, was 90 pt), Library's Making side (empty; its switch now on the box
+  edge), the episode page's cards whole. Still unseen: portrait, partly folded, a Making side with work in it.
 - **The fold mid-take (Q4)**: `EngineLiveAudio` restarts on
   `AVAudioEngineConfigurationChange` and an interruption's end and puts its tap back on the
   same `CaptureSink`, which retargets to the new format and keeps every sample; a cast

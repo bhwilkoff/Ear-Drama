@@ -111,8 +111,9 @@ final class PlaysLibrary {
     /// A shared production's script at the revision it was cast from: the library's file or the bundle's, nil when
     /// neither holds that revision (a library-only play opens, joins and records like a bundled one).
     func script(id: String, revision: String) async -> PlayScript? {
-        let found = (try? await script(id: id)) ?? nil
-        return found.flatMap { $0.revision == revision ? $0 : nil }
+        if let found = (try? await script(id: id)) ?? nil, found.revision == revision { return found }
+        // The library may hold a newer revision than a production cast here: the bundle's is tried too.
+        return script(id).flatMap { $0.revision == revision ? $0 : nil }
     }
 
     /// The script a production was cast from, as stored with it.

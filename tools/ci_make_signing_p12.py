@@ -19,6 +19,8 @@ Env:    ASC_KEY_ID, ASC_ISSUER_ID, and the key as ASC_KEY_P8 (base64 of the .p8,
 """
 import sys, os, time, json, base64, subprocess, urllib.request, urllib.error
 import jwt
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import net_retry
 
 TYPE = {"distribution": "DISTRIBUTION", "mac_installer": "MAC_INSTALLER_DISTRIBUTION"}
 ORG = os.environ.get("ASC_ORG_NAME", "<ORG_NAME>")
@@ -42,7 +44,7 @@ def api(method, path, body=None):
     req = urllib.request.Request("https://api.appstoreconnect.apple.com" + path, data=data,
             headers={"Authorization": f"Bearer {token()}", "Content-Type": "application/json"}, method=method)
     try:
-        r = urllib.request.urlopen(req, timeout=30)
+        r = net_retry.urlopen(req, timeout=30)
         return json.load(r) if r.length != 0 else {}
     except urllib.error.HTTPError as e:
         raise SystemExit(f"ASC API {method} {path} -> {e.code}: {e.read().decode()[:400]}")

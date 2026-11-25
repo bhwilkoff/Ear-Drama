@@ -32,8 +32,9 @@
 
 import { DurableObject } from "cloudflare:workers";
 import { castable, madeFrom } from "./plays-castable.js";
+import { isOwn, newPersonRefusal, sendScript } from "./plays-own.js";
 import { castHash } from "./plays-manifest.js";
-import { parseCast } from "./plays-relay.js";
+import { canonicalCast, parseCast } from "./plays-relay.js";
 import { json, problem, readJson, limited } from "./http.js";
 import { randomToken, sha256Hex } from "./jwt.js";
 import { authenticate } from "./auth.js";
@@ -75,6 +76,7 @@ const STATUS = {
   receiver_records_here: 409,
   receivers_only: 403,
   school_consent_required: 403,
+  no_such_member: 404,
   no_such_pair: 404,
   pair_expired: 410,
   bad_name: 422,
@@ -100,6 +102,16 @@ async function memberByKey(members, key) {
 }
 
 const snapshot = (w, memberId, now) => P.joinSnapshot(w.room, w.cast, w.members, memberId, now);
+
+const isIn = (w, memberId) => w.members.some((m) => m.id === memberId);
+
+/** The answer to a message sent over HTTP; someone who left gets no snapshot of the room. */
+function sent(r, memberId, now) {
+  if (r.world.room.ended) return json({ ended: true });
+  if (!isIn(r.world, memberId)) return json({ left: true });
+  const out = snapshot(r.world, memberId, now);
+  return json(r.reply ? { ...out, reply: r.reply } : out);
+}
 
 /**
  * THE ENGINE both transports share: a store loads and saves `{ room, cast,
@@ -197,8 +209,11 @@ async function createInput(request, env) {
   if (error) return { response: error };
   const cast = parseCast(body.cast);
   if (!cast) return { response: problem(400, "bad_request", "cast") };
+  // Every device in the room reads the opener's name, so it passes the same filter as a name given on joining.
+  if (nameRefusal(body.owner_name)) return { response: refuse("bad_name") };
   // A production's room opens at the production's own revision, whatever the library holds now.
   let made = null;
+  let own = null;
   if (body.kind === "class") {
     // A class room is its teacher's: the account that owns the class opens it.
     const auth = await authenticate(request, env);
@@ -209,23 +224,25 @@ async function createInput(request, env) {
     // The roster and the casting are the class's own (T2), never the request's.
     body.seats = (await seatsOf(env, body.class_id)).map((s) => ({ id: s.id, label: s.label }));
     if (body.production_id !== undefined) {
-      const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT class_id, script_id, script_revision, script_row FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
+      const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT id, class_id, script_id, script_revision, script_row, cast_sheet FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
       if (!p || p.class_id !== body.class_id || p.script_id !== body.script_id) return { response: problem(404, "no_such_production") };
       body.assignments = await assignmentRows(env, body.production_id);
       made = madeFrom(p);
+      if (isOwn(p)) own = p;
     }
   }
   if (body.kind !== "class" && body.production_id !== undefined) {
     // An adult production's room is its director's: only they attach one, so no stranger writes takes into a production (§12.11).
     const auth = await authenticate(request, env);
     if (auth.error) return { response: auth.error };
-    const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT user_id, class_id, script_id, script_revision, script_row FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
+    const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT id, user_id, class_id, script_id, script_revision, script_row, cast_sheet FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
     if (!p || p.class_id || p.user_id !== auth.userId || p.script_id !== body.script_id) return { response: problem(404, "no_such_production") };
     made = madeFrom(p);
+    if (isOwn(p)) own = p;
   }
-  const found = await castable(env, body.script_id, body.script_revision, made);
+  const found = own ? await ownRoom(env, body, own, cast) : await castable(env, body.script_id, body.script_revision, made);
   if (found.refusal) return { response: found.refusal };
-  if ((await castHash(cast)) !== found.row.cast) return { response: problem(422, "cast_mismatch") };
+  if (!own && (await castHash(cast)) !== found.row.cast) return { response: problem(422, "cast_mismatch") };
   const input = {
     kind: body.kind,
     script_id: body.script_id,
@@ -238,6 +255,18 @@ async function createInput(request, env) {
     assignments: body.assignments,
   };
   return { input, cast };
+}
+
+/**
+ * A room on an own script carries the production that holds it (Decision 088.4), so no one without
+ * an account posts text to us or reads one by its id; without a production it is `not_castable`.
+ */
+async function ownRoom(env, body, p, cast) {
+  const refusal = await newPersonRefusal(env, p);
+  if (refusal) return { refusal };
+  if (body.script_revision !== p.script_revision) return { refusal: problem(409, "revision_mismatch", p.script_revision) };
+  if (canonicalCast(cast) !== canonicalCast(JSON.parse(p.cast_sheet))) return { refusal: problem(422, "cast_mismatch") };
+  return { row: { revision: p.script_revision } };
 }
 
 // ---------------------------------------------------------------------------
@@ -391,11 +420,21 @@ export class ReadRoom extends DurableObject {
         const now = Date.now();
         this.polled.set(member, now);
         if (!this.world) return resolve(refuse(this.endedAt ? "room_ended" : "no_such_room"));
+        if (!isIn(this.world, member)) return resolve(refuse("not_a_member"));
         resolve(json({ ...snapshot(this.refresh(this.world, now), member, now), held_ms: now - since }));
       };
       p.timer = setTimeout(p.answer, LONG_POLL_MS);
       this.parked.add(p);
     });
+  }
+
+  /** A member who left or was removed hears nothing more; their close then writes nothing. */
+  drop(ws) {
+    ws.serializeAttachment({ member: null });
+    try {
+      ws.send(JSON.stringify({ type: "error", error: "not_a_member" }));
+      ws.close(4003, "not_a_member");
+    } catch {}
   }
 
   answerParked() {
@@ -406,6 +445,10 @@ export class ReadRoom extends DurableObject {
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment();
       if (!a || !a.member) continue;
+      if (!isIn(world, a.member)) {
+        this.drop(ws);
+        continue;
+      }
       try {
         ws.send(JSON.stringify(snapshot(world, a.member, now)));
       } catch {}
@@ -498,6 +541,8 @@ export class ReadRoom extends DurableObject {
       return r.error ? refuse(r.error) : json(r);
     }
 
+    if (op === "script") return json({ ok: true, ...relayOf(this.world.room) });
+
     if (op === "leads") {
       const room = this.world.room;
       return P.canLead(room, auth.me.id) || room.owner === auth.me.id ? json({ ok: true }) : refuse("leader_only");
@@ -523,9 +568,7 @@ export class ReadRoom extends DurableObject {
       const guarded = await engine.guard(this.env, this.world, msg);
       if (guarded) return refuse(guarded);
       const r = await this.apply(auth.me.id, msg, now);
-      if (r.error) return refuse(r.error, r.detail);
-      const out = r.world.room.ended ? { ended: true } : snapshot(r.world, auth.me.id, now);
-      return json(r.reply ? { ...out, reply: r.reply } : out);
+      return r.error ? refuse(r.error, r.detail) : sent(r, auth.me.id, now);
     }
 
     return problem(404, "not_found");
@@ -743,9 +786,7 @@ const d1 = {
     const guarded = await engine.guard(env, loaded.world, msg);
     if (guarded) return refuse(guarded);
     const r = await d1.update(env, code, now, async (world) => engine.send(world, auth.me.id, msg, now, env.READ_DIAG === "1"));
-    if (r.error) return refuse(r.error, r.detail);
-    const out = r.world.room.ended ? { ended: true } : snapshot(r.world, auth.me.id, now);
-    return json(r.reply ? { ...out, reply: r.reply } : out);
+    return r.error ? refuse(r.error, r.detail) : sent(r, auth.me.id, now);
   },
 };
 
@@ -788,6 +829,7 @@ async function ask(env, code, op, request, body, now) {
     if (w.error) return { error: w.error };
     if (op === "take") return engine.take(w.world, w.me, body.line, now);
     if (op === "inbox") return engine.inbox(w.world, w.me);
+    if (op === "script") return { ok: true, ...relayOf(w.world.room) };
     return P.canLead(w.world.room, w.me.id) || w.world.room.owner === w.me.id ? { ok: true } : { error: "leader_only" };
   }
   const r = await forward(env, code, op, request, body);
@@ -832,6 +874,17 @@ async function roomInbox(request, env, code, now) {
   const check = await ask(env, code, "inbox", request, undefined, now);
   if (check.error) return refuse(check.error);
   return pickup(env, check.relay);
+}
+
+/** GET /v1/read/{code}/script: an own script's text, to a member of a room that carries its production. */
+async function roomScript(request, env, code, now) {
+  const check = await ask(env, code, "script", request, undefined, now);
+  if (check.error) return refuse(check.error);
+  const p = check.production_id
+    ? await env.DB.prepare("SELECT id, script_id, script_revision, title FROM play_productions WHERE id = ?1").bind(check.production_id).first()
+    : null;
+  if (!p) return problem(404, "no_script");
+  return sendScript(request, env, p, { newPerson: true });
 }
 
 /* ---- Pairing a TV (T5; tvOS-DESIGN §4.13, ANDROID-DESIGN's TV panel rule) ---- */
@@ -894,7 +947,7 @@ async function attachPair(request, env, room, body, now) {
   return json({ paired: true, pair_code: code, room });
 }
 
-/** /v1/read, /v1/read/pair[/{code}], and /v1/read/{code}[/join|/send|/socket|/pair|/takes/inbox|/takes/{id}] */
+/** /v1/read, /v1/read/pair[/{code}], and /v1/read/{code}[/join|/send|/socket|/pair|/script|/takes/inbox|/takes/{id}] */
 export async function handleReadRooms(url, request, env, ip) {
   const now = Date.now();
   const method = request.method;
@@ -908,7 +961,7 @@ export async function handleReadRooms(url, request, env, ip) {
     const code = P.normalizeCode(pm[1]);
     return code ? pairPoll(request, env, code, now) : refuse("no_such_pair");
   }
-  const m = /^\/v1\/read\/([^/]+)(?:\/(join|send|socket|pair|takes\/inbox|takes\/[^/]+))?$/.exec(url.pathname);
+  const m = /^\/v1\/read\/([^/]+)(?:\/(join|send|socket|pair|script|takes\/inbox|takes\/[^/]+))?$/.exec(url.pathname);
   if (!m) return problem(404, "not_found");
   let raw;
   try {
@@ -920,6 +973,7 @@ export async function handleReadRooms(url, request, env, ip) {
   if (!code) return problem(400, "bad_code");
   const sub = m[2] || "";
   if (sub === "takes/inbox") return method === "GET" ? roomInbox(request, env, code, now) : problem(405, "method_not_allowed");
+  if (sub === "script") return method === "GET" ? roomScript(request, env, code, now) : problem(405, "method_not_allowed");
   if (sub.startsWith("takes/")) {
     if (method !== "PUT") return problem(405, "method_not_allowed");
     let takeId;

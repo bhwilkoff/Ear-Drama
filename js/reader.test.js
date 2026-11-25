@@ -262,6 +262,22 @@ test('the page: verse keeps its lines, a transcriber\'s wrapping is reflowed', (
   ok(!R.isVerse(['Who is there?']), 'no break, nothing to keep');
 });
 
+test('the opening keeps the lines of verse and no other break (the reader\'s own detection)', () => {
+  const said = (...parts) => ({ id: 'L1', kind: 'speech', role: 'A', parts });
+  const verse = said({ direction: 'dreamily' }, { say: 'This is the sergeant\nWho, like a _good_ and hardy soldier, fought--\n   \u2019Gainst my captivity.' });
+  const script = (...lines) => ({ roles: [{ name: 'A' }, { name: 'BEA' }], lines });
+  eq(C.openingOf(script(verse), 4, R)[0].verse, ['This is the sergeant', 'Who, like a good and hardy soldier, fought\u2014', '\u2019Gainst my captivity.'], 'a row per printed line, tidied as the words are');
+  eq(C.openingOf(script(verse), 4, R)[0].text, 'This is the sergeant Who, like a good and hardy soldier, fought\u2014 \u2019Gainst my captivity.', 'the voice is given the words in one piece');
+  eq(C.openingOf(script(verse), 4)[0].verse, null, 'no reader, no verse');
+  eq(C.openingOf(script(said({ say: 'I attribute it to the superior quality of the wine, sir. I have often\nobserved that in married households' })), 4, R)[0].verse, null, 'a transcriber\'s wrap is prose');
+  eq(C.openingOf(script(said({ say: 'Of course.\nBEA. Yes, indeed.' })), 4, R)[0].verse, null, 'a run-in speaker is not verse');
+  const row = { opening: [{ role: 'A', text: 'When shall we three meet again?\nIn thunder, lightning, or in rain?' }, { role: 'B', text: 'One line.' }] };
+  eq(C.openingOf(row, 2, R).map(o => o.verse), [['When shall we three meet again?', 'In thunder, lightning, or in rain?'], null], 'an index row that keeps its breaks');
+  eq(C.openingOf(row, 2, R)[0].text, 'When shall we three meet again? In thunder, lightning, or in rain?', 'and its words');
+  eq(C.openingOf({ opening: [{ role: 'A', text: 'I never saw you look so\nwell in my life.' }] }, 2, R)[0].verse, null, 'an index row\'s wrapped prose keeps none');
+  for (const { s } of libraryScripts(60)) for (const o of C.openingOf(s, 4, R)) if (o.verse) ok(o.verse.length > 1 && o.verse.every(r => !/\n|\s{2,}/.test(r)), s.id);
+});
+
 test('the page: a speech run into another is attributed to its speaker; cues get the sound lane', () => {
   const roles = ['CHARTERIS', 'GRACE'];
   const line = { id: 'L1', kind: 'speech', role: 'CHARTERIS', parts: [{ say: 'Of course. Why not?\nGRACE' }, { direction: 'reflecting' }, { say: '. Never mind why.' }] };
@@ -270,6 +286,11 @@ test('the page: a speech run into another is attributed to its speaker; cues get
   eq(lay.speeches[1].name && [lay.speeches[1].name.text, lay.speeches[1].name.at], ['GRACE', 20], 'the printed name, at its offset');
   eq(lay.speeches[1].rows[0].runs.map(r => [r.text, r.said]), [['reflecting', false], ['Never mind why.', true]], 'the label period is not drawn');
   ok(!lay.verse, 'a run-in break is not verse');
+  // A person's own script (PLAYS-DESIGN §13): brackets they typed are directions, never drawn as words said.
+  const typed = { id: 'L1', kind: 'speech', role: 'ANNA', parts: [{ say: 'Words of my own' }, { direction: 'she laughs' }, { say: 'instead.' }] };
+  const asides = (opts) => R.layoutOf(typed, ['ANNA'], opts).speeches[0].rows.flatMap(rw => rw.runs).filter(r => !r.said).map(r => r.text.trim());
+  eq(asides({ emphasis: false }), ['she laughs'], 'an own script\'s bracketed words stay a direction');
+  eq(asides(), [], 'control: a catalog text\'s short italic run is the speaker\'s emphasis');
   const radio = R.layoutOf({ id: 'L2', kind: 'speech', role: 'HANCOCK', parts: [{ direction: 'sound of gavel' }, { say: 'Order!' }, { sound: 'knock' }, { say: 'Come in.' }] }, ['HANCOCK']);
   eq(radio.speeches[0].rows.map(r => r.cue), [true, false, true, false], 'a sound piece and a sound-of aside are cue rows');
   const block = R.layoutOf({ id: 'L3', kind: 'direction', source: '[_Exeunt._]' }, []);

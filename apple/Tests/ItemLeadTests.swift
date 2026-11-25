@@ -36,6 +36,21 @@ struct ItemLeadTests {
         #expect(ItemLead.playLead(titlePage: nil, authorArt: nil) == nil, "control: else its page")
     }
 
+    /// B15b: This Is Your FBI's picture left 13 pt of board beside it on an iPhone 12. Broken control, 2026-11-24:
+    /// `nearFill = 1` (the cap always binds) fails the first two.
+    @Test func aPictureThatNearlyFillsTheBoardFillsIt() {
+        let near = ItemLead.window(art: pic("n", 850, 1000), width: 358)
+        #expect(near.size.width == 358 && abs(near.size.height - 358 / 0.85) < 0.01, "0.95 of the board: it spans the board, uncropped")
+        let plate = ItemLead.window(art: pic("w", 1200, 1000), width: 440)
+        #expect(plate.plate && plate.size.width == 440, "a plate too")
+        let narrow = ItemLead.window(art: pic("t", 700, 1000), width: 358)
+        #expect(abs(narrow.size.width - 280) < 0.01 && narrow.size.height == 400, "control: an upright print keeps its cap, the board plainly beside it")
+        let wide = ItemLead.window(art: pic("w", 1500, 1000), width: 900)
+        #expect(wide.size.height == 440 && abs(wide.size.width - 660) < 0.01, "control: a capped plate sits at the start")
+        let beside = ItemLead.window(art: pic("n", 850, 1000), width: 900)
+        #expect(beside.size.width == 320, "beside the words the column is the slot")
+    }
+
     @Test func aHeadPictureKeepsItsOwnShape() {
         let plate = ItemLead.window(art: pic("w", 1600, 800), width: 390)
         #expect(plate.plate && plate.size.width <= 390 && abs(plate.size.width / plate.size.height - 2) < 0.01, "a wide picture is a plate at its aspect")

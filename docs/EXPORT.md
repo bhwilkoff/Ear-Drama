@@ -24,6 +24,8 @@ share or save sheet. Nothing is uploaded, and no account is needed.
 
 - `ink[]` (PLAYS-DESIGN §2.10 rule 1, iPad Pencil ink): one row a line that has ink: `script`, `title`, `revision`, `line`, `strokes` (the count), `width` (the text column's width in points the strokes' units are measured in) and `drawing` (the line's `PKDrawing` data, base64: the whole ink, so nothing is lost and it can be read back). Chosen over a bare count so an export is a complete copy of the person's own work; the data is in the line block's coordinates, so it does not depend on a page. iOS, iPadOS and macOS (`InkStore.exportRows`, `DataExport.ink`); the web and Android hold no ink and omit the key. Ink a revision could not place is exported as stored.
 
+- `scripts[]` (PLAYS-DESIGN §13, Decision 088.3): the scripts the person added, the last one changed first: `id`, `title`, `source` (`Added by you`), `created`, `done`, and `lines[]` in the castable shape (`id`, `kind`, `role` and `parts` for a speech, `source` for the rest); a script not yet Done has no line ids, and a line with no part has `kind` `open`. The web since 2026-11-24 (`OwnScripts.exportRows`); Apple and Android with R4-6 and R4-7.
+
 A field the device does not know is `null`, never invented. An empty library
 exports empty lists, not an error.
 

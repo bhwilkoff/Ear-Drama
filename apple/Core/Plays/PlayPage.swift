@@ -359,5 +359,15 @@ nonisolated enum PlayPage {
         return PageLine(verse: verse, speeches: speeches)
     }
 
+    /// A verse speech's printed lines, said words only (cues and asides left out); nil for prose or a run-in speaker
+    /// (the web's `ReaderCore.verseRows`).
+    static func verseRows(_ line: ScriptLine, roles: [String]) -> [String]? {
+        let lay = layoutOf(line, roles: roles)
+        guard lay.verse, lay.speeches.count == 1 else { return nil }
+        return lay.speeches[0].rows.filter { !$0.cue }.map { row in
+            row.runs.filter(\.said).map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }.joined(separator: " ")
+        }.filter { !$0.isEmpty }
+    }
+
     private static func isSpeechKind(_ line: ScriptLine) -> Bool { line.kind == .speech }
 }

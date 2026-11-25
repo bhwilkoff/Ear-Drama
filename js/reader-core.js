@@ -185,14 +185,15 @@ const ReaderCore = (() => {
    * broken only by a cue (a sound piece, or an aside that is a sound or music). A block gives one row,
    * its enclosing brackets left undrawn. `roles` is the script's role names.
    */
-  function layoutOf(line, roles) {
+  function layoutOf(line, roles, { emphasis = true } = {}) {
     const runs = runsOf(line);
     // A direction printed wholly in italic marks ("[_Exeunt._]") is italic, not turned roman: the
     // marks set it apart from speech, which the page already does.
     const lettered = (rs) => rs.filter(r => /\p{L}/u.test(r.text));
     // A word or three printed in italics between said words that run on in lowercase ("in which _I_
     // have been") is the speaker's emphasis the parser took for a direction: drawn as said, in italic.
-    if (line.kind === 'speech' && Array.isArray(line.parts)) {
+    // Brackets in a person's own script are theirs (`emphasis` false): "(laughing)" is never drawn as said.
+    if (emphasis && line.kind === 'speech' && Array.isArray(line.parts)) {
       const key = (p) => Object.keys(p || {})[0];
       const stressed = new Set();
       line.parts.forEach((p, i) => {
@@ -307,6 +308,13 @@ const ReaderCore = (() => {
       for (const rw of s.rows) delete rw.key;
     }
     return { verse, speeches };
+  }
+
+  /** A verse speech's printed lines, said words only (cues and asides left out); null for prose or a run-in speaker. */
+  function verseRows(line, roles, opts) {
+    const lay = layoutOf(line, roles || [], opts);
+    if (!lay.verse || lay.speeches.length !== 1) return null;
+    return lay.speeches[0].rows.filter(r => !r.cue).map(r => r.runs.filter(x => x.said).map(x => x.text.trim()).join(' ')).filter(Boolean);
   }
 
   /** The last words of a speech a cue is heard on: from the last sentence break, at most the whole text. */
@@ -555,5 +563,5 @@ const ReaderCore = (() => {
   }
 
   return { spoken, word, textWords, phonemeWordStarts, kokoroWords, phonemeWordCount, ALONG_SPEEDS, alongSpeed, speedLabel, savedSpeed, saveSpeed, alongLine, alongLineAt, dramaPlan, dramaListen, alongFollow, alongPanel, closeTo, myLineStep, SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageContaining, pageCount, lineAtPage,
-           spreadStart, turn, swipeTurn, tapZone, keyTurn, pageLabel, remember, runsOf, spaceBetween, isVerse, layoutOf, cueTail };
+           spreadStart, turn, swipeTurn, tapZone, keyTurn, pageLabel, remember, runsOf, spaceBetween, isVerse, layoutOf, verseRows, cueTail };
 })();

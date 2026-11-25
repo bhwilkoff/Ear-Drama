@@ -127,8 +127,10 @@ Every platform does the same seven things, in its own idiom.
    script" as a filter), in Search, and as a pick on Surprise. Its own
    page offers **Start an ear drama**, which opens this flow; later any
    episode whose record carries a usable script shows the same action.
-   Only scripts whose rights state is `castable` (§3) and whose parse is
-   clean are offered. Each shows its title, author, source, its number of
+   *Replaced, 2026-11-24 (Decision 088)*: every script the app can show is
+   offered for recording, and a person may bring one (§13); rights decide
+   only publishing. (It read "Only scripts whose rights state is `castable`
+   (§3) and whose parse is clean are offered.") Each shows its title, author, source, its number of
    parts, and its rights line with a link to the evidence. Nothing on it
    is written by a model. A play is marked only by facts from its record:
    its year when the record has one, its author (with their years), and its
@@ -291,7 +293,8 @@ macOS-DESIGN §4.7, ANDROID-DESIGN §4.17; tvOS-DESIGN §4.13 is a read-along pa
    - **Verse keeps its lines**: a speech is verse when every row after a printed break starts
      with a capital and its rows are not mostly 60 characters or longer; one row per printed
      line with a turnover indent, a printed indent kept; prose breaks reflow as spaces. Never
-     one verse row alone at a page's foot or head.
+     one verse row alone at a page's foot or head. An opening drawn outside the reader (Today's
+     Scene, a play's window) uses this detection (`verseRows`) and keeps the same lines.
    - **A direction inside a speech**: italic, muted, in upright parentheses the page adds (never
      in the text). A short italic piece between said words that run on in lowercase is the
      speaker's emphasis and is drawn as said.
@@ -1068,6 +1071,7 @@ no take.
 | Takes, one file per kept take, never overwritten | `Plays/<production>/takes/` as FLAC (if the floor OS cannot write FLAC, ALAC in CAF; to measure) | `filesDir/Plays/<production>/takes/` as 24-bit WAV (§4.5) | IndexedDB, `<production>/takes/`, 24-bit WAV, written with `add()` |
 | Room tone, per session | `Plays/<production>/roomtone/` | the same | IndexedDB, `<production>/roomtone/` |
 | The production record (parts, who took which part by the name they typed, what each take heard, the timeline) | `Plays/<production>/production.json` | the same | IndexedDB, `<production>/production.json`, the same fields |
+| A script the person added (§13): its castable shape, the working copy it is corrected in (cast by ear: its lines' times, the parts, the place), and the text as pasted | ⏳ (R4-6) `Scripts/<id>/` | ⏳ (R4-7) `filesDir/Scripts/<id>/` | IndexedDB `ed-plays`, object store `scripts`, keys `scripts/<id>/script.json`, `doc.json` and `row.json`; the text being added, `scripts/draft.json` |
 | The rendered mix of a finished play | `Plays/<production>/mix.m4a`, rebuilt from the takes whenever they change | the same | IndexedDB, `<production>/mix.wav`; `navigator.storage.persist()` is asked when a play is cast |
 | Stand-in audio, transcripts of takes, analytics | Never stored | Never stored | Never stored |
 | Apple TV | Nothing: it records nothing and stores no plays in phase 1 (tvOS writes only to Caches) | | |
@@ -1115,8 +1119,10 @@ why it is open to everyone, children included (08c §6.2).
 
 ## §8. Rules (binding)
 
-1. A script is offered for casting only when `script_rights.judge` returns
-   `castable` and its parse is clean. A new kind of evidence is a new bucket
+1. A script is offered **for publishing** only when `script_rights.judge`
+   returns `castable` and its parse is clean (*Replaced, 2026-11-24, Decision
+   088*: it said "for casting"; every script the app can show is offered for
+   recording, §2.1). A new kind of evidence is a new bucket
    with a paired test and a broken control, never a list of ids.
 2. No model writes, rewrites, summarizes, or fills in a word of a script, a
    cast list, or a description. Stage directions are shown as printed.
@@ -1315,7 +1321,7 @@ The owner's answers in §9 hold on the server, word for word:
 | P1 | R2 needs a payment method on file. Turn it on, or keep phase 2 waiting? | Answered 2026-11-19: "We are using archive.org for storage, not cloudflare." No R2; takes pass through (Decision 082, §12.5) |
 | P2 | The CC0 consent words (Decision 059) | Answered 2026-10-29: the owner's words at version `cc0-2026-10-29` |
 | P3 | A vetted deny list for names | A short seed list in `worker/src/plays-names.js` |
-| P4 | Who reads reports, how they arrive, and how fast they are answered (guideline 1.2 asks for timely action and a published contact) | Reports wait in D1 with status `open`; nothing notifies anyone, and nothing auto-hides a take for everyone |
+| P4 | Who reads reports, how they arrive, and how fast they are answered (guideline 1.2 asks for timely action and a published contact) | Answered 2026-11-24 (Decision 088.6): an hourly workflow tells the owner by GitHub email how many wait, and `tools/reports.py` reads and answers them (`docs/runbooks/reports.md`); nothing auto-hides a take for everyone |
 | P5 | The privacy policy that covers school consent for students under 13 | Words approved 2026-11-21 ("The policy wording looks good to me."); `SCHOOL_CONSENT_POLICY` is set to the published policy's version at deploy. Until it is set, no school consent can be recorded, so no under-13 class takes a student |
 | P6 | The Ear Drama archive.org account and its keys | Answered 2026-10-29: keys given; the uploader runs once both are Worker secrets (Decision 073) |
 | P14 | Does deleting an account remove that person's lines from the item? An Ear Drama collection on archive.org? | Answered by the owner 2026-10-29: "Account deletion should definitely not remove their recordings from already submitted works" (lines stay, uncredited); "community audio is just fine, as long as we are doing a good job of labeling the ear dramas within archive.org" |
@@ -1905,3 +1911,118 @@ and has no class page). Words are exactly these; a refusal is `ReadCore.refusal(
    `submitted` "A published play stays."
 10. **Never**: speaker identification, voice matching, or any analysis of a student's take (R3d T5); a birth year
     stored or sent; a notice by email (none is held).
+
+### §12.13 Removing a reader, and leaving (App Store guideline 1.2, 2026-11-24; binding on every client)
+
+1. **Remove.** An adult room's leader, or whoever opened it, removes any other member; in a class only the teacher
+   does, never a student who leads. The opener is never removed. The member's key stops working at once on every
+   transport, their parts open, and **joining locks** in the same message: the code is still on their screen, so a
+   removal that left the door open would keep nobody out. The leader may unlock. The control is behind the presence
+   count ("3 here"), which is a control only for someone who may remove: a list of who is here, each with
+   **Remove**, confirmed by "Remove Ann and lock joining?" (a consequence the person cannot discover by looking).
+2. **The removed device** reads "You are no longer in this reading." (`not_a_member`) and asks nothing more.
+3. **Leave.** Closing the reading is leaving: the room is told, the person's parts open, an adult room's lead passes
+   on at once, and the last reader to leave ends the room. A class's teacher keeps their place (the room holds still
+   for them, §12.2). `leave` is sent only by a person's act, never by a rotation, a background, or a lost network:
+   those keep the key and come back.
+4. **Names.** Every name a room shows passes the name filter: a joiner's, a seat's, and the opener's (`422 bad_name`).
+5. **No Report in a room, and why.** Guideline 1.2 asks for a filter, a way to report, a way to block, and a published
+   contact where people's content is kept and shown to others. A room keeps none: the Worker holds a typed name and who
+   holds what until it ends and then deletes both; no words are typed, and a take passes to the leader's device and is
+   kept nowhere on the way. A report filed after the fact would name nothing anyone could look at, so the answer is the
+   leader's, on the spot: Remove, Lock joining, End. A room that records into a production leaves takes there, and
+   that production has Report and Block. If a room ever keeps something, it gets a Report first.
+
+---
+
+## §13. Record anything (Decision 088.3; binding on every platform that records)
+
+The owner, 2026-11-24: *"You should be able to record your own version of
+anything you want with your own casting."* Research and frames:
+`docs/research/design/R4-record-anything.md`. Core: `js/own-core.js`
+(`R4-core-port-brief.md`). Built on the web, on the device only: adding (R4-2) and
+casting by ear (R4-3). Sharing and classes are R4-4 and R4-5, and Apple and Android
+are R4-6 and R4-7. Until sharing is built, an own script and its productions offer no
+Share, no Read together, no Invite and no Publish: the buttons are absent, never
+dead.
+
+1. **An own script** is a script a person brought or cast by ear. It has the castable shape, an
+   id `own-<uuid>`, line ids given once and never reused, and the catalog's
+   revision formula. It is kept on the device (§6) and needs no account: adding,
+   reading, editing and the first production ask for none (Decision 079).
+2. **Add a script** (Record): a title and the text, pasted or opened from a plain
+   text file. The light grammar (R4 §2.2, golden cases in
+   `catalog/tests/golden/own_script_parse.json`) proposes parts; a paragraph it
+   cannot place is shown as **No part**. Every piece is a slice of the person's
+   text. The app never writes, completes, or corrects a word. The text being added
+   is kept as it is typed, so a closed page loses nothing. A Project Gutenberg text
+   is read between its own marker rows (`*** START OF THE` or `THIS PROJECT
+   GUTENBERG EBOOK ...` and its END, with or without a space after the stars, a
+   title that runs on to the next row included; the last row `End of [the] Project
+   Gutenberg ...`; and the older small print, before the play or after it): of the
+   pipeline's 1,721 cached texts, 1,683 carry START and END, 1,097 the last row and
+   24 the small print, and 1,689 are read without their wrapping (the 32 of one 1990s
+   Complete Shakespeare have none of these rows). Nothing else is cut, and the text
+   kept is the text as pasted.
+3. **The parts page** draws the script as the reader does. A line: give it to a
+   part, Direction, or Sound; Split here; Join to line above; Edit words; Leave
+   out. A part: rename; Join to; Not a part (its words go back, with no part). A
+   strip counts the lines with no part, and Next goes to the next one. Undo takes
+   back any step since the page opened. A line's **More** leaves out everything above
+   it or everything below it, as one step, refused when a line there has a take ("A
+   line there has a take."). Done turns a line with no part into a
+   direction. Every step is kept as it is made; a script not yet Done is in Your
+   scripts and opens here.
+4. **After a take** on a line (a take in any production of the script, chosen or
+   not), its part and its boundaries are fixed: the line says **"This line has a
+   take."** and offers only Edit words. Its words may change, and a take recorded
+   before they did (more than punctuation) reads **Words changed** in the take
+   list. A part that holds such a line keeps its name.
+5. **A change to a script reaches its productions on this device** (they are one
+   text): each takes the new lines and revision, keeps its takes, and gains or
+   loses parts with them.
+6. **It never publishes.** "This script can't be published." stands on its page.
+   Export stays: a finished recording, the script as text (Save as text, readable
+   as Fountain), and `scripts[]` in Export my data.
+7. **Delete** asks: "Delete {title}?", and with productions "Delete {title}? Its
+   productions keep their copy." Its marks and voice choices go with it unless a
+   production is left to read them in.
+8. Kokoro voices are not offered for a script with no published phonemes; the
+   device's own voices are.
+9. Its kicker is **Your script** (`kind: "own"`), never Radio play or Stage play:
+   either would be a claim.
+10. **Cast by ear.** On an episode with a shown transcript and no castable script,
+   **Record this** opens the transcript in lines (R4 §2.4, golden
+   `ear_cast_lines.json`) with the episode playing and the line being said lit. A
+   tap on a part gives it that line and those after, until the next tap; only lines
+   the episode was heard through carry, so a seek hands nothing to anyone. **+ Part**
+   names a voice, and the lit line is theirs. Leave out works the same way. Undo takes
+   back any step since the page opened. The app proposes no speaker and analyzes no
+   voice. "Automatic transcript" stays on the page. The broadcast's sound is never a
+   cue, a take, or in a mix, and no time is in the script.
+   - **Kept on the device** from the first step (never by looking), one for an
+     episode: the lines as they were then, the parts, and the place. Coming back goes
+     on from there. When archive.org has since remade the transcript, the kept lines
+     stay ("The transcript has changed. Your lines are kept."); when the episode's
+     first copy is another file, "The recording has changed. The times may be off."
+   - **Done** at any time: what is cast is its script, the rest are directions, and
+     Your scripts and its page say "37 of 149 lines cast" with **Cast by ear** to go
+     on. The parts page (Edit) finishes it as any script; opening it makes the marks
+     the lines' own parts, and left-out lines are gone.
+   - **Its source** is "Automatic transcript", linked to the episode. It never
+     publishes, as no own script does.
+   - **The door** stands only when it is sure to open: the transcript's times were
+     read (R4 §1.3), or a casting was begun here. An episode the catalog no longer
+     serves (a take-down, §8) has no page, no door and no casting ("Not in the
+     catalog."); a script already made from it stays on its device and is refused
+     wherever an own script is shared. Nothing here recommends an episode, so
+     `no_recommend` is kept by having nothing to break it: no next, no suggestion,
+     and the end of the episode starts nothing.
+   - **Times**, measured 2026-11-24 against the decoded audio: a cue's words are
+     said within a second of its start, late in an episode as early (nine episodes,
+     median -0.6 to +0.9 s). Chrome's clock stays within 0.02 s of the decoded audio
+     after a seek on seven of the nine, a VBR file whose length reads 41 s long among
+     them. On a damaged file it runs 2.4 s behind after 27 minutes. On one whose header
+     is a Xing table (100 places, each to 1/256 of the file) it plays 0.6 to 4.7 s
+     early after a seek, and is right when played from its start. Nothing corrects for
+     either: the page only lights a line.

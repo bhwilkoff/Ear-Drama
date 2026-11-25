@@ -311,8 +311,8 @@ fun PlayPageHead(script: PlayListing, kicker: String, modifier: Modifier = Modif
 
 /** A play's opening drawn as a page: the first speeches in body type on the script's ground, the voice bands at its foot. */
 @Composable
-fun PlayOpeningWindow(script: PlayListing, label: LabelItem, modifier: Modifier = Modifier) {
-    val speeches = remember(script) { PlayScript.openingOf(script, 4) }
+fun PlayOpeningWindow(script: PlayListing, label: LabelItem, modifier: Modifier = Modifier, count: Int = 4) {
+    val speeches = remember(script, count) { PlayScript.openingOf(script, count) }
     val ink = remember { LabelPalette(false) }.let { if (OnAir.colors.dark) LabelPalette(true).color("brand.text") else it.color("brand.text") }
     Box(modifier.clip(RoundedCornerShape(4.dp))) {
         LabelArt(label, Modifier.fillMaxSize())

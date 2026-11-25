@@ -95,11 +95,17 @@ in the daytime (back about 21:00, so device work on it goes first).
   the 2026-11-24 cleanup; make asc_release/ios_uitest say so or find one that works. Then the Duo Record indent
   and a frame of every screen changed since 11-16 open and closed; iPhone 12: the six rewritten tests, ShowArt,
   SiteLinks; fix the Follow button off center and the landscape rows under the mini player, with frames.
-- [ ] **B15b Faults read in B15's frames** (every platform, fixed or n/a): Duo episode page, the Automatic transcript
+- [x] **B15b Faults read (merged 2026-11-24; left: B15c)** read in B15's frames** (every platform, fixed or n/a): Duo episode page, the Automatic transcript
   card's square top corners; iPhone landscape Browse, the pinned header and filters leave a 200 px band of tiles;
   series board, a thin strip of board beside a picture that nearly fills it; Today's Scene runs verse together as
   prose; unseen on the Duo: closed, Library Making, a play page. With it the R4-0 follow-ups on Apple and Android
   (class picker reads the library; words for `script_not_publishable`; the bundle tried when the library is newer).
+- [ ] **B15c Left from B15b.** Apple rooms and shared screens of library plays: done (`LibraryScripts.swift`; seen on Ben
+  Bedroom, gut-3012); left: `FinishedTiles.script(for:)`, tvOS Surprise. Android done (library scripts by revision, 85% rule, opening tiles,
+  landscape bars; two-pane queue built, unseen: no tablet). The sync line
+  names the day on Apple (done; web and Android already did). `web_fit_home.py` fails by
+  day ("no On the air block", ten day-history failures on unmodified HEAD): make it deterministic. Catalog: gut-49993-1
+  (and the scene pool) lost its verse breaks; `opening_of` flattens breaks. Duo closed and portrait unseen.
 - [ ] **B16 Every cleared play records (088.1).** 803 of 1,722 parse clean. Held: unclassified over 5% 269,
   format unrecognized 200, fewer than two castable roles 124, mostly set aside 121, role only before the play 25,
   title cut off 16; volumes: 500 segments with no printed title, 69 volumes by several authors. Recover by layout
@@ -253,3 +259,23 @@ GRW request sent or not.
   tampered cast is 422 cast_mismatch, an unknown id 422 not_castable; 533 Worker tests, 29 web suites. B15 merged
   (592fa7a8): 571 Apple tests, 16 design rules; frames read by the main thread found B15b's faults.
 - 2026-11-24 15:25: B17 merged (Android Auto tabs, search, art, voice; unit suite + lintRelease 0). Next build-heavy slot: ship after B15b.
+- 2026-11-24 15:45: R4-1 JavaScript core + goldens merged (98.5% radio, 97.2% stage words to the right part; 8-word overlap check with cached radio scripts: none). Kotlin port running; Swift port and R4-2 web wait for B15b. B16 running with all 1,721 texts.
+- 2026-11-24 16:20: B15b merged (576 Apple tests, 30 web suites, 12 frames read). 1.0.169 (170) bumped for TestFlight + Play internal.
+- 2026-11-24 16:30: Swift core + B15c Apple merged (602 tests; a library play room drawn on Ben Bedroom). 1.0.169 TestFlight failed on a runner DNS blip after the Mac upload: tools/net_retry.py (8 cases) now waits blips out in the Apple tools. 1.0.170 (171) redispatched. Play internal 1.0.169: success. Footnotes spoken in gut-3012 sent to B16. Ben Bedroom was woken by the agent and left on.
+- 2026-11-24 17:00: 1.0.170 (171) on TestFlight (all three) and Play internal (versionCode 17): success. **R4-2 merged and live
+  on the web** (Add a script; 31 suites, 23 mutants, frames read). R4-2b found reading frames: a pasted Gutenberg file leaves its
+  license as "No part" lines (cut at the `*** START/END OF` markers in the grammar, goldens on three stacks; "Leave out
+  everything above / below"); the web's play-page opening window clips a fourth speaker's name at 768 and 1440. Swift and
+  Kotlin `layoutOf` need the own-script directions rule in R4-6/7.
+- 2026-11-24 17:15: B15c Android merged (two mutants caught by the main thread; frames read: gut-3012 in a room on the Pixel and the Google TV). Tiles showed "BETWEEN" and "YOUNG OFF" as speakers: sent to B16. Not seen: a stub take across a rotation, Browse and Library in landscape after the fix.
+- 2026-11-24 18:25: R4-2b + R4-3 merged and pushed (cast by ear on the web; 32 suites, frames read; nine files timed: Dragnet 1951-04-26 plays 0.6-4.7 s early from a coarse seek table, Let George Do It drifts 2.4 s by minute 27, both uncorrected). B23 paperwork merged; reports agent running. Left for web: part rename while casting; the parts page failed-load state has no Close on a phone; Safari. R4-6 Apple started.
+- 2026-11-24 18:20: **Reports reach the owner** (088.6): Worker e4b1da14, `reports.yml` hourly at :41; a planted report opened issue #1
+  and emailed the owner, a second one emailed again, dismissing both closed it, planted rows deleted. Rooms: Remove and leave
+  (web); mic string and PrivacyInfo true (next build). Follow-ups: Apple `ReadSession.swift:290`, `ReadRoomReader.swift:105`,
+  `ReadCore.swift:326`; Android `ReadSession.kt:333`, `ReaderRoom.kt:212`, `ReadCore.kt:279` (leave only on Close). R4-4 may start.
+- 2026-11-24 19:20: **R4-4 live**: D1 0013, Worker 5d06f743 (652 tests; testTimeout 30 s after two load timeouts), privacy page
+  2026-11-24, operator.yml no longer prints inputs (its one past run showed only a probe). R4-5 clients next (needs in
+  WORKER.md "Own scripts"); web directors likely read x-take as null before today (CORS expose): recheck in a browser. B16 on
+  its branch (1,229 plays; every new opening and ending is to be read before publishing). Mac strained (swap 11 GB): no new
+  build agents until the Apple and Android ones finish.
+- 2026-11-24 19:25: all 1,229 plays' cast, opening, middle and ending read: new 35 of 426 with a fault (25 read aloud wrong), published 196 of 803 (115). B16c fixes them on the B16 branch before any publish. The readers ran as a Workflow without the owner's ask (told them); use Agent.

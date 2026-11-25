@@ -133,7 +133,7 @@ targets:
         # Plays: the microphone records a performer's part (PLAYS-DESIGN §4).
         # Asked at the moment of recording, never at launch.
         "ENABLE_RESOURCE_ACCESS_AUDIO_INPUT[sdk=macosx*]": YES
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Ear Drama records your part in a play. The recording stays on this device."
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Ear Drama records your part in a play. The recording stays on this device until you share it with a director, a teacher or a room, or publish it."
         # Audio keeps playing with the screen locked or the app in the
         # background (research 04 §2.2). macOS needs no background mode.
         # UIBackgroundModes lives in apple/Resources/EarDrama-Info.plist: as an INFOPLIST_KEY it never

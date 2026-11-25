@@ -337,11 +337,31 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   part cards stand. *Why:* the plain List's rows began 20 pt in and ran to
   the divider, so the Personal Voice switch and the sign-in buttons
   touched it (`before/19-production.png`): the owner's "left column".
+- **§3.6h A card is whole: clear rows and filled rows are never one Section**
+  (B15b, 2026-11-24; every width, iPhone, iPad and Duo). An inset-grouped
+  Section rounds its own first and last rows, so a filled row under clear
+  ones has square top corners, and one above a clear row square bottom ones
+  (the episode page's Automatic transcript; its show row over a credit). The
+  clear rows (a board, buttons, a rail) are one Section and the filled rows
+  the next; a credit under a row is that Section's footer, never a clear row.
+  A `NavigationLink` inside a clear row hides its chevron (`playRowLink()`).
+- **§3.6i A short window** (compact height: a phone on its side; B15b,
+  2026-11-24). Nothing but the navigation bar is pinned above the content: a
+  control bar scrolls as the list's first row (Browse, §4.2; Record's,
+  Library's and Search's controls already scroll), the grouped List gives up
+  its 35 pt above its first section (`PageMargins`), and the tab bar minimizes
+  on a scroll down (`tabBarMinimizeBehavior(.onScrollDown)`, iOS 26.1), the
+  mini player joining it in one row (§5.2). *Why:* Browse's pinned title,
+  scope and chips with the mini player and the tab bar left no tiles at all
+  on an iPhone 12 in landscape.
 - **§3.6f Seeing it.** The open Duo refuses XCUITest until a person
   confirms UI Automation on it, and XCUITest frames come from the dark
   outer display, so frames are taken with `devicectl device capture
   screenshot --display-unique-id <inner>` after a launch door; below the
-  first screen, the DEBUG door `APP_SCROLL_Y=<points>` scrolls the page
+  first screen, the DEBUG door `APP_SCROLL_Y=<points>` scrolls the page;
+  `APP_START_PLAY=<script id>` opens a play's page, `APP_LIBRARY_SIDE` Library's
+  side, `APP_MINI_PLAYER=1` (with autoplay) the mini player over the screen, and
+  `APP_LANDSCAPE=1` turns a phone (`LaunchDoors`; they create and store nothing)
   (`ScrollDoor_iOS.swift`). Every change under §3.6 is seen on the open
   Duo and on the iPad at regular width before it is called done.
 - **§3.6g Now Playing at regular width is two panes** (§5.3, §5.9,
@@ -380,7 +400,8 @@ device. Audit frames: `build/qa/duo-audit/` (local).
     event line (author · N voices · About M min) linking to the play page; the
     opening as a page on the print ground (the first four speeches, each its
     role name in `.caption.weight(.semibold)` over its said words, three lines
-    at most, a 3 pt rule in the part's hue; `PlayScript.opening(n:)`, else the
+    at most, a 3 pt rule in the part's hue; verse keeps its lines,
+    `OpeningSpeech.verse`; `PlayScript.opening(n:)`, else the
     index row's `opening`); then one row that never wraps: **Try a Line**
     (`.borderedProminent` in ink, `mic`: the reader's Record path for the
     answering voice, the second speaker of the opening, else the second part,
@@ -431,9 +452,10 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   "Sort: Popular"). Sort is Popular (the default), A to Z, Most episodes, and Oldest first. Popular is the published `downloads` (contract §3.3): counted series first, most downloaded first, then every row without a count by `sortName`. A play has no count, so under Popular it sorts after every counted series; a catalog published before the field has no counts, so Popular is A to Z. Plays
   follow the series under every order. A chip that narrows the list is
   filled with the brand's blue (Decision 064), and Clear leads the row
-  once anything is set. The chips are a bar under the navigation bar
+  once anything is set. The scope and chips are a bar under the navigation bar
   (`safeAreaBar` on 26, an inset whose material stops at the safe area
-  before), over ONE `List` for every state, so the large "Browse" title
+  before), or the list's own first row in a short window (§3.6i), over ONE
+  `List` for every state, so the large "Browse" title
   shows as on Home and Library (the title was blank on an iPhone 12,
   2026-10-24, under an inset whose material ran to the top edge over a
   swapped list; the fix awaits that device). A play
@@ -448,7 +470,7 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   person, play and finished ear drama pages open on `ItemHeadBoard`: the window at tier L across the board's top on a phone and a
   320 pt column beside the words from 560 pt (the open Duo and an iPad), the words in Home's order, then the strip. A picture
   keeps its own shape (`ItemLead.window`): a wide one is a plate over the words, an upright or square one stands where the
-  label would, never cropped, graded as everywhere, its credit under the board; a series' `lead` is a wide `hero`, else its
+  label would (one its cap would leave at 85% of the board's width or more spans it, WEB-DESIGN §6.4g rule 2), never cropped, graded as everywhere, its credit under the board; a series' `lead` is a wide `hero`, else its
   picture, else the label; a person's is the portrait, else the groove-ring label in a round window; a play's is `titlePage`,
   else `authorArt`, else its opening drawn as a page (`PlayOpeningWindow`); a finished ear drama keeps its part-color disc. An
   episode's head is its own dated label with the title as the heading, the show a kicker link, and its year at full ink on the
@@ -1050,10 +1072,15 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   is shared by every Apple platform: AVPlayer, the `.playback` /
   `.spokenAudio` / `.longFormAudio` session, Now Playing, and remote
   commands. Views draw it and never touch AVFoundation.
-- **§5.2 The mini player** sits in each tab stack's bottom safe-area
-  inset while an episode is loaded (`MiniPlayer_iOS`,
-  `apple/iOS/PlayerViews_iOS.swift`): title, series, Play or Pause; a
-  tap opens the player.
+- **§5.2 The mini player is the tab bar's accessory** on iOS 26.1 and later
+  while an episode is loaded (`tabViewBottomAccessory(isEnabled:)`,
+  `MiniPlayerAccessory_iOS`, `apple/iOS/PlayerViews_iOS.swift`): window,
+  title, series, Play or Pause; a tap opens the player; beside a minimized
+  tab bar the series gives way. The system draws its glass and edge fade and
+  insets every scroll view for it; a list keeps 12 pt above it. Before 26.1
+  it is `MiniPlayer_iOS` in each tab stack's bottom safe-area inset.
+  *Replaced* (B15b, 2026-11-24): the inset on every iOS, a hard-edged
+  material strip across the width with tiles cut off just above it.
 - **§5.3 The player is a sheet at compact width, two panes at regular
   width** (Decision 080; owner 2026-11-16, Q2: *"Two panes"*). On a phone,
   the closed Duo and a narrow window it is a sheet with its drag indicator
@@ -1280,8 +1307,9 @@ device. Audit frames: `build/qa/duo-audit/` (local).
 
 - **§10.1 The iOS 26 tab accessory resets every tab's stack.** Putting
   the mini player in the tab view's bottom accessory changes the
-  `TabView`'s identity when playback starts, so each stack carries the
-  mini player in its own safe-area inset instead.
+  `TabView`'s identity when playback starts; the `isEnabled:` form (26.1)
+  keeps it, so the accessory is used there and each stack carries the mini
+  player in its own safe-area inset before it (§5.2).
 - **§10.2 Own the stores in the `App`'s `@State`**, never inline in
   `body`, or a re-evaluated scene swaps in fresh stores and drops
   navigation and playback.

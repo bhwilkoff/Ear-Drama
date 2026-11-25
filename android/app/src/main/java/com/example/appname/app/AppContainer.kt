@@ -109,7 +109,7 @@ class AppContainer(context: Context, scope: CoroutineScope) {
             plays.store,
             { accounts.account.value?.userId },
             { plays.load(); (plays.state.value as? PlaysLibrary.State.Ready)?.scripts.orEmpty() },
-            libraryScript = { id, revision -> plays.script(id)?.takeIf { it.revision == revision } },
+            libraryScript = { id, revision -> plays.script(id, revision) },
         )
     }
 

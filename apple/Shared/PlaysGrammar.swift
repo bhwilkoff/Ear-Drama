@@ -183,8 +183,9 @@ struct PartCard<Actions: View>: View {
             actions()
         }
         .padding(Spacing.s3)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Color.brandSurface, in: RoundedRectangle(cornerRadius: Radius.card))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // The second surface, as the web's part cards: the first is the grouped page's own gray in light.
+        .background(Color.brandSurfaceAlt, in: RoundedRectangle(cornerRadius: Radius.card))
         .overlay {
             if current { RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Color.brandPrimary, lineWidth: 2) }
         }

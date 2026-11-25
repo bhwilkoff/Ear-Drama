@@ -29,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -62,6 +63,7 @@ import com.example.appname.plays.ReadSession
 import com.example.appname.plays.ReadSnapshot
 import com.example.appname.plays.ReadState
 import com.example.appname.plays.ScriptLine
+import com.example.appname.plays.ScriptLoad
 import com.example.appname.plays.ScriptReading
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.SectionHeader
@@ -147,7 +149,9 @@ fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> U
     var asking by remember { mutableStateOf(session.state.value.snapshot == null && !(BuildConfig.DEBUG && seatDoor != null)) }
     var name by remember { mutableStateOf(prefs.getString("name", "").orEmpty()) }
     var attempt by remember { mutableIntStateOf(0) }
-    var script by remember { mutableStateOf<PlayScript?>(null) }
+    var scriptAttempt by remember { mutableIntStateOf(0) }
+    val load = rememberRoomScript(state.snapshot, scriptAttempt)
+    val script = (load as? ScriptLoad.Ready)?.script
     val wire = container.readClass
 
     suspend fun join(seatKey: String? = null, seatId: String? = null, move: Boolean = false) {
@@ -179,10 +183,6 @@ fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> U
         container.readWire.gone(normal)?.let { failure = ReadCore.refusal(it); gone = true }
     }
     LaunchedEffect(attempt, asking) { if (!asking && !needsSeat) join() }
-    LaunchedEffect(state.snapshot?.scriptId) {
-        val id = state.snapshot?.scriptId ?: return@LaunchedEffect
-        script = container.plays.script(id)
-    }
     DisposableEffect(Unit) { onDispose { session.pause() } }
 
     val snap = state.snapshot
@@ -196,7 +196,7 @@ fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> U
             com.example.appname.ui.screens.ReaderScreen(s.id, startLine = snap.cursor, onBack = onBack, room = seam)
         }
         snap != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            androidx.compose.material3.CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
+            ScriptWait(load, onRetry = { scriptAttempt += 1 })
         }
         else -> Scaffold(topBar = { BackBar(onBack, "Reading") }) { padding ->
             Box(Modifier.fillMaxSize().padding(padding)) {
@@ -299,7 +299,7 @@ private fun SeatPicker(wire: com.example.appname.plays.ReadClassWire, seatDoor: 
 
 /** The room's current line large, the code, who is here. A TV pairs as this and holds no part (rule 12); on a TV one Leave button holds focus. */
 @Composable
-fun ReadScreenContent(state: ReadState, script: PlayScript?, onLeave: (() -> Unit)? = null) {
+fun ReadScreenContent(state: ReadState, script: PlayScript?, onLeave: (() -> Unit)? = null, load: ScriptLoad? = null, onRetry: () -> Unit = {}) {
     val snap = state.snapshot
     val lines = script?.lines.orEmpty()
     val i = maxOf(0, lines.indexOfFirst { it.id == snap?.cursor })
@@ -311,7 +311,8 @@ fun ReadScreenContent(state: ReadState, script: PlayScript?, onLeave: (() -> Uni
                 ScreenLine(lines.getOrNull(i - 1), large = false)
                 ScreenLine(lines[i], large = true)
                 ScreenLine(lines.getOrNull(i + 1), large = false)
-            } else snap?.readsNow?.let { Text(com.example.appname.plays.PartID(it.part).title, style = MaterialTheme.typography.displaySmall) }
+            } else if (load is ScriptLoad.Loading || load is ScriptLoad.Failed) ScriptWait(load, onRetry)
+            else snap?.readsNow?.let { Text(com.example.appname.plays.PartID(it.part).title, style = MaterialTheme.typography.displaySmall) }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
             if (onLeave != null) OutlinedButton(onClick = onLeave, Modifier.focusRequester(leave).tvFocusMark()) { Text("Leave") }
@@ -355,15 +356,42 @@ private fun ScreenVoice(state: ReadState, script: PlayScript?) {
     }
 }
 
+/** The room's play, asked of the published library then the bundle (B15c) at the revision the room was cast from, or the words for why not. */
+@Composable
+private fun rememberRoomScript(snap: ReadSnapshot?, attempt: Int): ScriptLoad {
+    val plays = LocalAppContainer.current.plays
+    val id = snap?.scriptId
+    val revision = snap?.scriptRevision
+    val load by produceState<ScriptLoad>(ScriptLoad.Loading, id, revision, attempt) {
+        if (id == null) { value = ScriptLoad.Loading; return@produceState }
+        value = ScriptLoad.Loading
+        value = plays.resolve(id, revision)
+    }
+    return load
+}
+
+/** The spinner while the play is asked for, or the words and a way to ask again. */
+@Composable
+private fun ScriptWait(load: ScriptLoad, onRetry: () -> Unit) {
+    when (load) {
+        is ScriptLoad.Failed -> Column(Modifier.padding(Spacing.S4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+            Text(load.line, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+            OutlinedButton(onClick = onRetry) { Text("Try again") }
+        }
+        else -> androidx.compose.material3.CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
+    }
+}
+
 /** A room as its shared screen: the line large and, while Read open parts is on, the voice. Records nothing, holds no part. */
 @Composable
 private fun ReadScreenBody(session: ReadSession, onBack: () -> Unit) {
     val container = LocalAppContainer.current
     val state by session.state.collectAsState()
-    var script by remember { mutableStateOf<PlayScript?>(null) }
-    LaunchedEffect(state.snapshot?.scriptId) { state.snapshot?.scriptId?.let { script = container.plays.script(it) } }
+    var attempt by remember { mutableIntStateOf(0) }
+    val load = rememberRoomScript(state.snapshot, attempt)
+    val script = (load as? ScriptLoad.Ready)?.script
     ScreenVoice(state, script)
-    ReadScreenContent(state, script, onLeave = if (LocalIsTelevision.current) onBack else null)
+    ReadScreenContent(state, script, onLeave = if (LocalIsTelevision.current) onBack else null, load = load, onRetry = { attempt += 1 })
 }
 
 /** Joins as role "screen" and shows the room (a deep link, or a phone's Open the screen); it records nothing. */
@@ -478,7 +506,7 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
     suspend fun loadReviews() {
         val records = progress?.productions.orEmpty().mapNotNull { p -> runCatching { transport.get(p.id) }.getOrNull() }
         val scripts = reviewScripts.toMutableMap()
-        records.forEach { r -> if (r.scriptID !in scripts) container.plays.script(r.scriptID)?.takeIf { it.revision == r.scriptRevision }?.let { scripts[r.scriptID] = it } }
+        records.forEach { r -> if (r.scriptID !in scripts) container.plays.script(r.scriptID, r.scriptRevision)?.let { scripts[r.scriptID] = it } }
         reviewScripts = scripts
         recordScripts = records.associate { it.id to it.scriptID }
         waiting = com.example.appname.plays.ClassReview.queue(records) { rec, line -> scripts[rec.scriptID]?.lines?.indexOfFirst { it.id == line } ?: -1 }
@@ -487,7 +515,7 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
     // takes recorded at home pass through; the progress list moves on every arrival.
     val inbox = remember(id) {
         com.example.appname.plays.ClassInbox(container.plays.store, com.example.appname.plays.PlaysApi(container.accounts.worker), scope,
-            { sid, rev -> container.plays.script(sid)?.takeIf { it.revision == rev } }, onArrival = { scope.launch { try { progress = wire.progress(id); loadReviews() } catch (e: CancellationException) { throw e } catch (_: Exception) {} } })
+            { sid, rev -> container.plays.script(sid, rev) }, onArrival = { scope.launch { try { progress = wire.progress(id); loadReviews() } catch (e: CancellationException) { throw e } catch (_: Exception) {} } })
     }
     DisposableEffect(inbox) { onDispose { inbox.release() } }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -652,8 +680,8 @@ fun CastingBoardScreen(classId: String, productionId: String, onBack: () -> Unit
             detail = wire.detail(classId)
             val info = wire.production(productionId)
             assignments = info.assignments.map { ReadCore.Assignment(it.part, it.seat, it.from, it.to) }
-            val s = container.plays.script(info.scriptID)
-            if (s != null && s.revision == info.scriptRevision) facts = ReadClass.Facts(s) else failure = ReadCore.refusal("revision_mismatch")
+            val s = container.plays.script(info.scriptID, info.scriptRevision)
+            if (s != null) facts = ReadClass.Facts(s) else failure = ReadCore.refusal("revision_mismatch")
         } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }
     }
     val seats = detail?.seats.orEmpty().map { ReadCore.Seat(it.id, it.label) }

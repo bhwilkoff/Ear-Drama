@@ -122,7 +122,7 @@ const Reader = (() => {
 
   function lineNode(script, line, hues, heads, roles, namesRx) {
     const part = C.linePart(line);
-    const lay = R.layoutOf(line, roles);
+    const lay = R.layoutOf(line, roles, { emphasis: !!script && script.kind !== 'own' });
     const head = heads.get(line.id);
     if (line.kind === 'speech') {
       const node = el('div', { class: 'rd-line rd-speech', id: line.id, dataset: { line: line.id, part, hue: hues.get(part) || 'none' } });
@@ -144,6 +144,12 @@ const Reader = (() => {
     if (row.cue) node.append(el('span', { class: 'rd-sfx-mark' }, svg('cue')));
     for (const r of row.runs) directionRuns(node, r, row.cue ? 'rd-sfx-text' : '', line.kind === 'direction' ? namesRx : null, hues);
     return node;
+  }
+
+  /** One line as the page draws it, on its own (the parts page, WEB-DESIGN §4.21 item 3). */
+  function drawLine(line, hues, roles) {
+    const level = line.kind === 'direction' ? C.sectionLevel(line.source) : null;
+    return lineNode(null, line, hues, level ? new Map([[line.id, { level }]]) : new Map(), roles, null);
   }
 
   /** The front of the play: its title, its authors, and its speaking parts in their hues, largest first. */
@@ -1029,5 +1035,5 @@ const Reader = (() => {
     };
   }
 
-  return { open, close, openID, openKey };
+  return { open, close, openID, openKey, drawLine };
 })();

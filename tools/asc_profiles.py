@@ -12,6 +12,7 @@ Env:    ASC_KEY_ID, ASC_ISSUER_ID, and the .p8 from the login Keychain via tools
 import sys, os, time, json, base64, urllib.request, urllib.error, urllib.parse
 import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import pyneeds; pyneeds.need("jwt")
+import net_retry
 import jwt
 
 PROFILE_TYPE = {"ios": "IOS_APP_STORE", "tvos": "TVOS_APP_STORE", "mac": "MAC_APP_STORE"}
@@ -32,7 +33,7 @@ def api(method, path, body=None):
     req = urllib.request.Request("https://api.appstoreconnect.apple.com" + path, data=data,
             headers={"Authorization": f"Bearer {token()}", "Content-Type": "application/json"}, method=method)
     try:
-        r = urllib.request.urlopen(req, timeout=30)
+        r = net_retry.urlopen(req, timeout=30)
         return r.status, (json.load(r) if r.length != 0 else {})
     except urllib.error.HTTPError as e:
         raise SystemExit(f"ASC API {method} {path} -> {e.code}: {e.read().decode()[:400]}")

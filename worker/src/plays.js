@@ -46,12 +46,13 @@ import {
   statusOf,
 } from "./plays-relay.js";
 import { castable, isPublishable, madeFrom } from "./plays-castable.js";
+import { heldRefusal, hiddenFromReporter, newOwnScript, newPersonRefusal, ownScriptOut, putScript, reportedScriptOwner, sendScript } from "./plays-own.js";
 import { extOf, fileName, iaConfigured, sendFile } from "./plays-archive.js";
 import { assignmentRows, classHandlers, putAssignments, review, reviewsFor, rosterFor, seatsOf } from "./plays-seats.js";
 import { deleteClassRoute, deleteProductionRoute, deletesOn, exportClass, schoolYearEnd, setEndDate, touchClass } from "./plays-retention.js";
 
 /** Tables that hold no person's rows; test/account.test.js checks they reference no user. */
-export const PLAYS_ANONYMOUS_TABLES = ["play_archive_files", "play_class_seats", "play_assignments", "play_reviews"];
+export const PLAYS_ANONYMOUS_TABLES = ["play_archive_files", "play_class_seats", "play_assignments", "play_reviews", "play_script_total", "play_removed_scripts"];
 
 /**
  * The CC0 consent (Decision 059). The version id is what a person agreed to;
@@ -80,6 +81,8 @@ export const MAX_MEMBERS = 64;
 export const MAX_TAKES_PER_LINE = 10;
 export const MAX_PRODUCTIONS = 100;
 export const REPORT_REASONS = ["offensive", "harassment", "personal_information", "not_a_performance", "other"];
+/** A script's reasons: a take's or a person's, and copyright. */
+export const SCRIPT_REPORT_REASONS = [...REPORT_REASONS, "copyright"];
 /** Why a line left the archive.org item: the performer withdrew it, or the director removed it for a report's reason. */
 export const REMOVE_REASONS = ["withdrawn", ...REPORT_REASONS];
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -220,8 +223,11 @@ async function recordFor(env, p, userId, now) {
     archive: job ? { status: job.status, created_at: job.created_at, url: job.item_url, reason: job.reason } : null,
     uploads: !!env.TAKE_RELAY,
     class_id: p.class_id || null,
+    publishable: isPublishable(madeFrom(p)),
     server_time: now,
   };
+  const own = await ownScriptOut(env, p);
+  if (own) out.own_script = own;
   if (p.class_id) out.assignments = await assignmentRows(env, p.id);
   if (p.class_id && p.user_id === userId) out.reviews = await reviewsFor(env, p.id);
   if (p.user_id === userId) {
@@ -251,10 +257,8 @@ export async function createProduction(auth, request, env, now, classId = null) 
   if (!cast) return problem(400, "bad_request", "cast is [{ id, part }] in script order");
   const refusal = nameRefusal(body.display_name);
   if (refusal) return problem(422, refusal);
-  const found = await castable(env, body.script_id, body.script_revision);
-  if (found.refusal) return found.refusal;
-  const { row } = found;
-  if ((await castHash(cast)) !== row.cast) return problem(422, "cast_mismatch");
+  const made = body.own === true ? await newOwnScript(env, body, cast, auth.userId, now) : await fromCatalog(env, body, cast);
+  if (made.refusal) return made.refusal;
   const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM play_productions WHERE user_id = ?1").bind(auth.userId).first();
   if (count.n >= MAX_PRODUCTIONS) return problem(409, "too_many_productions");
 
@@ -262,21 +266,34 @@ export async function createProduction(auth, request, env, now, classId = null) 
   await env.DB.batch([
     env.DB.prepare(
       "INSERT INTO play_productions (id, user_id, script_id, script_revision, title, cast_sheet, created_at, updated_at, class_id, script_row) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?8, ?9)",
-    ).bind(id, auth.userId, row.id, row.revision, row.title, JSON.stringify(cast), now, classId, JSON.stringify(row)),
+    ).bind(id, auth.userId, body.script_id, made.revision, made.title, JSON.stringify(cast), now, classId, made.row ? JSON.stringify(made.row) : null),
     env.DB.prepare("INSERT INTO play_members (production_id, user_id, display_name, joined_at) VALUES (?1, ?2, ?3, ?4)").bind(
       id,
       auth.userId,
       cleanName(body.display_name),
       now,
     ),
+    ...(made.statement ? [made.statement(id)] : []),
   ]);
   return json(await recordFor(env, await production(env, id), auth.userId, now), 201);
+}
+
+/** A catalog play's title, revision and row (plays-castable.js), or the refusal. */
+async function fromCatalog(env, body, cast) {
+  const found = await castable(env, body.script_id, body.script_revision);
+  if (found.refusal) return found;
+  const { row } = found;
+  if ((await castHash(cast)) !== row.cast) return { refusal: problem(422, "cast_mismatch") };
+  return { title: row.title, revision: row.revision, row };
 }
 
 async function listProductions(auth, env) {
   const { results } = await env.DB.prepare(
     "SELECT p.id, p.title, p.script_id, p.user_id AS director, p.updated_at FROM play_productions p " +
-      "JOIN play_members m ON m.production_id = p.id WHERE m.user_id = ?1 ORDER BY p.updated_at DESC",
+      "JOIN play_members m ON m.production_id = p.id WHERE m.user_id = ?1 " +
+      // Not one whose script they reported (hiddenFromReporter, plays-own.js).
+      "AND NOT EXISTS (SELECT 1 FROM play_reports r JOIN play_scripts s ON s.production_id = r.production_id WHERE r.production_id = p.id AND r.user_id = ?1 AND r.script = 1 AND s.bytes > 0) " +
+      "ORDER BY p.updated_at DESC",
   )
     .bind(auth.userId)
     .all();
@@ -298,6 +315,8 @@ async function claim(env, p, userId, part, now) {
   const rows = await partRows(env, p.id);
   const refusal = claimRefusal(p.cast, rows, part, now);
   if (refusal) return problem(409, refusal.error, refusal.detail);
+  const held = await heldRefusal(env, p);
+  if (held) return held;
   await env.DB.batch([setPart(env, p.id, part, "recording", userId, now), touch(env, p.id, now)]);
   return null;
 }
@@ -340,6 +359,8 @@ async function createInvite(auth, request, env, p, now) {
   if (error) return error;
   const days = body.expires_in_days === undefined ? INVITE_DEFAULT_DAYS : Number(body.expires_in_days);
   if (!Number.isInteger(days) || days < 1 || days > INVITE_MAX_DAYS) return problem(400, "bad_request", `expires_in_days is 1 to ${INVITE_MAX_DAYS}`);
+  const shut = await newPersonRefusal(env, p);
+  if (shut) return shut;
   const token = randomToken(32);
   const id = randomToken(12);
   const expires = now + days * DAY_MS;
@@ -380,6 +401,8 @@ async function viewInvite(auth, request, env, now) {
   if (error) return error;
   const p = await redeem(env, body.token, auth.userId, now);
   if (!p) return problem(404, "invite_not_found");
+  const shut = await newPersonRefusal(env, p);
+  if (shut) return shut;
   const rows = await partRows(env, p.id);
   return json({
     id: p.id,
@@ -399,6 +422,8 @@ async function claimByInvite(auth, request, env, now) {
   if (error) return error;
   const p = await redeem(env, body.token, auth.userId, now);
   if (!p) return problem(404, "invite_not_found");
+  const shut = await newPersonRefusal(env, p);
+  if (shut) return shut;
   const refusal = nameRefusal(body.display_name);
   if (refusal) return problem(422, refusal);
   if (!(await member(env, p.id, auth.userId))) {
@@ -453,6 +478,8 @@ export async function receiveTake(env, request, p, takeId, meta, part, who, now,
   if (!ID.test(takeId)) return problem(400, "bad_request", "take id");
   // A take the bleed check flagged holds the device voice, which never leaves the device (§5 rule 2, §8 rule 3).
   if (meta.bleed === true) return problem(422, "bleed_flagged");
+  const held = await heldRefusal(env, p);
+  if (held) return held;
   // A take id is used once (§8 rule 5): a second take under it is refused before any audio is read.
   if (await env.DB.prepare("SELECT 1 FROM play_takes WHERE production_id = ?1 AND id = ?2").bind(p.id, takeId).first()) {
     return problem(409, "take_exists");
@@ -592,7 +619,8 @@ const publishedLine = (env, pid, lineID) =>
 /** Only the line's own performer replaces it, at the current consent, and not a line the director removed. */
 async function replaceRefusal(env, p, f, userId) {
   if (f.user_id !== userId) return problem(403, "not_your_take");
-  if (f.removed_by === "director") return problem(409, "removed_by_director");
+  // The director's removal stands, and so does the owner's after a report (worker/ops/reports.json).
+  if (f.removed_by === "director" || f.removed_by === "owner") return problem(409, "removed_by_director");
   const agreed = await env.DB.prepare("SELECT version FROM play_consents WHERE production_id = ?1 AND user_id = ?2 AND version = ?3")
     .bind(p.id, userId, CONSENT_VERSION)
     .first();
@@ -713,7 +741,9 @@ async function publish(auth, request, env, p, now) {
     .bind(p.id)
     .all();
   const { results: reported } = await env.DB.prepare(
-    "SELECT DISTINCT take_id FROM play_reports WHERE production_id = ?1 AND status = 'open' AND take_id IS NOT NULL",
+    "SELECT take_id FROM play_reports WHERE production_id = ?1 AND status = 'open' AND take_id IS NOT NULL " +
+      // What the owner took down after a report does not go out again.
+      "UNION SELECT take_id FROM play_archive_files WHERE production_id = ?1 AND removed_by = 'owner'",
   )
     .bind(p.id)
     .all();
@@ -749,12 +779,19 @@ async function report(auth, request, env, now) {
   if (typeof body.production_id !== "string" || !(await member(env, body.production_id, auth.userId))) {
     return problem(404, "not_found");
   }
-  if (!REPORT_REASONS.includes(body.reason)) return problem(400, "bad_request", `reason is one of ${REPORT_REASONS.join(", ")}`);
+  const script = body.script === true;
+  const reasons = script ? SCRIPT_REPORT_REASONS : REPORT_REASONS;
+  if (!reasons.includes(body.reason)) return problem(400, "bad_request", `reason is one of ${reasons.join(", ")}`);
   const note = typeof body.note === "string" ? body.note.trim() : "";
   if (note.length > 500 || /[\u0000-\u0009\u000b-\u001f]/.test(note)) return problem(400, "bad_request", "note");
   let target;
   let takeId = null;
-  if (typeof body.take_id === "string" && body.user_id === undefined) {
+  if (script && body.take_id === undefined && body.user_id === undefined) {
+    // Its production is hidden from this person, and no new person comes in, until the owner answers (plays-own.js).
+    target = await reportedScriptOwner(env, body.production_id);
+    if (!target || target === auth.userId) return problem(404, "no_script");
+  } else if (script) return problem(400, "bad_request", "report a take_id, a user_id, or the script");
+  else if (typeof body.take_id === "string" && body.user_id === undefined) {
     const t = await env.DB.prepare("SELECT user_id FROM play_takes WHERE production_id = ?1 AND id = ?2").bind(body.production_id, body.take_id).first();
     if (!t) return problem(404, "no_such_take");
     target = t.user_id;
@@ -762,12 +799,12 @@ async function report(auth, request, env, now) {
   } else if (typeof body.user_id === "string" && body.take_id === undefined) {
     if (body.user_id === auth.userId || !(await member(env, body.production_id, body.user_id))) return problem(404, "no_such_member");
     target = body.user_id;
-  } else return problem(400, "bad_request", "report a take_id or a user_id");
+  } else return problem(400, "bad_request", "report a take_id, a user_id, or the script");
   const id = randomToken(12);
   await env.DB.prepare(
-    "INSERT INTO play_reports (id, user_id, production_id, target_user_id, take_id, reason, note, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+    "INSERT INTO play_reports (id, user_id, production_id, target_user_id, take_id, reason, note, created_at, script) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
   )
-    .bind(id, auth.userId, body.production_id, target, takeId, body.reason, note, now)
+    .bind(id, auth.userId, body.production_id, target, takeId, body.reason, note, now, script ? 1 : 0)
     .run();
   return json({ id }, 201);
 }
@@ -962,9 +999,11 @@ export async function handlePlays(url, request, env, auth) {
 
   // Everything below is a member's. Not a member and no such production look the same.
   const p = await production(env, b);
-  if (!p || !(await member(env, p.id, auth.userId))) return problem(404, "not_found");
+  if (!p || !(await member(env, p.id, auth.userId)) || (await hiddenFromReporter(env, p, auth.userId))) return problem(404, "not_found");
   if (!c && m === "GET") return json(await recordFor(env, p, auth.userId, now));
   if (!c && m === "DELETE") return deleteProductionRoute(auth, env, p);
+  if (c === "script" && !d && m === "GET") return sendScript(request, env, p);
+  if (c === "script" && !d && m === "PUT") return putScript(auth, request, env, p, now);
   if (c === "invites" && !d && m === "POST") return createInvite(auth, request, env, p, now);
   if (c === "invites" && d && !e && m === "DELETE") return revokeInvite(auth, env, p, d);
   if (c === "claim" && !d && m === "POST") return claimAsMember(auth, request, env, p, now);

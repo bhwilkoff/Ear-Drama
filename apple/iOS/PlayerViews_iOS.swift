@@ -38,6 +38,59 @@ struct MiniPlayer_iOS: View {
     }
 }
 
+/// The mini player as the tab bar's accessory (iOS-DESIGN §5.2): one line of what is playing and Play or Pause at the
+/// accessory's own height; beside a minimized tab bar the second line gives way.
+@available(iOS 26.0, *)
+struct MiniPlayerAccessory_iOS: View {
+    @Environment(AudioPlayer.self) private var player
+    @Environment(AppStore.self) private var store
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+
+    var body: some View {
+        if let item = player.item {
+            HStack(spacing: Spacing.s3) {
+                Button {
+                    store.isPlayerPresented = true
+                } label: {
+                    HStack(spacing: Spacing.s3) {
+                        PictureWindow(art: item.episode.seriesWindowArt ?? item.face?.art, name: item.episode.seriesName,
+                                      genre: item.episode.seriesGenre, side: placement == .inline ? 28 : 36)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(verbatim: item.episode.displayTitle)
+                                .font(TypeRamp.bodyStrong)
+                                .foregroundStyle(Color.brandText)
+                            if placement != .inline {
+                                Text(verbatim: item.episode.seriesName)
+                                    .font(TypeRamp.caption)
+                                    .foregroundStyle(Color.brandTextMuted)
+                            }
+                        }
+                        .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Now playing: \(item.episode.displayTitle), \(item.episode.seriesName)")
+                .accessibilityHint("Opens the player")
+
+                Button {
+                    player.togglePlayPause()
+                } label: {
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.title3)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.brandPrimary)
+                .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+            }
+            .padding(.horizontal, Spacing.s3)
+        }
+    }
+}
+
 /// How Now Playing opens (iOS-DESIGN §5.3, Decision 080): a sheet at compact width, the whole window with what plays
 /// next beside it at regular width. Chosen once, as it opens, so folding or unfolding the Duo never dismisses it.
 enum PlayerPresentation: Equatable {

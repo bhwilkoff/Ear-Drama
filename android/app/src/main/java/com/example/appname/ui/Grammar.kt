@@ -74,6 +74,7 @@ import com.example.appname.data.Artwork
 import com.example.appname.data.Grade
 import com.example.appname.data.SeriesRow
 import com.example.appname.plays.PlayListing
+import com.example.appname.plays.PlayScript
 import com.example.appname.data.WindowFill
 import com.example.appname.data.dateBlockParts
 import com.example.appname.data.eventParts
@@ -376,9 +377,12 @@ fun ShowTile(
     }
 }
 
+/** A tile's window shows this many opening speeches (js/app.js openingWindow; the index carries two). */
+private const val TILE_SPEECHES = 2
+
 /**
- * A play's tile (§4.9a): the show tile's grammar on the drama board, the window drawing the cast
- * ([CastWindow]), the name, the cast fingerprint in the strip slot, and "N voices" and "About M min".
+ * A play's tile (§4.9a): the show tile's grammar on the drama board, the window drawing the play's opening speeches
+ * ([PlayOpeningWindow], B21), else its cast ([CastWindow]), the name, the cast fingerprint in the strip slot, and "N voices" and "About M min".
  * [onRead] draws the book button in the window's corner (§4.17).
  */
 @Composable
@@ -405,7 +409,12 @@ fun PlayTile(
                 .padding(start = TilePad, top = TilePad, end = TilePad, bottom = 10.dp)
                 .semantics(mergeDescendants = true) { contentDescription = (listOf(script.title) + facts).joinToString(", ") },
         ) {
-            CastWindow(script, Modifier.fillMaxWidth().height(innerWidth(width)))
+            val window = Modifier.fillMaxWidth().height(innerWidth(width))
+            if (remember(script) { PlayScript.openingOf(script, TILE_SPEECHES).isNotEmpty() }) {
+                PlayOpeningWindow(script, LabelItem(LabelKind.Play, voices = script.voices, opening = true), window, TILE_SPEECHES)
+            } else {
+                CastWindow(script, window)
+            }
             Text(
                 nameText(script.title),
                 style = style,

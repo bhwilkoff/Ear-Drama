@@ -11,6 +11,18 @@ struct EmptyStateTests {
         #expect(!LaunchDoors.from(environment: [:], arguments: []).emptyLibrary)
     }
 
+    /// B15b's frame doors: they open a screen and create nothing. The play door is never `productionDoor`.
+    @Test @MainActor func frameDoorsOpenAndCreateNothing() {
+        let doors = LaunchDoors.from(environment: ["APP_START_PLAY": "gut-1", "APP_LIBRARY_SIDE": "making", "APP_LANDSCAPE": "1",
+                                                   "APP_START_ITEM": "a|b", "APP_AUTOPLAY": "1", "APP_MINI_PLAYER": "1"], arguments: [])
+        #expect(doors.play == "gut-1" && doors.librarySide == "making" && doors.landscape && doors.miniPlayer)
+        #expect(LaunchDoors.from(environment: ["APP_LIBRARY_SIDE": "other", "APP_START_PLAY": ""], arguments: []) == LaunchDoors())
+        let store = AppStore()
+        #expect(store.openDoorsOnce(doors))
+        #expect(store.playDoor == "gut-1" && store.productionDoor == nil && !store.isPlayerPresented)
+        #expect(store.drainInbox() == ["a|b"] && !store.canGoBack, "the item plays, unpushed")
+    }
+
     @Test func alongDoorNamesTheProductionAndIgnoresEmpty() {
         #expect(LaunchDoors.from(environment: ["APP_START_ALONG": "p1"], arguments: []).along == "p1")
         #expect(LaunchDoors.from(environment: ["APP_START_ALONG": ""], arguments: []).along == nil)

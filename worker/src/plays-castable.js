@@ -109,5 +109,5 @@ export function madeFrom(p) {
   return ours.find((r) => r.revision === p.script_revision) || ours[0] || null;
 }
 
-/** Whether a production of this row may go to archive.org: the row says so, and its rights bucket is a castable one. */
-export const isPublishable = (row) => !!row && row.publishable === true && publishableBucket(row.rights.bucket);
+/** Whether a production of this row may go to archive.org: it is a catalog play's, it says so, and its rights bucket is a castable one. */
+export const isPublishable = (row) => !!row && SCRIPT_ID.test(row.id) && row.publishable === true && publishableBucket(row.rights.bucket);

@@ -7,7 +7,7 @@ exists, and how long it stays. The retention column says what the code does
 today; where a draft rule in `retention-policy-draft.md` would change it, the
 change is marked **Proposed**.
 
-Sources: `worker/migrations/0001` to `0009`, `worker/src/account.js`
+Sources: `worker/migrations/0001` to `0013`, `worker/src/account.js`
 (`USER_TABLES`, `OTHER_PERSON_COLUMNS`), `worker/src/auth.js`, `plays.js`,
 `plays-seats.js`, `read-rooms.js`, `take-relay.js`, `takedown.js`,
 `plays-archive.js`, `docs/WORKER.md`, `docs/EXPORT.md`, `privacy/index.html`.
@@ -57,13 +57,15 @@ the pipe; `take-relay.js`).
 
 | Table.column | Who | What | Why | How long (today) |
 |---|---|---|---|---|
-| `play_productions.*` | A, T | Director's user id, script id and revision, title (from our manifest), cast sheet, `class_id` | A production | Until the director deletes it (`DELETE /productions/:id`, before it is submitted) or the director's account is deleted (then passed on or deleted, WORKER.md "Account deletion"); a class production goes with its class unless submitted |
+| `play_productions.*` | A, T | Director's user id, script id and revision, title (from our manifest; for an own script the director's, through the name filter), cast sheet, `class_id` | A production | Until the director deletes it (`DELETE /productions/:id`, before it is submitted) or the director's account is deleted (then passed on or deleted, WORKER.md "Account deletion"); a class production goes with its class unless submitted |
+| `play_scripts.body`, `episode_id`, `user_id` | A, T | The text of a script someone added to a shared production or class, and who added it | So the people they invited can read and record it | With the production or class, on every path they go by; with that person's account; on a take-down or the owner's removal |
+| `play_removed_scripts.*`, `play_script_total.bytes` | none | 12 hex of a removed text's digest, or an episode id, and when; how many bytes of text are kept in all | So a removed text is refused at its next share; the 250 MB cap | Kept; no person, and not the text |
 | `play_members.display_name`, `joined_at` | A | A chosen name (name filter, 40 characters, may be empty) | Credits; who is in it | Until the person leaves or deletes the account |
 | `play_invites.token_hash`, `expires_at` | A | Hash of an invite token | Invite links | 1 to 30 days, then kept 30 days to answer "expired", then swept |
 | `play_parts.*` | A, T | Who claimed a part, status | The relay | A claim lapses after 7 days; rows go with the production |
 | `play_takes.*` (no audio) | A, T, S, R | Take fields: line, part, file name, format, bytes, frames, sample rate, `capture`, `heard`, loudness, peak, created; `user_id` (for a seat's take, the teacher's); `seat_id`; `credit` (an anonymous adult reader's typed name) | Review, progress, publishing | Until the production or account is deleted, or with the class; a submitted production keeps its takes' fields without `seat_id` |
 | `play_consents.*` | A | User id, production, consent text version, time | Proof of each performer's CC0 consent | Until account deletion |
-| `play_reports.*` | A | Reporter, production, target user, take, reason, note (500 characters) | App Store guideline 1.2 | Reporter's row goes with the reporter's account; target is cleared (anonymous) when the target's account goes; otherwise kept. **Proposed:** close-out and a time limit (retention draft §4) |
+| `play_reports.*` | A | Reporter, production, target user, take or script, reason, note (500 characters) | App Store guideline 1.2 | Reporter's row goes with the reporter's account; target is cleared (anonymous) when the target's account goes; otherwise kept. **Proposed:** close-out and a time limit (retention draft §4) |
 | `play_blocks.*` | A | Who blocked whom | Safety | Until either account is deleted |
 | `play_archive_jobs.*`, `play_archive_files.*` | A, T | Upload state, archive.org identifier and URL, credits text, file names; for a class, when the teacher confirmed every performer agreed and the school's media release | Publishing to archive.org (13 and over only) | Kept while the item exists (the owner's ruling keeps the ear drama); the published item itself is on archive.org and public |
 
@@ -107,6 +109,7 @@ Not on the Worker: only "under 13 or not" is kept on the device (web `localStora
 | A class's takes, received on the teacher's device | Teacher's device | Same | **Until the teacher deletes them; this is where student voices live.** |
 | A student's own takes on the device that recorded them | Student's device (often a shared school device) | Same | Until deleted on that device. (Shared-device clearing, R3d D5, is not built: the owner's Q6) |
 | Seat key | Web: per tab; Apple, Android: memory only in a room (082c); Keychain or Keystore only when a student records at home (083) | | Tab or app run; home relay: until sent |
+| Scripts a person added or cast by ear, each with the text as pasted, the text being added, and for one cast by ear its episode and place (Decision 088.3) | Web (Apple and Android with R4-6 and R4-7) | IndexedDB; app storage | Until the person deletes them (the text being added: until it becomes a script or is emptied); in the person's own export; never sent unless they share it |
 | Sign-in session | Web: local storage and IndexedDB, encrypted; Apple: Keychain; Android: Keystore-held key | | Until sign-out or deletion |
 | Script marks and Pencil ink | Web, Apple, Android (ink: Apple) | Device | Until deleted; in the person's own export |
 | Synthetic stand-in voices (Kokoro model) | Downloaded model only | Device | The model is kept; a stand-in's audio is never stored (Decision 055) |
