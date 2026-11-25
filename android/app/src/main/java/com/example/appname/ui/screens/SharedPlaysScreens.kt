@@ -52,6 +52,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.example.appname.plays.ConsentBlock
 import com.example.appname.plays.ConsentText
 import androidx.compose.ui.unit.dp
+import com.example.appname.plays.OwnShare
 import com.example.appname.plays.CastPart
 import com.example.appname.plays.ClassRow
 import com.example.appname.plays.InviteView
@@ -109,6 +110,10 @@ class SharedSheet(
     var caption by mutableStateOf<String?>(null)
         private set
 
+    /** The script was reported from here: the Worker has hidden the production, so only this device's copy is left to delete. */
+    var reported by mutableStateOf(false)
+        private set
+
     private fun run(block: suspend () -> Unit) {
         if (busy) return
         busy = true
@@ -163,6 +168,16 @@ class SharedSheet(
 
     fun removeLine(lineId: String, reason: String) = run { sharing.removeLine(id, lineId, reason) }
 
+    fun reportScript(reason: String, note: String) = run {
+        sharing.reportScript(id, reason, note)
+        reported = true
+    }
+
+    /** Try again for a text that is owed. */
+    fun sendAgain() = run {
+        sharing.sendAgain(id, script)?.let { throw it }
+    }
+
     val removed get() = sharing.removed
 
     fun report(userId: String?, takeId: String?, reason: String, note: String) = run {
@@ -185,7 +200,7 @@ class SharedSheet(
 
 /** "Share" (rule 1): signed out, "Sharing needs an account." and the sign-in row. */
 @Composable
-fun ShareEntry(signedIn: Boolean, onShare: (String) -> Unit, error: String?) {
+fun ShareEntry(signedIn: Boolean, onShare: (String) -> Unit, error: String?, readers: String? = null) {
     var asking by remember { mutableStateOf(false) }
     val age = rememberAgeAsk()
     AgeAskDialogs(age)
@@ -199,6 +214,7 @@ fun ShareEntry(signedIn: Boolean, onShare: (String) -> Unit, error: String?) {
                 Text("Share", Modifier.padding(start = Spacing.S2.dp))
             }
         }
+        readers?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
         error?.let { ErrorLine(it) }
     }
     if (asking) {
@@ -225,10 +241,19 @@ fun LazyListScope.sharedCastRows(
     onRecord: (PartID) -> Unit,
     onReplace: (PartID, String) -> Unit,
     voiceChip: (@Composable (PartID) -> Unit)? = null,
+    notSent: Throwable? = null,
+    onReadTogether: (@Composable () -> Unit)? = null,
+    onEditCopy: (() -> Unit)? = null,
 ) {
     if (rec == null) return
     val recordingNow = PlaysShare.recordingPart(rec)
     val director = PlaysShare.isDirector(rec, me)
+    val own = OwnShare.ownState(rec, me)
+    val held = own?.held == true
+    if (sheet.reported) {
+        item(key = "reported") { Text(OwnShare.REPORTED, Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp), style = MaterialTheme.typography.bodyMedium) }
+        return
+    }
     item(key = "shared-parts-h") { SectionHeader("Parts") }
     item(key = "shared-parts") {
         PartGrid(sheet.script.castParts) { part, modifier ->
@@ -249,11 +274,13 @@ fun LazyListScope.sharedCastRows(
             sheet = sheet,
             onRecord = { onRecord(part.id) },
             voiceChip = voiceChip?.let { chip -> { chip(part.id) } },
+            held = held,
         )
         }
     }
+    if (own != null) item(key = "own-script") { OwnScriptBox(rec, own, director, me, sheet, notSent, onReadTogether, onEditCopy) }
     sheet.error?.let { item(key = "shared-error") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
-    val total = pendingByPart.values.sum()
+    val total = if (held) 0 else pendingByPart.values.sum()
     if (!rec.uploads) {
         item(key = "uploads-off") {
             Text(
@@ -272,7 +299,7 @@ fun LazyListScope.sharedCastRows(
             ) { Text(if (total == 1) "Upload 1 take" else "Upload $total takes") }
         }
     }
-    if (director) {
+    if (director && (own == null || own.state == "kept")) {
         item(key = "invite") {
             val age = rememberAgeAsk()
             AgeAskDialogs(age)
@@ -339,6 +366,10 @@ fun LazyListScope.sharedCastRows(
                 Text(PlaysShare.PUBLISH_WAITS, Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp), style = MaterialTheme.typography.bodyMedium)
             }
         }
+    }
+    // An own script's reason stands with its other facts (OwnScriptBox); any other that cannot be published says so here.
+    if (own == null && director && rec.archive == null) OwnShare.neverPublishes(rec)?.let { why ->
+        item(key = "never-publishes") { Text(why, Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp), style = MaterialTheme.typography.labelMedium) }
     }
     PlaysShare.archiveLine(rec)?.let { line ->
         item(key = "archive") { ArchiveRow(line, PlaysShare.canPublishAgain(rec, me), sheet) }
@@ -455,6 +486,7 @@ private fun SharedCastRow(
     sheet: SharedSheet,
     onRecord: () -> Unit,
     voiceChip: (@Composable () -> Unit)? = null,
+    held: Boolean = false,
 ) {
     val raw = part.id.raw
     val name = state.performer?.let { " · $it" }.orEmpty()
@@ -484,7 +516,8 @@ private fun SharedCastRow(
             "done", "silent" -> if (!recordingElsewhere && (performerIsMe || director)) {
                 OutlinedButton(onClick = { sheet.reopen(raw) }, enabled = !busy, modifier = full, colors = wayColors()) { Text("Open part") }
             }
-            else -> if (!recordingElsewhere) {
+            // The owner removed the script: no part is taken or opened again (PLAYS-DESIGN §13 item 11).
+            else -> if (!recordingElsewhere && !held) {
                 if (isNext) {
                     Button(onClick = { sheet.take(raw) }, enabled = !busy, modifier = full, colors = playButtonColors()) { Text("Take part") }
                 } else {
@@ -530,15 +563,15 @@ private fun PersonRow(displayName: String?, isMe: Boolean, isDirector: Boolean, 
 
 /** Report (guideline 1.2): a reason and an optional note. */
 @Composable
-fun ReportDialog(onDismiss: () -> Unit, onReport: (reason: String, note: String) -> Unit) {
+fun ReportDialog(onDismiss: () -> Unit, reasons: List<Pair<String, String>> = REASONS, title: String = "Report", onReport: (reason: String, note: String) -> Unit) {
     var reason by remember { mutableStateOf<String?>(null) }
     var note by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Report") },
+        title = { Text(title) },
         text = {
             Column {
-                REASONS.forEach { (code, label) ->
+                reasons.forEach { (code, label) ->
                     Row(
                         Modifier.fillMaxWidth().selectable(selected = reason == code, role = Role.RadioButton, onClick = { reason = code }),
                         verticalAlignment = Alignment.CenterVertically,

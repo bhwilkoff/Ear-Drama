@@ -81,6 +81,8 @@ import androidx.core.content.FileProvider
 import com.example.appname.plays.CastPart
 import com.example.appname.plays.LiveListen
 import com.example.appname.plays.MixPlayback
+import com.example.appname.plays.OwnScript
+import com.example.appname.plays.OwnWords
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PartState
 import com.example.appname.plays.StudioOpen
@@ -347,7 +349,7 @@ fun LazyListScope.playPage(
     onOpenProduction: (String) -> Unit,
     start: @Composable () -> Unit = {
         StartEarDramaButton(script, onOpenProduction)
-        if (!script.isOwn) ReadTogetherButton(script)
+        ReadTogetherButton(script)
     },
     onRead: (() -> Unit)? = null,
     ownFoot: @Composable () -> Unit = {},
@@ -399,7 +401,15 @@ internal fun ErrorLine(text: String) {
 
 /** Who takes which part (§2.2-2.5). Parts are listed largest first; any open part can be taken, one recording at a time (Decision 067, C7). */
 @Composable
-fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit, onReplace: (PartID, String) -> Unit = { _, _ -> }, onReadAlong: () -> Unit = {}) {
+fun ProductionScreen(
+    id: String,
+    onBack: () -> Unit,
+    onRecord: (PartID) -> Unit,
+    onReplace: (PartID, String) -> Unit = { _, _ -> },
+    onReadAlong: () -> Unit = {},
+    onEditOwn: (String) -> Unit = {},
+    onCastByEar: (String) -> Unit = {},
+) {
     val plays = LocalAppContainer.current.plays
     val productions by plays.store.productions.collectAsState()
     val production = productions.firstOrNull { it.id == id }
@@ -421,6 +431,7 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
     val me = account?.userId
     val links by sharing.links.collectAsState()
     val records by sharing.records.collectAsState()
+    val notSent by sharing.notSent.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // A TV plays back only (PLAYS-DESIGN §11.7): a shared production there is just a local one.
@@ -486,11 +497,12 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
                 Box(Modifier.padding(top = Spacing.S3.dp)) { ListenThrough(production, script, sheet, castHandle, onReadAlong) }
             }
             // An own script's production is shared from nowhere yet (PLAYS-DESIGN §13): the button is absent, never dead.
-            if (!television && link == null && !script.isOwn) {
+            if (!television && link == null) {
                 item(key = "share") {
                     ShareEntry(
                         signedIn = account != null,
-                        error = shareError,
+                        readers = if (script.isOwn) com.example.appname.plays.OwnShare.READERS else null,
+                        error = shareError ?: notSent[id]?.let(PlaysShare::line),
                         onShare = { name ->
                             shareError = null
                             scope.launch {
@@ -515,8 +527,24 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
                 }
             }
             if (link != null && sheet != null) {
-                syncError?.let { item(key = "sync-error") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
-                sharedCastRows(sheet, rec, me, pendingByPart, onRecord, onReplace, voiceChip = castHandle?.takeIf { !television }?.let { h -> { p: PartID -> VoiceChip(h, p, onClick = { pickingVoice = p }) } })
+                if (sheet?.reported != true) syncError?.let { item(key = "sync-error") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
+                sharedCastRows(
+                    sheet, rec, me, pendingByPart, onRecord, onReplace, voiceChip = castHandle?.takeIf { !television }?.let { h -> { p: PartID -> VoiceChip(h, p, onClick = { pickingVoice = p }) } },
+                    notSent = notSent[id], onReadTogether = { ReadTogetherButton(script) },
+                    onEditCopy = {
+                        scope.launch {
+                            try {
+                                val made = plays.own.copy(script)
+                                val casting = made.ear != null && OwnScript.castCount(made.doc).let { (n, of) -> n < of }
+                                if (casting && made.episode != null) onCastByEar(made.episode.id) else onEditOwn(made.id)
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                refusal = OwnWords.notKept(e)
+                            }
+                        }
+                    },
+                )
             }
             if (link == null) {
                 item(key = "parts-h") { SectionHeader("Parts") }

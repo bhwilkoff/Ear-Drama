@@ -125,19 +125,100 @@ fun ReadTogetherButton(script: PlayScript) {
     val nav = LocalReadNav.current
     val scope = rememberCoroutineScope()
     var failure by remember { mutableStateOf<String?>(null) }
-    OutlinedButton(onClick = {
-        failure = null
+    var confirming by remember { mutableStateOf(false) }
+    val age = com.example.appname.ui.screens.rememberAgeAsk()
+    com.example.appname.ui.screens.AgeAskDialogs(age)
+    /** An own script's room carries the production it was shared as (PLAYS-DESIGN §13 item 13): its opener is signed in. */
+    fun open(productionId: String?) {
         scope.launch {
             try {
                 // Not this screen's scope: the room outlives the page it was opened from.
                 val session = ReadSession(container.readWire, container.appScope)
-                session.open(ReadClass.openingBody(script), teacher = false)
+                session.open(ReadClass.openingBody(script, productionId = productionId), teacher = productionId != null)
                 session.state.value.code?.let { ReadHandover.hold(session); nav.openRoom(it) }
-            } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }
+            } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = ownSay(e) }
+        }
+    }
+    OutlinedButton(onClick = {
+        failure = null
+        if (!script.isOwn) { open(null); return@OutlinedButton }
+        if (container.accounts.account.value == null) { container.plays.accountAsk.value = "Sharing needs an account."; return@OutlinedButton }
+        age.ask {
+            scope.launch {
+                try {
+                    val pid = com.example.appname.ui.screens.alreadySharedProduction(container, script)
+                    if (pid != null) open(pid) else confirming = true
+                } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = ownSay(e) }
+            }
         }
     }) { Text("Read together") }
     failure?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium) }
+    if (confirming) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirming = false },
+            title = { Text("Share ${script.title}?") },
+            text = { Text("People who join the reading can read it.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirming = false
+                    scope.launch {
+                        try { open(com.example.appname.ui.screens.shareForReading(container, script)) }
+                        catch (e: CancellationException) { throw e } catch (e: Exception) { failure = ownSay(e) }
+                    }
+                }) { Text("Share") }
+            },
+            dismissButton = { TextButton(onClick = { confirming = false }) { Text("Cancel") } },
+        )
+    }
 }
+
+/** A refusal in words: the Worker's own for sharing (a script's refusals are the share's), the room's otherwise. */
+/** A class production of [s]: an own script's carries its title and goes with its text; one that can never be sent undoes it. */
+private suspend fun makeClassProduction(
+    container: com.example.appname.app.AppContainer, wire: com.example.appname.plays.ReadClassWire, classId: String, s: PlayScript, owed: (String, Throwable) -> Unit,
+): ReadProductionInfo {
+    if (!s.isOwn) return wire.classProduction(classId, s.id, s.revision, s.lines.map { it.id to it.part.raw })
+    val prod = wire.classProductionBody(classId, com.example.appname.plays.OwnShare.makeBody(s))
+    val unsent = com.example.appname.plays.OwnShare.sendOrUndo(container.scriptWire, container.scriptWire, prod.id, s, com.example.appname.plays.ScriptFreezer { container.plays.own.freeze(it) })
+    if (unsent != null) {
+        if (!com.example.appname.plays.OwnShare.passes(unsent)) {
+            // sendOrUndo deleted the production through the share's own delete, which a class production answers for its teacher.
+            throw unsent
+        }
+        owed(prod.id, unsent)
+    }
+    return prod
+}
+
+/** Try again for a class script that is owed, from this device's copy; one that is not here says so. */
+internal suspend fun sendClassScript(
+    container: com.example.appname.app.AppContainer, rec: com.example.appname.plays.SharedRecord, notSent: Map<String, Throwable>, set: (Map<String, Throwable>) -> Unit,
+) {
+    val own = container.plays.own.script(rec.scriptID)?.takeIf { it.revision == rec.scriptRevision }
+        ?: throw com.example.appname.plays.PlaysException("not_on_device")
+    val e = com.example.appname.plays.OwnShare.sendOrUndo(container.scriptWire, container.scriptWire, rec.id, own, com.example.appname.plays.ScriptFreezer { container.plays.own.freeze(it) })
+    if (e == null) { set(notSent - rec.id); return }
+    if (com.example.appname.plays.OwnShare.passes(e)) set(notSent + (rec.id to e))
+    throw e
+}
+
+/** A class production's own script when it is not there: owed (Try again, from this device's copy) or removed. */
+@Composable
+private fun OwnClassRow(rec: com.example.appname.plays.SharedRecord, why: Throwable?, busy: Boolean, onAgain: () -> Unit) {
+    val own = com.example.appname.plays.OwnShare.ownState(rec) ?: return
+    if (own.state == "kept") return
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
+        if (own.state == "removed") {
+            Text(com.example.appname.plays.PlaysShare.line(com.example.appname.plays.PlaysException("script_removed")), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium)
+        } else {
+            Text(com.example.appname.plays.OwnShare.NOT_SENT, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium)
+            why?.let { Text(com.example.appname.plays.PlaysShare.line(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium) }
+            OutlinedButton(onClick = onAgain, enabled = !busy) { Text("Try again") }
+        }
+    }
+}
+
+private fun ownSay(e: Exception): String = if (e is com.example.appname.plays.PlaysException) com.example.appname.plays.PlaysShare.line(e) else say(e)
 
 /** The room a leader just opened is already joined as its leader: the screen it lands on takes this session. */
 object ReadHandover {
@@ -165,7 +246,12 @@ internal object ReadText {
 
 private fun n(count: Int, noun: String) = if (count == 1) "1 $noun" else "$count ${noun}s"
 
-private fun say(e: Exception): String = if (e is ReadFailure) ReadCore.refusal(e.code) else ReadCore.refusal("error")
+private fun say(e: Exception): String = when (e) {
+    is com.example.appname.plays.PlaysException -> com.example.appname.plays.PlaysShare.line(e)
+    // A script's own refusals (docs/WORKER.md "Own scripts") have their words; the room's are ReadCore's.
+    is ReadFailure -> com.example.appname.plays.OwnShare.scriptLine(com.example.appname.plays.PlaysException(e.code)).ifEmpty { ReadCore.refusal(e.code) }
+    else -> ReadCore.refusal("error")
+}
 
 // ---- The room ----
 
@@ -186,7 +272,7 @@ fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> U
     var name by remember { mutableStateOf(prefs.getString("name", "").orEmpty()) }
     var attempt by remember { mutableIntStateOf(0) }
     var scriptAttempt by remember { mutableIntStateOf(0) }
-    val load = rememberRoomScript(state.snapshot, scriptAttempt)
+    val load = rememberRoomScript(state.snapshot, scriptAttempt, session.memberKey)
     val script = (load as? ScriptLoad.Ready)?.script
     val wire = container.readClass
 
@@ -395,14 +481,31 @@ private fun ScreenVoice(state: ReadState, script: PlayScript?) {
 
 /** The room's play, asked of the published library then the bundle (B15c) at the revision the room was cast from, or the words for why not. */
 @Composable
-private fun rememberRoomScript(snap: ReadSnapshot?, attempt: Int): ScriptLoad {
-    val plays = LocalAppContainer.current.plays
+private fun rememberRoomScript(snap: ReadSnapshot?, attempt: Int, key: String?): ScriptLoad {
+    val container = LocalAppContainer.current
+    val plays = container.plays
     val id = snap?.scriptId
     val revision = snap?.scriptRevision
-    val load by produceState<ScriptLoad>(ScriptLoad.Loading, id, revision, attempt) {
+    val own = id != null && com.example.appname.plays.OwnScript.isOwnId(id)
+    val load by produceState<ScriptLoad>(ScriptLoad.Loading, id, revision, attempt, own && key == null) {
         if (id == null) { value = ScriptLoad.Loading; return@produceState }
         value = ScriptLoad.Loading
-        value = plays.resolve(id, revision)
+        if (!own) { value = plays.resolve(id, revision); return@produceState }
+        // An own script is this device's copy, else the room's own route read by the member's key, drawn only once it is whole.
+        if (revision == null || snap == null) { value = ScriptLoad.Failed(com.example.appname.plays.PlaysShare.line(com.example.appname.plays.PlaysException("script_damaged"))); return@produceState }
+        if (key == null) return@produceState
+        value = try {
+            ScriptLoad.Ready(
+                container.scripts.scriptOf(
+                    id, revision, com.example.appname.plays.ScriptWho(room = snap.code, key = key, pid = snap.productionId),
+                    com.example.appname.plays.OwnShare.Fits.room(snap.cursor, snap.claims.keys),
+                ),
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            ScriptLoad.Failed(if (e is com.example.appname.plays.PlaysException) com.example.appname.plays.PlaysShare.line(e) else ReadCore.refusal("error"))
+        }
     }
     return load
 }
@@ -413,7 +516,8 @@ private fun ScriptWait(load: ScriptLoad, onRetry: () -> Unit) {
     when (load) {
         is ScriptLoad.Failed -> Column(Modifier.padding(Spacing.S4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
             Text(load.line, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
-            OutlinedButton(onClick = onRetry) { Text("Try again") }
+            // A removed script has no Try again.
+            if (load.line != com.example.appname.plays.PlaysShare.line(com.example.appname.plays.PlaysException("script_removed"))) OutlinedButton(onClick = onRetry) { Text("Try again") }
         }
         else -> androidx.compose.material3.CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
     }
@@ -425,7 +529,7 @@ private fun ReadScreenBody(session: ReadSession, onBack: () -> Unit) {
     val container = LocalAppContainer.current
     val state by session.state.collectAsState()
     var attempt by remember { mutableIntStateOf(0) }
-    val load = rememberRoomScript(state.snapshot, attempt)
+    val load = rememberRoomScript(state.snapshot, attempt, session.memberKey)
     val script = (load as? ScriptLoad.Ready)?.script
     ScreenVoice(state, script)
     ReadScreenContent(state, script, onLeave = if (LocalIsTelevision.current) onBack else null, load = load, onRetry = { attempt += 1 })
@@ -532,9 +636,13 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
         if (busy) return
         busy = true
         scope.launch {
-            try { work(); failure = null } catch (e: CancellationException) { throw e } catch (e: ReadFailure) { failure = ReadCore.refusal(e.code) } catch (e: Exception) { failure = say(e) } finally { busy = false }
+            try { work(); failure = null } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) } finally { busy = false }
         }
     }
+    /** Each class production's record, for what its own script says (owed, removed) and the lines that must match it. */
+    var classRecords by remember { mutableStateOf<Map<String, com.example.appname.plays.SharedRecord>>(emptyMap()) }
+    /** Why a class's script was not sent, for this visit: the Worker keeps only that it is owed. */
+    var classNotSent by remember { mutableStateOf<Map<String, Throwable>>(emptyMap()) }
     var waiting by remember { mutableStateOf<List<com.example.appname.plays.ClassReviewItem>>(emptyList()) }
     var reviewScripts by remember { mutableStateOf<Map<String, PlayScript>>(emptyMap()) }
     var recordScripts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
@@ -544,8 +652,18 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
     /** The seats' chosen takes with no review, read from each class production's record (the Worker merges them). */
     suspend fun loadReviews() {
         val records = progress?.productions.orEmpty().mapNotNull { p -> runCatching { transport.get(p.id) }.getOrNull() }
+        classRecords = records.associateBy { it.id }
         val scripts = reviewScripts.toMutableMap()
-        records.forEach { r -> if (r.scriptID !in scripts) container.plays.script(r.scriptID, r.scriptRevision)?.let { scripts[r.scriptID] = it } }
+        records.forEach { r ->
+            if (r.scriptID in scripts) return@forEach
+            // An own script is read from the production's record (its parts and lines must match the text); a removed or owed one has none to read.
+            val own = com.example.appname.plays.OwnShare.ownState(r)
+            if (own != null) {
+                if (own.state == "kept") runCatching { container.scripts.scriptOf(r.scriptID, r.scriptRevision, com.example.appname.plays.ScriptWho(pid = r.id), com.example.appname.plays.OwnShare.Fits.record(r)) }.getOrNull()?.let { scripts[r.scriptID] = it }
+            } else {
+                container.plays.script(r.scriptID, r.scriptRevision)?.let { scripts[r.scriptID] = it }
+            }
+        }
         reviewScripts = scripts
         recordScripts = records.associate { it.id to it.scriptID }
         waiting = com.example.appname.plays.ClassReview.queue(records) { rec, line -> scripts[rec.scriptID]?.lines?.indexOfFirst { it.id == line } ?: -1 }
@@ -632,6 +750,7 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
             }
             progress?.productions.orEmpty().forEach { p ->
                 SectionHeader(p.title)
+                classRecords[p.id]?.let { rec -> OwnClassRow(rec, classNotSent[p.id], busy) { guard { sendClassScript(container, rec, classNotSent) { classNotSent = it }; attempt += 1 } } }
                 p.seats.forEach { row ->
                     val lines = row.parts.sumOf { it.lines }
                     val done = row.parts.sumOf { it.recorded }
@@ -643,7 +762,16 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
                 ClassSection(
                     endsOn = d.endsOn, busy = busy,
                     onChangeDate = { pickingDate = true },
-                    onExport = { guard { exported = wire.exportClass(id); saveExport.launch(exportFileName(d.name)) } },
+                    onExport = {
+                        guard {
+                            val (text, without) = com.example.appname.plays.ClassExport.withLines(wire.exportClass(id)) { pid, sid, rev ->
+                                container.scripts.scriptOf(sid, rev, com.example.appname.plays.ScriptWho(pid = pid))
+                            }
+                            exported = text
+                            saveExport.launch(exportFileName(d.name))
+                            if (without.isNotEmpty()) throw IllegalStateException("The lines of ${without.joinToString(", ")} did not load.")
+                        }
+                    },
                     onDelete = { deleting = true },
                 )
             }
@@ -670,21 +798,27 @@ fun ClassPageScreen(id: String, onBack: () -> Unit, onCasting: (String, String) 
             onDismissRequest = { choosing = false },
             title = { Text("Start a reading") },
             text = {
+                val mine = rememberOwnRows().filter { it.done }
+                val begin: (String) -> Unit = { scriptId ->
+                    choosing = false
+                    scope.launch {
+                        try {
+                            val s = container.plays.script(scriptId) ?: throw IllegalStateException("not_castable")
+                            val prod: ReadProductionInfo = makeClassProduction(container, wire, id, s) { pid, e -> classNotSent = classNotSent + (pid to e) }
+                            // Not this screen's scope: the room outlives the page it was opened from.
+                            val session = ReadSession(container.readWire, container.appScope)
+                            session.open(ReadClass.openingBody(s, classId = id, productionId = prod.id), teacher = true)
+                            session.state.value.code?.let { ReadHandover.hold(session); onOpenRoom(it) }
+                        } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }
+                    }
+                }
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    rows.forEach { row ->
-                        TextButton(onClick = {
-                            choosing = false
-                            scope.launch {
-                                try {
-                                    val s = container.plays.script(row.id) ?: throw IllegalStateException("not_castable")
-                                    val prod: ReadProductionInfo = wire.classProduction(id, s.id, s.revision, s.lines.map { it.id to it.part.raw })
-                                    // Not this screen's scope: the room outlives the page it was opened from.
-                                    val session = ReadSession(container.readWire, container.appScope)
-                                    session.open(ReadClass.openingBody(s, classId = id, productionId = prod.id), teacher = true)
-                                    session.state.value.code?.let { ReadHandover.hold(session); onOpenRoom(it) }
-                                } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }
-                            }
-                        }) { Text(row.title) }
+                    rows.forEach { row -> TextButton(onClick = { begin(row.id) }) { Text(row.title) } }
+                    // The teacher's own scripts stand after the plays (PLAYS-DESIGN §13 item 14).
+                    if (mine.isNotEmpty()) {
+                        SectionHeader("Your scripts")
+                        mine.forEach { row -> TextButton(onClick = { begin(row.id) }) { Text(row.title) } }
+                        Text(com.example.appname.plays.OwnShare.CLASS_READERS, Modifier.padding(horizontal = Spacing.S4.dp), style = MaterialTheme.typography.labelMedium)
                     }
                 }
             },
@@ -720,7 +854,14 @@ fun CastingBoardScreen(classId: String, productionId: String, onBack: () -> Unit
             detail = wire.detail(classId)
             val info = wire.production(productionId)
             assignments = info.assignments.map { ReadCore.Assignment(it.part, it.seat, it.from, it.to) }
-            val s = container.plays.script(info.scriptID, info.scriptRevision)
+            val s = if (com.example.appname.plays.OwnShare.isOwn(info.scriptID)) {
+                container.scripts.scriptOf(
+                    info.scriptID, info.scriptRevision, com.example.appname.plays.ScriptWho(pid = productionId),
+                    com.example.appname.plays.OwnShare.Fits.seat(info.assignments.map { Triple(it.part, it.from, it.to) }),
+                )
+            } else {
+                container.plays.script(info.scriptID, info.scriptRevision)
+            }
             if (s != null) facts = ReadClass.Facts(s) else failure = ReadCore.refusal("revision_mismatch")
         } catch (e: CancellationException) { throw e } catch (e: Exception) { failure = say(e) }
     }

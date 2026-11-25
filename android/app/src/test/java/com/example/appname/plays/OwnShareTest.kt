@@ -472,4 +472,31 @@ class OwnShareTest {
             for (code in codes) assertTrue("$code has no words", said(code) != said("nothing_like_it"))
         }
     }
+
+    // ---- The class export ----
+
+    @Test fun `the class export gains each kept own script's lines from the teacher's device, and says which did not load`() = runBlocking {
+        val w = Worker()
+        val d = Device()
+        val s = made(d)
+        val export = """{"class":{"id":"c"},"productions":[
+            {"id":"P1","title":"Mine","script_id":"${s.id}","script_revision":"${s.revision}","script":{"state":"kept"}},
+            {"id":"P2","title":"Owed","script_id":"${s.id}","script_revision":"${s.revision}","script":{"state":"owed"}},
+            {"id":"P3","title":"Gone","script_id":"own-00000000-0000-4000-8000-000000000009","script_revision":"x","script":{"state":"kept"}},
+            {"id":"P4","title":"A catalog play","script_id":"gut-0","script_revision":"r"}]}"""
+        val r = resolver(w, d)
+        val (text, without) = ClassExport.withLines(export) { pid, id, rev -> r.scriptOf(id, rev, ScriptWho(pid = pid)) }
+        val out = ShareJson.parseToJsonElement(text).jsonObject["productions"]!!.jsonArray.map { it.jsonObject }
+        assertEquals("only a kept script gains its lines", listOf(true, false, false, false), out.map { (it["script"]?.jsonObject?.containsKey("lines")) == true })
+        assertEquals("they are the lines the revision was hashed from", OwnScript.canonicalLines(OwnShare.linesOf(s)), OwnScript.canonicalLines(out[0]["script"]!!.jsonObject["lines"]!!.jsonArray.map { plainOf(it) }))
+        assertEquals("and the one that did not load is named", listOf("Gone"), without)
+        assertEquals("a text with nothing to add is answered as it came", listOf("""{"productions":[]}""", emptyList<String>()), ClassExport.withLines("""{"productions":[]}""") { _, _, _ -> error("none") }.toList())
+    }
+
+    private fun plainOf(e: kotlinx.serialization.json.JsonElement): Any? = when (e) {
+        is kotlinx.serialization.json.JsonNull -> null
+        is JsonObject -> e.mapValues { plainOf(it.value) }
+        is kotlinx.serialization.json.JsonArray -> e.map(::plainOf)
+        is JsonPrimitive -> e.content
+    }
 }

@@ -125,6 +125,18 @@ class PlaysApi(private val worker: WorkerApi) : PlaysTransport, ScriptWire {
         )
     }
 
+    override suspend fun reportScript(pid: String, reason: String, note: String?) {
+        text(
+            HttpMethod.Post, "$p/reports",
+            buildJsonObject {
+                put("production_id", pid)
+                put("script", true)
+                put("reason", reason)
+                note?.takeIf { it.isNotBlank() }?.let { put("note", it.trim()) }
+            },
+        )
+    }
+
     override suspend fun block(userId: String) {
         text(HttpMethod.Post, "$p/blocks", buildJsonObject { put("user_id", userId) })
     }

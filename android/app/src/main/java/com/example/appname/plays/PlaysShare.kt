@@ -214,6 +214,9 @@ interface PlaysTransport {
     suspend fun removeLine(pid: String, lineId: String, reason: String)
     suspend fun report(pid: String, takeId: String?, userId: String?, reason: String, note: String?)
     suspend fun block(userId: String)
+
+    /** Report script (docs/WORKER.md "Own scripts"): the text itself, with one more reason, `copyright`. */
+    suspend fun reportScript(pid: String, reason: String, note: String?) { throw PlaysException("not_found") }
     suspend fun classes(): ClassesAnswer
     suspend fun classDetail(id: String): ClassRow
     suspend fun createClass(name: String, under13: Boolean): ClassRow
