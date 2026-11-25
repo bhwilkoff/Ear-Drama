@@ -28,10 +28,11 @@ Same names. `doc` is immutable: `apply` returns a new one.
 | `partName(raw)`, `partNameRefusal(name)` | a part's stored name; `empty`, `too_long` (over 40 UTF-16 units), `bad_name` |
 | `labels(row)` | every way a row opens with a name: `{ form, name, key, label, text, bare }` |
 | `cueKind(row)`, `isHeading(row)`, `isEntrance(row)` | rules 1, 2, and a printed entrance |
+| `unwrap(text)` | the text between a Project Gutenberg file's marker rows (R4-2b): §4 step 0 |
 | `parse(raw)` | `{ text, lines, parts }` |
 | `pieces(text)`, `textOf(parts)` | a speech's text to `say` and `direction` parts, and back |
 | `cutAt(text, at)` | where a split goes, or -1 |
-| `newDoc(lines)`, `apply(doc, op, env)`, `done(doc, keepOpen)`, `kept(doc)` | the parts page: assign, split, join, words, leaveOut, add, rename, notPart, undo |
+| `newDoc(lines)`, `apply(doc, op, env)`, `done(doc, keepOpen)`, `kept(doc)` | the parts page: assign, split, join, words, leaveOut, leaveOutAbove, leaveOutBelow, add, rename, notPart, undo |
 | `nearestParts(lines, i)` | the two one-tap answers |
 | `wordsChanged(before, after)` | the take list's **Words changed** |
 | `toScript(doc, meta)`, `rolesOf`, `fromScript(script)` | the castable shape; a doc over a script (Edit a copy) |
@@ -79,6 +80,10 @@ file. ASCII case folding (`asciiUpper`) for cues and headings, never a locale's.
 
 ## 4. `parse`, in order
 
+0. After normalizing, `unwrap` (R4-2b): rows trimmed, compared in ASCII capitals over their first 80 units, only when they open
+   with `*`, `E` or `e`. A START row (and up to three rows its title runs on to, ended by `***`) drops all above it; an END row
+   drops what follows, to the next START; the small print's start row ends a text a START row began, and its end row drops
+   all above it. Normalizing has taken the `**` inside `***START**THE SMALL PRINT!`. Nothing left between them: the text as it was.
 1. Normalize, split on `\n`, trim each row.
 2. For each row that is not blank, a cue, or a heading, `labels(row)`; count its **first** label's key:
    `mixed` in `starting`, others in `seen` (an `alone` only when one of the next two rows is not blank).

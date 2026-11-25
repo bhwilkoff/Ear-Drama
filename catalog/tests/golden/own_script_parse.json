@@ -3272,6 +3272,339 @@
      }
     ]
    }
+  },
+  {
+   "name": "a Project Gutenberg text: its header, its license and its last row are not the play",
+   "layout": "wrapped",
+   "raw": "The Project Gutenberg eBook of The Pipes\n\nThis ebook is for the use of anyone anywhere.\n\nTitle: The Pipes\n\n*** START OF THE PROJECT GUTENBERG EBOOK THE PIPES ***\n\nProduced by Nobody\n\nANNA. Is anyone down there?\n\nBEN. Only me.\n\nANNA. Then who is singing?\n\nBEN. The pipes.\n\nEnd of the Project Gutenberg EBook of The Pipes, by Nobody\n\n*** END OF THE PROJECT GUTENBERG EBOOK THE PIPES ***\n\n***** This file should be named 1.txt *****\n\n*** START: FULL LICENSE ***\n\nTHE FULL LICENSE\n\n*** END: FULL LICENSE ***",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "Produced by Nobody"
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone down there?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN."
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "The pipes.",
+      "label": "BEN."
+     }
+    ],
+    "parts": [
+     {
+      "name": "ANNA",
+      "lines": 2
+     },
+     {
+      "name": "BEN",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "THIS, no space after the stars, and a title that runs on to the next row",
+   "layout": "wrapped",
+   "raw": "Project Gutenberg's Plays\r\n\r\n***START OF THIS PROJECT GUTENBERG EBOOK THE PIPES, AND OTHER\r\nPLAYS, VOLUME I***\r\n\r\nANNA. Is anyone down there?\r\n\r\nBEN. Only me.\r\n\r\nANNA. Then who is singing?\r\n\r\nBEN. The pipes.\r\n\r\n***END OF THIS PROJECT GUTENBERG EBOOK THE PIPES, AND OTHER\r\nPLAYS, VOLUME I***\r\n\r\nAnd a license.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone down there?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN."
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "The pipes.",
+      "label": "BEN."
+     }
+    ],
+    "parts": [
+     {
+      "name": "ANNA",
+      "lines": 2
+     },
+     {
+      "name": "BEN",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "an old one: the small print before the play",
+   "layout": "wrapped",
+   "raw": "***START**THE SMALL PRINT!**FOR PUBLIC DOMAIN ETEXTS**START***\nWhy is this \"Small Print!\" statement here?  You know: lawyers.\n\n*END*THE SMALL PRINT! FOR PUBLIC DOMAIN ETEXTS*Ver.04.29.93*END*\n\nANNA. Is anyone down there?\n\nBEN. Only me.\n\nANNA. Then who is singing?\n\nBEN. The pipes.\n\nEnd of Project Gutenberg's The Pipes, by Nobody",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone down there?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN."
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "The pipes.",
+      "label": "BEN."
+     }
+    ],
+    "parts": [
+     {
+      "name": "ANNA",
+      "lines": 2
+     },
+     {
+      "name": "BEN",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "an old one: the small print after the play, its end row with no second star",
+   "layout": "wrapped",
+   "raw": "*** START OF THE PROJECT GUTENBERG EBOOK, THE PIPES ***\n\nANNA. Is anyone down there?\n\nBEN. Only me.\n\nANNA. Then who is singing?\n\nBEN. The pipes.\n\n***START**THE SMALL PRINT!**FOR PUBLIC DOMAIN EBOOKS**START***\nWhy is this \"Small Print!\" statement here? You know: lawyers.\n\n*END THE SMALL PRINT! FOR PUBLIC DOMAIN EBOOKS*Ver.02/11/02*END*\n\n",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone down there?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN."
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "The pipes.",
+      "label": "BEN."
+     }
+    ],
+    "parts": [
+     {
+      "name": "ANNA",
+      "lines": 2
+     },
+     {
+      "name": "BEN",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "only the end was copied",
+   "layout": "wrapped",
+   "raw": "ANNA. Is anyone down there?\n\nBEN. Only me.\n\nANNA. Then who is singing?\n\nBEN. The pipes.\n\n*** END OF THE PROJECT GUTENBERG EBOOK THE PIPES ***\n\nUpdated editions will replace the previous one.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone down there?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN."
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "The pipes.",
+      "label": "BEN."
+     }
+    ],
+    "parts": [
+     {
+      "name": "ANNA",
+      "lines": 2
+     },
+     {
+      "name": "BEN",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "two of them, one under the other",
+   "layout": "wrapped",
+   "raw": "Header one\n\n*** START OF THE PROJECT GUTENBERG EBOOK ONE ***\n\nANNA. Is anyone down there?\n\nBEN. Only me.\n\nANNA. Then who is singing?\n\nBEN. The pipes.\n\n*** END OF THE PROJECT GUTENBERG EBOOK ONE ***\n\nLicense one. Header two.\n\n*** START OF THE PROJECT GUTENBERG EBOOK TWO ***\n\nANNA. Good night.\n\n*** END OF THE PROJECT GUTENBERG EBOOK TWO ***\n\nLicense two.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Is anyone down there?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "Only me.",
+      "label": "BEN."
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then who is singing?",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "The pipes.",
+      "label": "BEN."
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Good night.",
+      "label": "ANNA."
+     }
+    ],
+    "parts": [
+     {
+      "name": "ANNA",
+      "lines": 3
+     },
+     {
+      "name": "BEN",
+      "lines": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "markers with nothing between them: nothing is cut",
+   "layout": "wrapped",
+   "raw": "A note of mine.\n\n*** START OF THE PROJECT GUTENBERG EBOOK THE PIPES ***\n\n*** END OF THE PROJECT GUTENBERG EBOOK THE PIPES ***",
+   "want": {
+    "lines": [
+     {
+      "kind": "open",
+      "text": "A note of mine."
+     },
+     {
+      "kind": "open",
+      "text": "*** START OF THE PROJECT GUTENBERG EBOOK THE PIPES ***"
+     },
+     {
+      "kind": "direction",
+      "text": "*** END OF THE PROJECT GUTENBERG EBOOK THE PIPES ***"
+     }
+    ],
+    "parts": []
+   }
+  },
+  {
+   "name": "words that only speak of it are words",
+   "layout": "wrapped",
+   "raw": "ANNA. I found it on Project Gutenberg.\n\nBEN. It said *** START OF THE PROJECT GUTENBERG EBOOK THE PIPES ***, and then?\n\nANNA. Then the small print!\n\nBEN. The end of Project Gutenberg as we knew it.",
+   "want": {
+    "lines": [
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "I found it on Project Gutenberg.",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "It said *** START OF THE PROJECT GUTENBERG EBOOK THE PIPES ***, and then?",
+      "label": "BEN."
+     },
+     {
+      "kind": "speech",
+      "role": "ANNA",
+      "text": "Then the small print!",
+      "label": "ANNA."
+     },
+     {
+      "kind": "speech",
+      "role": "BEN",
+      "text": "The end of Project Gutenberg as we knew it.",
+      "label": "BEN."
+     }
+    ],
+    "parts": [
+     {
+      "name": "ANNA",
+      "lines": 2
+     },
+     {
+      "name": "BEN",
+      "lines": 2
+     }
+    ]
+   }
   }
  ],
  "control": {

@@ -531,9 +531,68 @@ object OwnScript {
         val text = StringBuilder(t)
     }
 
-    /** The ten rules (R4 section 2.2): the normalized text, lines as a doc holds them, and each part's count of lines. */
+    /* ---- A Project Gutenberg text's wrapping ---- */
+
+    private val WRAP_ENDS = listOf(
+        "*** END OF THE PROJECT GUTENBERG EBOOK", "*** END OF THIS PROJECT GUTENBERG EBOOK", "***END OF THE PROJECT GUTENBERG EBOOK",
+        "***END OF THIS PROJECT GUTENBERG EBOOK", "END OF PROJECT GUTENBERG", "END OF THE PROJECT GUTENBERG",
+    )
+    private val WRAP_STARTS = listOf(
+        "*** START OF THE PROJECT GUTENBERG EBOOK", "*** START OF THIS PROJECT GUTENBERG EBOOK", "***START OF THE PROJECT GUTENBERG EBOOK",
+        "***START OF THIS PROJECT GUTENBERG EBOOK",
+    )
+    /** The older license, before its text or after it; normalizing has taken the `**` between its words. */
+    private const val PRINT_START = "***STARTTHE SMALL PRINT!"
+    private val PRINT_ENDS = listOf("*END*THE SMALL PRINT!", "*END THE SMALL PRINT!")
+
+    /** The text between a Project Gutenberg file's own marker rows, and nothing else cut; one with no marker, or with nothing between them, as it was. */
+    fun unwrap(text: String): String {
+        if (!text.contains("PROJECT GUTENBERG") && !text.contains("Project Gutenberg") && !text.contains("SMALL PRINT!")) return text
+        val rows = text.split('\n')
+        val trimmed = rows.map(::trim)
+        val out = ArrayList<String>()
+        val kept = ArrayList<String>()
+        var off = false
+        var started = false
+        var cut = false
+        var i = 0
+        while (i < rows.size) {
+            val t = trimmed[i]
+            val c = t.firstOrNull()
+            val m = if (c == '*' || c == 'E' || c == 'e') asciiUpper(t.take(80)) else ""
+            if (WRAP_STARTS.any(m::startsWith)) {
+                if (!t.endsWith("***")) {
+                    var j = i + 1
+                    while (j <= i + 3 && j < rows.size && trimmed[j].isNotEmpty() && !trimmed[j].endsWith("***")) j += 1
+                    if (j <= i + 3 && j < rows.size && trimmed[j].isNotEmpty()) i = j
+                }
+                kept.clear()
+                off = false
+                started = true
+                cut = true
+            } else if (!off) {
+                if (PRINT_ENDS.any(m::startsWith)) {
+                    kept.clear()
+                    started = true
+                    cut = true
+                } else if (WRAP_ENDS.any(m::startsWith) || (started && m.startsWith(PRINT_START))) {
+                    out.addAll(kept)
+                    kept.clear()
+                    off = true
+                    started = false
+                    cut = true
+                } else kept.add(rows[i])
+            }
+            i += 1
+        }
+        out.addAll(kept)
+        val body = out.joinToString("\n")
+        return if (cut && trim(body).isNotEmpty()) body else text
+    }
+
+    /** The ten rules (R4 section 2.2): the normalized text, unwrapped, lines as a doc holds them, and each part's count of lines. */
     fun parse(raw: String?): OwnParsed {
-        val text = normalize(raw)
+        val text = unwrap(normalize(raw))
         val rows = text.split('\n').map(::trim)
         val read = arrayOfNulls<List<OwnLabel>>(rows.size)
         val seen = HashMap<String, Int>()
@@ -799,7 +858,7 @@ object OwnScript {
     private val KINDS = listOf("direction", "sound", "music", "open")
 
     /**
-     * One change on the parts page: assign, split, join, words, leaveOut, add, rename, notPart, undo. Refused, the doc is the one given.
+     * One change on the parts page: assign, split, join, words, leaveOut, leaveOutAbove, leaveOutBelow, add, rename, notPart, undo. Refused, the doc is the one given.
      */
     fun apply(doc: OwnDoc, op: OwnOp, env: OwnEnv = OwnEnv()): OwnResult {
         fun taken(l: OwnLine) = l.id != null && l.id in env.takes
@@ -861,6 +920,13 @@ object OwnScript {
             if (l.kind == kind && l.role == role) return OwnResult(doc, null)
             if (taken(l)) return refuse(doc, "line_has_take")
             return accept(doc, holdCast(doc, put(l.copy(kind = kind, role = role, mark = null)), i + 1))
+        }
+        if (op.op == "leaveOutAbove" || op.op == "leaveOutBelow") {
+            val above = op.op == "leaveOutAbove"
+            val gone = if (above) lines.subList(0, i) else lines.subList(i + 1, lines.size)
+            if (gone.isEmpty()) return refuse(doc, if (above) "no_line_above" else "no_line_below")
+            if (gone.any(::taken)) return refuse(doc, "lines_have_take")
+            return accept(doc, if (above) holdCast(doc, lines.subList(i, lines.size).toList(), 0) else lines.subList(0, i + 1).toList())
         }
         if (taken(l)) return refuse(doc, "line_has_take")
         if (op.op == "leaveOut") return accept(doc, holdCast(doc, put(), i))

@@ -2422,6 +2422,78 @@
      }
     ]
    }
+  },
+  {
+   "name": "leave out everything above a carried line: it keeps its part, and so does undo",
+   "steps": [
+    {
+     "tap": 1,
+     "role": "Dantro"
+    },
+    {
+     "hear": 4,
+     "from": 1
+    },
+    {
+     "op": "leaveOutAbove",
+     "line": 3
+    },
+    {
+     "undo": true
+    },
+    {
+     "op": "leaveOutAbove",
+     "line": 3
+    },
+    {
+     "op": "leaveOutBelow",
+     "line": 4
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "cast": [
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "DANTRO"
+     }
+    ],
+    "count": {
+     "cast": 2,
+     "lines": 2
+    },
+    "settled": [
+     {
+      "k": 3,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "\"No.\"",
+      "at": [
+       3361,
+       3744
+      ]
+     },
+     {
+      "k": 4,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "Then",
+      "at": [
+       3744,
+       4000
+      ]
+     }
+    ]
+   }
   }
  ],
  "script": {

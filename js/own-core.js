@@ -455,13 +455,53 @@ const OwnCore = (() => {
     return { last: -1, closes: false };
   }
 
+  /* ---- A Project Gutenberg text's wrapping ---- */
+
+  const WRAP_ENDS = ['*** END OF THE PROJECT GUTENBERG EBOOK', '*** END OF THIS PROJECT GUTENBERG EBOOK', '***END OF THE PROJECT GUTENBERG EBOOK',
+    '***END OF THIS PROJECT GUTENBERG EBOOK', 'END OF PROJECT GUTENBERG', 'END OF THE PROJECT GUTENBERG'];
+  const WRAP_STARTS = ['*** START OF THE PROJECT GUTENBERG EBOOK', '*** START OF THIS PROJECT GUTENBERG EBOOK', '***START OF THE PROJECT GUTENBERG EBOOK',
+    '***START OF THIS PROJECT GUTENBERG EBOOK'];
+  /** The older license, before its text or after it; normalizing has taken the `**` between its words. */
+  const PRINT_START = '***STARTTHE SMALL PRINT!';
+  const PRINT_ENDS = ['*END*THE SMALL PRINT!', '*END THE SMALL PRINT!'];
+  const opens = (row, marks) => marks.some(m => row.startsWith(m));
   /**
-   * The ten rules (R4 §2.2). `{ text, lines, parts }`: the normalized text; lines as a doc holds
+   * The text between a Project Gutenberg file's own marker rows, and nothing else cut: its header to
+   * the START row (and the rows its title runs on to), from the END row on, and the older small print.
+   * A text with no marker, or with nothing between them, is as it was.
+   */
+  function unwrap(text) {
+    if (!text.includes('PROJECT GUTENBERG') && !text.includes('Project Gutenberg') && !text.includes('SMALL PRINT!')) return text;
+    const rows = text.split('\n');
+    const trimmed = rows.map(trim);
+    let out = [];
+    let kept = [], off = false, started = false, cut = false;
+    for (let i = 0; i < rows.length; i++) {
+      const t = trimmed[i];
+      const m = t[0] === '*' || t[0] === 'E' || t[0] === 'e' ? asciiUpper(t.slice(0, 80)) : '';
+      if (opens(m, WRAP_STARTS)) {
+        let last = i;
+        if (!t.endsWith('***')) for (let j = i + 1; j <= i + 3 && j < rows.length && trimmed[j]; j++) if (trimmed[j].endsWith('***')) { last = j; break; }
+        i = last;
+        kept = []; off = false; started = true; cut = true;
+      } else if (off) continue;
+      else if (opens(m, PRINT_ENDS)) { kept = []; started = true; cut = true; } else if (opens(m, WRAP_ENDS) || (started && m.startsWith(PRINT_START))) {
+        out = out.concat(kept);
+        kept = []; off = true; started = false; cut = true;
+      } else kept.push(rows[i]);
+    }
+    out = out.concat(kept);
+    const body = out.join('\n');
+    return cut && trim(body) ? body : text;
+  }
+
+  /**
+   * The ten rules (R4 §2.2). `{ text, lines, parts }`: the normalized text, unwrapped; lines as a doc holds
    * them, `{ kind, role, text, label? }` (kind `open` is No part; `label` is the printed label a
    * speech's text leaves out); and each part's name with its count of lines, in order of appearance.
    */
   function parse(raw) {
-    const text = normalize(raw);
+    const text = unwrap(normalize(raw));
     const rows = text.split('\n').map(trim);
     const read = new Array(rows.length);
     const seen = new Map(), starting = new Map();
@@ -740,6 +780,7 @@ const OwnCore = (() => {
    *   { op: 'assign', line, to: { role } | 'direction' | 'sound' | 'music' | 'open' }
    *   { op: 'split', line, at }        { op: 'join', line }  (to the line above)
    *   { op: 'words', line, text }      { op: 'leaveOut', line }
+   *   { op: 'leaveOutAbove', line }    { op: 'leaveOutBelow', line }  (every line there, the line itself kept; one step)
    *   { op: 'add', after: key | 0, kind, role, text }
    *   { op: 'rename', part, to }       (a name already there: the two parts become one)
    *   { op: 'notPart', part }          (a name read by mistake: its words go back, with no part)
@@ -807,6 +848,13 @@ const OwnCore = (() => {
       if (taken(l)) return refuse(doc, 'line_has_take');
       const { mark, ...rest } = l;
       return accept(doc, holdCast(doc, put({ ...rest, kind, role }), i + 1));
+    }
+    if (op.op === 'leaveOutAbove' || op.op === 'leaveOutBelow') {
+      const above = op.op === 'leaveOutAbove';
+      const gone = above ? lines.slice(0, i) : lines.slice(i + 1);
+      if (!gone.length) return refuse(doc, above ? 'no_line_above' : 'no_line_below');
+      if (gone.some(taken)) return refuse(doc, 'lines_have_take');
+      return accept(doc, above ? holdCast(doc, lines.slice(i), 0) : lines.slice(0, i + 1));
     }
     if (taken(l)) return refuse(doc, 'line_has_take');
     if (op.op === 'leaveOut') return accept(doc, holdCast(doc, put(), i));
@@ -1188,7 +1236,7 @@ const OwnCore = (() => {
   return {
     MAX_BYTES, MAX_LINES, MAX_PART_NAME, MAX_TITLE, OWN_ID, LINE_ID, OUT,
     normalize, trim, wordsOf, utf8Length, partName, partNameRefusal, textRefusal,
-    labels, cueKind, isHeading, isEntrance, parse, partsOf,
+    labels, cueKind, isHeading, isEntrance, unwrap, parse, partsOf,
     pieces, textOf, cutAt, newDoc, apply, nearestParts, done, wordsChanged,
     toScript, fromScript, kept, rolesOf, canonicalLines, revisionOf, seal, refusalOf,
     parseCues, sentenceCuts, fromCues, lineAt, castOf, hear, tap, leaveOutHeard, castCount, settle,

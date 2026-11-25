@@ -58,7 +58,7 @@ nonisolated enum OwnPiece: Equatable, Sendable {
 }
 
 nonisolated enum OwnOpKind: String, Sendable {
-    case assign, split, join, words, leaveOut, add, rename, notPart, undo, unknown
+    case assign, split, join, words, leaveOut, leaveOutAbove, leaveOutBelow, add, rename, notPart, undo, unknown
 }
 
 nonisolated enum OwnTarget: Equatable, Sendable {
@@ -87,7 +87,7 @@ nonisolated struct OwnEnv: Sendable {
 
 nonisolated enum OwnRefusal: String, Sendable {
     case shared, nothing_to_undo, no_such_part, part_has_take, no_such_line, too_many_lines, empty, too_long
-    case bad_name, line_has_take, bad_kind, no_line_above, no_such_op
+    case bad_name, line_has_take, lines_have_take, bad_kind, no_line_above, no_line_below, no_such_op
     case bad_id, no_title, title_too_long, no_lines, bad_line_id, bad_part, bad_line, no_parts
 }
 
@@ -698,11 +698,69 @@ nonisolated enum OwnScript {
         init(_ kind: String, _ role: U?, _ text: U, _ label: U?) { self.kind = kind; self.role = role; self.text = text; self.label = label }
     }
 
-    /// The ten rules (R4 section 2.2): the normalized text, lines as a doc holds them, and each part's count of lines.
+    // MARK: A Project Gutenberg text's wrapping
+
+    private static let WRAP_ENDS = ["*** END OF THE PROJECT GUTENBERG EBOOK", "*** END OF THIS PROJECT GUTENBERG EBOOK",
+                                    "***END OF THE PROJECT GUTENBERG EBOOK", "***END OF THIS PROJECT GUTENBERG EBOOK",
+                                    "END OF PROJECT GUTENBERG", "END OF THE PROJECT GUTENBERG"].map(u)
+    private static let WRAP_STARTS = ["*** START OF THE PROJECT GUTENBERG EBOOK", "*** START OF THIS PROJECT GUTENBERG EBOOK",
+                                      "***START OF THE PROJECT GUTENBERG EBOOK", "***START OF THIS PROJECT GUTENBERG EBOOK"].map(u)
+    /// The older license, before its text or after it; normalizing has taken the `**` between its words.
+    private static let PRINT_START = u("***STARTTHE SMALL PRINT!")
+    private static let PRINT_ENDS = ["*END*THE SMALL PRINT!", "*END THE SMALL PRINT!"].map(u)
+    private static let WRAP_WORDS = ["PROJECT GUTENBERG", "Project Gutenberg", "SMALL PRINT!"].map(u)
+    private static let STARS = u("***")
+
+    /// The text between a Project Gutenberg file's own marker rows, and nothing else cut; one with no marker, or with nothing between them, as it was.
+    private static func unwrap(_ text: U) -> U {
+        guard WRAP_WORDS.contains(where: { indexOf(text, $0) >= 0 }) else { return text }
+        let rows = splitRows(text)
+        let trimmed = rows.map { trim($0) }
+        func starred(_ s: U) -> Bool { s.count >= 3 && s.suffix(3).elementsEqual(STARS) }
+        var out: [U] = []
+        var kept: [U] = []
+        var off = false, started = false, cut = false
+        var i = 0
+        while i < rows.count {
+            let t = trimmed[i]
+            let m: U = t.first == 42 || t.first == 69 || t.first == 101 ? asciiUpper(sl(t, 0, min(80, t.count))) : []
+            func opens(_ marks: [U]) -> Bool { !m.isEmpty && marks.contains { startsWith(m, $0) } }
+            if opens(WRAP_STARTS) {
+                if !starred(t) {
+                    var j = i + 1
+                    while j <= i + 3, j < rows.count, !trimmed[j].isEmpty, !starred(trimmed[j]) { j += 1 }
+                    if j <= i + 3, j < rows.count, !trimmed[j].isEmpty { i = j }
+                }
+                kept = []
+                off = false
+                started = true
+                cut = true
+            } else if !off {
+                if opens(PRINT_ENDS) {
+                    kept = []
+                    started = true
+                    cut = true
+                } else if opens(WRAP_ENDS) || (started && startsWith(m, PRINT_START)) {
+                    out.append(contentsOf: kept)
+                    kept = []
+                    off = true
+                    started = false
+                    cut = true
+                } else { kept.append(rows[i]) }
+            }
+            i += 1
+        }
+        out.append(contentsOf: kept)
+        let body = joinRows(out[...])
+        return cut && !trim(body).isEmpty ? body : text
+    }
+    static func unwrap(_ text: String) -> String { str(unwrap(u(text))) }
+
+    /// The ten rules (R4 section 2.2): the normalized text, unwrapped, lines as a doc holds them, and each part's count of lines.
     static func parse(_ raw: String?) -> OwnParsed { parse(units: u(raw ?? "")) }
 
     static func parse(units raw: U) -> OwnParsed {
-        let text = normalize(units: raw)
+        let text = unwrap(normalize(units: raw))
         let rows = splitRows(text).map { trim($0) }
         var read = [[Lab]?](repeating: nil, count: rows.count)
         var seen: [U: Int] = [:]
@@ -994,7 +1052,7 @@ nonisolated enum OwnScript {
 
     private static let KINDS = ["direction", "sound", "music", "open"]
 
-    /// One change on the parts page: assign, split, join, words, leaveOut, add, rename, notPart, undo. Refused, the doc is the one given.
+    /// One change on the parts page: assign, split, join, words, leaveOut, leaveOutAbove, leaveOutBelow, add, rename, notPart, undo. Refused, the doc is the one given.
     static func apply(_ doc: OwnDoc, _ op: OwnOp, _ env: OwnEnv = OwnEnv()) -> OwnResult {
         func taken(_ l: OwnLine) -> Bool { l.id.map(env.takes.contains) ?? false }
         if env.shared { return refuse(doc, .shared) }
@@ -1077,6 +1135,13 @@ nonisolated enum OwnScript {
             n.role = role
             n.mark = nil
             return accept(doc, holdCast(doc, put([n]), i + 1))
+        }
+        if op.op == .leaveOutAbove || op.op == .leaveOutBelow {
+            let above = op.op == .leaveOutAbove
+            let gone = above ? lines[0..<i] : lines[(i + 1)...]
+            if gone.isEmpty { return refuse(doc, above ? .no_line_above : .no_line_below) }
+            if gone.contains(where: taken) { return refuse(doc, .lines_have_take) }
+            return accept(doc, above ? holdCast(doc, Array(lines[i...]), 0) : Array(lines[0...i]))
         }
         if taken(l) { return refuse(doc, .line_has_take) }
         if op.op == .leaveOut { return accept(doc, holdCast(doc, put([]), i)) }
