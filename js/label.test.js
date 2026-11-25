@@ -95,6 +95,23 @@ test('honest blanks: undated draws no arc; an arc runs clockwise; no red anywher
   }
 });
 
+test('a play\'s "+N" never stands on its bars, whatever the parts\' sizes, and the bars keep their shares', () => {
+  const overlap = (core, cast) => {
+    const s = core.labelSpec({ kind: 'play', voices: cast.length, cast }, 48), t = s.text[0], last = s.cast.bars[s.cast.bars.length - 1];
+    const left = t.x - t.size * [...t.s].reduce((w, ch) => w + (core.T.glyphs.body[ch] ?? core.T.glyphs.body.default) + core.T.glyphs.tracking, 0);
+    return last.x + last.w + core.T.play.cast.gap > left + 0.01;
+  };
+  const casts = [new Array(58).fill(8), new Array(120).fill(3), [40, 38, 36, 30, 28, 27, 26, 25, 1], [9, 9, 9, 9, 9, 9, 9, 1]];
+  for (const cast of casts) {
+    ok(!overlap(L, cast), `+${cast.length - 7} on its bars`);
+    const bars = L.labelSpec({ kind: 'play', voices: 9, cast }, 48).cast.bars;
+    bars.forEach((b, i) => ok(Math.abs(b.w / bars[0].w - Math.round((100 * cast[i]) / cast[0]) / 100) < 0.01, `bar ${i}'s share`));
+  }
+  const mutant = CORE_SRC.replace('const room = more > 0 ?', 'const room = more > 99 ?');
+  ok(mutant !== CORE_SRC && overlap(load(mutant), casts[0]), 'the old bars pass');
+  ok(L.labelSpec({ kind: 'play', voices: 3, cast: [30, 20, 10] }, 48).cast.bars[0].w === 76, 'a cast that fits draws full width');
+});
+
 test('every disc kind with a name draws text inside its label', () => {
   for (const kind of ['series', 'episode', 'drama', 'person']) {
     for (const size of [32, 56, 128, 360, 1920]) {

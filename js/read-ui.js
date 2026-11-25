@@ -61,16 +61,26 @@ const ReadUI = (() => {
     return snap;
   }
 
-  /** A play page's door: Read together, opening an adult room. Null where reading together is not offered. */
-  function startButton(script, helpers) {
+  /** Why a room's script or door was refused: an own script's words, else the room's. */
+  const why = (err) => PlaysShare.scriptLine(err) || R.refusal(codeOf(err));
+
+  /**
+   * A play page's door: Read together, opening an adult room. Null where reading together is not offered.
+   * `carry()` answers the production an own script's room carries (PLAYS-DESIGN §13 item 13), or null to open none;
+   * `said` is where its refusal stands, when not beside it.
+   */
+  function startButton(script, helpers, carry = null, said = null) {
     h = helpers;
     if (!API.read.available() || document.documentElement.classList.contains('tv')) return null;
-    const line = h.el('span', { class: 'caption refusal', role: 'alert' });
+    const line = said || h.el('span', { class: 'caption refusal', role: 'alert' });
     const b = h.el('button', { type: 'button', class: 'btn btn-way', onclick: async () => {
       b.disabled = true; line.textContent = '';
-      try { await start(script, 'read', {}, helpers); } catch (err) { console.error(err); line.textContent = R.refusal(codeOf(err)); b.disabled = false; }
+      try {
+        const extra = carry ? await carry() : {};
+        if (extra) await start(script, 'read', extra, helpers); else b.disabled = false;
+      } catch (err) { console.error(err); line.textContent = why(err); b.disabled = false; }
     } }, 'Read together');
-    return h.el('span', { class: 'start-drama' }, b, line);
+    return h.el('span', { class: 'start-drama' }, b, said ? null : line);
   }
 
   /* ---- The join page ---- */
@@ -214,16 +224,18 @@ const ReadUI = (() => {
     const snap = session.state().snap;
     body.replaceChildren(h.stateBox('loading'));
     let script = null;
-    try { script = await API.playScript(snap.script_id); } catch (err) {
+    try {
+      const store = await PlaysUI.openStore().catch(() => null);
+      script = await PlaysShare.scriptOf({ api: API, store, id: snap.script_id, revision: snap.script_revision,
+        who: { room: snap.code, key: session.state().key, pid: snap.production_id || null }, fit: PlaysShare.fits.room(snap) });
+    } catch (err) {
       if (my !== token) return;
-      body.replaceChildren(h.stateBox(h.problem(err), { retry: () => follow(body, my, screen) }));
+      console.error(err);
+      if (codeOf(err) === 'revision_mismatch') body.replaceChildren(page(h.el('p', { class: 'body refusal', role: 'alert' }, R.refusal('revision_mismatch'))));
+      else body.replaceChildren(page(h.stateBox(h.problem(err), { text: PlaysShare.scriptLine(err) || null, retry: codeOf(err) === 'script_removed' ? null : () => follow(body, my, screen) })));
       return;
     }
     if (my !== token) return;
-    if (!script || script.revision !== snap.script_revision) {
-      body.replaceChildren(page(h.el('p', { class: 'body refusal', role: 'alert' }, R.refusal('revision_mismatch'))));
-      return;
-    }
     h.setTitle(script.title);
     if (screen) { screenView(body, my, script); return; }
     document.body.classList.add('reading');
@@ -524,6 +536,7 @@ const ReadUI = (() => {
       }
       if (s.kind === 'class' && s.production_id) {
         if (klass && klass.under13) kids.push(el('p', { class: 'caption refusal' }, 'An under-13 class never publishes.'));
+        else if (PlaysShare.isOwnId(s.script_id)) kids.push(el('p', { class: 'caption' }, 'This script can’t be published.'));
         else if (klass && p && C.isComplete(p, script)) kids.push(publishForm(el, s, line));
       }
       foot.replaceChildren(...kids);

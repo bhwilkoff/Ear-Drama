@@ -92,6 +92,7 @@ const EarUI = (() => {
       const [row, s] = await Promise.all([kept(d.id), API.seriesPage(d.series).catch(() => null)]);
       seriesName = s ? s.name : d.series;
       rec = row ? await store().get(row.id) : null;
+      if (rec && rec.shared) { if (my === seq) h.navigate(`?play=${encodeURIComponent(rec.id)}`, true); return; }
       if (!rec && d.script && (await API.castableScripts().catch(() => [])).some(x => x.id === d.script)) {
         h.navigate(`?play=${encodeURIComponent(d.script)}`, true);
         return;
@@ -138,8 +139,9 @@ const EarUI = (() => {
 
     /* ---- What stands on the page ---- */
 
-    const titleText = h.el('p', { class: 'body-strong rd-title' }, title);
-    const where = h.el('p', { class: 'caption tabular rd-where' });
+    const titleText = h.el('span', { class: 'body-strong rd-title' }, title);
+    const where = h.el('span', { class: 'caption tabular rd-where' });
+    const titleBtn = h.el('button', { type: 'button', class: 'os-title-btn', onclick: () => titleSheet() }, titleText, where);
     const undoBtn = h.el('button', { type: 'button', class: 'icon-btn rd-icon', 'aria-label': 'Undo', title: 'Undo', onclick: () => undo() }, kit.svg('undo'));
     const doneBtn = h.el('button', { type: 'button', class: 'btn os-next', onclick: () => finish() }, 'Done');
     const problem = h.el('div', { class: 'os-problem', role: 'alert', hidden: true });
@@ -164,7 +166,7 @@ const EarUI = (() => {
     // A press that leaves the keyboard where it was, so Space goes on meaning play (§4.22 item 5).
     dock.addEventListener('mousedown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
     body.replaceChildren(h.el('div', { class: 'os ec' },
-      kit.bar({ out: 'close', outLabel: 'Close', onOut: () => kit.goBack(`?item=${encodeURIComponent(d.id)}`), titles: [titleText, where], tools: [undoBtn], primary: doneBtn }),
+      kit.bar({ out: 'close', outLabel: 'Close', onOut: () => kit.goBack(`?item=${encodeURIComponent(d.id)}`), titles: titleBtn, tools: [undoBtn], primary: doneBtn }),
       problem, note, h.el('div', { class: 'ec-body' }, h.el('div', { class: 'ec-lines' }, scroller, backBtn), dock), sheets));
 
     /* ---- What is kept: begun at the first change, never by looking ---- */
@@ -178,7 +180,9 @@ const EarUI = (() => {
       P.rec.ear = { ...P.rec.ear, place: Math.round(nowMs()) };
       return P.rec;
     }
+    let gone = false;
     async function write() {
+      if (gone) return true;
       try {
         await store().keep(record());
         if (saying === 'keep') say(null);
@@ -256,6 +260,8 @@ const EarUI = (() => {
       paintLines();
       const n = S.count();
       where.textContent = kit.castLine(n);
+      titleBtn.setAttribute('aria-label', `${title}, ${where.textContent}`);
+      titleBtn.disabled = !P.rec || P.rec.done;
       undoBtn.disabled = !S.canUndo();
       light();
     }
@@ -484,8 +490,17 @@ const EarUI = (() => {
       sheets.append(el);
       return el;
     }
+    /** The casting's own sheet: its title, and Delete while it is not Done. */
+    function titleSheet() {
+      if (!P.rec || P.rec.done) return;
+      const el = sheet('Title', 'os-small', () => titleBtn.focus());
+      kit.inner(el, h.el('div', { class: 'os-sheet-head' }, h.el('h2', { class: 'section-header' }, title), kit.closeBtn(el)),
+        kit.deleteNotDone(P.rec, () => { gone = true; el.dataset.hold = '1'; el.close(); }));
+      el.showModal();
+    }
     function newPart() {
       const el = sheet('New part', 'os-small', () => {});
+      const others = S.parts();
       kit.inner(el, h.el('div', { class: 'os-sheet-head' }, h.el('h2', { class: 'section-header' }, 'New part'), kit.closeBtn(el)),
         kit.nameForm({ label: 'Name', button: 'Add', max: O.MAX_PART_NAME, act: (v) => {
           const got = S.add(v);
@@ -495,9 +510,28 @@ const EarUI = (() => {
           save();
           h.announce(got.name);
           return null;
-        } }));
+        } }),
+        others.length ? h.el('p', { class: 'caption os-lab' }, 'Rename') : null,
+        others.length ? h.el('div', { class: 'os-acts' }, others.map((p, i) => h.el('button', { type: 'button', class: 'os-chip', dataset: { hue: hueAt(i) }, 'aria-label': `Rename ${p.name}`, onclick: () => renamePart(el, p.name) },
+          h.el('i', { class: 'os-dot', 'aria-hidden': 'true' }), h.el('span', { class: 'body-strong' }, p.name)))) : null);
       el.showModal();
       el.querySelector('input').focus();
+    }
+    /** A part's name, while it is cast: the sheet becomes its one field. A name another part has joins the two. */
+    function renamePart(el, name) {
+      const form = kit.nameForm({ label: 'Name', value: name, button: 'Rename', max: O.MAX_PART_NAME, act: (v) => {
+        const got = S.rename(name, v);
+        if (got.refusal) return kit.nameWhy(got.refusal);
+        el.close();
+        paint();
+        save();
+        h.announce(got.name);
+        return null;
+      } });
+      kit.inner(el, h.el('div', { class: 'os-sheet-head' }, h.el('h2', { class: 'section-header' }, name), kit.closeBtn(el)), form);
+      const field = form.querySelector('input');
+      field.focus();
+      field.select();
     }
     const KIND_WORD = { direction: 'Direction', sound: 'Sound' };
     function lineSheet(k) {

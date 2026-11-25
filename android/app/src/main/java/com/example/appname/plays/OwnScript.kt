@@ -872,17 +872,21 @@ object OwnScript {
         }
         if (op.op == "rename" || op.op == "notPart") {
             val part = op.part
-            val mine = lines.filter { it.kind == "speech" && it.role == part }
-            if (mine.isEmpty()) return refuse(doc, "no_such_part")
+            // While casting by ear a part is its marks, and the lines heard after them (castOf); renaming covers both.
+            fun marks(l: OwnLine) = op.op == "rename" && l.kind == "open" && l.mark == OwnWho.Role(part)
+            fun mine(l: OwnLine) = (l.kind == "speech" && l.role == part) || marks(l)
+            if (lines.none(::mine)) return refuse(doc, "no_such_part")
             val to = if (op.op == "rename") partName(normalize(op.rename)) else null
             if (op.op == "rename") {
                 val why = partNameRefusal(to)
                 if (why != null) return refuse(doc, why)
                 if (to == part) return OwnResult(doc, null)
             }
-            if (mine.any(::taken)) return refuse(doc, "part_has_take")
+            val cast = castOf(doc)
+            if (lines.any { taken(it) && (if (op.op == "rename") cast[it.k] == OwnWho.Role(part) else mine(it)) }) return refuse(doc, "part_has_take")
             return accept(doc, lines.map { l ->
-                if (l.kind != "speech" || l.role != part) l
+                if (!mine(l)) l
+                else if (marks(l)) l.copy(mark = OwnWho.Role(to!!))
                 else if (op.op == "rename") l.copy(role = to)
                 else l.copy(kind = "open", role = null, label = null, text = if (l.label != null) l.label + " " + l.text else l.text)
             })
@@ -1136,6 +1140,12 @@ object OwnScript {
         if (lines.none { (it as Map<*, *>)["kind"] == "speech" }) return "no_parts"
         if (utf8Length(canonicalLines(lines)) > MAX_BYTES) return "too_long"
         return null
+    }
+
+    /** null, or why Done would refuse [parse]'s lines whatever the person makes of them: too_many_lines, too_long. Asked at Next. */
+    fun builtRefusal(lines: List<OwnLine>): String? {
+        if (lines.size > MAX_LINES) return "too_many_lines"
+        return if (utf8Length(canonicalLines(toScript(done(newDoc(lines)), OwnMeta("", ""))["lines"])) > MAX_BYTES) "too_long" else null
     }
 
     /** null when a text may be read, or why not: empty, too_long. Asked before [parse]. */

@@ -421,8 +421,7 @@ test('nothing leaves the device: no own-script file names the network, the Worke
   for (const f of ['own-core.js', 'own-store.js', 'own-ui.js']) eq(leaks(fs.readFileSync(path.join(dir, f), 'utf8')), [], f);
   eq(leaks('API.plays.share(x); fetch (u)').length, 2, 'control: a call is caught');
   const ui = fs.readFileSync(path.join(dir, 'plays-ui.js'), 'utf8');
-  ok(/isOwn\(script\) \? null : shareBox\(/.test(ui), 'no Share on a production of one');
-  ok(/ReadUI !== 'undefined' && !isOwn\(script\)/.test(ui), 'no Read together on its page');
+  ok(/isOwn\(script\) \? \(\) => roomFor\(script\) : null/.test(ui), 'Read together on its page shares first');
   ok(/script\.kind === 'own' \? 'Your script'/.test(ui), 'its kicker is its own');
   ok(/voices: \(\) => \{ const h = hifi\(\); return \[\.\.\.\(h && spoken/.test(fs.readFileSync(path.join(dir, 'cast-ui.js'), 'utf8')), 'no Kokoro voice offered');
   ok(/script\.kind !== 'own'\) return shared\.prepare/.test(fs.readFileSync(path.join(dir, 'kokoro-voice.js'), 'utf8')), 'no phonemes asked for');

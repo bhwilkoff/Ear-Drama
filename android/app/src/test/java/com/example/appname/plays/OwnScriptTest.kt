@@ -181,6 +181,12 @@ class OwnScriptTest {
             same(s, want, o["name"].str)
             assertEquals("${o["name"].str}: may be kept", o.opt("refusal")?.str, OwnScript.refusalOf(s))
         }
+        for (c in opsG["built"]!!.jsonArray) {
+            val o = c.jsonObject
+            val text = o["unit"].str.repeat(o["times"]!!.jsonPrimitive.int)
+            assertEquals("a text that may be read: ${o["name"].str}", null, OwnScript.textRefusal(text))
+            assertEquals("built: ${o["name"].str}", o.opt("want")?.str, OwnScript.builtRefusal(OwnScript.parse(text).lines))
+        }
         for (c in opsG["refusals"]!!.jsonArray) {
             val o = c.jsonObject
             assertEquals("refusal: ${o["name"].str}", o.opt("want")?.str, OwnScript.refusalOf(tree(o["script"])))

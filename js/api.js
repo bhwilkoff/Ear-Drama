@@ -1582,6 +1582,20 @@ const API = (() => {
    * Every route is signed in and goes through `account.call`, so the token is
    * refreshed first. A refusal carries the Worker's own `code` and `detail`.
    */
+  /** An own script as the Worker sends it: its bytes as they were hashed, and what `x-script` says of them. */
+  async function scriptBody(r) {
+    let meta = null;
+    try { meta = JSON.parse(r.headers.get('x-script') || 'null'); } catch { meta = null; }
+    return { bytes: await r.arrayBuffer(), meta };
+  }
+  /** A take as a pickup answers it. One whose fields cannot be read is an error, never "no take": the Worker has told its sender it arrived. */
+  async function takeBody(r) {
+    let take = null;
+    try { take = JSON.parse(r.headers.get('x-take') || 'null'); } catch { take = null; }
+    if (!take) throw new DataError('error', 'a take arrived without its x-take');
+    return { take, bytes: await r.arrayBuffer() };
+  }
+
   const plays = (() => {
     const P = '/v1/plays';
     const at = (pid) => `${P}/productions/${encodeURIComponent(pid)}`;
@@ -1607,11 +1621,13 @@ const API = (() => {
        */
       inbox: async (pid) => {
         const r = await c('GET', `${at(pid)}/takes/inbox`, null, { response: true, timeout: 40000 });
-        if (!r) return null;
-        let take = null;
-        try { take = JSON.parse(r.headers.get('x-take') || 'null'); } catch { take = null; }
-        return take ? { take, bytes: await r.arrayBuffer() } : null;
+        return r ? takeBody(r) : null;
       },
+      /* An own script's text (Decision 088.4): its director sends it once; its people read it, each by their own door. */
+      putScript: (pid, text) => c('PUT', `${at(pid)}/script`, null, { raw: new TextEncoder().encode(text), headers: { 'content-type': 'application/json' }, timeout: 60000 }),
+      script: async (pid) => scriptBody(await c('GET', `${at(pid)}/script`, null, { response: true, timeout: 60000 })),
+      inviteScript: async (token) => scriptBody(await account.anon('GET', `${P}/open/invite/script`, { headers: { 'x-invite': token }, response: true, timeout: 60000 })),
+      seatScript: async (key, pid) => scriptBody(await account.anon('GET', `${P}/seat/productions/${encodeURIComponent(pid)}/script`, { headers: { 'x-seat-key': key }, response: true, timeout: 60000 })),
       choose: (pid, takeId) => c('POST', `${at(pid)}/chosen`, { take_id: takeId }),
       publish: (pid, body = {}) => c('POST', `${at(pid)}/publish`, body),
       /** The director's device sends one line's chosen take to archive.org through the Worker (Decision 073). */
@@ -1765,10 +1781,11 @@ const API = (() => {
     }
     return {
       available: () => account.reachable(),
-      /** Opens a room; the creator leads. `body.kind === 'class'` needs the teacher signed in. */
+      /** Opens a room; the creator leads. A class's, or one carrying a production, needs its opener signed in. */
       create: async (body) => {
         const t0 = now();
-        const data = body.kind === 'class' ? await account.call('POST', '/v1/read', body) : await account.anon('POST', '/v1/read', { body });
+        // A room that carries a production is its director's or teacher's to open.
+        const data = body.kind === 'class' || body.production_id ? await account.call('POST', '/v1/read', body) : await account.anon('POST', '/v1/read', { body });
         return keep(t0, data, now());
       },
       join: (code, want = {}) => call('POST', `${at(code)}/join`, { body: want }),
@@ -1795,11 +1812,10 @@ const API = (() => {
       /** The receiving device's pickup: `{ take, bytes }` (`take` from `x-take`), or null after 25 s with none. */
       inbox: async (code, key) => {
         const r = await account.anon('GET', `${at(code)}/takes/inbox`, { headers: { [KEY_HEADER]: key }, response: true, timeout: 40000 });
-        if (!r) return null;
-        let take = null;
-        try { take = JSON.parse(r.headers.get('x-take') || 'null'); } catch { take = null; }
-        return take ? { take, bytes: await r.arrayBuffer() } : null;
+        return r ? takeBody(r) : null;
       },
+      /** An own script's text, to a member of the room that carries its production (docs/WORKER.md "Own scripts"). */
+      script: async (code, key) => scriptBody(await account.anon('GET', `${at(code)}/script`, { headers: { [KEY_HEADER]: key }, response: true, timeout: 60000 })),
       /* Pairing a TV (§12.10 item 9): the TV asks for a code and waits; the leader types it. */
       pair: () => account.anon('POST', '/v1/read/pair', { body: {} }),
       pairWait: (pairCode, pairKey) => account.anon('GET', `/v1/read/pair/${encodeURIComponent(pairCode)}`, { headers: { 'x-pair-key': pairKey } }),

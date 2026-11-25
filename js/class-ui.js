@@ -34,7 +34,10 @@ const ClassUI = (() => {
     not_castable: 'This play cannot be cast.',
     revision_mismatch: 'This play has changed since it was cast.',
   };
-  const say = (err) => WORDS[codeOf(err)] || R.refusal(codeOf(err));
+  const say = (err) => PlaysShare.scriptLine(err) || WORDS[codeOf(err)] || R.refusal(codeOf(err));
+  /** A class production's script, for its teacher (PLAYS-DESIGN §13 item 11); a catalog play at the library's revision now, as ever. */
+  const scriptFor = (rec) => PlaysShare.scriptOf({ api: API, id: rec.scriptID, revision: rec.scriptRevision, who: { pid: rec.id },
+    fit: PlaysShare.fits.record(rec), anyRevision: true });
   /** A class's YYYY-MM-DD as the person's own date words; the date is a day, never shifted by a zone. */
   const dateText = (ymd) => {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || '');
@@ -186,8 +189,10 @@ const ClassUI = (() => {
       exp.disabled = true; line.textContent = '';
       try {
         const data = await API.plays.exportClass(cls.id);
+        const without = await withLines(data);
         const name = `${(cls.name || 'Class').replace(/[\\/:*?"<>|]+/g, '').trim() || 'Class'} export.json`;
         DataExport.save(name, 'application/json', `${JSON.stringify(data, null, 2)}\n`);
+        if (without.length) line.textContent = `The lines of ${without.join(', ')} did not load.`;
       } catch (err) { console.error(err); line.textContent = say(err); }
       exp.disabled = offline;
     });
@@ -203,6 +208,18 @@ const ClassUI = (() => {
       ends, dateForm, h.el('div', { class: 'actions' }, exp, del), line);
   }
 
+  /** Each own script's lines, from this browser or the Worker (Decision 084's export, §13 item 14). Answers the titles that did not load. */
+  async function withLines(data) {
+    const without = [];
+    for (const p of data.productions || []) {
+      if (!p.script || p.script.state !== 'kept') continue;
+      try {
+        p.script.lines = (await PlaysShare.scriptOf({ api: API, id: p.script_id, revision: p.script_revision, who: { pid: p.id } })).lines;
+      } catch (err) { console.error(err); without.push(p.title); }
+    }
+    return without;
+  }
+
   function startBox(cls, productions, offline) {
     const line = h.el('p', { class: 'caption refusal', role: 'alert' });
     const sel = productions.length > 1 ? h.el('select', { class: 'field-input', 'aria-label': 'Play' },
@@ -216,11 +233,11 @@ const ClassUI = (() => {
       go.disabled = true; line.textContent = '';
       const p = sel ? productions.find((x) => x.id === sel.value) : productions[0];
       try {
-        const script = await API.playScript(p.rec ? p.rec.scriptID : null);
-        if (!script) throw { code: 'not_castable' };
+        if (!p.rec) throw { code: 'not_castable' };
+        const script = await scriptFor(p.rec);
         const mode = modes.querySelector('input:checked').value;
         await ReadUI.start(script, mode, { kind: 'class', class_id: cls.id, production_id: p.id }, h);
-      } catch (err) { console.error(err); line.textContent = R.refusal(codeOf(err)); go.disabled = false; }
+      } catch (err) { console.error(err); line.textContent = say(err); go.disabled = false; }
     });
     return h.el('section', { class: 'block', 'aria-labelledby': 'cl-now-h' },
       h.el('h2', { class: 'section-header', id: 'cl-now-h' }, 'Now'),
@@ -282,14 +299,19 @@ const ClassUI = (() => {
       return h.el('li', { class: 'cl-play' },
         h.el('div', { class: 'cast-row' }, h.el('span', { class: 'body-strong' }, p.title),
           h.el('a', { class: 'btn', href: `?class=${encodeURIComponent(cls.id)}&cast=${encodeURIComponent(p.id)}` }, 'Cast')),
+        ownRow(p, offline, redraw),
         per.length ? h.el('ul', { class: 'cl-prog', 'aria-label': `${p.title}: recorded by seat` }, per) : h.el('p', { class: 'caption' }, 'Nobody cast yet.'));
     });
     const sel = h.el('select', { class: 'field-input', 'aria-label': 'Pick a play' }, h.el('option', { value: '' }, 'Pick a play'));
     const make = h.el('button', { type: 'submit', class: productions.length ? 'btn' : 'btn btn-primary', disabled: true }, 'Make');
     API.playLibrary().then((rows) => {
       sel.append(...C.pickList(rows).map((x) => h.el('option', { value: x.id }, x.label)));
-    }).catch((err) => { console.error(err); line.textContent = say(err); });
-    sel.addEventListener('change', () => { make.disabled = offline || !sel.value; });
+    }).catch((err) => { console.error(err); line.textContent = say(err); }).then(() => OwnScripts.shared().list()).then((rows) => {
+      const mine = rows.filter((x) => x.done);
+      if (mine.length) sel.append(h.el('optgroup', { label: 'Your scripts' }, mine.map((x) => h.el('option', { value: x.id }, x.title))));
+    }).catch((err) => console.error(err));
+    const readers = h.el('p', { class: 'caption', hidden: true }, PlaysUI.CLASS_READERS);
+    sel.addEventListener('change', () => { make.disabled = offline || !sel.value; readers.hidden = !PlaysShare.isOwnId(sel.value); });
     const form = h.el('form', { class: 'take-form', onsubmit: async (e) => {
       e.preventDefault();
       if (!sel.value) return;
@@ -297,13 +319,40 @@ const ClassUI = (() => {
       try {
         const script = await API.playScript(sel.value);
         if (!script) throw { code: 'not_castable' };
-        await API.plays.classProduction(cls.id, { script_id: script.id, script_revision: script.revision, cast: script.lines.map((l) => ({ id: l.id, part: C.linePart(l) })) });
+        const rec = await API.plays.classProduction(cls.id, PlaysShare.makeBody(script));
+        if (PlaysShare.isOwnId(script.id)) {
+          const unsent = await PlaysShare.sendOrUndo({ api: API.plays, pid: rec.id, script });
+          if (unsent && !PlaysShare.passes(unsent)) throw unsent;
+          if (unsent) notSent.set(rec.id, unsent);
+        }
         redraw();
       } catch (err) { console.error(err); line.textContent = say(err); make.disabled = false; }
     } }, sel, make);
     return h.el('section', { class: 'block', id: 'cl-plays', 'aria-labelledby': 'cl-plays-h' },
       h.el('h2', { class: 'section-header', id: 'cl-plays-h' }, 'Plays'),
-      rows.length ? h.el('ul', { class: 'cl-plays' }, rows) : h.el('p', { class: 'caption' }, 'No play yet.'), form, line);
+      rows.length ? h.el('ul', { class: 'cl-plays' }, rows) : h.el('p', { class: 'caption' }, 'No play yet.'), form, readers, line);
+  }
+
+  /** Why a class's script was not sent, for this visit. */
+  const notSent = new Map();
+  /** A class play's own script when it is not there: owed (Try again, from this browser's copy) or removed. */
+  function ownRow(p, offline, redraw) {
+    const own = p.rec ? PlaysShare.ownState(p.rec, API.account.state().user_id) : null;
+    if (!own || own.state === 'kept') return null;
+    if (own.state === 'removed') return h.el('p', { class: 'caption refusal' }, PlaysShare.line({ code: 'script_removed' }));
+    const err = h.el('p', { class: 'caption refusal', role: 'alert' }, notSent.has(p.id) ? say(notSent.get(p.id)) : '');
+    const again = h.el('button', { type: 'button', class: 'btn', disabled: offline, onclick: async () => {
+      again.disabled = true;
+      err.textContent = '';
+      const script = await OwnScripts.shared().script(p.rec.scriptID).catch(() => null);
+      const e = script && script.revision === p.rec.scriptRevision ? await PlaysShare.sendOrUndo({ api: API.plays, pid: p.id, script }) : { code: 'not_on_device', status: 0 };
+      if (!e) { notSent.delete(p.id); redraw(); return; }
+      console.error(e);
+      if (!PlaysShare.passes(e)) { redraw(); return; }
+      err.textContent = say(e);
+      again.disabled = false;
+    } }, 'Try again');
+    return h.el('div', { class: 'cl-own' }, h.el('p', { class: 'caption refusal' }, 'The script was not sent.'), err, again);
   }
 
   /** The seats' chosen takes with no review yet, in script order (PLAYS-DESIGN §12.4 Review). */
@@ -324,13 +373,13 @@ const ClassUI = (() => {
     box.hidden = false;
     const scripts = new Map();
     for (const { p } of items) {
-      if (!scripts.has(p.rec.scriptID)) scripts.set(p.rec.scriptID, await API.playScript(p.rec.scriptID).catch(() => null));
+      if (!scripts.has(p.id)) scripts.set(p.id, await scriptFor(p.rec).catch((err) => { console.error(err); return null; }));
     }
-    const order = (x) => { const s = scripts.get(x.p.rec.scriptID); return s ? s.lines.findIndex((l) => l.id === x.t.lineID) : 0; };
+    const order = (x) => { const s = scripts.get(x.p.id); return s ? s.lines.findIndex((l) => l.id === x.t.lineID) : 0; };
     items.sort((a, b) => (a.p.title < b.p.title ? -1 : a.p.title > b.p.title ? 1 : order(a) - order(b)));
     const ul = h.el('ul', { class: 'cl-review-list' });
     for (const { p, t } of items) {
-      const script = scripts.get(p.rec.scriptID);
+      const script = scripts.get(p.id);
       const ln = script ? script.lines.find((l) => l.id === t.lineID) : null;
       const status = h.el('p', { class: 'caption refusal', role: 'alert' });
       const note = h.el('textarea', { class: 'field-input', rows: '2', maxlength: '500', 'aria-label': `Note to ${label(t.seat)}`, placeholder: `Note to ${label(t.seat)}` });
@@ -366,15 +415,14 @@ const ClassUI = (() => {
     let cls, rec, script;
     try {
       [cls, rec] = await Promise.all([API.plays.klass(id), API.plays.get(pid)]);
-      script = await API.playScript(rec.scriptID);
+      script = await scriptFor(rec);
     } catch (err) {
       if (my !== token) return;
       console.error(err);
-      body.replaceChildren(h.stateBox(h.problem(err), { retry: () => board(body, my, id, pid) }));
+      body.replaceChildren(h.stateBox(codeOf(err) === 'revision_mismatch' ? 'missing' : h.problem(err), { text: PlaysShare.scriptLine(err) || null, retry: () => board(body, my, id, pid) }));
       return;
     }
     if (my !== token) return;
-    if (!script) { body.replaceChildren(h.stateBox('missing')); return; }
     h.setTitle(rec.title || script.title, cls.name);
     const cast = castOf(script);
     const w = script.lines.map(wordCount);

@@ -210,11 +210,52 @@ const RULES = {
     ok(E.signature(cues) !== E.signature(O.parseCues(VTT.replace('00:12.500', '00:12.400'))), 'other times are another');
     eq([E.refusalOf(fresh()), E.refusalOf(O.newDoc([])), E.refusalOf({ lines: Array(O.MAX_LINES + 1).fill({}) })], [null, 'no_lines', 'too_many_lines'], 'what cannot be cast');
   },
+  rename: (E) => {
+    const at = (S) => S.parts().map(p => `${p.name} ${p.lines}`);
+    const start = () => {
+      const S = E.session({ doc: O.fromCues([0, 1, 2, 3, 4, 5].map(i => ({ text: `Line ${i} here.`, at: [i * 1000, i * 1000 + 1000] }))), names: [] });
+      for (const [ms, who] of [[100, 'Ann'], [2100, 'Bob'], [4100, 'Cy']]) { S.tick(ms, true); S.add(who); S.tick(ms + 1000, true); }
+      return S;
+    };
+    let S = start();
+    eq(at(S), ['ANN 2', 'BOB 2', 'CY 2'], 'three parts');
+    eq(S.rename('BOB', 'the planet man'), { name: 'THE PLANET MAN', refusal: null }, 'renamed');
+    eq(at(S), ['ANN 2', 'THE PLANET MAN 2', 'CY 2'], 'every line of theirs, in the same place: the same number and hue');
+    S.undo();
+    eq(at(S), ['ANN 2', 'BOB 2', 'CY 2'], 'one Undo takes it back, the order with it');
+    S.rename('BOB', 'ann');
+    eq(at(S), ['ANN 4', 'CY 2'], 'a name another part has joins the two');
+    S.rename('CY', 'Cyrus');
+    S.undo();
+    eq(at(S), ['ANN 4', 'CY 2'], 'the second only');
+    S.undo();
+    eq(at(S), ['ANN 2', 'BOB 2', 'CY 2'], 'then the first');
+    eq(S.undo(), null, 'and what was before it');
+    S = start();
+    S.rename('ANN', 'cy');
+    eq(at(S), ['BOB 2', 'CY 4'], 'the one that had the name keeps its place');
+    S = start();
+    eq([S.rename('ANN', '').refusal, S.rename('ZED', 'X').refusal, S.rename('ANN', 'ANN').refusal], ['empty', 'no_such_part', null], 'refusals');
+    S = start();
+    S.names.push('DEE');
+    eq(S.rename('DEE', 'Dora').refusal, null, 'a part with no line yet');
+    eq(at(S), ['ANN 2', 'BOB 2', 'CY 2', 'DORA 0'], 'renamed too');
+    S = start();
+    S.doc = O.done(S.doc, { keepOpen: true });
+    S.takes = new Set(['L0002']);
+    eq([S.rename('ANN', 'X').refusal, at(S)[0]], ['part_has_take', 'ANN 2'], 'a part with a take on a carried line keeps its name');
+    eq(S.undo(), 'nothing_to_undo', 'nothing to undo');
+    eq(S.rename('CY', 'X').refusal, null, 'another does not');
+  },
 };
 for (const [name, rule] of Object.entries(RULES)) test(`rule: ${name}`, () => rule(EAR));
 
 /** [rule, text in the core, what it becomes]. */
 const MUTANTS = [
+  ['rename', "take(O.apply(S.doc, { op: 'rename', part: from, to: name }, env()))", "take(O.apply(S.doc, { op: 'rename', part: from, to: name }))"],
+  ['rename', 'while (!why && renames.length', 'while (false && renames.length'],
+  ['rename', 'order.map(n => (n === from ? name : n))', 'before.filter(n => n !== from)'],
+  ['rename', 'order.includes(name) ? order.filter(n => n !== from) :', ''],
   ['lit', 'S.lit = k;', 'S.lit = k || 1;'],
   ['lit', 'const moved = k !== S.lit;', 'const moved = true;'],
   ['jump', 'from = k;\n      if (next', 'from = 0;\n      if (next'],

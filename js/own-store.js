@@ -1,6 +1,7 @@
 /**
  * The person's own scripts on this browser (PLAYS-DESIGN §13, WEB-DESIGN §4.21; Decision 088.3): the
- * one module that keeps them. Nothing here leaves the device and nothing asks for an account.
+ * one module that keeps them. Nothing here leaves the device and nothing asks for an account; a script
+ * its person shares (js/plays-share.js) is frozen here.
  *
  * IndexedDB `ed-plays` (js/plays-store.js opens it), object store `scripts`:
  *   scripts/<id>/doc.json     the working copy OwnCore corrects, with the title, the text as pasted
@@ -70,6 +71,31 @@ const OwnScripts = (() => {
         return w;
       },
 
+      /** Shared once, a script is frozen (§13 item 12): what people were sent is what it stays. */
+      async frozen(id) { const rec = await store.get(id); return !!(rec && rec.shared); },
+      async freeze(id) {
+        const rec = await store.get(id);
+        if (!rec || rec.shared) return;
+        rec.shared = now();
+        await store.keep(rec);
+      },
+      /**
+       * Edit a copy: a new script of `script`'s text (a production's, or this device's own), with a new id and its
+       * own productions. The kept doc is copied while it is that text, so a casting can be taken up again.
+       */
+      async copy(script) {
+        const was = await store.get(script.id);
+        const here = was && was.done ? await store.script(script.id) : null;
+        const same = !!here && here.revision === script.revision;
+        const at = now();
+        const { shared: _, ...kept } = same ? was : { original: '', doc: O.fromScript(script), extras: [],
+          ...(script.episode ? { episode: { id: script.episode, url: script.source.url } } : {}) };
+        const rec = { ...JSON.parse(JSON.stringify(kept)), id: `own-${C.uuid().toLowerCase()}`, title: copyTitle(script.title), created: at, updated: at, done: true };
+        const why = await store.keep(rec);
+        if (why) throw new Error(why);
+        return rec;
+      },
+
       async remove(id) {
         await (writing.get(id) || Promise.resolve()).catch(() => {});
         writing.delete(id);
@@ -92,6 +118,7 @@ const OwnScripts = (() => {
           const script = rec.done ? await store.script(row.id) : null;
           out.push({
             id: rec.id, title: rec.title, source: rec.episode ? 'Automatic transcript' : 'Added by you', ...(rec.episode ? { episode: rec.episode.id } : {}), created: new Date(rec.created).toISOString(), done: !!rec.done,
+            ...(rec.shared ? { shared: new Date(rec.shared).toISOString() } : {}),
             lines: script ? script.lines : O.settle(rec.doc).lines.map(l => (l.kind === 'speech'
               ? { kind: l.kind, role: l.role, parts: O.pieces(l.text) } : { kind: l.kind, source: l.text })),
           });
@@ -101,6 +128,9 @@ const OwnScripts = (() => {
     };
 
     async function write(snap) {
+      // Shared from another page since this one opened it: what people were sent stands (§13 item 12).
+      const row0 = parse(await backend.get(`${folder(snap.id)}row.json`));
+      if (row0 && row0.shared && !snap.shared) throw Object.assign(new Error('shared'), { kind: 'shared' });
       const settled = O.settle(snap.doc).lines;
       const parts = O.partsOf(settled).map(p => p.lines).sort((a, b) => b - a);
       let script = null, refusal = null;
@@ -118,7 +148,7 @@ const OwnScripts = (() => {
       const row = { id: snap.id, title: snap.title, parts: parts.length, lines: settled.length,
                     open: settled.filter(l => l.kind === 'open').length, done: snap.done, cast: parts,
                     voices: parts.filter(n => n >= C.CASTABLE_LINES).length, created: snap.created, updated: snap.updated,
-                    ...(snap.episode ? { episode: snap.episode.id } : {}), ...(snap.ear ? { ear: O.castCount(snap.doc) } : {}) };
+                    ...(snap.episode ? { episode: snap.episode.id } : {}), ...(snap.ear ? { ear: O.castCount(snap.doc) } : {}), ...(snap.shared ? { shared: snap.shared } : {}) };
       await backend.putAll([[`${folder(snap.id)}doc.json`, JSON.stringify(snap)], [`${folder(snap.id)}row.json`, JSON.stringify(row)],
         ...(script ? [[`${folder(snap.id)}script.json`, JSON.stringify(script)]] : [])]);
       if (script && plays) await (await plays()).adopt(script);
@@ -126,6 +156,9 @@ const OwnScripts = (() => {
     }
     return store;
   }
+
+  const COPY = ' (copy)';
+  const copyTitle = (title) => title.slice(0, O.MAX_TITLE - COPY.length) + COPY;
 
   const textOf = (l) => (l.kind === 'speech' ? O.textOf(l.parts) : l.source);
   /** What a line with a take said before its words changed, and until when: `{ lineID: [{ until, text }] }`, oldest first. */

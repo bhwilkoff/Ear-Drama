@@ -203,6 +203,12 @@ nonisolated private func runOps(_ k: Checks) {
         k.same(s, tree(o["want"]), str(o["name"]))
         k.equal(OwnScript.refusalOf(s)?.rawValue, opt(o, "refusal") as? String, "\(str(o["name"])): may be kept")
     }
+    for c in arr(g["built"]) {
+        let o = obj(c)
+        let text = String(repeating: str(o["unit"]), count: int(o["times"]))
+        k.equal(OwnScript.textRefusal(text)?.rawValue, nil, "a text that may be read: \(str(o["name"]))")
+        k.equal(OwnScript.builtRefusal(OwnScript.parse(text).lines)?.rawValue, opt(o, "want") as? String, "built: \(str(o["name"]))")
+    }
     for c in arr(g["refusals"]) {
         let o = obj(c)
         k.equal(OwnScript.refusalOf(tree(o["script"]))?.rawValue, opt(o, "want") as? String, "refusal: \(str(o["name"]))")

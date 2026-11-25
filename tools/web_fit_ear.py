@@ -12,7 +12,7 @@ tapped and carried; the keys 1 to 9, Space, Left, U and Control-Z; Leave out; a 
 a scroll of the person's own, and Back to the line; the line sheet by keyboard (the cut, split, join, one line alone to a part,
 Direction, Edit words, Hear it and back to the place, Play from here); Hear a part on a wide screen; a recording that fails, and Try again; a
 reload, taken up where it was left; a transcript remade since; offline; a full disk; Done on part of it; its page (N of N
-lines cast, Cast by ear, Automatic transcript, no Share); Your scripts; Record this and a take with the stub microphone; the line
+lines cast, Cast by ear, Automatic transcript, Read together, no Share); Your scripts; Record this and a take with the stub microphone; the line
 with a take refused to another part; the parts page, with Leave out everything below as one step and one Undo; a dock of twelve parts.
 
 Fails on: a sideways scroll; a control under 44 px (a line of the transcript under 30); a control past the edge; the transport off
@@ -362,6 +362,30 @@ def main():
             if who()[k - 1] != 'Left out': bad('Leave out left the line')
             if ev("document.querySelector('[data-do=out]').getAttribute('aria-pressed')") != 'true': bad('Leave out is not shown pressed on a left-out line')
             shot('out')
+            # A part renamed while it is cast: every line of theirs, one Undo.
+            before = who()
+            ev("document.querySelector('[data-do=add]').click()")
+            wait("document.querySelector('dialog[open] [aria-label=\"Rename DANTRO\"]')", 'Rename in the + Part sheet')
+            fit('the + Part sheet')
+            shot('rename-list')
+            ev("document.querySelector('dialog[open] [aria-label=\"Rename DANTRO\"]').click()")
+            settle()
+            if ev("document.activeElement.value") != 'DANTRO': bad('Rename does not open on the name')
+            cdp.call('Input.insertText', {'text': 'The Planet Man'})
+            fit('rename')
+            shot('rename')
+            key('Enter')
+            wait("!document.querySelector('dialog[open]')", 'the rename')
+            if who() != ['THE PLANET MAN' if x == 'DANTRO' else x for x in before]: bad(f'Rename left a line of theirs: {who()[:12]}')
+            key('u')
+            if who() != before: bad('one Undo does not take the rename back')
+            # Delete, while it is not Done, is in the title's sheet.
+            ev("document.querySelector('.ec .os-title-btn').click()")
+            wait("document.querySelector('dialog[open] .btn-destructive')", 'Delete in the title\'s sheet')
+            fit('the title sheet')
+            shot('title')
+            key('Escape')
+            wait("!document.querySelector('dialog[open]')", 'the title sheet closing')
             # A scroll of the person's own.
             seek(60.2)
             settle()
@@ -514,7 +538,7 @@ def main():
             text = ev("document.querySelector('#view-plays').innerText")
             for words in (n, 'Cast by ear', 'Automatic transcript', 'Your script', 'Record this', 'Read', 'This script can’t be published.', 'Kept on this device', 'Edit', 'Save as text', 'Delete'):
                 if words.lower() not in text.lower(): bad(f"the script's page does not say {words!r}")
-            for words in ('Share', 'Read together', 'Publish '):
+            for words in ('Share', 'Publish '):
                 if words.lower() in text.lower(): bad(f"{words} is offered on the script's page")
             fit("the script's page")
             ev("document.querySelector('.os-own').scrollIntoView({ block: 'end' })")

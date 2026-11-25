@@ -10,7 +10,7 @@ an older version of the database holding one production is there first (the migr
 script and no Your scripts; the text is pasted with the Paste button from the real clipboard; a file with no text is refused;
 it survives a reload; Next with no title puts the focus on Title; then the parts page: the strip and Next, a one-tap answer,
 Undo, the line sheet, the cut placed by keyboard and by a tap, split, join, Edit words, Leave out, rename, Join to;
-a full disk (the banner, then Try again); Done; the script's page (no Share, no Read together); Read; Record this, two takes with the
+a full disk (the banner, then Try again); Done; the script's page (Read together on it, nothing shared by looking); Read; Record this, two takes with the
 stub microphone; a reload; the locked line (its refusal, and only Edit words); Words changed in the take list; Save as text; Export my
 data; Search; Delete with its productions named.
 
@@ -22,8 +22,8 @@ step; a step that redraws more than a tenth of the lines
     python3 tools/web_fit_own.py --shots DIR        # a PNG per frame
     python3 tools/web_fit_own.py --widths 375,1440 --themes light
 
-Negative controls (2026-11-24, each run): `.os-chip` at min-height 36px fails "under 44 px"; js/plays-ui.js without the isOwn test on
-shareBox fails "Share is offered"; js/own-ui.js drawing every line on each step (`fill(n.el, l)` with no test before it) fails "a step redrew".
+Negative controls (2026-11-24, each run): `.os-chip` at min-height 36px fails "under 44 px"; js/plays-ui.js without READERS on
+shareBox fails "who can read it"; js/own-ui.js drawing every line on each step (`fill(n.el, l)` with no test before it) fails "a step redrew".
 """
 import base64, json, os, shutil, subprocess, sys, tempfile, time
 
@@ -385,9 +385,9 @@ def main():
             wait("document.querySelector('.os-own')", "the script's page")
             settle()
             page = ev("document.querySelector('#view-plays').innerText")
-            for words in ('Your script', 'Record this', 'Read', 'Added by you · Kept on this device', 'This script can’t be published.', 'Edit', 'Save as text', 'Delete'):
+            for words in ('Your script', 'Record this', 'Read', 'Read together', 'Added by you · Kept on this device', 'This script can’t be published.', 'Edit', 'Save as text', 'Delete'):
                 if words.lower() not in page.lower(): bad(f"the script's page does not say {words!r}")
-            for words in ('Read together', 'Share', 'Stage play', 'Radio play'):
+            for words in ('Share', 'Stage play', 'Radio play'):
                 if words.lower() in page.lower(): bad(f'{words} is offered on the script\'s page')
             fit("the script's page")
             cut = ev(OPENING)
@@ -429,13 +429,13 @@ def main():
             settle()
             if ev("document.querySelector('.rd-title').textContent") != 'The Lady from the Sea': bad('the reader does not name the script')
             if w in (375, 1440): shot('read')
-            # Record this: the cast sheet has no Share; then two takes with the stub microphone.
+            # Record this: the cast sheet says who could read it if it were shared; then two takes with the stub microphone.
             go(f'?play={sid}')
             wait("[...document.querySelectorAll('button')].some(b => /Record this/.test(b.textContent))", 'Record this')
             ev("[...document.querySelectorAll('button')].find(b => /Record this/.test(b.textContent)).click()")
             wait("document.querySelector('button[aria-label^=\"Take part\"]')", 'the cast sheet')
             settle()
-            if ev("/\\bShare\\b|Sharing needs/.test(document.querySelector('#view-plays').innerText)"): bad('Share is offered on its production')
+            if not ev("/Sharing needs an account\\.\\s+Only people you invite can read this script\\./.test(document.querySelector('#view-plays').innerText)"): bad('the cast sheet does not say what sharing needs, and who can read it')
             if w in (375, 1440): shot('cast')
             no_sheet('the cast sheet')
             pid = ev("new URLSearchParams(location.search).get('production')")

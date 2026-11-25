@@ -92,6 +92,11 @@ async function runOps(O) {
     same(s, c.want, c.name);
     eq(O.refusalOf(s), c.refusal, `${c.name}: may be kept`);
   }
+  for (const c of G.ops.built) {
+    const text = c.unit.repeat(c.times);
+    eq(O.textRefusal(text), null, `a text that may be read: ${c.name}`);
+    eq(O.builtRefusal(O.parse(text).lines), c.want, `built: ${c.name}`);
+  }
   for (const c of G.ops.refusals) eq(O.refusalOf(c.script), c.want, `refusal: ${c.name}`);
 }
 
@@ -170,7 +175,11 @@ const MUTANTS = [
   ['ops', 'lines: doc.undo[doc.undo.length - 1], undo', 'letters: {}, lines: doc.undo[doc.undo.length - 1], undo'],
   ['ops', 'const base = baseOf(above ? above.id : null);', 'const base = above ? above.id : null;'],
   ['ops', "if (taken(l)) return refuse(doc, 'line_has_take');\n    if (op.op === 'leaveOut')", "if (op.op === 'leaveOut')"],
-  ['ops', "if (mine.some(taken)) return refuse(doc, 'part_has_take');", ''],
+  ['ops', "if (lines.some(l => taken(l) && (op.op === 'rename' ? cast.get(l.k) === part : mine(l)))) return refuse(doc, 'part_has_take');", ''],
+  ['ear', "op.op === 'rename' ? cast.get(l.k) === part : mine(l)", 'mine(l)'],
+  ['ear', 'if (marks(l)) return { ...l, mark: { role: to } };', ''],
+  ['ear', "(l.kind === 'speech' && l.role === part) || marks(l)", "l.kind === 'speech' && l.role === part"],
+  ['ops', "canonicalLines(toScript(done(newDoc(lines)), { id: '', title: '' }).lines)", "lines.map(l => l.text).join('')"],
   ['ops', 'while (p > 0 && insideCharacter(text, p)) p -= 1;', ''],
   ['ops', 'Object.keys(v).sort()', 'Object.keys(v)'],
   ['ops', "if (env.shared) return refuse(doc, 'shared');\n    const lines = doc.lines;", 'const lines = doc.lines;'],

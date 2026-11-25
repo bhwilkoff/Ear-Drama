@@ -198,6 +198,10 @@ const PlayStore = (() => {
         shares.set(id, link);
         await backend.put(sharePath(id), JSON.stringify(link));
       },
+      async unshare(id) {
+        shares.delete(id);
+        await backend.remove(sharePath(id));
+      },
       findShared(pid) { return productions.find(p => shares.get(p.id)?.pid === pid) || null; },
 
       /** Another member's take, as its audio arrived from the Worker; never overwrites a file. */

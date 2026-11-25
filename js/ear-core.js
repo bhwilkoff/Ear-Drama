@@ -57,6 +57,7 @@ const EarCore = (() => {
    */
   function session({ doc, names = [], takes = [] }) {
     const S = { doc, names: [...names], takes: new Set(takes), lit: 0 };
+    const renames = [];   // the order of the names before each rename, for its Undo
     let from = 0;   // the last line the audio reached without a jump
     const env = () => ({ takes: [...S.takes] });
     const take = (r) => { if (!r.refusal) S.doc = r.doc; return r.refusal; };
@@ -93,7 +94,29 @@ const EarCore = (() => {
       if (!refusal && !known) S.names.push(name);
       return { name, refusal };
     };
-    S.undo = () => take(O.apply(S.doc, { op: 'undo' }));
+    S.undo = () => {
+      const why = take(O.apply(S.doc, { op: 'undo' }));
+      while (!why && renames.length && renames[renames.length - 1].depth > S.doc.undo.length) S.names = renames.pop().names;
+      return why;
+    };
+    /** A part's name on every line of theirs, and in its place in the order; a name another part has joins the two. One step. */
+    S.rename = (from, raw) => {
+      const name = O.partName(O.normalize(raw));
+      const all = S.parts();
+      const held = all.find(p => p.name === from);
+      const why = O.partNameRefusal(name) || (held ? null : 'no_such_part');
+      if (why) return { name, refusal: why };
+      if (name === from) return { name, refusal: null };
+      const before = S.names;
+      if (held.lines) {
+        const refusal = take(O.apply(S.doc, { op: 'rename', part: from, to: name }, env()));
+        if (refusal) return { name, refusal };
+        renames.push({ depth: S.doc.undo.length, names: before });
+      }
+      const order = all.map(p => p.name);
+      S.names = order.includes(name) ? order.filter(n => n !== from) : order.map(n => (n === from ? name : n));
+      return { name, refusal: null };
+    };
     /** One line alone, from its sheet: a part, Direction or Sound. The line after it keeps the cast it had. */
     S.assign = (k, to) => take(O.apply(S.doc, { op: 'assign', line: k, to }, env()));
     S.leaveOutLine = (k) => take(O.leaveOutHeard(S.doc, k, env()));

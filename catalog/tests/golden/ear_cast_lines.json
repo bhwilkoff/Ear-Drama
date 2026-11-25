@@ -2494,6 +2494,530 @@
      }
     ]
    }
+  },
+  {
+   "name": "rename a part while it is cast: its marks, and the lines heard after them",
+   "steps": [
+    {
+     "tap": 1,
+     "role": "Dantro"
+    },
+    {
+     "hear": 3,
+     "from": 1
+    },
+    {
+     "tap": 4,
+     "role": "Pat"
+    },
+    {
+     "hear": 6,
+     "from": 4
+    },
+    {
+     "op": "rename",
+     "part": "DANTRO",
+     "to": "the planet man"
+    },
+    {
+     "op": "rename",
+     "part": "DANTRO",
+     "to": "X"
+    },
+    {
+     "undo": true
+    },
+    {
+     "op": "rename",
+     "part": "PAT",
+     "to": "Pat Reed"
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     "no_such_part",
+     null,
+     null
+    ],
+    "cast": [
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "PAT REED"
+     },
+     {
+      "role": "PAT REED"
+     },
+     {
+      "role": "PAT REED"
+     },
+     null,
+     null,
+     null,
+     null
+    ],
+    "count": {
+     "cast": 6,
+     "lines": 10
+    },
+    "settled": [
+     {
+      "k": 1,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "Good evening.",
+      "at": [
+       1000,
+       1893
+      ]
+     },
+     {
+      "k": 2,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "Is Mr. Barker at home?",
+      "at": [
+       1893,
+       3361
+      ]
+     },
+     {
+      "k": 3,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "\"No.\"",
+      "at": [
+       3361,
+       3744
+      ]
+     },
+     {
+      "k": 4,
+      "kind": "speech",
+      "role": "PAT REED",
+      "text": "Then",
+      "at": [
+       3744,
+       4000
+      ]
+     },
+     {
+      "k": 5,
+      "kind": "speech",
+      "role": "PAT REED",
+      "text": "I will wait for him.",
+      "at": [
+       4000,
+       5500
+      ]
+     },
+     {
+      "k": 6,
+      "kind": "speech",
+      "role": "PAT REED",
+      "text": "You may wait a long time!",
+      "at": [
+       6000,
+       7560
+      ]
+     },
+     {
+      "k": 7,
+      "kind": "open",
+      "text": "He has gone to St. Ives.",
+      "at": [
+       7560,
+       9000
+      ]
+     },
+     {
+      "k": 8,
+      "kind": "open",
+      "text": "How far is that?",
+      "at": [
+       9000,
+       10457
+      ]
+     },
+     {
+      "k": 9,
+      "kind": "open",
+      "text": "Two days.",
+      "at": [
+       10457,
+       11314
+      ]
+     },
+     {
+      "k": 10,
+      "kind": "open",
+      "text": "By cart.",
+      "at": [
+       11314,
+       12000
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rename to a name another part has: the two are one",
+   "steps": [
+    {
+     "tap": 1,
+     "role": "Dantro"
+    },
+    {
+     "hear": 3,
+     "from": 1
+    },
+    {
+     "tap": 4,
+     "role": "Pat"
+    },
+    {
+     "hear": 6,
+     "from": 4
+    },
+    {
+     "op": "rename",
+     "part": "PAT",
+     "to": "Dantro"
+    },
+    {
+     "op": "rename",
+     "part": "DANTRO",
+     "to": " "
+    },
+    {
+     "op": "rename",
+     "part": "DANTRO",
+     "to": "dantro"
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     "empty",
+     null
+    ],
+    "cast": [
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "DANTRO"
+     },
+     null,
+     null,
+     null,
+     null
+    ],
+    "count": {
+     "cast": 6,
+     "lines": 10
+    },
+    "settled": [
+     {
+      "k": 1,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "Good evening.",
+      "at": [
+       1000,
+       1893
+      ]
+     },
+     {
+      "k": 2,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "Is Mr. Barker at home?",
+      "at": [
+       1893,
+       3361
+      ]
+     },
+     {
+      "k": 3,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "\"No.\"",
+      "at": [
+       3361,
+       3744
+      ]
+     },
+     {
+      "k": 4,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "Then",
+      "at": [
+       3744,
+       4000
+      ]
+     },
+     {
+      "k": 5,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "I will wait for him.",
+      "at": [
+       4000,
+       5500
+      ]
+     },
+     {
+      "k": 6,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "You may wait a long time!",
+      "at": [
+       6000,
+       7560
+      ]
+     },
+     {
+      "k": 7,
+      "kind": "open",
+      "text": "He has gone to St. Ives.",
+      "at": [
+       7560,
+       9000
+      ]
+     },
+     {
+      "k": 8,
+      "kind": "open",
+      "text": "How far is that?",
+      "at": [
+       9000,
+       10457
+      ]
+     },
+     {
+      "k": 9,
+      "kind": "open",
+      "text": "Two days.",
+      "at": [
+       10457,
+       11314
+      ]
+     },
+     {
+      "k": 10,
+      "kind": "open",
+      "text": "By cart.",
+      "at": [
+       11314,
+       12000
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a part with a take keeps its name, on a line carried to too",
+   "steps": [
+    {
+     "tap": 1,
+     "role": "Dantro"
+    },
+    {
+     "hear": 4,
+     "from": 1
+    },
+    {
+     "tap": 5,
+     "role": "Pat"
+    },
+    {
+     "done": true,
+     "keepOpen": true
+    },
+    {
+     "op": "rename",
+     "part": "DANTRO",
+     "to": "X",
+     "env": {
+      "takes": [
+       "L0003"
+      ]
+     }
+    },
+    {
+     "op": "rename",
+     "part": "PAT",
+     "to": "Y",
+     "env": {
+      "takes": [
+       "L0003"
+      ]
+     }
+    }
+   ],
+   "want": {
+    "refusals": [
+     null,
+     null,
+     null,
+     null,
+     "part_has_take",
+     null
+    ],
+    "cast": [
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "DANTRO"
+     },
+     {
+      "role": "Y"
+     },
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "count": {
+     "cast": 5,
+     "lines": 10
+    },
+    "settled": [
+     {
+      "k": 1,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "Good evening.",
+      "at": [
+       1000,
+       1893
+      ]
+     },
+     {
+      "k": 2,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "Is Mr. Barker at home?",
+      "at": [
+       1893,
+       3361
+      ]
+     },
+     {
+      "k": 3,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "\"No.\"",
+      "at": [
+       3361,
+       3744
+      ]
+     },
+     {
+      "k": 4,
+      "kind": "speech",
+      "role": "DANTRO",
+      "text": "Then",
+      "at": [
+       3744,
+       4000
+      ]
+     },
+     {
+      "k": 5,
+      "kind": "speech",
+      "role": "Y",
+      "text": "I will wait for him.",
+      "at": [
+       4000,
+       5500
+      ]
+     },
+     {
+      "k": 6,
+      "kind": "open",
+      "text": "You may wait a long time!",
+      "at": [
+       6000,
+       7560
+      ]
+     },
+     {
+      "k": 7,
+      "kind": "open",
+      "text": "He has gone to St. Ives.",
+      "at": [
+       7560,
+       9000
+      ]
+     },
+     {
+      "k": 8,
+      "kind": "open",
+      "text": "How far is that?",
+      "at": [
+       9000,
+       10457
+      ]
+     },
+     {
+      "k": 9,
+      "kind": "open",
+      "text": "Two days.",
+      "at": [
+       10457,
+       11314
+      ]
+     },
+     {
+      "k": 10,
+      "kind": "open",
+      "text": "By cart.",
+      "at": [
+       11314,
+       12000
+      ]
+     }
+    ]
+   }
   }
  ],
  "script": {

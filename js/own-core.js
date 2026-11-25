@@ -797,17 +797,21 @@ const OwnCore = (() => {
     }
     const part = op.op === 'rename' || op.op === 'notPart' ? op.part : null;
     if (part !== null) {
-      const mine = lines.filter(l => l.kind === 'speech' && l.role === part);
-      if (!mine.length) return refuse(doc, 'no_such_part');
+      // While casting by ear a part is its marks, and the lines heard after them (castOf); renaming covers both.
+      const marks = (l) => op.op === 'rename' && l.kind === 'open' && !!l.mark && l.mark.role === part;
+      const mine = (l) => (l.kind === 'speech' && l.role === part) || marks(l);
+      if (!lines.some(mine)) return refuse(doc, 'no_such_part');
       const to = op.op === 'rename' ? partName(normalize(op.to)) : null;
       if (op.op === 'rename') {
         const why = partNameRefusal(to);
         if (why) return refuse(doc, why);
         if (to === part) return { doc, refusal: null };
       }
-      if (mine.some(taken)) return refuse(doc, 'part_has_take');
+      const cast = castOf(doc);
+      if (lines.some(l => taken(l) && (op.op === 'rename' ? cast.get(l.k) === part : mine(l)))) return refuse(doc, 'part_has_take');
       return accept(doc, lines.map(l => {
-        if (l.kind !== 'speech' || l.role !== part) return l;
+        if (!mine(l)) return l;
+        if (marks(l)) return { ...l, mark: { role: to } };
         if (op.op === 'rename') return { ...l, role: to };
         const { label, ...rest } = l;
         return { ...rest, kind: 'open', role: null, text: label ? label + ' ' + l.text : l.text };
@@ -1022,6 +1026,11 @@ const OwnCore = (() => {
     if (!script.lines.some(l => l.kind === 'speech')) return 'no_parts';
     if (utf8Length(canonicalLines(script.lines)) > MAX_BYTES) return 'too_long';
     return null;
+  }
+  /** null, or why Done would refuse parse()'s `lines` whatever the person makes of them: 'too_many_lines', 'too_long'. Asked at Next, so no text is corrected that cannot be kept. */
+  function builtRefusal(lines) {
+    if (lines.length > MAX_LINES) return 'too_many_lines';
+    return utf8Length(canonicalLines(toScript(done(newDoc(lines)), { id: '', title: '' }).lines)) > MAX_BYTES ? 'too_long' : null;
   }
   /** null when a text may be read, or why not: 'empty', 'too_long' ("That file is too long."). Asked before parse(). */
   function textRefusal(raw) {
@@ -1238,7 +1247,7 @@ const OwnCore = (() => {
     normalize, trim, wordsOf, utf8Length, partName, partNameRefusal, textRefusal,
     labels, cueKind, isHeading, isEntrance, unwrap, parse, partsOf,
     pieces, textOf, cutAt, newDoc, apply, nearestParts, done, wordsChanged,
-    toScript, fromScript, kept, rolesOf, canonicalLines, revisionOf, seal, refusalOf,
+    toScript, fromScript, kept, rolesOf, canonicalLines, revisionOf, seal, refusalOf, builtRefusal,
     parseCues, sentenceCuts, fromCues, lineAt, castOf, hear, tap, leaveOutHeard, castCount, settle,
   };
 })();
