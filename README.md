@@ -17,7 +17,7 @@ here, with its history, on October 22, 2026.
 |---|---|
 | `docs/research/RESEARCH.md` | The research, start here: content, rights, metadata, platforms, design, the brand, and the owner's open questions |
 | `catalog/` | The catalog pipeline (stdlib Python), its own `DECISIONS.md`, reports, and tests |
-| [Release `catalog-2026-10-21`](https://github.com/bhwilkoff/Ear-Drama/releases/tag/catalog-2026-10-21) | The built database (157,503 episodes in 16,113 series) and every harvest cache; never in git |
+| [Release `catalog-2026-11-24`](https://github.com/bhwilkoff/Ear-Drama/releases/tag/catalog-2026-11-24) | The built database (157,503 episodes in 16,113 series) and every harvest cache; never in git |
 | `SCRATCHPAD.md` | Current state and next steps |
 | `DECISIONS.md` | Architecture decisions (054 onward are Ear Drama's) |
 | `AGENTS.md` | Instructions every AI agent reads |

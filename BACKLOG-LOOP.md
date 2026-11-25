@@ -299,3 +299,10 @@ GRW request sent or not.
 - 2026-11-24 23:15: **R4-5 Apple + room Remove/leave + B26 Apple merged** (681 tests; a library room read on Ben Bedroom, left on). Left for Apple:
   `shared` in Export my data, class export lines, Read Together on an unshared own script's page, own-script share seen on a device.
   Web (and Android if so): `js/ear-ui.js` colors parts by the order named; match `EarCore.hue` (largest first). Web novelty voices.
+- 2026-11-24 23:40: merged and pushed: **R4-9a** (catalog-2026-11-24 cut without Workshop text, guard, inventory; catalog publish dispatched; the
+  11 old assets wait for the owner's yes), **B16 + B16c** (1,194 plays; the readers' sheets had held no spoken words, my error; real words
+  compared by the main thread: 547 published scripts change, +80,000 spoken words, the speeches dropped are notes, adverts, vocabularies;
+  103 published plays with known faults listed), **R4-5 + B26 Android** (823 tests, 38 mutants, Robolectric offline). Worker 60821385.
+  Phoneme env + library build running, no upload. Then: publish the library, bump, ship. Known leftovers: gut-1537 Gower after the dumb
+  show reads as a direction; gut-56266-1 "Reception-room in the Palace" as PAL. Owner rulings: old Release assets; Goldin plots,
+  Haendiges pages, OTRRpedia synopses, archive.org reviews and transcripts in the public cache (inventory).
