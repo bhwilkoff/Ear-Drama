@@ -21,6 +21,12 @@ The id is the record's own (`gut-<Gutenberg ebook number>`), never reissued; a s
 text changes keeps its id and gets a new `revision`. A play split out of a collected volume is
 `gut-<ebook>-<n>`, n counting every play the volume holds in text order (script_parse.split_volume).
 The same work under several ids is kept once (dedupe); every drop is listed in the report.
+
+A text the first reader (script_parse.parse) does not read clean is read again by its layout (play_layouts,
+BACKLOG-LOOP B16). The first reader's plays are settled first and alone: a second-reader play never changes,
+replaces or renumbers one of them. A play found through a volume's contents list is `gut-<ebook>-<100 + n>`, n its place
+among the listed titles, so it never takes a number split_volume gave. What is still held is listed, with its reason and, for a
+text that is not a play, the evidence, in held.json beside the index (not in the index, which phones load).
 """
 import collections
 import datetime
@@ -36,6 +42,7 @@ import zlib
 
 sys.path.insert(0, os.path.dirname(__file__))
 import build_castable_scripts as B
+import play_layouts as PL
 import script_parse as P
 import script_rights as R
 
@@ -153,6 +160,7 @@ def volume_entries(record, rights, raw, report):
             report["split_failures"][why] = report["split_failures"].get(why, 0) + 1
             continue
         entry = B.script_entry({**record, "id": f"{record['id']}-{n}"}, rights, parsed)
+        entry["_read"] = (P.parse, (text, "stage", title))
         entry["collection"] = B.clean_title(record["title"])
         entry["title"] = B.clean_title(printed)
         entry["sort_name"] = B.sort_name(entry["title"])
@@ -270,6 +278,16 @@ OPENING_SPEECHES = 2
 OPENING_CHARS = 90
 
 
+def is_verse(said):
+    """js/reader-core.js isVerse: printed breaks are verse when every row after one opens in a capital and the rows are
+    not mostly as long as a wrapped prose line."""
+    rows = [r.strip() for r in said.replace("_", "").split("\n") if r.strip()]
+    if len(rows) < 2 or any(not re.match(r"[\s'\"‘’“”(\[_—–-]*[A-ZÀ-ÞŒ]", r) for r in rows[1:]):
+        return False
+    body = rows[:-1]
+    return sum(len(r) >= 60 for r in body) < 0.7 * len(body) and (len(rows) >= 3 or len(rows[0]) < 50)
+
+
 def opening_of(entry):
     """The play's first speeches as {role, text}: its own said words, cut at a word near OPENING_CHARS.
 
@@ -282,12 +300,14 @@ def opening_of(entry):
         if line["kind"] != "speech":
             continue
         said = " ".join(p["say"] for p in line.get("parts", []) if "say" in p)
-        said = re.sub(r"\s+", " ", said.replace("_", "")).strip().lstrip(".,:;\u2014- ").strip().replace("--", "\u2014")
+        # a verse speech keeps its rows, as the reader does
+        said = re.sub(r"[^\S\n]+", " ", said.replace("_", "")) if is_verse(said) else re.sub(r"\s+", " ", said.replace("_", ""))
+        said = re.sub(r" ?\n\s*", "\n", said).strip().lstrip(".,:;\u2014- ").strip().replace("--", "\u2014")
         if not said:
             continue
         if len(said) > OPENING_CHARS:
             cut = said[:OPENING_CHARS + 1]
-            cut = cut[:cut.rfind(" ")] if " " in cut else cut[:OPENING_CHARS]
+            cut = cut[:max(cut.rfind(" "), cut.rfind("\n"))] if re.search(r"\s", cut) else cut[:OPENING_CHARS]
             said = cut.rstrip(" ,;:-—") + "…"
         out.append({"role": line.get("role", ""), "text": said})
         if len(out) == OPENING_SPEECHES:
@@ -329,10 +349,224 @@ def script_file(entry):
     return {"format": FORMAT, "scripts": [entry]}
 
 
-def build(plays, ctx, read_text, protect=()):
-    """plays: harvest records; read_text(id) -> text or None. Returns (entries, report)."""
-    entries, failures, seen, uncached = [], {}, 0, 0
+NOT_PLAY_SUBJECT = re.compile(r"-- (?:Periodicals|History and criticism|Biography|Criticism|Stage history|Indexes|Catalogs|Technique|Criticism and interpretation|Correspondence|"
+                              r"Dictionaries|Bibliography|Stories, plots, etc\.|Anecdotes|Readers)|^(?:Indexes|AP|Motion pictures|Short stories|Theater|Actors|Acting|Playwriting|Copyright)\b|"
+                              r"^(?:Actors|Actresses|Theaters?|Theatrical|Dramatists)\b|\bfiction$|-- Fiction$|Juvenile fiction|Encyclopedias|Vaudeville$|-- Characters$|-- Knowledge\b|syllabi|Prose poems$|Study and teaching", re.I)
+PLAY_SUBJECT = re.compile(r"-- Drama\b|\bdrama\b(?!.*(?:History and criticism|Technique|Bio|Period))|\bplays\b|Tragedies|Comed(?:y|ies)|Farces|Librettos|Masques|Pageants|Dialogues|Interludes|Monologues|"
+                          r"Entertainments|Operas$|Tableaux", re.I)
+PERIODICAL = re.compile(r"\b(?:Punch|Punchinello|Magazine|Review|Journal|Mirror of|Poet-Lore|Monthly|Mercury|Messenger|Harper's|Strand|Galaxy|Fly Leaf|Index of the Project Gutenberg|Encyclop)", re.I)
+
+
+# Printed over a play, but not the name of one (second reader only; the first reader's titles stay as published).
+NOT_THE_TITLE = re.compile(r"^(?:A |AN |THE )?(?:COMEDY|TRAGEDY|DRAMA|FARCE|PLAY|MASQUE|PERSON(?:AE|S|NAE)|PERSONAGES|ACT\w*\s+[IVX]+|APPENDI\w+|CAST\b.*|CHORUS.*|ARGUMENT|HISTORIES|COMEDIES|TRAGEDIES|LIBRETTO|"
+                           r"FRAGMENTS?|WOMEN|MEN|PRELUDE.*|PROLOGUE.*|EPILOGUE.*|KY\wGEN|[IVX]{3,}I*|(?:FIRST|SECOND|THIRD|FOURTH|FIFTH|LAST)\s+(?:INTERLUDE|GLIMMER|EPISODE|PART|SCENE|ACT|DAY|NIGHT).*|"
+                           r"AN OUTLINE.*|OUTLINE.*|TAKEN FROM.*|ATTRIBUTED.*|FROM THE .*|AN OPERATIC BURLESQUE|.*\bLIBRARY|.*\bSERIES|.*\bEDITION|.*\bPRESS|MASQUE STRUCTURE|A STUDY\b.*|"
+                           r"EPIGRAMS.*|.*\bIN (?:ONE|TWO|THREE|FOUR|FIVE) ACTS?|SYNOPSIS.*|DIALOGUES?|MONOLOGUES?|RECITATIONS?|EXERCISES?|PAGEANTS?|NAMES?\b.*|PART\b.*|VOLUME.*|"
+                           r"ORIGINAL CAST.*|MODERN\b.*|DRAMATI\w+|SPEAKERS?|PUPPETS?|TABLEAUX?|SCENES?|SETTING|PLACE|TIME|POEMS\b.*|SELECTIONS\b.*|.*\bREAD-ALOUD PLAYS)$", re.I)
+# Second-reader plays held after a read against the source found a fault no test catches yet (2026-11-24).
+READ_AND_HELD = {"gut-40559": "a parallel text: the same speeches in Spanish and Nahuatl and in English",
+                 "gut-35389": "a picture's caption is read as its first two speeches",
+                 "gut-47609-106": "a heading (THE WIGWAM) is read as a speaker",
+                 # read 2026-11-24 (B16c), after play_roles
+                 "gut-12098": "The Elder Brother with the quarto's text after it, under the title Francis Beaumont",
+                 "gut-14467": "a label (L. Rod.) is read as the words before it, and a direction (The Trades-People enter) as a speaker",
+                 "gut-21350": "labels printed inside the verse (T. Trusty, M. Mery, Tib. Talk.) are read as words of the speech before them, 53 times",
+                 "gut-39045-12": "a label (C.'s M.) is read as a direction, so the Mother's lines are Conrad's",
+                 "gut-50031-1": "speakers printed as a number alone (_1._, _2._) are read as the speech before them",
+                 "gut-51282-103": "eleven lines of Theano (_The._) are read as the speech before them",
+                 "gut-53896": "a song's tune (TUNE) is read as a speaker, its name aloud",
+                 "gut-55294-2": "three speakers of the Chorus (3rd., 4th., 5th.) are read as the 2nd",
+                 "gut-56851": "answers quoted from Shakespeare under the plays' names, not a play",
+                 "gut-58546-1": "two songs' authors (LYDIA AVERY COONLEY, KATE L. BROWN) are read as speakers",
+                 "gut-10541-117": "the cast list's footnotes are read as the first three speeches",
+                 "gut-34360-102": "an actor's picture (Ebeling is seated) is read as MARGOT's words",
+                 "gut-39243-102": "the cast list is read as CAFOUR's first words",
+                 "gut-68984-117": "the costume list is read as RAIN's and MOON's first words",
+                 "gut-77284": "the costume list is read as MRS. GOSSIP's words",
+                 "gut-47609-111": "the cast list is in the play, and one part is under two names (H, HERALD; G, GODMOTHER)",
+                 "gut-51180": "the costume list is read as SAND-MAN's and WISH-BONE's first words",
+                 "gut-58546-6": "a direction ('with a lighted candle') is read as MOTHER's words",
+                 "gut-65920-110": "the setting is read as FLICK AND FLOCK's words",
+                 "gut-12166-103": "CEL's label is in another's speech (L0627)",
+                 "gut-12687": "CULVER's label is in another's speech (L0586)",
+                 "gut-14484-105": "the Chorus's label is in another's speech (L0169)",
+                 "gut-31029": "OLIVER's label is in another's speech (L0331)",
+                 "gut-34359-102": "a cast list is spoken (L0059)",
+                 "gut-50712": "ANNE's label is in another's speech (L0439)",
+                 "gut-52348-105": "the positions of a tableau are spoken (L0080)",
+                 "gut-53041": "CAIUS MARIUS's label is in another's speech (L0008)",
+                 "gut-55922-103": "FRED's label is in another's speech (L0139)",
+                 "gut-7108-101": "BERINTHIA's label is in another's speech (L0193)",
+                 "gut-7108-102": "SNEER's label is in DANGLE's speech (L0026)",
+                 "gut-71902": "the positions of a tableau are spoken (L0607)",
+                 "gut-74309": "two labels are in another's speech (L1542)",
+                 "gut-53236": "a label (MOTHER) is read as the words of THIRD GOBLIN",
+                 "gut-58546-5": "a song's stanza number (V) is read as a speaker",
+                 "gut-6043": "two labels (KING., EM.) are read as directions inside another speaker's lines"}
+ANTHOLOGY = re.compile(r"Collection of Old English Plays|\bAnthology\b|\bMasterpieces\b|German Classics|World's Greatest|\bLibrary of\b|Plays by Modern Authors|"
+                       r"Contemporary One-Act|Modern Plays|Old Miracle|\bReadings\b|St\. Nicholas Book", re.I)
+
+
+def good_case(title):
+    """The case B.cased_title loses: a roman numeral, "Mc", the first letter after a quotation mark."""
+    title = re.sub(r"\b(?=[IVXivx]{2,}\b)((?:[Xx]{0,2})(?:[Ii][Xx]|[Ii][Vv]|[Vv]?[Ii]{0,3}))\b", lambda m: m.group(1).upper() if m.group(1) else m.group(0), title)
+    if re.search(r"[A-Z]{2}[OAU]e[A-Z]", title) and re.sub(r"([OAU])e(?=[A-Z])", r"\1", title).isupper():
+        title = title.title()  # "ROSMERSHOeLM"
+    title = re.sub(r"\bMc([a-z])", lambda m: "Mc" + m.group(1).upper(), title)
+    return re.sub(r"([“\"‘]|(?<=\s)')([a-z])", lambda m: m.group(1) + m.group(2).upper(), title)
+
+
+def title_speaks(entry):
+    """A running title read as a speaker ("A CHRISTMAS TALE", 14 lines of gut-61613)."""
+    key = P._title_key(entry["title"])
+    return len(key.split()) >= 2 and any(P._title_key(r["name"]) == key for r in entry["roles"])
+
+
+def second_title(title, record):
+    printed = volume_play_title(title, record)
+    if not printed or NOT_THE_TITLE.match(printed.strip(" .,;:")) or len(printed) > 90:
+        return None
+    return B.clean_title(good_case(printed if title.upper() == title else title.strip(" ;:,.")))
+
+
+def surname(name):
+    name = re.sub(r"\s*\([^)]*\)", "", name or "")
+    return (name.split(",")[0] if "," in name else name.split()[-1] if name.split() else "").upper().strip(" .")
+
+
+def named_authors(record):
+    return [a for a in record.get("authors") or [] if (a.get("name") or "").lower() not in ("various", "anonymous", "unknown", "")]
+
+
+def not_a_play(record, subjects, speech_share):
+    """The evidence that a held text is not a play, or None: what the record calls it, or how little of it is speech."""
+    if PERIODICAL.search(record["title"]):
+        return f"a periodical or an index by its title: {record['title'][:80]!r}"
+    plays = [x for x in subjects if PLAY_SUBJECT.search(x) and not NOT_PLAY_SUBJECT.search(x)]
+    other = [x for x in subjects if NOT_PLAY_SUBJECT.search(x)]
+    if other and not plays:
+        return f"Gutenberg subject: {other[0]!r}"
+    if speech_share is not None and speech_share < 0.25:
+        return f"labeled speech is {speech_share:.0%} of its words"
+    return None
+
+
+def monologue(parsed):
+    """One speaking part, read clean but for that. Held as its own class: check_play_library asks two voices, and the
+    parse's clean test two parts of five lines; no client asks for two ("1 voice" is set on every platform)."""
+    return parsed.get("status") == "parsed" and parsed["castable_roles"] == 1 and parsed["issues"] in (
+        ["fewer_than_two_castable_roles"], ["fewer_than_two_castable_roles", "possible_aliases"]) \
+        and max(r["lines"] for r in parsed["roles"]) >= 0.8 * sum(r["lines"] for r in parsed["roles"])
+
+
+def joint_authors(plays):
+    """Author pairs that wrote together by the record: two or more records name exactly those two."""
+    n = collections.Counter(tuple(sorted(a["name"] for a in p.get("authors") or [])) for p in plays)
+    return {k for k, c in n.items() if len(k) == 2 and c >= 2}
+
+
+def second_whole(record, rights, text):
+    """(entry, why held): the whole text as one play, by its layout."""
+    parsed = PL.parse(text, record.get("title"))
+    if not parsed or parsed.get("status") != "parsed":
+        return None, "format_unrecognized", None
+    if not B.offered(rights, parsed):
+        return None, next((i for i in parsed["issues"] if i not in ("possible_aliases",)), "unclean"), parsed
+    entry = B.script_entry(record, rights, parsed)
+    entry["_read"] = (PL.parse, (text, record.get("title")))
+    if VOLUME_TITLE.search(record["title"]):
+        printed = second_title(parsed.get("printed_title"), record) if parsed.get("printed_title") else None
+        if printed:
+            entry["collection"] = B.clean_title(record["title"])
+            entry["title"] = printed
+            entry["sort_name"] = B.sort_name(entry["title"])
+    if title_unusable(entry) or NOT_THE_TITLE.match(entry["title"]):
+        return None, "title_cut_off", parsed
+    if role_artifact(entry) or title_speaks(entry):
+        return None, "role_artifact", parsed
+    return entry, None, parsed
+
+
+def second_volume(record, rights, text, have, joint, held, report):
+    """The plays of a volume the first reader left: those its contents list names (numbered from 101), then the segments
+    split_volume found, read by their layout. `have` holds the volume's entries already kept; a play among them is not added."""
+    authors = named_authors(record)
+    team = not ANTHOLOGY.search(record["title"]) and len(authors) == 1 or tuple(sorted(a["name"] for a in authors)) in joint
+    sh = [shingles(e) for e in have]
+    out = []
+
+    def add(n, title, text, who, how):
+        printed = second_title(title, record) if title else None
+        row = {"id": f"{record['id']}-{n}", "title": title}
+        parsed = PL.parse(text, title) or {}
+        layout = parsed.get("layout")
+        if parsed.get("status") != "parsed":
+            # a heading of the volume with no dialogue under it is not a held play
+            report["volume_parts_without_dialogue"] = report.get("volume_parts_without_dialogue", 0) + 1
+            return
+        if not B.offered(rights, parsed):
+            held.append({**row, "why": next((i for i in parsed.get("issues") or [] if i != "possible_aliases"), "unread")})
+            return
+        if not printed:
+            held.append({**row, "why": "no_printed_title"})
+            return
+        if not team and not who:
+            held.append({**row, "why": "author_not_printed"})
+            return
+        if team and who and len(authors) == 1 and surname(who) not in {surname(a["name"]) for a in authors}:
+            held.append({**row, "why": "another_author_printed"})
+            return
+        entry = B.script_entry({**record, "id": f"{record['id']}-{n}", **({} if team else {"authors": [{"name": who}]})}, rights, parsed)
+        entry["_read"] = (PL.parse, (text, title))
+        entry["collection"] = B.clean_title(record["title"])
+        entry["title"] = printed
+        entry["sort_name"] = B.sort_name(entry["title"])
+        if role_artifact(entry) or title_speaks(entry) or title_unusable(entry):
+            held.append({**row, "why": "title_cut_off" if title_unusable(entry) else "role_artifact"})
+            return
+        mine = shingles(entry)
+        if any(len(mine & x) >= SAME_WORK * max(1, min(len(mine), len(x))) for x in sh):
+            return
+        sh.append(mine)
+        entry["_how"] = layout or "contents"
+        out.append(entry)
+
+    for n, title, who, part in PL.split_by_contents(text, bool(PL.POEMS.search(record["title"]))):
+        add(100 + n, title, part, who, "contents")
+    if team:
+        taken = {e["id"] for e in have}
+        for n, title, part in P.split_volume(text):
+            if f"{record['id']}-{n}" not in taken:
+                add(n, title, part, PL.byline(PL.paragraphs(part)), "segment")
+    return out
+
+
+def mend(entry, record, rights, text):
+    """A first-reader play from a file once read in the wrong encoding, with its lost letters back, when every line id and
+    role stays ("Thérèse" for "Th\ufffdr\ufffdse"); otherwise the play as it was published, because people's takes are kept
+    by line id (gut-8499-1, gut-8499-3, gut-8688-4 and gut-8689-3 would gain lines, 2026-11-24)."""
+    part, title = text, record.get("title")
+    n = entry["id"][4:].partition("-")[2]
+    if n:
+        part, title = next(((x, t) for k, t, x in P.split_volume(text) if str(k) == n), (None, None))
+    parsed = P.parse(part, record["kind"], title) if part else {}
+    if not B.offered(rights, parsed):
+        return entry
+    fresh = B.script_entry({**record, "id": entry["id"]}, rights, parsed)
+    if [l["id"] for l in fresh["lines"]] != [l["id"] for l in entry["lines"]] or \
+            [(r["name"], r["lines"]) for r in fresh["roles"]] != [(r["name"], r["lines"]) for r in entry["roles"]] or \
+            [l.get("role") for l in fresh["lines"]] != [l.get("role") for l in entry["lines"]]:
+        return entry
+    return {**entry, "_read": (P.parse, (part, record["kind"], title)), "lines": fresh["lines"], "revision": fresh["revision"], "roles": fresh["roles"],
+            **({"sections": fresh["sections"]} if "sections" in fresh else {})}
+
+
+def build(plays, ctx, read_text, protect=(), read_as_published=None):
+    """plays: harvest records; read_text(id) -> text or None; read_as_published(id) -> the text as the first reader has
+    always decoded it (the published line ids come from it). Returns (entries, report)."""
+    entries, seen, uncached = [], 0, 0
     report = {"split_failures": {}}
+    left, volumes, held = [], [], []
     for p in sorted(plays, key=lambda x: x["id"]):
         record = R.from_gutenberg(p)
         rights = R.judge(record, ctx)
@@ -343,15 +577,19 @@ def build(plays, ctx, read_text, protect=()):
             uncached += 1
             continue
         seen += 1
+        right, text = text, (read_as_published(p["id"][4:]) if read_as_published else text)
         parsed = P.parse(text, record["kind"], record.get("title"))
         if record["kind"] == "stage" and parsed.get("status") == "parsed" and p["id"] not in protect and (
                 "several_plays_in_one_text" in parsed["issues"] or (parsed.get("clean") and is_volume(text, record))):
             report["volumes"] = report.get("volumes", 0) + 1
             split = volume_entries(record, rights, text, report)
             report["split_clean"] = report.get("split_clean", 0) + len(split)
-            entries += split
+            entries += split if right == text else [mend(e, record, rights, right) for e in split]
+            volumes.append((p, record, rights, right, split))
             continue
         entry = B.script_entry(record, rights, parsed) if B.offered(rights, parsed) else None
+        if entry:
+            entry["_read"] = (P.parse, (text, record["kind"], record.get("title")))
         if entry and VOLUME_TITLE.search(entry["title"]):
             printed = volume_play_title(parsed.get("printed_title"), record)
             if printed:
@@ -359,21 +597,130 @@ def build(plays, ctx, read_text, protect=()):
                 entry["title"] = B.clean_title(printed)
                 entry["sort_name"] = B.sort_name(entry["title"])
         if entry and title_unusable(entry):
-            failures["unclean_title_cut_off"] = failures.get("unclean_title_cut_off", 0) + 1
+            why = "unclean_title_cut_off"
         elif entry:
-            entries.append(entry)
+            entries.append(entry if right == text else mend(entry, record, rights, right))
+            continue
         else:
             why = failure_reason(rights, parsed)
-            failures[why] = failures.get(why, 0) + 1
+        left.append((p, record, rights, right, why, parsed))
     report["split_failures"] = dict(sorted(report["split_failures"].items()))
     report["single_play_texts_with_a_role_artifact"] = sorted(e["id"] for e in entries if role_artifact(e))
     before = len(entries)
     entries, dups, same_title = dedupe(entries, set(protect))
+    first = {e["id"] for e in entries}
+
+    # -- the second reader, over what the first left
+    joint = joint_authors(plays)
+    new, layouts, why_held = [], collections.Counter(), collections.Counter()
+
+    def hold(pid, title, why, evidence=None):
+        why_held[why] += 1
+        held.append({"id": pid, "title": title, "why": why, **({"evidence": evidence} if evidence else {})})
+
+    for p, record, rights, text, split in volumes:
+        rows = []
+        evidence = not_a_play(record, p.get("subjects") or [], None)
+        if evidence and not split:
+            hold(p["id"], record["title"], "not_a_play", evidence)
+            continue
+        got = [] if VOLUME_TITLE.search(record["title"]) or split else None
+        whole = why = None
+        if got is None:
+            whole, why, parsed = second_whole(record, rights, text)
+        if whole:
+            layouts[parsed["layout"]] += 1
+            new.append(whole)
+            continue
+        got = second_volume(record, rights, text, split, joint, rows, report)
+        for e in got:
+            layouts[e.pop("_how")] += 1
+        new += got
+        for r in rows:
+            hold(r["id"], r["title"], "volume_" + r["why"])
+        if not got and not split and not rows:
+            hold(p["id"], record["title"], "volume_not_divided")
+    for p, record, rights, text, why, parsed in left:
+        if record["kind"] != "stage" or why.startswith("stub_"):
+            evidence = not_a_play(record, p.get("subjects") or [], None)
+            hold(p["id"], record["title"], "not_a_play" if evidence else why, evidence)
+            continue
+        entry, again, reread = second_whole(record, rights, text)
+        share = speech_share(reread or parsed)
+        evidence = not_a_play(record, p.get("subjects") or [], share)
+        if entry and not evidence:
+            layouts[reread["layout"]] += 1
+            new.append(entry)
+            continue
+        if not evidence:
+            # several plays under one record that no cast list or first act divides: the contents list may
+            rows = []
+            got = second_volume(record, rights, text, [], joint, rows, report)
+            if len(got) + sum(r["why"] != "no_printed_title" for r in rows) >= 2 and got:
+                for e in got:
+                    layouts[e.pop("_how")] += 1
+                new += got
+                for r in rows:
+                    hold(r["id"], r["title"], "volume_" + r["why"])
+                continue
+        hold(p["id"], record["title"], "not_a_play" if evidence else "monologue" if monologue(parsed) else again if reread else why, evidence)
+    for e in new:
+        e.pop("_how", None)
+    # another edition of a play already given (no translator on either) is the same work
+    translated = {p["id"] for p in plays if p.get("translators")}
+    plain = lambda e: "-".join(e["id"].split("-")[:2]) not in translated
+    works = collections.defaultdict(list)
+    for e in entries:
+        works[work_key(e)[1]].append((work_key(e)[0], e))
+    fresh = []
+    for e in sorted(new, key=lambda e: ("collection" in e, e["id"])):
+        title, who = work_key(e)
+        if e["id"] in READ_AND_HELD:
+            hold(e["id"], e["title"], "read_and_held", READ_AND_HELD[e["id"]])
+            continue
+        hit = next((k for t, k in works[who] if who and plain(k) and plain(e) and same_title_words(t, title)), None)
+        if hit:
+            held.append({"id": e["id"], "title": e["title"], "why": "another_edition", "evidence": "the same title and author as " + hit["id"]})
+            why_held["another_edition"] += 1
+            continue
+        fresh.append(e)
+        works[who].append((title, e))
+    entries, more, same_title = dedupe(entries + fresh, set(protect) | first)
+    assert first <= {e["id"] for e in entries}, "the second reader displaced a first-reader play"
+    entries = [refined(e) for e in entries]
     entries.sort(key=lambda s: (s["sort_name"], s["id"]))
+    # The report in the index is counts: phones load it. The rows are held.json.
     report.update({"rights_cleared_uncached": uncached, "parsed": seen, "clean": len(entries),
-                   "clean_before_dedupe": before, "failures": dict(sorted(failures.items())),
-                   "duplicates_dropped": dups, "same_title_and_author_different_text_kept": same_title})
+                   "clean_before_dedupe": before, "first_reader": len(first),
+                   "second_reader": len(entries) - len(first), "second_reader_layouts": dict(sorted(layouts.items())),
+                   "failures": dict(sorted((k, v) for k, v in why_held.items() if v > 0)),
+                   "duplicates_dropped": len(dups) + len(more),
+                   "same_title_and_author_different_text_kept": len(same_title)})
+    report["_held"] = {"held": sorted(held, key=lambda r: r["id"]), "duplicates_dropped": dups + more,
+                       "same_title_and_author_different_text_kept": same_title}
     return entries, report
+
+
+def refined(entry):
+    """The kept play with its roles mended (play_roles, catalog DECISIONS 044). Which plays are kept, and which edition, was
+    settled on the readings as they were; a play nothing is mended in is the same entry, byte for byte."""
+    read, args = entry.pop("_read")
+    return B.refined_entry(entry, read(*args, refine=True))
+
+
+def same_title_words(a, b):
+    """One title holds the other's words in order ("hamlet" in "the tragedy of hamlet prince of denmark")."""
+    x, y = sorted((a.split(), b.split()), key=len)
+    if not x or re.search(r"\bpart\b|\d|\b[ivx]{1,4}\b", a + " " + b) and a != b:
+        return False
+    return x == y or len(" ".join(x)) >= 5 and any(y[i:i + len(x)] == x for i in range(len(y) - len(x) + 1)) and len(y) - len(x) <= 5
+
+
+def speech_share(parsed):
+    if not parsed or parsed.get("status") != "parsed":
+        return 0.0
+    said = sum(len(x["say"].split()) for l in parsed["lines"] if l["kind"] == "speech" for x in l["parts"] if "say" in x)
+    return said / max(1, parsed["words"])
 
 
 def index_doc(entries, report):
@@ -398,6 +745,11 @@ def write(entries, report, out=OUT):
     shutil.rmtree(os.path.join(out, "phonemes"), ignore_errors=True)
     if os.path.exists(os.path.join(out, "phonemes-report.json")):
         os.remove(os.path.join(out, "phonemes-report.json"))
+    held = report.pop("_held", None)
+    if held is not None:
+        with open(os.path.join(out, "held.json"), "w", encoding="utf-8") as f:
+            json.dump({"format": FORMAT, **held}, f, ensure_ascii=False, indent=1)
+            f.write("\n")
     with open(os.path.join(out, "index.json"), "w", encoding="utf-8") as f:
         json.dump(index_doc(entries, report), f, ensure_ascii=False, separators=(",", ":"))
         f.write("\n")
@@ -412,14 +764,18 @@ def main():
 
     def read_text(pid):
         path = os.path.join(text_dir, pid + ".txt")
-        return open(path, encoding="utf-8", errors="replace").read() if os.path.exists(path) else None
+        return P.read_text(path) if os.path.exists(path) else None
 
     bundled = {s["id"] for s in json.load(open(BUNDLE))["scripts"]}
-    entries, report = build(plays, ctx, read_text, bundled)
+    def read_as_published(pid):
+        with open(os.path.join(text_dir, pid + ".txt"), encoding="utf-8", errors="replace") as f:
+            return f.read()
+
+    entries, report = build(plays, ctx, read_text, bundled, read_as_published)
     missing = sorted(bundled - {e["id"] for e in entries})
     report["bundled"] = len(bundled)
     report["bundled_missing_from_library"] = missing
-    print(json.dumps(report, indent=1))
+    print(json.dumps({k: v for k, v in report.items() if k != "_held"}, indent=1))
     if missing:
         sys.exit("a bundled play is not in the library: " + ", ".join(missing))
     if "--check" not in sys.argv:

@@ -68,7 +68,7 @@ folder from the newest dated Release, never from a working `.cache/`, which drif
 
 **The Releases are public.** Nothing on `tools/cache_denylist.txt` goes in: today the
 Generic Radio Workshop's script texts (`grw/text`; `grw/text_ids.json` stands for them) and
-any `script_cues` table (DECISIONS 043). The cut opens both `.xz` files and refuses them, and
+any `script_cues` table (DECISIONS 045). The cut opens both `.xz` files and refuses them, and
 refuses a database with free pages, where a dropped table's words stay: make one with
 `VACUUM INTO`. A harvester whose source's words we may not republish adds its path to the
 list, and a row to `docs/research/data/public-cache-inventory.md`, in the same change.

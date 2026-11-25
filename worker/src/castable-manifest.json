@@ -4,6 +4,23 @@
  "scripts": {
   "gut-49295": [
    {
+    "revision": "b0c1f8297f72",
+    "title": "After Taps",
+    "cast": "61ce3af3f6dcc4e3ef49ef5d8eccbab9160f4c60a32c53f6eca90946c3e354de",
+    "lines": 730,
+    "source": "https://www.gutenberg.org/ebooks/49295",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/49295.rdf"
+      }
+     ]
+    },
+    "publishable": true
+   },
+   {
     "revision": "3a9dfe22694c",
     "title": "After Taps",
     "cast": "6052e27e03df7d1f5f318fd843fb428a4625437ef382e24154fd34564b892575",
@@ -29,11 +46,11 @@
     "lines": 166,
     "source": "https://www.gutenberg.org/ebooks/7364",
     "rights": {
-     "bucket": "script_pd_published_age",
+     "bucket": "script_source_cleared",
      "evidence": [
       {
-       "claim": "Copyright, 1891, by HARPER & BROTHERS",
-       "src": "https://www.gutenberg.org/ebooks/7364"
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/7364.rdf"
       }
      ]
     },
@@ -61,6 +78,23 @@
   ],
   "gut-12039": [
    {
+    "revision": "295936f9db5b",
+    "title": "The Custom of the Country",
+    "cast": "afffa7e83830083af19c6731b0ff3b7ea3effbf94995f795b90afa029b366870",
+    "lines": 976,
+    "source": "https://www.gutenberg.org/ebooks/12039",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/12039.rdf"
+      }
+     ]
+    },
+    "publishable": true
+   },
+   {
     "revision": "f722f8d57a39",
     "title": "The Custom of the Country",
     "cast": "98665b386c0d5955fb43196480de2e32d18bc2884ee3a3a025bbe9b46415d90f",
@@ -79,6 +113,23 @@
    }
   ],
   "gut-2265": [
+   {
+    "revision": "1ec56f3ca08b",
+    "title": "Hamlet",
+    "cast": "dc79f3439121c498ceaa17de6a6fe673b1a9e6717760137d363862c682ee41ba",
+    "lines": 1201,
+    "source": "https://www.gutenberg.org/ebooks/2265",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/2265.rdf"
+      }
+     ]
+    },
+    "publishable": true
+   },
    {
     "revision": "a51232e16da7",
     "title": "Hamlet",
@@ -105,11 +156,11 @@
     "lines": 994,
     "source": "https://www.gutenberg.org/ebooks/67583",
     "rights": {
-     "bucket": "script_pd_published_age",
+     "bucket": "script_source_cleared",
      "evidence": [
       {
-       "claim": "Copyright, 1925, by",
-       "src": "https://www.gutenberg.org/ebooks/67583"
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/67583.rdf"
       }
      ]
     },
@@ -117,6 +168,23 @@
    }
   ],
   "gut-1502": [
+   {
+    "revision": "596086f7ad64",
+    "title": "King Henry VI, Part 3",
+    "cast": "12f301eea147dcb6144c552e4aea8109b4213212b0e43a240f4e4f91475d2337",
+    "lines": 1002,
+    "source": "https://www.gutenberg.org/ebooks/1502",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/1502.rdf"
+      }
+     ]
+    },
+    "publishable": true
+   },
    {
     "revision": "378532c3f170",
     "title": "King Henry VI, Part 3",
@@ -232,6 +300,23 @@
   ],
   "gut-54702": [
    {
+    "revision": "a0cf2ef4e114",
+    "title": "A Translation of Octavia, a Latin Tragedy",
+    "cast": "955382229ebc05ce25f56773fb0ba432ea89eeabc6f5593d9d930885d9a68561",
+    "lines": 148,
+    "source": "https://www.gutenberg.org/ebooks/54702",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/54702.rdf"
+      }
+     ]
+    },
+    "publishable": true
+   },
+   {
     "revision": "7a45f443e5ff",
     "title": "A Translation of Octavia, a Latin Tragedy",
     "cast": "955382229ebc05ce25f56773fb0ba432ea89eeabc6f5593d9d930885d9a68561",
@@ -269,6 +354,23 @@
    }
   ],
   "gut-76327": [
+   {
+    "revision": "d7f9ae7beddb",
+    "title": "The true-born Irishman",
+    "cast": "7e455ec7da956c48ffe16703585f330542ef6672447e53e670029474c74d27d4",
+    "lines": 548,
+    "source": "https://www.gutenberg.org/ebooks/76327",
+    "rights": {
+     "bucket": "script_source_cleared",
+     "evidence": [
+      {
+       "claim": "Public domain in the USA.",
+       "src": "https://www.gutenberg.org/ebooks/76327.rdf"
+      }
+     ]
+    },
+    "publishable": true
+   },
    {
     "revision": "dbd516cbe52c",
     "title": "The true-born Irishman",

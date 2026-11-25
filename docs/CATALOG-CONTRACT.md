@@ -139,7 +139,7 @@ the client links there ("Read the script", opening `script_url` outside the app'
 views). Nothing is fetched, hosted, shown inline or cast from it. `manifest.json` counts
 them as `counts.scriptLinks`; the web Detail row appends `scriptUrl`, `scriptSource` and `scriptId`.
 The script's text is not published anywhere, the pipeline's own Releases included (catalog
-DECISIONS 043): they carry the ids of the scripts held (`grw/text_ids.json`), never a word of
+DECISIONS 045): they carry the ids of the scripts held (`grw/text_ids.json`), never a word of
 one. Parsed cues for a later read-along alignment are made only on a machine that holds the
 texts (`episode_scripts.py --cues`), and need a rights basis to be shown first (DECISIONS 030).
 Guarded in `catalog/tests/test_episode_scripts.py` and `tests/test_projection.py`.

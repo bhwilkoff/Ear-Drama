@@ -1,0 +1,615 @@
+{
+ "format": 1,
+ "about": "Published plays whose reading still has a fault no rule of play_roles settles (catalog DECISIONS 044): they serve as they are. Read by a person before an entry is added or removed.",
+ "faults": [
+  {
+   "id": "gut-10722-3",
+   "line": "L0000b",
+   "severity": "read_aloud_wrong",
+   "fault": "cast-list rows are read as the first lines"
+  },
+  {
+   "id": "gut-10850",
+   "line": "L1105",
+   "severity": "cosmetic",
+   "fault": "ME is Megra and KIN (L1100) the King, abbreviated once"
+  },
+  {
+   "id": "gut-1124",
+   "line": "L1290",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-12173",
+   "line": "L0238",
+   "severity": "cosmetic",
+   "fault": "MUSIC is an echo's label, as printed"
+  },
+  {
+   "id": "gut-1240",
+   "line": "L0003",
+   "severity": "read_aloud_wrong",
+   "fault": "a direction whose mark the print never closes is SHAWN KEOGH's words; he is also under SHAWN"
+  },
+  {
+   "id": "gut-1244",
+   "line": "L0501",
+   "severity": "cosmetic",
+   "fault": "I and II are the stanzas of a song the print gives no singer"
+  },
+  {
+   "id": "gut-12842",
+   "severity": "cosmetic",
+   "fault": "nine songs keep their heading, AIR, as the speaker; the print does not name who sings"
+  },
+  {
+   "id": "gut-1292",
+   "line": "L0522",
+   "severity": "cosmetic",
+   "fault": "I, II and III are the stanzas of a song the print gives no singer"
+  },
+  {
+   "id": "gut-13039-3",
+   "line": "L0181",
+   "severity": "read_aloud_wrong",
+   "fault": "the positions of a tableau are spoken"
+  },
+  {
+   "id": "gut-13050",
+   "line": "L0441",
+   "severity": "read_aloud_wrong",
+   "fault": "the positions of a tableau are spoken"
+  },
+  {
+   "id": "gut-1311",
+   "severity": "cosmetic",
+   "fault": "a bracket the print never closes takes some of John Beal's words into a direction"
+  },
+  {
+   "id": "gut-13319",
+   "line": "L1075",
+   "severity": "read_aloud_wrong",
+   "fault": "the tail of a direction is PETER's words"
+  },
+  {
+   "id": "gut-13894-2",
+   "line": "L0588",
+   "severity": "cosmetic",
+   "fault": "LOOK is LOOE, misprinted"
+  },
+  {
+   "id": "gut-14322",
+   "line": "L0331",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-14347-2",
+   "line": "L0595",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-15349-2",
+   "line": "L0573",
+   "severity": "read_aloud_wrong",
+   "fault": "the positions of a tableau are spoken"
+  },
+  {
+   "id": "gut-1775",
+   "line": "L0061",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-1782",
+   "line": "L0309",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-1798",
+   "line": "L0227",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-1802-1",
+   "severity": "cosmetic",
+   "fault": "ends after 61 lines: the volume's division cut the play"
+  },
+  {
+   "id": "gut-18677",
+   "line": "L0158",
+   "severity": "cosmetic",
+   "fault": "the positions of the final tableau are read as a speaker"
+  },
+  {
+   "id": "gut-19826-2",
+   "line": "L0002",
+   "severity": "read_aloud_wrong",
+   "fault": "the words under a music illustration are read as directions of OPENING SONG (also L0205)"
+  },
+  {
+   "id": "gut-20288",
+   "line": "L1005",
+   "severity": "read_aloud_wrong",
+   "fault": "a label the print breaks ('Third.') is spoken by K. EDW"
+  },
+  {
+   "id": "gut-22146",
+   "line": "L0010",
+   "severity": "read_aloud_wrong",
+   "fault": "a direction is BOY'S VOICE's words"
+  },
+  {
+   "id": "gut-2270-28",
+   "severity": "read_aloud_wrong",
+   "fault": "titled The Life of Tymon of Athens; the text is Julius Caesar, from a collected Folio"
+  },
+  {
+   "id": "gut-23893",
+   "severity": "cosmetic",
+   "fault": "Yiddish lines in brackets are shown as directions"
+  },
+  {
+   "id": "gut-2421",
+   "severity": "read_aloud_wrong",
+   "fault": "the words of the airs are printed in italics and shown as directions"
+  },
+  {
+   "id": "gut-26661",
+   "line": "L0978",
+   "severity": "cosmetic",
+   "fault": "a variation of Act IV is printed after the act it replaces"
+  },
+  {
+   "id": "gut-27201-1",
+   "severity": "cosmetic",
+   "fault": "titled Translated by Mrs. Bernard Shaw (its translator's credit)"
+  },
+  {
+   "id": "gut-2909",
+   "line": "L0203",
+   "severity": "cosmetic",
+   "fault": "BITS is BILL, misprinted"
+  },
+  {
+   "id": "gut-2914",
+   "line": "L0768",
+   "severity": "read_aloud_wrong",
+   "fault": "the last speech takes in the stage description after it (THE CURTAIN FALLS, BUT RISES AGAIN)"
+  },
+  {
+   "id": "gut-2920-3",
+   "line": "L0096",
+   "severity": "read_aloud_wrong",
+   "fault": "Punch and Go follows The Sun in one text; its title page is read as a speaker"
+  },
+  {
+   "id": "gut-3023",
+   "line": "L0032",
+   "severity": "read_aloud_wrong",
+   "fault": "cast-list rows are in this speech"
+  },
+  {
+   "id": "gut-30643-4",
+   "line": "L0004",
+   "severity": "read_aloud_wrong",
+   "fault": "the tail of a direction is ARETHUSA's words"
+  },
+  {
+   "id": "gut-31112",
+   "line": "L0003",
+   "severity": "cosmetic",
+   "fault": "two choruses in italics are shown as directions"
+  },
+  {
+   "id": "gut-3304-2",
+   "line": "L0377",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-35000",
+   "severity": "read_aloud_wrong",
+   "fault": "titled Francis Beaumont; the text is The Mad Lover, one part under several abbreviations"
+  },
+  {
+   "id": "gut-35699",
+   "severity": "cosmetic",
+   "fault": "some songs in the last scene are printed in italics in one row and shown as directions (L1021, L1023, L1025)"
+  },
+  {
+   "id": "gut-36607",
+   "line": "L0176",
+   "severity": "cosmetic",
+   "fault": "GRAND CHORUS and CHORUS are the print's labels; their words are printed in italics and shown as directions"
+  },
+  {
+   "id": "gut-36621",
+   "severity": "cosmetic",
+   "fault": "seven songs keep SONG, DUETT or FINALE as the speaker"
+  },
+  {
+   "id": "gut-3695",
+   "line": "L0003",
+   "severity": "read_aloud_wrong",
+   "fault": "cast-list rows are in this speech"
+  },
+  {
+   "id": "gut-3695",
+   "line": "L0004",
+   "severity": "read_aloud_wrong",
+   "fault": "a direction (After the second sounding) is THE STAGE's words"
+  },
+  {
+   "id": "gut-3735",
+   "line": "L0002",
+   "severity": "cosmetic",
+   "fault": "AMMOS FIOD and ARTEMY FIL are the print's abbreviations of Ammos Fyodorovich and Artemy Filippovich"
+  },
+  {
+   "id": "gut-3735",
+   "line": "L0340a",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-38597",
+   "line": "L0015",
+   "severity": "read_aloud_wrong",
+   "fault": "NO. 3 and NO. 4 are numbers of the score, read as speakers"
+  },
+  {
+   "id": "gut-38678-1",
+   "line": "L0004c",
+   "severity": "read_aloud_wrong",
+   "fault": "an entrance is MADGE's words"
+  },
+  {
+   "id": "gut-38678-1",
+   "line": "L0474",
+   "severity": "read_aloud_wrong",
+   "fault": "the positions of a tableau are spoken"
+  },
+  {
+   "id": "gut-38909",
+   "line": "L0001",
+   "severity": "read_aloud_wrong",
+   "fault": "the cast list's last row is a speaker"
+  },
+  {
+   "id": "gut-4003",
+   "line": "L0275c",
+   "severity": "read_aloud_wrong",
+   "fault": "the lines after it hold other labels (THE GLADIATORS) the print runs on"
+  },
+  {
+   "id": "gut-4081",
+   "line": "L1452",
+   "severity": "cosmetic",
+   "fault": "I NEI is 1 NEI, as the print has it"
+  },
+  {
+   "id": "gut-41242",
+   "severity": "cosmetic",
+   "fault": "one line (I, 'Guess you know me') is the speaker before it"
+  },
+  {
+   "id": "gut-41589",
+   "severity": "read_aloud_wrong",
+   "fault": "a serial of chapters in one text; a chapter title (L0360) is read as a speaker"
+  },
+  {
+   "id": "gut-42724",
+   "severity": "read_aloud_wrong",
+   "fault": "titled Christopher Marlowe; several of his plays in one text, one part for each abbreviation they share"
+  },
+  {
+   "id": "gut-44221",
+   "line": "L0247",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-44233-3",
+   "line": "L0168",
+   "severity": "read_aloud_wrong",
+   "fault": "the positions of a tableau are spoken"
+  },
+  {
+   "id": "gut-44302-1",
+   "severity": "cosmetic",
+   "fault": "titled A Folk-play in Six Scenes (its subtitle)"
+  },
+  {
+   "id": "gut-44302-1",
+   "line": "L0797",
+   "severity": "cosmetic",
+   "fault": "SHERUT is SHERIFF, misprinted"
+  },
+  {
+   "id": "gut-45209-2",
+   "severity": "read_aloud_wrong",
+   "fault": "Antonio's Revenge and The Malcontent in one text"
+  },
+  {
+   "id": "gut-45357",
+   "severity": "read_aloud_wrong",
+   "fault": "several of Dekker's plays in one text"
+  },
+  {
+   "id": "gut-46605",
+   "severity": "read_aloud_wrong",
+   "fault": "titled Edited by Havelock Ellis; several of Otway's plays in one text"
+  },
+  {
+   "id": "gut-4736",
+   "line": "L0245",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-47559",
+   "line": "L0830",
+   "severity": "cosmetic",
+   "fault": "ADAM CHERRY.' keeps the print's stray mark"
+  },
+  {
+   "id": "gut-47792",
+   "severity": "read_aloud_wrong",
+   "fault": "several short parodies in one text, one part for every name"
+  },
+  {
+   "id": "gut-49181-2",
+   "line": "L0556",
+   "severity": "read_aloud_wrong",
+   "fault": "THANKS is the first word of a speech, read as a speaker"
+  },
+  {
+   "id": "gut-49198",
+   "line": "L0469b",
+   "severity": "read_aloud_wrong",
+   "fault": "the positions of a tableau are spoken"
+  },
+  {
+   "id": "gut-49610-2",
+   "severity": "cosmetic",
+   "fault": "titled To Florence Farr (its dedication); the play is The Land of Heart's Desire"
+  },
+  {
+   "id": "gut-4963",
+   "line": "L0043",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-5053-2",
+   "severity": "read_aloud_wrong",
+   "fault": "ME. Y. and ME. X. are misprints of MR.; the letter is spoken"
+  },
+  {
+   "id": "gut-52582",
+   "severity": "cosmetic",
+   "fault": "I to IV are the stanzas of a song"
+  },
+  {
+   "id": "gut-5328-6",
+   "severity": "read_aloud_wrong",
+   "fault": "The System and A Persian Garden in one text; BOOKS AND LYRICS BY and MUSIC BY (L0424, L0425) are title-page rows"
+  },
+  {
+   "id": "gut-5328-6",
+   "line": "L0571",
+   "severity": "read_aloud_wrong",
+   "fault": "WARNING. Could not break paragraph: a transcriber's note inside a speech"
+  },
+  {
+   "id": "gut-53832",
+   "line": "L0028",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-54014",
+   "line": "L0014",
+   "severity": "cosmetic",
+   "fault": "II and MORAL (L0798) are headings over a setting and a verse"
+  },
+  {
+   "id": "gut-54063-6",
+   "line": "L0060",
+   "severity": "cosmetic",
+   "fault": "READING is a heading over a title, four times"
+  },
+  {
+   "id": "gut-554",
+   "line": "L0044",
+   "severity": "cosmetic",
+   "fault": "I, II and III are the stanzas of a song"
+  },
+  {
+   "id": "gut-55625",
+   "severity": "read_aloud_wrong",
+   "fault": "titled Webster & Tourneur; four plays in one text, their casts merged"
+  },
+  {
+   "id": "gut-56151",
+   "line": "L0019",
+   "severity": "read_aloud_wrong",
+   "fault": "the positions of a tableau are spoken"
+  },
+  {
+   "id": "gut-56286",
+   "severity": "read_aloud_wrong",
+   "fault": "a school textbook of dialogues; the editor's headings (L0001, L0024, L0025, L0026) are read as speakers"
+  },
+  {
+   "id": "gut-57371",
+   "line": "L0007",
+   "severity": "read_aloud_wrong",
+   "fault": "the setting is THE PROLOGUE's words"
+  },
+  {
+   "id": "gut-57916-1",
+   "severity": "read_aloud_wrong",
+   "fault": "titled Partly Translated From (its credit); three parts are also under their full names (MENEDEMUS, PAMPHILUS, PHILOLACHES)"
+  },
+  {
+   "id": "gut-58303",
+   "line": "L0903",
+   "severity": "read_aloud_wrong",
+   "fault": "EPILOGVE: the printed entrance and Swetnam's first speech are read as the Epilogue's"
+  },
+  {
+   "id": "gut-58928-1",
+   "line": "L0024",
+   "severity": "read_aloud_wrong",
+   "fault": "AIR: the tune's name is spoken before the song (also L0122, L0134)"
+  },
+  {
+   "id": "gut-59685-10",
+   "line": "L0174a",
+   "severity": "read_aloud_wrong",
+   "fault": "ENSEMBLE and TRIO.--MR keep their heading as the speaker, with the singers' names spoken"
+  },
+  {
+   "id": "gut-60630",
+   "severity": "read_aloud_wrong",
+   "fault": "a ship's log, not a play: the days are its speakers"
+  },
+  {
+   "id": "gut-62173-1",
+   "line": "L0966",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-62744",
+   "severity": "cosmetic",
+   "fault": "titled for the magazine issue that printed it (The Glebe, 1913/12)"
+  },
+  {
+   "id": "gut-62880",
+   "severity": "cosmetic",
+   "fault": "titled for the magazine issue that printed it (The Glebe, 1914/01)"
+  },
+  {
+   "id": "gut-63776-5",
+   "line": "L0403",
+   "severity": "cosmetic",
+   "fault": "SECOND STANZA is a heading over a verse"
+  },
+  {
+   "id": "gut-6521",
+   "severity": "cosmetic",
+   "fault": "seven songs keep SONG as the speaker"
+  },
+  {
+   "id": "gut-66240-1",
+   "line": "L0004",
+   "severity": "cosmetic",
+   "fault": "HYMN OF PRAISE is a heading over words sung in the church"
+  },
+  {
+   "id": "gut-6731",
+   "severity": "cosmetic",
+   "fault": "fifteen songs keep their heading, SONG or AIR, as the speaker; the print does not name who sings"
+  },
+  {
+   "id": "gut-6992",
+   "line": "L0213b",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-70315",
+   "severity": "read_aloud_wrong",
+   "fault": "four plays in one text; one title (L0117) is read as a speaker"
+  },
+  {
+   "id": "gut-70635-4",
+   "line": "L0003",
+   "severity": "read_aloud_wrong",
+   "fault": "cast-list rows are read as the first lines"
+  },
+  {
+   "id": "gut-70729",
+   "line": "L0257",
+   "severity": "cosmetic",
+   "fault": "II and III are the stanzas of a song"
+  },
+  {
+   "id": "gut-7073",
+   "severity": "read_aloud_wrong",
+   "fault": "passages from many Greek plays in one text; the editor's summaries (L0093, L0291, L0537) are read as speakers"
+  },
+  {
+   "id": "gut-7282-1",
+   "severity": "cosmetic",
+   "fault": "titled The Captivi and the Mostellaria; the Mostellaria is gut-7282-2"
+  },
+  {
+   "id": "gut-76792",
+   "line": "L0002",
+   "severity": "read_aloud_wrong",
+   "fault": "MEN and WOMEN (L0003) are headings of the cast list"
+  },
+  {
+   "id": "gut-77336",
+   "severity": "read_aloud_wrong",
+   "fault": "nine of Euripides's plays in one text; three stanzas of an ode (L0718, L0719, L0720) keep their numbers as speakers"
+  },
+  {
+   "id": "gut-78656",
+   "severity": "read_aloud_wrong",
+   "fault": "several duologues in one text; two titles (L0012, L0069) are read as speakers"
+  },
+  {
+   "id": "gut-8499-1",
+   "severity": "cosmetic",
+   "fault": "accents lost in an old encoding: mending them would add lines"
+  },
+  {
+   "id": "gut-8499-3",
+   "severity": "cosmetic",
+   "fault": "accents lost in an old encoding: mending them would add lines"
+  },
+  {
+   "id": "gut-8688-4",
+   "severity": "cosmetic",
+   "fault": "accents lost in an old encoding: mending them would add lines"
+  },
+  {
+   "id": "gut-8689-3",
+   "severity": "cosmetic",
+   "fault": "accents lost in an old encoding: mending them would add lines"
+  },
+  {
+   "id": "gut-8772",
+   "line": "L0334",
+   "severity": "read_aloud_wrong",
+   "fault": "the next speaker's label and words are in this speech"
+  },
+  {
+   "id": "gut-9792-3",
+   "line": "L0012",
+   "severity": "read_aloud_wrong",
+   "fault": "cast-list rows are read as the first lines (also L0013); the glossary's numbered notes are in L1508"
+  },
+  {
+   "id": "gut-994",
+   "line": "L0000a",
+   "severity": "read_aloud_wrong",
+   "fault": "cast-list rows are read as the first lines"
+  },
+  {
+   "id": "gut-9971-4",
+   "line": "L0916",
+   "severity": "read_aloud_wrong",
+   "fault": "LEONTINE'S is the words of a direction, read as a speaker"
+  }
+ ]
+}
