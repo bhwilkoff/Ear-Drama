@@ -314,3 +314,4 @@ GRW request sent or not.
   lost share adopted; its deletion of old orphans removed by the main thread: another device may still owe the text). A person
   without a copy of a production at an old revision has no text: 2 productions and 1 class exist, so listed, not built.
 - 2026-11-25 01:20: R4-9b merged (58 tests, 51 mutants, the design's detection table reproduced exactly). Old worktrees removed, branches kept. Reports: GitHub runs even a twice-hourly schedule about 3 times a day here; `reports.yml` has not fired on schedule yet.
+- 2026-11-25 02:00: B17b CarPlay merged (716 tests; not seen in a car). NOT shipped: launch on the iPhone 12 first (a CarPlay scene change crashed 1.0.59), after Screen Time ends in the morning. Next: B22 (103 published plays with known faults).
