@@ -269,3 +269,7 @@ GRW request sent or not.
   Kotlin `layoutOf` need the own-script directions rule in R4-6/7.
 - 2026-11-24 17:15: B15c Android merged (two mutants caught by the main thread; frames read: gut-3012 in a room on the Pixel and the Google TV). Tiles showed "BETWEEN" and "YOUNG OFF" as speakers: sent to B16. Not seen: a stub take across a rotation, Browse and Library in landscape after the fix.
 - 2026-11-24 18:25: R4-2b + R4-3 merged and pushed (cast by ear on the web; 32 suites, frames read; nine files timed: Dragnet 1951-04-26 plays 0.6-4.7 s early from a coarse seek table, Let George Do It drifts 2.4 s by minute 27, both uncorrected). B23 paperwork merged; reports agent running. Left for web: part rename while casting; the parts page failed-load state has no Close on a phone; Safari. R4-6 Apple started.
+- 2026-11-24 18:20: **Reports reach the owner** (088.6): Worker e4b1da14, `reports.yml` hourly at :41; a planted report opened issue #1
+  and emailed the owner, a second one emailed again, dismissing both closed it, planted rows deleted. Rooms: Remove and leave
+  (web); mic string and PrivacyInfo true (next build). Follow-ups: Apple `ReadSession.swift:290`, `ReadRoomReader.swift:105`,
+  `ReadCore.swift:326`; Android `ReadSession.kt:333`, `ReaderRoom.kt:212`, `ReadCore.kt:279` (leave only on Close). R4-4 may start.
