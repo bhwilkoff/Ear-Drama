@@ -704,11 +704,16 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 
 
 - **§4.9a Record** (Decision 075; the web's §4.15 is the shared rule;
-  not on a TV). The tab's root is a `LazyColumn`: **Yours** (this device's
+  not on a TV). The top bar carries **Add a script** (`Icons.Outlined.Add`;
+  §4.23). The tab's root is a `LazyColumn`: **Yours** (this device's
   productions and the shared ones not yet opened, each "n of m lines
   recorded", "Finished" or "Shared"; a production with no take is never a
   row and is deleted when the studio closes without one and whenever the
-  store loads, PLAYS-DESIGN §2.3 rule 3a; absent when empty), **Today's
+  store loads, PLAYS-DESIGN §2.3 rule 3a; absent when empty), **Your
+  scripts** (own scripts on this device, the last one changed first, each a
+  `GrammarRow` with its cast window, the title, and "N parts · N lines", "N
+  lines have no part" while it is being corrected, or "N of N lines cast";
+  absent when empty), **Today's
   scene** (§4.1's card; *replaced* 2026-11-15: "Today's play
   (`PlayHeadBoard` with Record this and Parts)"), **Plays** under a row of
   `FilterChip`s with menus (Voices 1-2 / 3-5 / 6-10 / 11+; Length Under
@@ -932,6 +937,11 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     - Export: `DataExport` adds `marks[]` (docs/EXPORT.md).
 
 - **§4.19 Reading together** (T4 2026-11-19, T5 2026-11-19; `ui/screens/ReadScreens.kt`, `ui/screens/ReaderRoom.kt`, `plays/ReadSession.kt`, `plays/ReadRecord.kt`, `plays/ReadPairing.kt`). Binding rule: PLAYS-DESIGN §12 (§12.10 is T5's) and Decision 082. The verbs are the web's (WEB-DESIGN §4.17 to §4.19). **The room drives the existing reader** (T5 closes T4's defect: T4 had drawn a separate plain list): `ReadRoomScreen` joins, then renders `ReaderScreen(room = RoomSeam)`, so the page turns on its own measured layout. The seam, like the studio's, follows the room's cursor with `ReadAlong.Follow` (the page turns to the cursor and lights it; a touch on the page stops the turning and shows **Back to the line**); the lines this device holds are tinted from the room (a part's claims, or a class seat's assignment ranges: `Mine`, a set of line indexes beside the studio's single role); **Hide my lines** is the room bar's, only in Rehearse, the cursor's line never hidden; one fact above the buttons ("Next: you, in N lines", "Ann is reading", "Waiting for Ann"); the part menu, the studio's Record and Hear the cast are not drawn in a room (no sound from a reader device). Join: a code by link or typed opens a join screen with the code and an optional name (40 characters; the last typed is kept in `ed.read`, the app has no chosen name to start from; a class room asks for the seat instead); `no_such_room` reads "No reading with that code." and `room_ended` "This reading has ended.", kept from the Worker's code by the shared client (`WorkerReadWire` maps the body's `error`; a test holds a 404 and a 410 to their words). **The room bar** (`RoomBar`): the fact, "N here", Parts (an adult room), and for the leader Back, Next, Again (Rehearse) and the **Reading** menu: mode (Table read, Rehearse, Record), Record every line here (Record mode), Lock joining, Read open parts, Open the screen, **Add a screen** (type the code a TV shows; "No screen shows that code.", "That code has expired."), End the reading. **Record in the room** (`ReadRecord`, the Kotlin mirror of js/read-record.js; the engine is `RecordingSession.recordInRoom`: no cue, `room` capture, the line's own part): in Record mode the **Record row** shows **Start recording** (the microphone permission, five seconds of room tone, once per room), **Recording** with **Stop** (red, the one place red appears), "Quiet while others record", "N takes on this device"; the take is written on the device first (a per-room local production, `Production.room`, with its outbox persisted), then sent to the receiver with `PUT /v1/read/{code}/takes/{id}`; `nobody_receiving`, offline, a timeout or a 5xx keeps it in the outbox and it is sent again every 5 seconds and on every snapshot. The receiver (`you.receives`) holds the pickup and imports each arrival as the line's chosen take; it records only in One microphone, which credits the line's part, keeps the take as the director's own and moves the cursor on. **Takes** (the receiver's sheet): counts per reader, each speaking line with Recorded / On <name>'s device / Waiting / Open, Play, Again, and in a class production Approve and Again, which offers an optional note; the class page lists takes that reached this app under Review (Play, Approve, Again, an optional note); **Listen through** and **Export** are the production page's own (`ListenThrough`); **Publish under my name** only in a class marked 13 and over with every line taken (credit name, the CC0 consent, `publish { credit_name }`, then `RoomPublish` sends each chosen take to `archive/files` one at a time, `not_ready` waits a minute and tries again, `already_sent` is skipped); an under-13 class shows "An under-13 class never publishes.". The teacher's class page and casting board are as in T4. Refusals and warnings use `ReadCore.refusal`'s words, one line. **NOT built**: the leader's arrow keys; dragging a part onto a seat; the receiver's takes are not synced to a second device; none of the microphone path has run on a real device (tests use fakes and the `appname_studio_stub` door). **TV panel rule**: a Google TV opens every room as the shared screen (`ReadScreenScreen`, or `ReadPairScreen` for Show a reading below): the line large with one before and one after, the code, who is here, one **Leave** button holding focus; it holds no part, leads nothing and records nothing (rule 12). While the leader's Read open parts is on, the screen's live device voice reads a line nobody holds and stops the moment the cursor moves (`openVoiceLine`); nothing is stored.
+- **§4.19a Removing a reader, and leaving** (PLAYS-DESIGN §12.13, 2026-11-24). For whoever may remove a member
+  (`ReadCore.removable`), "N here" is a `TextButton` opening an `AlertDialog` **Here**: each member by seat, name or "A screen",
+  "Away" when away, and **Remove**, confirmed by "Remove {name} and lock joining?". `leave` is sent by the person's act alone:
+  the reader's Close, system back, and the shared screen's Leave all go through `AppRoot`'s one `back`, which closes the room
+  it leaves (`RoomExit`); a disposal (a rotation, a tab, a call) only pauses the transport.
 - **§4.21 Your parts and Relay across time** (T6, 2026-11-19; `ui/screens/PartsScreen.kt`, `plays/RelayAcrossTime.kt`). Binding rule: PLAYS-DESIGN §12.11 and Decision 083. **Your parts** is a text button on the room's join screen (`Route.Parts`; not on a TV): the class code, then the names; the key is sealed under an Android Keystore key in `noBackupFilesDir/seats`, the class and name in `home-seats.json`. Each class production shows a part's name and line count with **Record** (the reader's studio on a production kept on this device) and every line with its take's state, as on the web (WEB-DESIGN §4.20 item 2). `RelayHub` holds one `RelaySender` per linked production; the ask, the back-off (5, 10, 20, 40, then 60 s) and the states are RelayCore's. The class page holds each production's pickup while it is open (`ClassInbox`). Roborazzi `android-relay-*` draws the waiting and sent states (`RelayRenderTest`). NOT built: a WorkManager job to send while the app is closed (the sender runs while the app is open, as the ruling says). Free plan (2026-11-23, PLAYS-DESIGN §12.11 item 4): the class page's pickup runs only while the screen is STARTED, stops after 30 minutes with no take and shows **Keep receiving takes** (a `Button` above the page); a backgrounded app makes no retry ask.
 
 ## §5 The player
@@ -1218,4 +1228,39 @@ file (`StandInNeverStoredTest`). No analytics.
 
 Bring the next change back to a rule here, or bring a new rule first.
 
+- **§4.23 Adding a script and casting by ear** (Decision 088.3; PLAYS-DESIGN §13 binding on what they do, WEB-DESIGN §4.21 and
+  §4.22 the siblings; R4 §7.6). Code: `ui/screens/OwnAddScreen.kt`, `OwnPartsScreen.kt`, `OwnSheets.kt`, `EarScreen.kt`;
+  `plays/OwnScript.kt` (the grammar), `OwnScripts.kt` (what is kept), `EarCore.kt` (what is lit, heard and tapped). Not on a TV:
+  no entry, and a script sent to one opens nothing. Full screen, as the reader: the tab bar and the mini player step aside.
+  1. **Add a script** (`Route.AddScript`, pushed on Record): a `TopAppBar` with Close and **Next**; an `OutlinedTextField` for
+     the title and one for the text, **Paste** (the clipboard, at the cursor) and **Open a file** (`OpenDocument`, `text/*`).
+     A text shared from any app (`ACTION_SEND` `text/plain`, its words or its file) and a text file opened from one
+     (`ACTION_VIEW` `text/plain`) land in the inbox the root drains and open the same page; nothing is read past the cap
+     (`OwnText`, twice 400,000 bytes), so the cap holds before any parsing. Text over text already there asks "Replace the
+     text?". The foot is one caption: the count and, once it is true, "Kept on this device"; refusals stand there. The fields
+     are never saved state (400 KB would not fit the system's bundle): the draft on disk is.
+  2. **The parts page** (`Route.OwnParts`): Back, the title over its count (a tap renames), Undo, **Done**; the strip
+     ("2 lines have no part", Next); `InputChip`s in a `FlowRow`, four (eight from 840 dp) then "N more", and **+ Part**; the
+     lines as the reader draws them (the name in its hue over its words, `PlayPage.layoutOf` with no emphasis rule) in one
+     `LazyColumn` keyed by line. A No part line is a dashed box in the warning color with its two nearest speakers, Direction
+     and More. A line opens a `ModalBottomSheet`; **from 840 dp wide a standard side sheet** beside the lines, which stay in
+     reach. The cut is a tap between two words; to TalkBack and a keyboard it is a slider over the gaps. A step announces
+     itself (a polite live region) and the haptic is `selection`, or `error` with a refusal.
+  3. **An own script's page** is the play's page (§4.9) with the kicker "Your script": Record this, Read; its Parts; "Added by
+     you · Kept on this device" (or "Automatic transcript", a link to its episode), "This script can't be published.", then
+     Edit, Save as text (`CreateDocument` `text/plain`) and Delete (an `AlertDialog`). No Read together here, and no Share of a production of one.
+  4. **Casting by ear** (`Route.Ear`, from **Record this** on an episode with a shown transcript whose times were read, or begun
+     here, and no castable script) uses the session's own Media3 player, held to the episode (`PlaybackEngine.hold`): at the
+     page's speed (0.75x at first, then the last chosen here, never the person's own), nothing queued after it, no other copy
+     tried, no saved place moved by a line played on its own; leaving lets go and what is playing plays on. The parts dock above
+     the transport, and are a rail from 840 dp with each part's count and a play button. The lit line is outlined in ink and
+     followed; the person's own scroll stops that, with **Back to the line**. A hardware keyboard's 1 to 9, Space, Left, U and
+     Ctrl+Z; a `selection` haptic when the part changes. The lit line is announced only while paused. A Listen Together guest is
+     told "Leave Listen together to play this."
+  5. **Storage**: `filesDir/Scripts/<id>/` (`doc.json`, `row.json`, `script.json`), a folder swapped whole so a full disk or a
+     kill never leaves half of one; `Scripts/draft.json`. Beside `Plays/`, which is untouched. A folder a newer version wrote is
+     left as it is and not listed. Never backed up off the device (`allowBackup` is false).
+  6. **States**: loading, the spinner; a script not here, "This script is not on this device."; a failed read, "This did not
+     load." with Try again ("You are offline." with no network); "No lines." with Undo in reach; a write that fails, "This
+     device is out of space." or "This device could not save it." above the page with Try again, the work kept on the page.
 - **§4.22 Student privacy** (Decision 084, PLAYS-DESIGN §12.12; `ui/screens/PrivacyUi.kt`, `plays/AgeGate.kt`). The teacher's class page ends with **Class** (Ends {date}, **Change date** in the Material date picker bounded today to 400 days ahead, **Export class** through `CreateDocument("application/json")` as "{class name} export.json", **Delete class** in an `AlertDialog` whose confirm is in the error role) and an under-13 class without approval is headed by **School approval**. The class list shows "Deleted {date} unless opened". A class publish adds the two confirmations. The age question ("What year were you born?", a year list with no default) comes before Share, Invite, Take part and Publish / I agree, outside a class; only the Boolean is kept in preferences `ed.over13`. A director's **Delete for everyone** is offered only while the production has no archive job. Roborazzi `android-*` frames in `docs/research/design/img/privacy/` (`PrivacyRenderTest`).
