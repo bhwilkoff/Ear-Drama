@@ -273,3 +273,8 @@ GRW request sent or not.
   and emailed the owner, a second one emailed again, dismissing both closed it, planted rows deleted. Rooms: Remove and leave
   (web); mic string and PrivacyInfo true (next build). Follow-ups: Apple `ReadSession.swift:290`, `ReadRoomReader.swift:105`,
   `ReadCore.swift:326`; Android `ReadSession.kt:333`, `ReaderRoom.kt:212`, `ReadCore.kt:279` (leave only on Close). R4-4 may start.
+- 2026-11-24 19:20: **R4-4 live**: D1 0013, Worker 5d06f743 (652 tests; testTimeout 30 s after two load timeouts), privacy page
+  2026-11-24, operator.yml no longer prints inputs (its one past run showed only a probe). R4-5 clients next (needs in
+  WORKER.md "Own scripts"); web directors likely read x-take as null before today (CORS expose): recheck in a browser. B16 on
+  its branch (1,229 plays; every new opening and ending is to be read before publishing). Mac strained (swap 11 GB): no new
+  build agents until the Apple and Android ones finish.
