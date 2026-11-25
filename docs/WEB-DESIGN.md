@@ -673,7 +673,8 @@ web app follows today.
   (`API.plays.available()`), and none of it on a TV.
   - **The cast sheet of an unshared production** ends with **Share** (an
     optional name field); signed out, Share opens the account sheet beside
-    "Sharing needs an account."
+    "Sharing needs an account." An own script's says who can read it there, and
+    its shared cast sheet adds §4.21 item 10's rows.
   - **A shared cast sheet** (`?production=` with a `share.json`): the
     Worker's parts and names; Record and Release on my claim; Take part on
     every open part while none records (the suggested one the accent);
@@ -1194,7 +1195,10 @@ web app follows today.
      offline."; "This reading has ended." with Close. A reload rejoins with this tab's member key
      (`sessionStorage` `ed.read`), never localStorage or a URL.
   7. **Start a reading** (Read together): on a play's page it opens an adult room as leader; on
-     the class page (§4.19) a class room. Both land on `?read-room={CODE}`.
+     the class page (§4.19) a class room. Both land on `?read-room={CODE}`. An own script shares first
+     (PLAYS-DESIGN §13 item 13), and every device in its room that lacks the script, the screen too, fetches it with
+     its member key; one that was removed, was reported, or did not arrive whole is its refusal in place of the
+     reader, with Try again.
   8. **The clock**: every answer and pong is a sample (`API.read.samples()`), and the session's
      `offset()` is ReadCore.clockOffset for T4's delay gate; `?readdiag=1` logs it, nothing on
      screen.
@@ -1252,7 +1256,10 @@ web app follows today.
   5. **Plays**: each class production with its progress per seat ("12 of 15 lines recorded",
      approved and again counts; counts only, never a ranking) and **Cast** (the casting board);
      under them **Pick a play** (a native select of the play library by name, `PlaysCore.pickList`: a
-     title two plays share carries its author, then its length) and **Make**.
+     title two plays share carries its author, then its length), then the teacher's own scripts under "Your scripts"
+     ("Only this class can read this script." while one is picked), and **Make**. A play whose script is owed says "The
+     script was not sent." with **Try again**; a removed one, "This script was removed." Export class adds each own
+     script's lines, from this browser or the Worker; one that does not load is said, and the rest is saved.
   6. **The casting board** (`?class={id}&cast={production id}`): the seats as draggable chips
      with their totals (lines, words; tabular), then the parts largest first, each row the part
      name in its hue, its facts (lines, words, scenes, longest speech) and a native `<select>` of
@@ -1287,6 +1294,8 @@ web app follows today.
      "On this device · sends when {name} is in Ear Drama", "Sending", "Sent", then the teacher's review
      on its own line, "Approved" or "Again · {note}" (the refusal colour only for Again). A refusal that
      leaves the queue shows the Worker's own words. The join page carries a quiet **Your parts** link.
+     A class's own script is fetched with the seat key and kept with the seat's production; its refusal stands where
+     the parts would: "This script was removed.", "Your teacher has not sent this script yet.", "This script did not arrive whole."
   3. **A member's takes** (the director's cast sheet for a shared production) carry the same rows under
      "Your takes", the sender working while the page is open; **Upload** stays as the manual door.
   4. **The teacher's progress list** (§4.19 item 5) refreshes on each arrival ("3 of 43 lines recorded").
@@ -1306,7 +1315,8 @@ web app follows today.
      same. A file over text already there asks first ("Replace the text?"). The foot is one caption: the
      count ("9 parts · 297 lines") and, once it is true, "Kept on this device". Refusals stand there:
      "That file is too long.", "That is not a text file.", "That text is too long.", "This browser is out
-     of space."; Next with no title puts the focus there with "Add a title."
+     of space."; Next with no title puts the focus there with "Add a title." "That text is too long." is judged as it
+     is typed, on what Done would keep (`OwnCore.builtRefusal`: every line with its id and its part).
   3. **The parts page**: Back, the title (a button that renames the script) over its count, Undo, Done. Under
      it the strip ("2 lines have no part", Next), absent when there are none; the parts as chips, largest first,
      four on a phone and eight from 860 px, then "N more", and **+ Part**. The script is the reader's speaker-over-speech page (§4.16
@@ -1325,16 +1335,26 @@ web app follows today.
   6. **Keys**: the lines are one tab stop (Up and Down, Home and End, Enter opens); a No part line's chips join
      the tab order when it is the current line; Control or Command-Z is Undo. The count and each step are announced.
   7. **An own script's page** (`?play=own-…`) is the play's page (§4.10) with the kicker "Your script", its opening
-     as a page (whole speeches only), Record this and Read, its Parts, then "Added by you · Kept on this device" and "This script can't be
-     published.", and Edit, Save as text, Delete (the browser's own confirmation). No Share and no Read together
-     here or on its productions (PLAYS-DESIGN §13).
-  8. **States**: loading is the spinner; a script not here is "This script is not in this browser."; a failed
+     as a page (whole speeches only), Record this, Read and Read together, its Parts, then "Added by you · Kept on this device" (once shared,
+     "Added by you · Shared") and "This script can't be published.", and Edit (once shared, **Edit a copy**), Save as text,
+     Delete (the browser's own confirmation). Sharing is item 10.
+  8. **States** stand in the page's own bar, as §4.22 item 8's do, so Close is there on a phone: loading is the spinner; a script not here is "This script is not in this browser."; a failed
      read is "This did not load." with Try again; a script with every line left out says "No lines." with
      Undo in reach. Nothing here needs the network. A write that fails says why above the page ("This browser is out of
      space.", else "This browser could not save it.") with Try again, and the page keeps the work.
   9. **Storage**: `ed-plays` version 2 adds the object store `scripts`; version 1's `files` is untouched. A tab still
      open on version 1 keeps the new one out: "Close Ear Drama's other tabs." A connection now closes itself when a newer
      page asks (`versionchange`). `navigator.storage.persist()` is asked when a script is first kept.
+  10. **Shared** (PLAYS-DESIGN §13 items 11 to 16 binding; R4-5). A page that had the script open when it was shared
+     elsewhere may not write it ("This script is shared."). Code: `js/plays-share.js` (`share`, `sendScript`,
+     `scriptOf`, the one resolver) and the views of §4.10a, §4.17, §4.19 and §4.20; tests `js/own-share.test.js`; the
+     bench, the frames and their gate `tools/own_share_bench.py` (real browsers and a local Worker).
+     Share stands on an unshared production as on any (§4.10a), over the caption "Only people you invite can read this
+     script." A shared cast sheet of one carries after its Parts: that caption, or the state's refusal (with Try again
+     when it is owed); "This script can't be published."; then **Read together** (its director), **Edit a copy** (who
+     brought it) and **Report script** (a member who did not: §4.10a's report form, Copyright added). People names who
+     brought it ("Director · added this script").
+  11. **Title sheet**: rename, and **Delete** while the script is not Done (`confirm()` "Delete {title}?").
 - **§4.22 Casting by ear** (`?cast={episode id}`; PLAYS-DESIGN §13 item 10 binding; Decision 088.3). Code:
   `js/ear-ui.js` (the page), `js/ear-core.js` (what is lit, heard, and tapped), `js/own-core.js` and
   `js/own-store.js` as §4.21; tests `js/ear.test.js`; frames and gate `tools/web_fit_ear.py`. Not on a TV.
@@ -1355,6 +1375,8 @@ web app follows today.
   5. **Keys**: 1 to 9 the parts, Space, Left, U (and Control or Command-Z), before the player's own; a control the
      keyboard is on keeps its Space, and a press with the pointer leaves the keyboard where it was. The lines are one tab stop (Up,
      Down, Home, End, Enter). The lit line is announced only while paused.
+     The **+ Part** sheet lists the parts under **Rename**: a tap puts that name in the field (a name another part has
+     joins the two). The page's title opens a sheet with **Delete** while the casting is not Done.
   6. **The line sheet** (§4.21 item 5's): the words with the cut, the parts, Direction, Sound, Hear it (the line, then
      back), Edit words, Split here, Join to line above, Leave out, Play from here. What it gives a line is that
      line's alone. The episode waits while a sheet is open. A line with a take keeps Hear it, Edit words, Play from here.
@@ -1663,7 +1685,8 @@ web app follows today.
   - **Stage play**: with its opening, the page as today and 1 to 4 rules (2, 3-4, 5-8, 9+ voices)
     at y 93 on a foot band from y 86 in the page's ground, the last speech held to one line; without
     it (rows, the head board), the cast drawn on the drama board, a bar per speaking part up to
-    seven, "+N" past them.
+    seven, "+N" past them at the last bar's end; where that bar would reach it every bar is drawn to
+    the same shorter scale (R4-2c, 2026-11-24: "+51" stood on seven even bars; the web first).
   - The window keeps the picture's hairline edge (`data-art="label"`). `tools/web_fit_label.py`
     fails on a title block left, an empty label, text outside its label, or a 64 px window above
     tier S.
@@ -2074,4 +2097,3 @@ web app follows today.
 **E1 rules (2026-10-30, D4 review).** Stations after the evening ends: the Tonight row keeps "Ended at 9:00 PM" and offers Replay (a primary button, the first playable slot from the top, played as an ordinary episode, never live). Library carries "Export my data" and "Export history (CSV)" as ghost buttons in the account row (`js/export.js`; docs/EXPORT.md). The rights line is read from `rightsLines`, never typed.
 
 **R14 Dates and recordings never show raw archive text** (owner, 2026-10-31: *"We want to be both unambiguous and well designed. Spelling out the month (or abbreviating it for space) is far better."*; AGENTS.md: raw upload text never shows). `API.mediumDate` is the one formatter: rows, event lines, the Now Playing line, the lock screen and share text say "Sep 17, 1949", a month "Sep 1949", a year "1949"; the episode page keeps the long form; a date that is no day shows as stored. `tools/web_fit_*.py` and `js/api.test.js` fail on an ISO shape in the rendered DOM. Recordings are labeled by `recordings.label` (read when the catalog has it, ignored when empty or identifier-shaped), else "Recording N" with the best copy marked; the identifier is only the "View on archive.org" link target (`API.recordingLabel`).
-

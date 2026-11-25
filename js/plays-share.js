@@ -190,7 +190,7 @@ const PlaysShare = (() => {
     ...(rec.credits || []).map(c => ({ user_id: null, display_name: c.name, performer: true, consented: false, credited: true })),
   ];
   /** True when this person, not the director, performs in a complete play and has not agreed yet. */
-  const needsMyConsent = (rec, script, me) => !!me && !rec.archive && rec.director !== me && complete(rec, script)
+  const needsMyConsent = (rec, script, me) => !!me && !rec.archive && publishable(rec) && rec.director !== me && complete(rec, script)
     && performers(rec).some(m => m.user_id === me && !m.consented);
   /** The performers other than the director who have not agreed: Publish waits on them. */
   const waitingOn = (rec) => performers(rec).filter(m => m.user_id !== rec.director && !m.consented);
@@ -232,8 +232,12 @@ const PlaysShare = (() => {
     return out;
   }
 
+  /** Whether the record's script may be published at all (Decision 088): false for an own script, always. */
+  const publishable = (rec) => rec.publishable !== false;
+  /** Why Publish is absent, in the place it would be (PLAYS-DESIGN §13 item 16); null when it may be offered. */
+  const neverPublishes = (rec) => (publishable(rec) ? null : isOwnId(rec.scriptID) ? 'This script can’t be published.' : LINES.script_not_publishable);
   /** Publish for the director of a complete play (rule 9). Whether the Worker can upload is `consent.publishes`. */
-  const canPublish = (rec, script, me) => !!me && rec.director === me && !rec.archive && complete(rec, script);
+  const canPublish = (rec, script, me) => !!me && rec.director === me && !rec.archive && publishable(rec) && complete(rec, script);
 
   /**
    * Publish after the consent screen (rule 6, Decisions 059 and 072): the agreement at the
@@ -247,14 +251,135 @@ const PlaysShare = (() => {
     return api.publish(pid);
   }
 
-  /** "Share this production": the Worker makes the record; the caller directs it. */
-  async function share({ api, store, local, script, displayName }) {
+  /** What makes a production on the Worker (`POST /productions`, `POST /classes/:id/productions`): an own script's carries its title and source. */
+  const makeBody = (script) => ({
+    script_id: script.id, script_revision: script.revision, cast: castSheet(script),
+    ...(isOwnId(script.id) ? { own: true, title: script.title, ...(script.episode ? { episode_id: script.episode } : {}) } : {}),
+  });
+
+  /**
+   * "Share this production": the Worker makes the record; the caller directs it. An own script's lines
+   * follow (§13 item 11): a sending that may pass later leaves the production shared and `unsent` (the
+   * error); one that never can undoes the share and throws.
+   */
+  async function share({ api, store, local, script, displayName, scripts = ownScripts() }) {
     const name = (displayName || '').trim();
-    const rec = await api.create({ script_id: script.id, script_revision: script.revision, cast: castSheet(script),
-                                   ...(name ? { display_name: name } : {}) });
+    const rec = await api.create({ ...makeBody(script), ...(name ? { display_name: name } : {}) });
     await store.setShare(local.id, { pid: rec.id });
-    return rec;
+    if (!isOwnId(script.id)) return rec;
+    const unsent = await sendOrUndo({ api, pid: rec.id, script, scripts });
+    if (!unsent) return rec;
+    if (passes(unsent)) return { ...rec, unsent };
+    await store.unshare(local.id);
+    throw unsent;
   }
+
+  /* ---- Own scripts (PLAYS-DESIGN §13 items 11 to 16; docs/WORKER.md "Own scripts") ---- */
+
+  const isOwnId = (id) => typeof id === 'string' && id.startsWith('own-');
+  const ownScripts = () => (typeof OwnScripts === 'undefined' ? null : OwnScripts.shared());
+  const coded = (code, why) => Object.assign(new Error(why ? `${code}: ${why}` : code), { code });
+  /** A refusal that may pass by itself: no answer, the server's own trouble, too many asks, signed out. */
+  const passes = (err) => !(err && err.status >= 400 && err.status < 500) || err.status === 401 || err.status === 429;
+
+  /** Sends a production's own script, once: the lines as they were hashed. A text already there is the same text. */
+  async function sendScript({ api, pid, script }) {
+    try { await api.putScript(pid, OwnCore.canonicalLines(script.lines)); } catch (e) { if (!e || e.code !== 'already_there') throw e; }
+  }
+  /** sendScript for a production just made: null, or the error. From here the script is frozen (item 12); one that can never be sent takes its production with it. */
+  async function sendOrUndo({ api, pid, script, scripts = ownScripts() }) {
+    const freeze = async () => { if (scripts) await scripts.freeze(script.id).catch((x) => console.error(x)); };
+    try { await sendScript({ api, pid, script }); } catch (e) {
+      if (!passes(e)) { await api.deleteProduction(pid).catch((x) => console.error(x)); return e; }
+      await freeze();
+      return e;
+    }
+    await freeze();
+    return null;
+  }
+
+  /** The record's own script: null for a catalog play, else its state, with `held` (the owner removed it) and `mine` (this person brought it). */
+  function ownState(rec, me = null) {
+    const s = rec && rec.own_script;
+    if (!s) return null;
+    return { state: s.state, held: s.state === 'removed' && s.by !== null, mine: !!me && s.by === me, by: s.by || null };
+  }
+
+  const fetched = new Map();
+  const sameParts = (script, want) => {
+    const have = C.castParts(script);
+    return have.length === want.length && want.every((w) => have.some((p) => p.id === w.id && (w.lineCount === undefined || p.lineCount === w.lineCount)));
+  };
+  const holdsLines = (script, ids) => { const at = new Set(script.lines.map((l) => l.id)); return ids.every((id) => !id || at.has(id)); };
+  const holdsParts = (script, ids) => { const at = new Set(C.castParts(script).map((p) => p.id)); return ids.every((id) => at.has(id)); };
+  /** What each door knows of the cast sheet, for a script to be held against. */
+  const fits = {
+    invite: (inv) => (script) => sameParts(script, inv.parts || []),
+    record: (rec) => (script) => sameParts(script, Object.keys(rec.parts || {}).map((id) => ({ id })))
+      && holdsLines(script, (rec.takes || []).map((t) => t.lineID)),
+    room: (snap) => (script) => holdsLines(script, [snap.cursor]) && holdsParts(script, Object.keys(snap.claims || {})),
+    seat: (prod) => (script) => holdsParts(script, (prod.assignments || []).map((a) => a.part))
+      && holdsLines(script, (prod.assignments || []).flatMap((a) => [a.from, a.to])),
+  };
+
+  /** The Worker's bytes as a castable script, or `script_damaged`: their SHA-256 is the revision, they are canonical, the core keeps them, and they match the cast sheet. */
+  async function arrived({ bytes, meta }, want, fit, link) {
+    const O = OwnCore;
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+    if ([...digest.subarray(0, 6)].map((b) => b.toString(16).padStart(2, '0')).join('') !== want.revision) throw coded('script_damaged', 'digest');
+    let lines = null;
+    try {
+      const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
+      lines = JSON.parse(text);
+      if (!Array.isArray(lines) || O.canonicalLines(lines) !== text) lines = null;
+    } catch { lines = null; }
+    if (!lines) throw coded('script_damaged', 'text');
+    if (!meta || meta.id !== want.id || meta.revision !== want.revision || typeof meta.title !== 'string') throw coded('script_damaged', 'names');
+    const episode = typeof meta.episode_id === 'string' && meta.episode_id ? meta.episode_id : null;
+    const script = {
+      id: want.id, revision: want.revision, kind: 'own', title: meta.title, authors: [],
+      source: episode ? { name: 'Automatic transcript', url: link(episode) } : { name: 'Shared script', url: '' },
+      ...(episode ? { episode } : {}), rights: { bucket: 'own', evidence: [] }, roles: O.rolesOf(lines), lines,
+    };
+    const why = O.refusalOf(script);
+    if (why) throw coded('script_damaged', why);
+    if (!fit(script)) throw coded('script_damaged', 'cast sheet');
+    return script;
+  }
+
+  /** Who asks, and so which route answers: a member, a holder of an invite, a class's seat, a member of a room. */
+  const readAs = (api, who) => (who.token ? api.plays.inviteScript(who.token)
+    : who.seat ? api.plays.seatScript(who.seat, who.pid)
+      : who.room ? api.read.script(who.room, who.key)
+        : api.plays.script(who.pid));
+
+  /**
+   * The script of a production, an invite, a seat's part or a room (item 11): the one way every screen
+   * gets it. A catalog play is the library's at `revision` (or the bundle's; any revision with
+   * `anyRevision`). An own script is this device's copy in the production, this device's script at that
+   * revision, then the Worker's, drawn only once it is shown to be whole (`fit`). Throws with the
+   * Worker's code, `revision_mismatch` or `script_damaged`; what it answers is never null.
+   */
+  async function scriptOf({ api, id, revision, who = {}, fit = () => true, store = null, scripts = ownScripts(), anyRevision = false }) {
+    if (!isOwnId(id)) {
+      const found = await api.playScript(id);
+      if (found && (found.revision === revision || anyRevision)) return found;
+      const held = scriptFor(await api.castableScripts(), id, revision);
+      if (held) return held;
+      throw coded('revision_mismatch');
+    }
+    const local = store && who.pid ? store.findShared(who.pid) : null;
+    const kept = local ? await store.script(local) : null;
+    if (kept && kept.id === id && kept.revision === revision) return kept;
+    const mine = scripts ? await scripts.script(id).catch(() => null) : null;
+    if (mine && mine.revision === revision) return mine;
+    const key = `${id}@${revision}`;
+    if (fetched.has(key) && fit(fetched.get(key))) return fetched.get(key);
+    const script = await arrived(await readAs(api, who), { id, revision }, fit, (e) => `https://eardrama.org${api.shareLink('episode', e)}`);
+    fetched.set(key, script);
+    return script;
+  }
+  const forgetFetched = () => fetched.clear();
 
   /** The production in this browser for a shared one, made from the bundle's script on first open. */
   async function localFor(store, pid, script) {
@@ -374,6 +499,15 @@ const PlaysShare = (() => {
     not_castable: 'This play cannot be shared.',
     cast_mismatch: 'This play cannot be shared.',
     script_not_publishable: 'This play cannot be published.',
+    script_too_long: 'This script is too long to share.',
+    scripts_full: 'Sharing scripts is full.',
+    script_removed: 'This script was removed.',
+    script_reported: 'This script has been reported.',
+    script_damaged: 'This script did not arrive whole.',
+    no_script: 'This script has not been sent yet.',
+    bad_script_id: 'This script cannot be shared.',
+    not_on_device: 'This script is not in this browser.',
+    needs_account: 'Sharing needs an account.',
     production_full: 'This production is full.',
     too_many_productions: 'You have too many shared productions.',
     too_many_takes: 'This line has too many takes.',
@@ -387,9 +521,19 @@ const PlaysShare = (() => {
     bad_name: 'That name is not allowed.',
     rate_limited: 'Too many tries. Try again in a minute.',
   };
+  /** The refusals an own script's sharing can meet, for screens whose other words are ReadCore's; '' for any other. */
+  const SCRIPT_CODES = new Set(['script_too_long', 'too_many_scripts', 'scripts_full', 'script_removed', 'script_reported', 'script_damaged', 'no_script',
+    'bad_script_id', 'revision_mismatch', 'script_not_publishable', 'not_on_device', 'needs_account']);
+  const scriptLine = (err) => {
+    const code = (err && err.code) || '';
+    return SCRIPT_CODES.has(code) || (code === 'bad_name' && err.detail) ? line(err) : '';
+  };
   function line(err) {
     if (!err) return '';
+    if (err.name === 'QuotaExceededError') return 'This browser is out of space.';
     const code = err.code || '';
+    if (code === 'bad_name' && err.detail) return err.detail === 'title' ? 'The title is not allowed.' : `The part name ${C.partTitle(err.detail)} is not allowed.`;
+    if (code === 'too_many_scripts') return `You have shared ${err.detail || 20} scripts. Delete a production of one first.`;
     if (code === 'another_part_is_recording') return `${C.partTitle(err.detail)} is still recording.`;
     if (code === 'lines_missing') {
       const n = Array.isArray(err.detail) ? err.detail.length : 0;
@@ -418,6 +562,6 @@ const PlaysShare = (() => {
 
   return {
     consentBlocks, PUBLISH_WAITS, archiveStatus, canPublishAgain, changeableLines, published, ownParts, canPublish, publishPlay, performers, needsMyConsent, waitingOn, agreeToPublish, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
-    upload, mergedChosen, missingHere, inStep, bringHome, share, join, localFor, scriptFor, libraryRows, inviteLink, inviteToken, pendingInvite, holdInvite, pickAudio, line,
+    upload, mergedChosen, missingHere, inStep, bringHome, share, makeBody, sendScript, sendOrUndo, passes, isOwnId, ownState, publishable, neverPublishes, fits, scriptOf, forgetFetched, scriptLine, join, localFor, scriptFor, libraryRows, inviteLink, inviteToken, pendingInvite, holdInvite, pickAudio, line,
   };
 })();

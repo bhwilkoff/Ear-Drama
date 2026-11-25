@@ -166,8 +166,8 @@
       return el('div', { class: 'state' }, el('p', { class: 'caption' }, opts.text),
         el('a', { class: 'btn', href: opts.action.href }, opts.action.label));
     }
-    const text = kind === 'offline' ? 'You are offline.' : kind === 'missing' ? 'Not in the catalog.'
-      : 'This did not load.';
+    const text = opts.text || (kind === 'offline' ? 'You are offline.' : kind === 'missing' ? 'Not in the catalog.'
+      : 'This did not load.');
     return el('div', { class: kind === 'offline' ? 'state state-problem state-offline' : 'state state-problem', role: 'alert' },
       el('p', { class: 'body' }, text),
       opts.retry && kind !== 'missing' ? el('button', { type: 'button', class: 'btn', onclick: opts.retry }, 'Try again')

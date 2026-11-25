@@ -1940,11 +1940,11 @@ and has no class page). Words are exactly these; a refusal is `ReadCore.refusal(
 The owner, 2026-11-24: *"You should be able to record your own version of
 anything you want with your own casting."* Research and frames:
 `docs/research/design/R4-record-anything.md`. Core: `js/own-core.js`
-(`R4-core-port-brief.md`). Built on the web, on the device only: adding (R4-2) and
-casting by ear (R4-3). Sharing and classes are R4-4 and R4-5, and Apple and Android
-are R4-6 and R4-7. Until sharing is built, an own script and its productions offer no
-Share, no Read together, no Invite and no Publish: the buttons are absent, never
-dead.
+(`R4-core-port-brief.md`). Built on the web: adding (R4-2), casting by ear (R4-3),
+sharing, classes and reading together (R4-5, over R4-4's Worker routes). Apple and
+Android are R4-6 and R4-7; until sharing is built on one of them, an own script and its
+productions there offer no Share, no Read together, no Invite and no Publish: the
+buttons are absent, never dead.
 
 1. **An own script** is a script a person brought or cast by ear. It has the castable shape, an
    id `own-<uuid>`, line ids given once and never reused, and the catalog's
@@ -1955,7 +1955,8 @@ dead.
    `catalog/tests/golden/own_script_parse.json`) proposes parts; a paragraph it
    cannot place is shown as **No part**. Every piece is a slice of the person's
    text. The app never writes, completes, or corrects a word. The text being added
-   is kept as it is typed, so a closed page loses nothing. A Project Gutenberg text
+   is kept as it is typed, so a closed page loses nothing. A text too long to keep is refused
+   here, judged on what Done would keep (every line with its id), not on its own bytes. A Project Gutenberg text
    is read between its own marker rows (`*** START OF THE` or `THIS PROJECT
    GUTENBERG EBOOK ...` and its END, with or without a space after the stars, a
    title that runs on to the next row included; the last row `End of [the] Project
@@ -1980,13 +1981,14 @@ dead.
    list. A part that holds such a line keeps its name.
 5. **A change to a script reaches its productions on this device** (they are one
    text): each takes the new lines and revision, keeps its takes, and gains or
-   loses parts with them.
+   loses parts with them. Sharing ends that (item 12).
 6. **It never publishes.** "This script can't be published." stands on its page.
    Export stays: a finished recording, the script as text (Save as text, readable
    as Fountain), and `scripts[]` in Export my data.
 7. **Delete** asks: "Delete {title}?", and with productions "Delete {title}? Its
    productions keep their copy." Its marks and voice choices go with it unless a
-   production is left to read them in.
+   production is left to read them in. A script not yet Done has Delete in the sheet its
+   title opens, on the parts page and the casting page.
 8. Kokoro voices are not offered for a script with no published phonemes; the
    device's own voices are.
 9. Its kicker is **Your script** (`kind: "own"`), never Radio play or Stage play:
@@ -1996,7 +1998,8 @@ dead.
    `ear_cast_lines.json`) with the episode playing and the line being said lit. A
    tap on a part gives it that line and those after, until the next tap; only lines
    the episode was heard through carry, so a seek hands nothing to anyone. **+ Part**
-   names a voice, and the lit line is theirs. Leave out works the same way. Undo takes
+   names a voice, and the lit line is theirs; a part can be renamed while it is cast (its
+   name on every line of theirs, refused when one has a take). Leave out works the same way. Undo takes
    back any step since the page opened. The app proposes no speaker and analyzes no
    voice. "Automatic transcript" stays on the page. The broadcast's sound is never a
    cue, a take, or in a mix, and no time is in the script.
@@ -2026,3 +2029,38 @@ dead.
      is a Xing table (100 places, each to 1/256 of the file) it plays 0.6 to 4.7 s
      early after a seek, and is right when played from its start. Nothing corrects for
      either: the page only lights a line.
+11. **Sharing** (Decisions 079 and 088.4; docs/WORKER.md "Own scripts"; R4-5). **Share** on a production asks
+   for an account, then makes the production on the Worker (`own: true`) and sends the script's lines once, as
+   canonical JSON. One line says who can read it, where it is pressed and after: **"Only people you invite can
+   read this script."** (a class: **"Only this class can read this script."**). Nothing lists, searches, links
+   or recommends a shared script, on any platform.
+   - **Refusals**: "The title is not allowed."; "The part name {part} is not allowed."; "This script is too long
+     to share."; "You have shared 20 scripts. Delete a production of one first."; "Sharing scripts is full.";
+     "This script was removed."; "This script has been reported."
+   - **The text's state** is the record's `own_script.state`. `owed`, when its sending failed for now (no network,
+     "Sharing scripts is full."): "The script was not sent." with **Try again**, and no Invite; `409 already_there`
+     is success. A refusal that can never pass (`script_too_long`, `revision_mismatch`, `script_removed`) undoes the
+     share. `kept`: Invite. `removed`: "This script was removed."; by the owner (`by` is set) no part is taken,
+     sent or read together; with the account that brought it (`by` is null) members go on and nobody new comes in.
+     What a member has stays on their device either way.
+   - **One resolver** answers "the script of this production or room" for a member, an invite, a class, a seat and
+     a room (web `PlaysShare.scriptOf`). A catalog play is the library's, at the recorded revision. An own script is
+     this device's copy in the production, then this device's script at that revision, then the Worker's. What the
+     Worker sends is drawn only when its SHA-256 is the revision, it is canonical, it passes the core's own check,
+     and it matches the cast sheet (an invite's parts and line counts, a record's parts, a room's cursor and
+     parts, a seat's lines); else "This script did not arrive whole." with Try again. A removed script has no Try again.
+   - The fetched script is kept in its production's folder, and recording, relay, listen through, read along and
+     export read that copy.
+12. **A shared script is frozen**: its page and its production offer **Edit a copy** (a new script with a new id, no
+   takes, and the same source) where Edit was, and its parts and casting pages open its page instead. Read together
+   and a class freeze it as Share does.
+13. **Read together shares first.** On an own script's page it asks once ("Share {title}? People who join the
+   reading can read it."), shares a production of it (or uses the one already shared), and opens a room that
+   carries that production; signed out, "Sharing needs an account." A shared production's page has it too, for its director.
+14. **A class**: the teacher's own scripts stand after the plays in Pick a play. A seat fetches the text with its
+   seat key and never sends text. The class export adds each own script's lines from the teacher's device.
+15. **Report script** (in the production, for a member who did not bring it): the reasons of every report, and
+   Copyright. The production is hidden from its reporter at once ("Reported. This production is hidden from
+   you."), with Delete production for this device's copy.
+16. **Publish is absent** where the record says `publishable: false`, and the reason stands there: "This script can't
+   be published." (an own script), "This play cannot be published." (any other).

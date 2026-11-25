@@ -34,6 +34,7 @@ const PlaysUI = (() => {
   const S = PlaysShare;
   const REASONS = [['offensive', 'Offensive'], ['harassment', 'Harassment'], ['personal_information', 'Personal information'],
                    ['not_a_performance', 'Not a performance'], ['other', 'Other']];
+  const SCRIPT_REASONS = [['copyright', 'Copyright'], ...REASONS];
 
   const $ = (id) => document.getElementById(id);
   const ICON = {
@@ -250,9 +251,11 @@ const PlaysUI = (() => {
       if (rows.length >= 5) break;
       let rec = null;
       try { rec = await API.plays.get(r.id); } catch (err) { console.error(err); continue; }
+      // The record's parts are the cast sheet's, so a script is read only for a catalog play's order; an own script's text is not fetched for a count.
       let script = null;
-      try { script = await API.playScript(rec.scriptID); } catch { script = null; }
-      const open = C.openSpeakingParts(rec, script && script.revision === rec.scriptRevision ? script : null);
+      try { script = S.isOwnId(rec.scriptID) ? null : await S.scriptOf({ api: API, id: rec.scriptID, revision: rec.scriptRevision }); } catch { script = null; }
+      const state = S.ownState(rec);
+      const open = state && state.state !== 'kept' ? [] : C.openSpeakingParts(rec, script);
       if (open.length) rows.push({ r, n: open.length });
     }
     if (!rows.length) return null;
@@ -269,13 +272,14 @@ const PlaysUI = (() => {
       helpers.el('h3', { class: 'section-header', id: 'open-parts-h' }, 'Open parts'), ul);
   }
 
-  /** A shared production this browser has not opened: made here from the bundle's script (§11.7 rule 11). */
+  /** A shared production's script, for a member of it. */
+  const memberScript = (rec) => S.scriptOf({ api: API, store, id: rec.scriptID, revision: rec.scriptRevision, who: { pid: rec.id }, fit: S.fits.record(rec) });
+
+  /** A shared production this browser has not opened: made here from its script (§11.7 rule 11, §13 item 11). */
   async function openRemote(remote, status) {
     try {
       const rec = await API.plays.get(remote.id);
-      const found = await API.playScript(rec.scriptID);
-      const script = found && found.revision === rec.scriptRevision ? found
-        : S.scriptFor(await API.castableScripts(), rec.scriptID, rec.scriptRevision);
+      const script = await memberScript(rec);
       const local = await S.localFor(store, rec.id, script);
       h.navigate(`?production=${encodeURIComponent(local.id)}`);
     } catch (err) { console.error(err); status.textContent = S.line(err); }
@@ -346,7 +350,7 @@ const PlaysUI = (() => {
                          mark: fingerprint(script, 'g-head-strip pl-print-head'), ...(hero ? { hero: true, picture, ...(win ? { win } : {}) } : {}) });
   }
   const kindOf = (script) => (script.kind === 'own' ? 'Your script' : script.kind === 'radio' ? 'Radio play' : 'Stage play');
-  /** An own script or a production of one (PLAYS-DESIGN §13): no Share, no Read together, until R4-5. */
+  /** An own script or a production of one (PLAYS-DESIGN §13). */
   const isOwn = (script) => !!script && script.kind === 'own';
 
   /** The page's own heading gives way to the head board's. */
@@ -430,8 +434,10 @@ const PlaysUI = (() => {
   async function renderScript(body, my, id) {
     body.replaceChildren(h.stateBox('loading'));
     let script;
+    let frozen = false;
     try {
       script = await API.playScript(id);
+      frozen = !!script && isOwn(script) && await OwnScripts.shared().frozen(id);
     } catch (err) {
       if (my === token) failBox(body, err, () => renderScript(body, my, id));
       return;
@@ -452,12 +458,12 @@ const PlaysUI = (() => {
       null, { hero: true, picture: lead });
     body.replaceChildren(...[board, h.heroCredit ? h.heroCredit(board, lead) : null].filter(Boolean),
       h.el('div', { class: 'actions actions-one actions-start ear-drama-only' }, startButton(script, h, { primary: true }), readLink(script.id),
-        typeof ReadUI !== 'undefined' && !isOwn(script) ? ReadUI.startButton(script, h) : null),
+        typeof ReadUI !== 'undefined' ? ReadUI.startButton(script, h, isOwn(script) ? () => roomFor(script) : null) : null),
       h.el('section', { class: 'block' },
         h.el('h2', { class: 'section-header', id: 'play-parts-h' }, 'Parts'),
         h.el('ul', { class: 'pl-grid', 'aria-labelledby': 'play-parts-h' },
           C.castParts(script).map(part => partCard(script, part)))),
-      isOwn(script) ? OwnUI.foot(script, h) : rightsLine(script));
+      isOwn(script) ? OwnUI.foot(script, h, { frozen }) : rightsLine(script));
     boardHeading(true);
   }
 
@@ -579,7 +585,7 @@ const PlaysUI = (() => {
       recording ? null : h.el('label', { class: 'pl-as', for: 'pl-performer' }, h.el('span', { class: 'body' }, 'Recording as'), performer),
       h.el('ul', { class: 'pl-grid', 'aria-label': 'Parts' }, cards),
       refusal,
-      isOwn(script) ? null : shareBox(p, script, rerender),
+      shareBox(p, script, rerender),
       manage].filter(Boolean));
     boardHeading(true);
   }
@@ -596,16 +602,53 @@ const PlaysUI = (() => {
 
   /* ---- Phase 2: a production shared through the Worker (PLAYS-DESIGN §11.7) ---- */
 
+  /** Who can read a shared own script, in the one line that says so (§13 item 11). */
+  const READERS = 'Only people you invite can read this script.';
+  const CLASS_READERS = 'Only this class can read this script.';
+
+  /**
+   * The production a reading of an own script carries (§13 item 13): the one this person already shared, or one
+   * shared now, once they say so. null when they did not; a refusal is thrown.
+   */
+  async function roomFor(script) {
+    if (!API.account.signedIn()) { signIn(); throw { code: 'needs_account' }; }
+    if (!(await AgeGate.ask(h))) return null;
+    await openStore();
+    const me = API.account.state().user_id;
+    for (const p of store.productions) {
+      const link = store.share(p.id);
+      if (p.scriptID !== script.id || !link || !link.pid || link.seat) continue;
+      const rec = await API.plays.get(link.pid).catch((e) => { if (e.status === 404) return null; throw e; });
+      const own = rec && rec.director === me && rec.scriptRevision === script.revision ? S.ownState(rec, me) : null;
+      if (!own || own.state === 'removed' || rec.class_id) continue;
+      if (own.state === 'owed') await S.sendScript({ api: API.plays, pid: link.pid, script: await store.script(p) });
+      return { production_id: link.pid };
+    }
+    // eslint-disable-next-line no-alert
+    if (!confirm(`Share ${script.title}? People who join the reading can read it.`)) return null;
+    const local = await store.create(script);
+    try {
+      const rec = await S.share({ api: API.plays, store, local, script });
+      if (rec.unsent) throw rec.unsent;
+      return { production_id: rec.id };
+    } catch (err) {
+      await store.discardIfAbandoned(local.id).catch(() => {});
+      throw err;
+    }
+  }
+
   /** Share (rule 1): signed in only; while the Worker is a placeholder it is not offered. */
   function shareBox(p, script, rerender) {
     const box = h.el('div', { class: 'share-box' });
     if (!API.plays.available()) return box;
     const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+    const readers = isOwn(script) ? [h.el('p', { class: 'caption' }, READERS)] : [];
     if (!API.account.signedIn()) {
       box.append(h.el('div', { class: 'actions' }, h.el('button', { type: 'button', class: 'btn', onclick: signIn }, 'Share')),
-        h.el('p', { class: 'caption' }, 'Sharing needs an account.'));
+        h.el('p', { class: 'caption' }, 'Sharing needs an account.'), ...readers);
       return box;
     }
+    if (notSent.has(p.id)) { line.textContent = S.line(notSent.get(p.id)); notSent.delete(p.id); }
     const name = h.el('input', { class: 'field-input', type: 'text', name: 'director', autocomplete: 'name', maxlength: '40',
                                  placeholder: 'Your name', 'aria-label': 'Your name, optional' });
     const go = h.el('button', { type: 'submit', class: 'btn' }, 'Share');
@@ -615,15 +658,73 @@ const PlaysUI = (() => {
       go.disabled = true;
       line.textContent = '';
       try {
-        await S.share({ api: API.plays, store, local: store.production(p.id), script, displayName: name.value });
-        h.announce('Shared');
+        const rec = await S.share({ api: API.plays, store, local: store.production(p.id), script, displayName: name.value });
+        if (rec.unsent) notSent.set(rec.id, rec.unsent); else h.announce('Shared');
         rerender();
       } catch (err) {
         console.error(err);
         line.textContent = S.line(err);
         go.disabled = false;
       }
-    } }, name, go), line);
+    } }, name, go), ...readers, line);
+    return box;
+  }
+
+  /** Why a script was not sent, for this visit: the Worker keeps only that it is owed. */
+  const notSent = new Map();
+
+  /**
+   * What a shared own script's cast sheet adds after its Parts (§13 items 11, 12, 13, 15): who can read it or the
+   * state's refusal, the reason it has no Publish, then Read together, Edit a copy, Report script.
+   */
+  function ownBox(rec, script, me, p, rerender) {
+    const own = S.ownState(rec, me);
+    if (!own) return null;
+    const directs = rec.director === me;
+    const err = h.el('p', { class: 'caption refusal', role: 'alert' });
+    const acts = h.el('div', { class: 'actions' });
+    const box = h.el('section', { class: 'own-share', 'aria-label': 'Script' });
+    if (own.state === 'owed') {
+      const why = notSent.get(rec.id);
+      const again = directs ? h.el('button', { type: 'button', class: 'btn', onclick: async () => {
+        again.disabled = true;
+        err.textContent = '';
+        const e = await S.sendOrUndo({ api: API.plays, pid: rec.id, script });
+        if (!e) { notSent.delete(rec.id); h.announce('Shared'); rerender(); return; }
+        console.error(e);
+        if (S.passes(e)) { notSent.set(rec.id, e); err.textContent = S.line(e); again.disabled = false; return; }
+        await store.unshare(p.id);
+        notSent.set(p.id, e);
+        rerender();
+      } }, 'Try again') : null;
+      box.append(h.el('p', { class: 'caption refusal', role: 'alert' }, directs ? 'The script was not sent.' : S.line({ code: 'no_script' })));
+      if (again) acts.append(again);
+      if (why && directs) err.textContent = S.line(why);
+    } else if (own.state === 'removed') {
+      box.append(h.el('p', { class: 'caption refusal' }, S.line({ code: 'script_removed' })));
+    } else {
+      box.append(h.el('p', { class: 'caption' }, rec.class_id ? CLASS_READERS : directs ? READERS : 'Only people invited can read this script.'));
+    }
+    box.append(err, h.el('p', { class: 'caption' }, 'This script can’t be published.'));
+    if (own.state === 'kept' && directs && !rec.class_id && typeof ReadUI !== 'undefined') {
+      const b = ReadUI.startButton(script, h, () => ({ production_id: rec.id }), err);
+      if (b) acts.append(b);
+    }
+    if (own.mine) {
+      const copy = h.el('button', { type: 'button', class: 'btn', onclick: () => OwnUI.editCopy(script, h, copy, err) }, 'Edit a copy');
+      acts.append(copy);
+    } else if (own.state === 'kept') {
+      const rep = h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => {
+        acts.replaceWith(reportForm(rec.id, { script: true }, (done) => {
+          if (!done) { rerender(); return; }
+          sharedShown = null;
+          $('plays-body').replaceChildren(h.el('p', { class: 'caption', role: 'status' }, 'Reported. This production is hidden from you.'),
+            h.el('div', { class: 'actions' }, deleteButton(p)));
+        }, SCRIPT_REASONS));
+      } }, 'Report script');
+      acts.append(rep);
+    }
+    if (acts.childNodes.length) box.append(acts);
     return box;
   }
 
@@ -641,11 +742,11 @@ const PlaysUI = (() => {
     }
   }
 
-  /** Report a take or a member (rule 8, guideline 1.2): a reason and an optional note. */
-  function reportForm(pid, target, onDone) {
+  /** Report a take, a member, or the production's own script (rule 8, §13 item 15, guideline 1.2): a reason and an optional note. */
+  function reportForm(pid, target, onDone, reasons = REASONS) {
     const line = h.el('p', { class: 'caption refusal', role: 'alert' });
     const reason = h.el('select', { class: 'field-input', 'aria-label': 'Reason' },
-      REASONS.map(([v, label]) => h.el('option', { value: v }, label)));
+      reasons.map(([v, label]) => h.el('option', { value: v }, label)));
     const note = h.el('input', { class: 'field-input', type: 'text', maxlength: '500', placeholder: 'Note', 'aria-label': 'Note, optional' });
     const send = h.el('button', { type: 'submit', class: 'btn' }, 'Report');
     const form = h.el('form', { class: 'report-form', onsubmit: async (e) => {
@@ -701,6 +802,8 @@ const PlaysUI = (() => {
       return b;
     };
     const recording = S.recordingPart(rec);
+    const own = S.ownState(rec, me);
+    const held = !!own && own.held;
     const partHref = (part) => `?production=${encodeURIComponent(id)}&part=${encodeURIComponent(part)}`;
 
     const rows = C.castParts(script).map(part => {
@@ -709,6 +812,8 @@ const PlaysUI = (() => {
       if (S.isMine(rec, part.id, me)) {
         actions.append(h.el('a', { class: 'btn btn-accent', href: partHref(part.id) }, 'Record'),
           button('Release', () => API.plays.partAction(pid, part.id, 'release')));
+      } else if (held) {
+        // The owner removed the script: no part is taken or opened again (§13 item 11).
       } else if (S.canClaim(rec, part.id)) {
         actions.append(button('Take part', () => API.plays.claim(pid, part.id), rec.next === part.id ? 'btn btn-accent' : 'btn'));
         if (!C.isSpeaking(part.id)) actions.append(button('Leave silent', () => API.plays.partAction(pid, part.id, 'silent')));
@@ -725,7 +830,7 @@ const PlaysUI = (() => {
     });
 
     const mineBox = h.el('div', { class: 'share-box' });
-    if (S.ownParts(rec, me).length) {
+    if (S.ownParts(rec, me).length && !held) {
       const todo = S.pending(local, script, rec, me);
       const flagged = todo.filter(t => t.bleed).length;
       const ready = todo.length - flagged;
@@ -753,7 +858,7 @@ const PlaysUI = (() => {
 
     body.replaceChildren(
       h.el('ul', { class: 'cast-list', 'aria-label': 'Parts' }, rows),
-      line, mineBox,
+      line, mineBox, ...[ownBox(rec, script, me, p, rerender)].filter(Boolean),
       sharedListen(rec, local, script, pid, me, rerender),
       ...[changeBox(rec, script, pid, me, id)].filter(Boolean),
       peopleBox(rec, me, p, pid, rerender),
@@ -910,12 +1015,15 @@ const PlaysUI = (() => {
   }
   function sharedListen(rec, local, script, pid, me, rerender) {
     const box = listenThrough(store.production(local.id), script, rerender);
-    if (rec.director === me) holdPickup(rec, local, script, pid, me, rerender, box);
+    const own = S.ownState(rec, me);
+    if (rec.director === me && !(own && own.held)) holdPickup(rec, local, script, pid, me, rerender, box);
     if (rec.hidden_takes) {
       box.append(h.el('p', { class: 'caption' }, rec.hidden_takes === 1 ? '1 take is hidden from you.'
         : `${num.format(rec.hidden_takes)} takes are hidden from you.`));
     }
     const arch = S.archiveStatus(rec);
+    // An own script's reason stands with its other facts (ownBox); any other that can't be published says so here.
+    if (!arch && !own && S.neverPublishes(rec) && rec.director === me) box.append(h.el('p', { class: 'caption' }, S.neverPublishes(rec)));
     if (arch) {
       box.append(archiveLine(arch, rec, me, pid, rerender));
     } else if (S.canPublish(rec, script, me) || S.needsMyConsent(rec, script, me)) {
@@ -995,7 +1103,9 @@ const PlaysUI = (() => {
     for (const m of rec.members) {
       const row = h.el('li', { class: 'cast-row' });
       const who = m.display_name || 'No name';
-      const tag = m.user_id === me ? 'You' : m.director ? 'Director' : '';
+      const own = S.ownState(rec, me);
+      const tag = [m.user_id === me ? 'You' : m.director ? 'Director' : '', own && own.by === m.user_id ? 'added this script' : ''].filter(Boolean).join(' · ')
+        .replace(/^added/, 'Added');
       row.append(h.el('div', { class: 'cast-main' }, h.el('span', { class: 'body-strong' }, who),
         tag ? h.el('span', { class: 'caption' }, tag) : null));
       if (m.user_id !== me) {
@@ -1015,7 +1125,8 @@ const PlaysUI = (() => {
     }
     const box = h.el('section', { class: 'block', 'aria-labelledby': 'people-h' },
       h.el('h2', { class: 'section-header', id: 'people-h' }, 'People'), ul);
-    if (rec.director === me) {
+    const script = S.ownState(rec, me);
+    if (rec.director === me && (!script || script.state === 'kept')) {
       const slot = h.el('div', { class: 'invite-slot' });
       const line = h.el('p', { class: 'caption refusal', role: 'alert' });
       const inv = h.el('button', { type: 'button', class: 'btn', onclick: async () => {
@@ -1508,12 +1619,14 @@ const PlaysUI = (() => {
     let script = null;
     try {
       inv = await API.plays.openInvite(tok);
-      const found = await API.playScript(inv.scriptID).catch(() => null);
-      script = found && found.revision === inv.scriptRevision ? found
-        : S.scriptFor(await API.castableScripts().catch(() => []), inv.scriptID, inv.scriptRevision) || null;
+      await openStore().catch((e) => console.error(e));
+      script = await S.scriptOf({ api: API, store, id: inv.scriptID, revision: inv.scriptRevision, who: { token: tok, pid: inv.id }, fit: S.fits.invite(inv) })
+        .catch((e) => { if (S.isOwnId(inv.scriptID)) throw e; return null; });
     } catch (err) {
       if (my !== token) return;
-      if (err && err.kind === 'gone') say('This invitation has ended.');
+      // What an own script's invitation is refused by is said; the sheet is never drawn over words that did not arrive.
+      if (S.scriptLine(err)) body.replaceChildren(h.stateBox('error', { text: S.scriptLine(err), retry: err.code === 'script_removed' ? null : lastDraw }));
+      else if (err && err.kind === 'gone') say('This invitation has ended.');
       else if (err && (err.status === 404 || err.kind === 'missing')) say('This invitation was not found.');
       else failBox(body, err, lastDraw);
       return;
@@ -1635,5 +1748,5 @@ const PlaysUI = (() => {
     return renderScript(body, my, r.p.get('play'));
   }
 
-  return { openStore, render, renderInvite, renderDrama, dramaAlongFor, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, making, classDoor, openShared: openRemote, startButton, readLink, leave, fingerprint, BOARD };
+  return { openStore, render, renderInvite, renderDrama, dramaAlongFor, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, making, classDoor, CLASS_READERS, openShared: openRemote, startButton, readLink, leave, fingerprint, BOARD };
 })();

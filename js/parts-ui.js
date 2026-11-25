@@ -121,9 +121,19 @@ const PartsUI = (() => {
     if (!mine.length) { box.append(h.el('p', { class: 'caption' }, 'No parts yet.')); return box; }
     for (const prod of mine) {
       let script = null;
-      try { script = await API.playScript(prod.scriptID); } catch { script = null; }
+      try {
+        script = await PlaysShare.scriptOf({ api: API, store, id: prod.scriptID, revision: prod.scriptRevision,
+          who: { seat: seat.seat_key, pid: prod.id }, fit: PlaysShare.fits.seat(prod) });
+      } catch (err) {
+        if (my !== token) return box;
+        console.error(err);
+        const own = PlaysShare.isOwnId(prod.scriptID);
+        const words = codeOf(err) === 'no_script' ? 'Your teacher has not sent this script yet.' : own ? PlaysShare.line(err) : ReadCore.refusal('revision_mismatch');
+        box.append(h.el('div', { class: 'parts-prod' }, h.el('h3', { class: 'body-strong' }, prod.title), h.el('p', { class: 'caption refusal', role: 'alert' }, words),
+          own && !['script_removed'].includes(codeOf(err)) ? h.el('div', { class: 'actions' }, h.el('button', { type: 'button', class: 'btn', onclick: () => render(document.getElementById('readroom-body'), h) }, 'Try again')) : null));
+        continue;
+      }
       if (my !== token) return box;
-      if (!script || script.revision !== prod.scriptRevision) { box.append(h.el('p', { class: 'caption refusal', role: 'alert' }, ReadCore.refusal('revision_mismatch'))); continue; }
       box.append(await productionBlock(store, relay, seat, home, prod, script));
     }
     return box;
@@ -163,7 +173,10 @@ const PartsUI = (() => {
           e.currentTarget.disabled = true;
           const lp = await ensureLocal(store, script, prod, seat);
           relay.kick(lp.id);
-          h.navigate(`?production=${encodeURIComponent(lp.id)}&part=${encodeURIComponent(part)}`);
+          // A seat holds its parts by the class's casting, never by a claim, so Record goes to the studio itself (§4.20 item 1).
+          const p = store.production(lp.id);
+          if (C.stateOf(p, part).status === 'open' && !C.current(p, script)) await store.save(C.take(p, script, part, seat.label));
+          h.navigate(`?read=${encodeURIComponent(script.id)}&production=${encodeURIComponent(lp.id)}&part=${encodeURIComponent(part)}`);
         } }, 'Record');
         return h.el('div', { class: 'parts-part' },
           h.el('div', { class: 'cast-row' },

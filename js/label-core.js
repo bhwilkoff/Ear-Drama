@@ -368,13 +368,17 @@ const LabelCore = (() => {
     const shown = all.slice(0, C.max), most = shown[0] || 1;
     const total = shown.length ? C.hFirst + (shown.length - 1) * (C.h + C.gap) : 0;
     let y = 50 - total / 2;
+    const more = all.length - shown.length;
+    const share = (n) => Math.max(C.minW, Math.round((100 * n) / most)) / 100;
+    // "+N" stands at the last bar's end. Every bar is drawn to the same shorter scale when that one would reach it.
+    const room = more > 0 ? C.more.x - C.more.size * em(`+${more}`, 'body') - C.gap - C.x : C.w;
+    const w = shown.length ? Math.min(C.w, Math.max(0, room) / share(shown[shown.length - 1])) : C.w;
     const bars = shown.map((n, i) => {
       const h = i ? C.h : C.hFirst;
-      const bar = { x: C.x, y: r2(y), w: r2((C.w * Math.max(C.minW, Math.round((100 * n) / most))) / 100), h };
+      const bar = { x: C.x, y: r2(y), w: r2(w * share(n)), h };
       y += h + C.gap;
       return bar;
     });
-    const more = all.length - shown.length;
     return { ...base, ground: groundOf(g), on: onOf(g), cast: bars.length ? { bars } : null,
              text: more > 0 ? [{ s: `+${more}`, face: 'body', size: C.more.size, x: C.more.x, y: C.more.y, anchor: 'end', fill: 'on' }] : [] };
   }

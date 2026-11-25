@@ -56,7 +56,7 @@ const OwnUI = (() => {
   };
 
   const REFUSAL = {
-    too_long: 'That text is too long.', too_many_lines: 'That text is too long.', empty: 'There are no words.', bad_name: 'That name does not work.',
+    shared: 'This script is shared.', too_long: 'That text is too long.', too_many_lines: 'That text is too long.', empty: 'There are no words.', bad_name: 'That name does not work.',
     line_has_take: 'This line has a take.', lines_have_take: 'A line there has a take.', part_has_take: 'A line of this part has a take.', no_parts: 'No line has a part.', no_lines: 'No lines.',
     not_text: 'That is not a text file.', no_title: 'Add a title.', title_too_long: 'That title is too long.',
   };
@@ -65,6 +65,7 @@ const OwnUI = (() => {
   /** Why a write failed, in essential words. */
   function notKept(err) {
     console.error(err);
+    if (err && err.kind === 'shared') return say('shared');
     if (err && err.kind === 'blocked') return 'Close Ear Drama’s other tabs.';
     return err && err.name === 'QuotaExceededError' ? 'This browser is out of space.' : 'This browser could not save it.';
   }
@@ -124,7 +125,9 @@ const OwnUI = (() => {
     const tell = later(() => {
       const why = O.textRefusal(text.value);
       read = why ? null : O.parse(text.value);
-      if (read && read.lines.length > O.MAX_LINES) { read = null; refuse(say('too_long')); } else refuse(why === 'too_long' ? say(why) : '');
+      const built = read ? O.builtRefusal(read.lines) : why === 'too_long' ? why : null;
+      if (built) read = null;
+      refuse(built ? say(built) : '');
       tally.textContent = read ? partsAndLines(read.parts.length, read.lines.length) : '';
       next.disabled = !read;
     }, 180);
@@ -278,10 +281,17 @@ const OwnUI = (() => {
 
   /* ---- The parts page (§4.21 items 3 to 6) ---- */
 
+  /** A state in the page's own bar: on a phone the tab bar is away, so there is always a way out (item 8). */
+  function state(body, box) {
+    body.replaceChildren(h.el('div', { class: 'os' },
+      bar({ out: 'close', outLabel: 'Close', onOut: () => goBack('?view=record'), titles: h.el('p', { class: 'body-strong rd-title' }, 'Parts'), primary: null }),
+      h.el('div', { class: 'os-state' }, box)));
+  }
+
   async function renderParts(body, my, id) {
     h.setTitle('Parts');
     $('own-h').textContent = 'Parts';
-    body.replaceChildren(h.stateBox('loading'));
+    state(body, h.stateBox('loading'));
     let rec, taken;
     try {
       rec = O.OWN_ID.test(id) ? await store().get(id) : null;
@@ -289,11 +299,13 @@ const OwnUI = (() => {
     } catch (err) {
       if (my !== seq) return;
       console.error(err);
-      body.replaceChildren(h.stateBox('error', { retry: () => renderParts(body, my, id) }));
+      state(body, h.stateBox('error', { retry: () => renderParts(body, my, id) }));
       return;
     }
     if (my !== seq) return;
-    if (!rec) { body.replaceChildren(missing()); return; }
+    if (!rec) { state(body, missing()); return; }
+    // Shared once, a script is what people were sent: its page has Edit a copy (item 10).
+    if (rec.shared) { h.navigate(`?play=${encodeURIComponent(id)}`, true); return; }
     rec.extras = rec.extras || [];
     if (rec.ear) rec.doc = O.settle(rec.doc);
     h.setTitle(rec.title);
@@ -326,6 +338,7 @@ const OwnUI = (() => {
     /* ---- What is kept ---- */
 
     async function write() {
+      if (gone) return true;
       try {
         await store().keep(P.rec);
         problem.hidden = true;
@@ -339,6 +352,7 @@ const OwnUI = (() => {
       }
     }
     const save = later(write, 350);
+    let gone = false;
 
     /* ---- Drawing: only what changed (item 4) ---- */
 
@@ -575,7 +589,7 @@ const OwnUI = (() => {
           save();
           d.close();
           return null;
-        } }));
+        } }), P.rec.done ? null : deleteNotDone(P.rec, () => { gone = true; d.close(); }));
       d.showModal();
     }
     /** A part named before any line is given to it (it lives in the sheets' lists until one is). */
@@ -725,6 +739,35 @@ const OwnUI = (() => {
     } };
   }
 
+  /** Delete for a script not yet Done, in the sheet its title opens (item 11, §4.22): `first` runs before the page goes. */
+  function deleteNotDone(rec, first) {
+    const err = h.el('p', { class: 'caption refusal', role: 'alert' });
+    const del = h.el('button', { type: 'button', class: 'btn btn-destructive', onclick: async () => {
+      // eslint-disable-next-line no-alert
+      if (!confirm(`Delete ${rec.title}?`)) return;
+      del.disabled = true;
+      try {
+        first();
+        await store().remove(rec.id);
+        h.announce('Deleted');
+        h.navigate('?view=record', true);
+      } catch (e) { console.error(e); err.textContent = 'This browser could not delete it.'; del.disabled = false; }
+    } }, 'Delete');
+    return h.el('div', {}, h.el('div', { class: 'actions' }, del), err);
+  }
+
+  /** Edit a copy (§13 item 12): a new script of the shared one's text, opened where it is corrected. */
+  async function editCopy(script, helpers, button, err) {
+    h = helpers;
+    button.disabled = true;
+    err.textContent = '';
+    try {
+      const rec = await store().copy(script);
+      const casting = rec.ear && O.castCount(rec.doc).cast < O.castCount(rec.doc).lines;
+      h.navigate(casting ? `?cast=${encodeURIComponent(rec.episode.id)}` : `?script=${encodeURIComponent(rec.id)}&edit=parts`);
+    } catch (e) { err.textContent = notKept(e); button.disabled = false; }
+  }
+
   const missing = () => h.stateBox('empty', { text: 'This script is not in this browser.', action: { label: 'Record', href: '?view=record' } });
 
   /* ---- An own script's page (§4.21 item 7): what a play's page has and this adds ---- */
@@ -743,7 +786,7 @@ const OwnUI = (() => {
     }
   }
 
-  function foot(script, helpers) {
+  function foot(script, helpers, { frozen = false } = {}) {
     h = helpers;
     const err = h.el('p', { class: 'caption refusal', role: 'alert' });
     const del = h.el('button', { type: 'button', class: 'btn btn-destructive', onclick: async () => {
@@ -763,21 +806,23 @@ const OwnUI = (() => {
       } catch (e) { console.error(e); err.textContent = 'This browser could not delete it.'; del.disabled = false; }
     } }, 'Delete');
     // A transcript cast in part: how much, and the way back to it.
+    const copy = frozen ? h.el('button', { type: 'button', class: 'btn', onclick: () => editCopy(script, h, copy, err) }, 'Edit a copy') : null;
     const left = script.episode ? h.el('p', { class: 'caption tabular', hidden: true }) : null;
     const cast = script.episode ? h.el('a', { class: 'btn', href: `?cast=${encodeURIComponent(script.episode)}`, hidden: true }, 'Cast by ear') : null;
     if (left) store().list().then(rows => {
       const row = rows.find(r => r.id === script.id);
       if (!row || !row.ear || row.ear.cast >= row.ear.lines) return;
       left.textContent = castLine(row.ear);
-      left.hidden = cast.hidden = false;
+      left.hidden = false;
+      cast.hidden = frozen;
     }).catch(e => console.error(e));
     return h.el('section', { class: 'os-own' },
-      script.episode ? h.el('p', { class: 'caption' }, h.el('a', { class: 'eyebrow-link', href: `?item=${encodeURIComponent(script.episode)}` }, script.source.name), ' · Kept on this device')
-        : h.el('p', { class: 'caption' }, 'Added by you · Kept on this device'),
+      script.episode ? h.el('p', { class: 'caption' }, h.el('a', { class: 'eyebrow-link', href: `?item=${encodeURIComponent(script.episode)}` }, script.source.name), frozen ? ' · Shared' : ' · Kept on this device')
+        : h.el('p', { class: 'caption' }, frozen ? 'Added by you · Shared' : 'Added by you · Kept on this device'),
       left,
       h.el('p', { class: 'caption' }, 'This script can’t be published.'),
       h.el('div', { class: 'actions' }, cast,
-        h.el('a', { class: 'btn', href: `?script=${encodeURIComponent(script.id)}&edit=parts` }, 'Edit'),
+        copy || h.el('a', { class: 'btn', href: `?script=${encodeURIComponent(script.id)}&edit=parts` }, 'Edit'),
         h.el('button', { type: 'button', class: 'btn', onclick: () => DataExport.save(OwnScripts.fileName(script.title), 'text/plain;charset=utf-8', OwnScripts.asText(script)) }, 'Save as text'),
         del), err);
   }
@@ -832,8 +877,8 @@ const OwnUI = (() => {
   /** What casting by ear (js/ear-ui.js) shares with the parts page. */
   function kit(helpers) {
     h = helpers;
-    return { svg, bar, goBack, later, say, nameWhy, notKept, inner, closeBtn, nameForm, cutter, castLine, verse };
+    return { svg, bar, goBack, later, say, nameWhy, notKept, inner, closeBtn, nameForm, cutter, castLine, verse, deleteNotDone };
   }
 
-  return { render, leave, notDone, foot, yours, scriptRow, matching, addLink, dropOn, kit };
+  return { render, leave, notDone, foot, editCopy, yours, scriptRow, matching, addLink, dropOn, kit };
 })();
