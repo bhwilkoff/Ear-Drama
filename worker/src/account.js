@@ -31,6 +31,7 @@ export const USER_TABLES = [
   "play_invites",
   "play_archive_jobs",
   "play_members",
+  "play_scripts",
   "play_productions",
   "play_school_consents",
   "play_class_members",

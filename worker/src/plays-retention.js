@@ -25,6 +25,8 @@ import { json, problem, readJson } from "./http.js";
 import { classProgress, rosterFor, teacherClass } from "./plays-seats.js";
 import { deleteAccount } from "./account.js";
 import { githubCaller } from "./github-oidc.js";
+import { ownScriptOut, removeEpisodeScripts, removeScript } from "./plays-own.js";
+import { cleanEpisodeId } from "./room-protocol.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const CLASS_IDLE_MS = 365 * DAY_MS;
@@ -78,7 +80,7 @@ const ACTIVITY =
 
 /** Statements deleting the productions `where` picks (a subquery of ids), child rows first; the cascade is the second lock. */
 function productionStatements(env, where, ...binds) {
-  const tables = ["play_reviews", "play_assignments", "play_takes", "play_parts", "play_consents", "play_invites", "play_members", "play_archive_jobs"];
+  const tables = ["play_reviews", "play_assignments", "play_takes", "play_parts", "play_consents", "play_invites", "play_members", "play_scripts", "play_archive_jobs"];
   return [
     ...tables.map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE production_id IN (${where})`).bind(...binds)),
     env.DB.prepare(`DELETE FROM play_productions WHERE id IN (${where})`).bind(...binds),
@@ -95,6 +97,8 @@ export async function deleteClass(env, classId) {
     env.DB.prepare(`UPDATE play_takes SET seat_id = NULL WHERE production_id IN (${submitted})`).bind(classId),
     env.DB.prepare(`DELETE FROM play_reviews WHERE production_id IN (${submitted})`).bind(classId),
     env.DB.prepare(`DELETE FROM play_assignments WHERE production_id IN (${submitted})`).bind(classId),
+    // An own script is never submitted; were one, its text would still go with the class that held it.
+    env.DB.prepare(`DELETE FROM play_scripts WHERE production_id IN (${submitted})`).bind(classId),
     env.DB.prepare(`UPDATE play_productions SET class_id = NULL WHERE class_id = ?1 AND id IN (${SUBMITTED})`).bind(classId),
     ...productionStatements(env, unsubmitted, classId),
     env.DB.prepare("DELETE FROM play_class_seats WHERE class_id = ?1").bind(classId),
@@ -171,9 +175,12 @@ export async function exportClass(auth, env, classId, now) {
       env.DB.prepare("SELECT take_id, state, note, reviewed_at FROM play_reviews WHERE production_id = ?1").bind(p.id),
     ]);
     const review = Object.fromEntries(reviews.map((r) => [r.take_id, { state: r.state, note: r.note, reviewed_at: r.reviewed_at }]));
+    const own = await ownScriptOut(env, p);
     productions.push({
       id: p.id,
       title: p.title,
+      // The teacher's app adds the lines, from GET /productions/:pid/script: 20 of them here would pass the CPU limit.
+      ...(own ? { script: { title: p.title, revision: p.script_revision, source: own.episode_id ? "Automatic transcript" : "Added by you", episode_id: own.episode_id, state: own.state } } : {}),
       script_id: p.script_id,
       script_revision: p.script_revision,
       created_at: p.created_at,
@@ -228,6 +235,7 @@ export async function handleOperator(url, request, env) {
   if (!caller) return problem(403, "forbidden");
   const m = request.method;
   const seg = url.pathname.slice("/v1/operator".length).split("/").filter(Boolean);
+  if (seg[0] === "scripts" && m === "DELETE") return removeScripts(url, env, seg, caller);
   if (seg[0] !== "classes") return problem(404, "not_found");
   if (seg.length === 1 && m === "GET") {
     const code = url.searchParams.get("code");
@@ -250,6 +258,26 @@ export async function handleOperator(url, request, env) {
     return json({ deleted: true, class_id: c.id, deleted_at: Date.now() });
   }
   return problem(404, "not_found");
+}
+
+/**
+ * DELETE /v1/operator/scripts/:pid drops one production's own script and holds the production;
+ * DELETE /v1/operator/scripts?episode=ID does so for every transcript of an episode a take-down
+ * names (R4 §3.4). Neither touches a take, a person, or any other production.
+ */
+async function removeScripts(url, env, seg, caller) {
+  const now = Date.now();
+  const audit = (detail) => console.log(JSON.stringify({ operator: "remove_script", ...detail, actor: caller.actor, run_id: caller.run_id }));
+  if (seg.length === 2) {
+    if (!(await removeScript(env, seg[1], now))) return problem(404, "no_script");
+    audit({ production_id: seg[1] });
+    return new Response(null, { status: 204 });
+  }
+  const episode = seg.length === 1 ? cleanEpisodeId(url.searchParams.get("episode")) : null;
+  if (!episode) return problem(400, "bad_request", "a production id, or episode");
+  const n = await removeEpisodeScripts(env, episode, now);
+  audit({ episode_id: episode, removed: n });
+  return json({ removed: n });
 }
 
 /**

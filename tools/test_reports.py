@@ -58,8 +58,8 @@ def take(id, user, seat=None, credit=None):
                "VALUES ('PROD0001', ?, ?, ?, 'l1', 'role:A', 'f', 'audio/wav', 1, 1, 1, 'direct', 0, 1, ?)", (id, user, seat, credit))
 
 
-def report(id, target, take_id=None):
-    db.execute("INSERT INTO play_reports VALUES (?, 'dir', 'PROD0001', ?, ?, 'offensive', 'a note', 1, 'open')", (id, target, take_id))
+def report(id, target, take_id=None, script=0):
+    db.execute("INSERT INTO play_reports (id, user_id, production_id, target_user_id, take_id, reason, note, created_at, script) VALUES (?, 'dir', 'PROD0001', ?, ?, 'offensive', 'a note', 1, ?)", (id, target, take_id, script))
 
 
 def run(*argv):
@@ -111,6 +111,32 @@ run("dismiss", "rep-00006", "--yes")
 check("dismiss", status("rep-00006") == "dismissed")
 run("unshare", "rep-00003", "--yes")
 check("unshare", status("rep-00003") == "acted" and takes() == ["take-d"])
+
+db.execute("INSERT INTO play_scripts (production_id, user_id, episode_id, created_at) VALUES ('PROD0001', 'dir', 'show|1949', 0)")
+db.execute("UPDATE play_scripts SET body = '[\"O''Neill\" ' || char(27) || ']', bytes = 12 WHERE production_id = 'PROD0001'")
+script = lambda: tuple(db.execute("SELECT body, bytes, held_at IS NOT NULL FROM play_scripts").fetchone())
+report("rep-00007", "dir", script=1)
+report("rep-00008", "zoe")
+out, _ = run("list")
+check("list says it is a script", "script: offensive" in out)
+out, _ = run("show", "rep-00007")
+check("show says how to read it and whose transcript it is", "12 bytes, read-script prints it; the transcript of show|1949" in out)
+out, _ = run("read-script", "rep-00007")
+check("read-script prints the words, with no escape", "O'Neill" in out and "\x1b" not in out)
+check("read-script is for a script's report", "not of a script" in run("read-script", "rep-00008")[1])
+for op in ("remove-take", "remove-member"):
+    check(f"{op} on a script is refused", "names the script" in run(op, "rep-00007", "--yes")[1])
+check("remove-script on a person is refused", "names a person" in run("remove-script", "rep-00008", "--yes")[1])
+out, _ = run("remove-script", "rep-00007")
+check("remove-script without --yes changes nothing", "Run again with --yes" in out and script()[1] == 12)
+out, _ = run("remove-script", "rep-00007", "--yes")
+check("remove-script", script() == (None, 0, 1) and status("rep-00007") == "acted" and status("rep-00008") == "open" and "Done" in out)
+check("the total follows", db.execute("SELECT bytes FROM play_script_total").fetchone()[0] == 0)
+check("the text is remembered as removed", [r[0] for r in db.execute("SELECT key FROM play_removed_scripts")] == ["revision:r"])
+report("rep-00009", "dir", script=1)
+check("a script already gone", "already gone" in run("remove-script", "rep-00009", "--yes")[1] and "already gone" in run("read-script", "rep-00009")[0])
+run("dismiss", "rep-00008", "--yes")
+run("dismiss", "rep-00009", "--yes")
 n = len(ran)
 check("an id that is not one is refused before any read", "comes from `list`" in run("show", "x' OR '1'='1")[1] and len(ran) == n)
 for var in ("CI", "GITHUB_ACTIONS"):

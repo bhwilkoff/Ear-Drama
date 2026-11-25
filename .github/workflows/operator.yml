@@ -6,16 +6,21 @@ name: Operator
 # (worker/src/github-oidc.js). Only people with write access can dispatch it:
 #   gh workflow run operator.yml -f action=list -f reference="Lakeview District NDPA"
 #   gh workflow run operator.yml -f action=delete-class -f class_id=<id>
-# The log is public, so it prints class ids, dates and counts, never a class's
-# name, code, or the school's reference.
+# And the removal of an own script (docs/runbooks/reports.md): one production's, or
+# every transcript of an episode a take-down names:
+#   gh workflow run operator.yml -f action=remove-script -f production_id=<id>
+#   gh workflow run operator.yml -f action=remove-episode-scripts -f episode_id=<id>
+# The log is public, so it prints ids, dates and counts, never a class's name,
+# code, or the school's reference. GitHub prints a step's `env:` before the step can
+# mask anything, so no input is in one: each is read from the event file.
 
 on:
   workflow_dispatch:
     inputs:
       action:
-        description: list finds the classes; delete-class deletes one
+        description: list finds the classes; delete-class deletes one; remove-script and remove-episode-scripts drop an own script's words
         type: choice
-        options: [list, delete-class]
+        options: [list, delete-class, remove-script, remove-episode-scripts]
         required: true
       reference:
         description: the school's request reference (list)
@@ -25,6 +30,12 @@ on:
         required: false
       class_id:
         description: the class id from list (delete-class)
+        required: false
+      production_id:
+        description: the production (remove-script)
+        required: false
+      episode_id:
+        description: the episode the take-down names (remove-episode-scripts)
         required: false
 
 concurrency:
@@ -41,17 +52,16 @@ jobs:
     timeout-minutes: 5
     env:
       API: https://eardrama-api.benwilkoff.workers.dev
-      ACTION: ${{ inputs.action }}
-      REFERENCE: ${{ inputs.reference }}
-      CODE: ${{ inputs.code }}
-      CLASS_ID: ${{ inputs.class_id }}
     steps:
       - name: Ask the Worker
         shell: bash
         run: |
           set -euo pipefail
-          [ -n "$REFERENCE" ] && echo "::add-mask::$REFERENCE"
-          [ -n "$CODE" ] && echo "::add-mask::$CODE"
+          input() { jq -r --arg k "$1" '.inputs[$k] // ""' "$GITHUB_EVENT_PATH"; }
+          ACTION=$(input action); REFERENCE=$(input reference); CODE=$(input code); CLASS_ID=$(input class_id)
+          PRODUCTION_ID=$(input production_id); EPISODE_ID=$(input episode_id)
+          if [ -n "$REFERENCE" ]; then echo "::add-mask::$REFERENCE"; fi
+          if [ -n "$CODE" ]; then echo "::add-mask::$CODE"; fi
           tok=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$(jq -rn --arg v "$API" '$v|@uri')" | jq -r .value)
           echo "::add-mask::$tok"
@@ -73,5 +83,19 @@ jobs:
               echo "HTTP $status"
               [ "$status" = 200 ] || exit 1
               jq -r '"deleted \(.class_id) at \(.deleted_at / 1000 | floor | todate)"' "$out"
+              ;;
+            remove-script)
+              [[ "$PRODUCTION_ID" =~ ^[A-Za-z0-9_-]{8,64}$ ]] || { echo "::error::remove-script needs a production_id"; exit 1; }
+              status=$(curl -sS -o "$out" -w '%{http_code}' -X DELETE -H "Authorization: Bearer $tok" "$API/v1/operator/scripts/$PRODUCTION_ID")
+              echo "HTTP $status"
+              [ "$status" = 204 ] || exit 1
+              echo "removed the script of $PRODUCTION_ID"
+              ;;
+            remove-episode-scripts)
+              [ -n "$EPISODE_ID" ] || { echo "::error::remove-episode-scripts needs an episode_id"; exit 1; }
+              status=$(curl -sS -o "$out" -w '%{http_code}' -X DELETE -H "Authorization: Bearer $tok" "$API/v1/operator/scripts?episode=$(jq -rn --arg v "$EPISODE_ID" '$v|@uri')")
+              echo "HTTP $status"
+              [ "$status" = 200 ] || exit 1
+              jq -r '"removed \(.removed) script(s)"' "$out"
               ;;
           esac
