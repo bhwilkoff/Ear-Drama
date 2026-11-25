@@ -206,13 +206,12 @@ the core's shared code. Neither one is a second feature set.
 `CarPlaySceneDelegate`. Every other scene gets back the configuration
 the system already gave it. The car's first screen is a
 `CPTabBarTemplate` with the four car tabs (R17): **Continue**,
-**Radio**, **Series**, and **Downloads**. Continue lists up to 12
+**Stations**, **Browse**, and **Downloads**, drawn from the pure tree in `Core/Car/` (iOS-DESIGN §9.1). Continue lists up to 12
 in-progress episodes from the phone's own `ListeningHistory`, most
 recent first, with the listened fraction shown on each row. Picking
 one plays it through the shared `AudioPlayer` and pushes
 `CPNowPlayingTemplate.shared`, which reads the Now Playing info and
-remote commands the player already publishes. The other three tabs are
-empty lists that say "Not in the car yet". There are no transcripts on
+remote commands the player already publishes. Stations, Browse and Downloads are filled in to match Android Auto. There are no transcripts on
 the car screen. CarPlay forbids lyrics, and a transcript counts as
 lyrics.
 

@@ -1338,14 +1338,24 @@ device. Audit frames: `build/qa/duo-audit/` (local).
 
 ## §9 Stubs that live in the iOS target, and parity
 
-- **§9.1 CarPlay** (`apple/iOS/CarPlay_iOS.swift`) is the car's four
-  tabs (R17): Continue, Stations, Browse, Downloads. Continue lists up to 12
-  in-progress episodes with their progress and plays through the one
-  `AudioPlayer`, then pushes `CPNowPlayingTemplate.shared`. Downloads
-  lists the finished downloads, newest first, up to the car's row
-  limit, each playing its file the same way ("No downloads" when there
-  are none). Stations and Browse say "Not in the car yet". No transcript in the car. It is
-  dormant until Apple grants `com.apple.developer.carplay-audio`.
+- **§9.1 CarPlay** (`apple/iOS/CarPlay_iOS.swift`, tree in `apple/Core/Car/`) is the car's four
+  tabs (R17), the twin of Android Auto's: **Continue** (up to the car's row limit of in-progress
+  episodes, each with its progress), **Stations** (tonight's evening and each genre station with a
+  recording on the air, tuned at the clock's position through the one `LiveRadio`, no second clock),
+  **Browse** (Shows you follow, Popular shows, Genres, By length; a show opens on its episodes, a
+  long one across seasons on its seasons first), **Downloads** (the finished ones, newest first).
+  The tree is a pure model (`CarLibrary`, `CarStations`; `CarLibraryTests`, `CarStationsTests`,
+  `CarArtTests`); the templates only draw it. Rules: a list the app chooses leaves out
+  `no_recommend`; every folder answers within 8 s or with one text row (`Taking too long`), and an
+  empty folder says why in one row; rows show at once and each picture follows through
+  `CPListItem.setImage` (the show's picture cut square on its face, else the item's own label, drawn
+  here and kept, so offline rows still have art; cached under Caches, 200 files); folders push only
+  while the stack is under five, and Now Playing pops to the root first when it is that deep. Rows
+  play through the one `AudioPlayer`, then `CPNowPlayingTemplate.shared`. No transcript in the car.
+  There is no search screen: `CPSearchTemplate` is documented for destination search and not listed
+  for audio apps; `CarLibrary.search` and `voiceTarget` wait for a Siri intent. Not seen in a car or
+  the CarPlay Simulator: it is dormant until Apple grants `com.apple.developer.carplay-audio`, and
+  `CarSceneManifestTests` holds the phone's scene manifest and entitlements as they were.
 - **§9.2 The Apple Watch** (`apple/watchOS/EarDramaWatchApp.swift`) is
   Continue and, later, downloads only; until the phone hands its history
   over it says "Waiting on the phone". It is not embedded in the phone
