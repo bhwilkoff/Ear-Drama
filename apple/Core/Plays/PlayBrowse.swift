@@ -82,7 +82,7 @@ nonisolated protocol PlayListing: Sendable {
     var kind: String { get }
     var sortName: String? { get }
     var year: Int? { get }
-    /// Speaking parts with at least `PlayScript.castableLines` speeches: the voices a person can cast.
+    /// Every part with a spoken line: the voices a reading needs (catalog DECISIONS 047).
     var voices: Int { get }
     var minutes: Int { get }
     /// Each speaking part's speeches, largest first.
@@ -95,12 +95,10 @@ nonisolated protocol PlayListing: Sendable {
 nonisolated extension PlayScript: PlayListing {
     /// Words a minute for a play's length: speech read aloud. A length is "About N min", never exact.
     static let wordsPerMinute = 150
-    /// A role a person can cast has at least this many speeches (`script_parse.CASTABLE_LINES`).
-    static let castableLines = 5
 
-    /// The voices a person can cast: roles with `castableLines` speeches.
+    /// The voices a reading needs: roles with a spoken line, as the index counts them.
     var voices: Int {
-        if !roles.isEmpty { return roles.filter { $0.lines >= Self.castableLines }.count }
+        if !roles.isEmpty { return roles.filter { $0.lines >= 1 }.count }
         return castParts.filter { $0.id.isSpeaking }.count
     }
 

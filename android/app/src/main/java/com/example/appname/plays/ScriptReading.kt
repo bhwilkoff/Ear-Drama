@@ -35,9 +35,6 @@ interface PlayListing {
 }
 
 object ScriptReading {
-    /** A role a person can cast has at least this many speeches (catalog/tools/script_parse.py CASTABLE_LINES). */
-    const val CASTABLE_LINES = 5
-
     enum class Level { Act, Scene, Part }
 
     private const val NUM = "(?:[IVXLC]+|\\d+|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|FIRST|SECOND|THIRD|FOURTH|" +
@@ -267,9 +264,9 @@ object ScriptReading {
 
     // MARK: Browse helpers: an index row or a whole script count the same
 
-    /** Voices a person can cast: roles with [CASTABLE_LINES] speeches, else the speaking parts counted from the lines. */
+    /** Voices a reading needs (catalog DECISIONS 047): roles with a spoken line, else the speaking parts counted from the lines. */
     fun voicesOf(script: PlayScript): Int =
-        if (script.roles.isNotEmpty()) script.roles.count { it.lines >= CASTABLE_LINES } else script.castParts.count { it.id.isSpeaking }
+        if (script.roles.isNotEmpty()) script.roles.count { it.lines >= 1 } else script.castParts.count { it.id.isSpeaking }
 
     fun minutesOf(script: PlayScript): Int =
         maxOf(1, Math.round(script.roles.sumOf { it.words } / PlayScript.WORDS_PER_MINUTE.toDouble()).toInt())

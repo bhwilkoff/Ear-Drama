@@ -147,7 +147,7 @@ const OwnScripts = (() => {
       }
       const row = { id: snap.id, title: snap.title, parts: parts.length, lines: settled.length,
                     open: settled.filter(l => l.kind === 'open').length, done: snap.done, cast: parts,
-                    voices: parts.filter(n => n >= C.CASTABLE_LINES).length, created: snap.created, updated: snap.updated,
+                    voices: parts.filter(n => n >= 1).length, created: snap.created, updated: snap.updated,
                     ...(snap.episode ? { episode: snap.episode.id } : {}), ...(snap.ear ? { ear: O.castCount(snap.doc) } : {}), ...(snap.shared ? { shared: snap.shared } : {}) };
       await backend.putAll([[`${folder(snap.id)}doc.json`, JSON.stringify(snap)], [`${folder(snap.id)}row.json`, JSON.stringify(row)],
         ...(script ? [[`${folder(snap.id)}script.json`, JSON.stringify(script)]] : [])]);

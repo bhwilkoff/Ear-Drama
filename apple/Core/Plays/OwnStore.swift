@@ -234,7 +234,7 @@ nonisolated enum OwnBuild {
         let n = OwnScript.castCount(rec.doc)
         return OwnRow(id: rec.id, title: rec.title, parts: parts.count, lines: settled.count,
                       open: settled.filter { $0.kind == "open" }.count, done: rec.done, cast: parts,
-                      voices: parts.filter { $0 >= PlayScript.castableLines }.count, created: rec.created, updated: rec.updated,
+                      voices: parts.filter { $0 >= 1 }.count, created: rec.created, updated: rec.updated,
                       episode: rec.episode?.id, ear: rec.ear == nil ? nil : OwnRow.Ear(cast: n.cast, lines: n.lines), shared: rec.shared)
     }
 

@@ -82,8 +82,6 @@ const PlaysCore = (() => {
 
   /** Words a minute for a play's length: speech read aloud. A length is "About N min", never exact. */
   const WORDS_PER_MINUTE = 150;
-  /** A role a person can cast has at least this many speeches (catalog/tools/script_parse.py CASTABLE_LINES). */
-  const CASTABLE_LINES = 5;
   /*
    * Every browse surface takes either a full script or a row of the play library's index
    * (contract §4.1: `voices`, `minutes`, `cast`, display-name `authors`), so a list of 1,500
@@ -962,7 +960,7 @@ const PlaysCore = (() => {
     DIRECTIONS, SOUND, STANDIN, TAKE_RATE, ROOM_TONE_SECONDS, DEFAULT_GAP, TARGET_LUFS, PEAK_CEILING,
     BLEED_LOUD_FRACTION, now, uuid, clone,
     role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, spokenText, displayName, authorName, authorLine,
-    WORDS_PER_MINUTE, CASTABLE_LINES, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, pickList, fnv1a64, todaysPlay, scenePool, todaysScene, openingOf,
+    WORDS_PER_MINUTE, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, pickList, fnv1a64, todaysPlay, scenePool, todaysScene, openingOf,
     linesFor, speechLineIDs, castParts,
     newProduction, isEmptyProduction, secondProductionNeedsAccount, madeHereLeads, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused, deleteTake,
     fingerprint, isFinished, stableStringify,

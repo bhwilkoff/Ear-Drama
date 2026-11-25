@@ -402,7 +402,7 @@ class OwnScripts(
         }
         val row = OwnRow(
             snap.id, snap.title, parts.size, settled.size, settled.count { it.kind == "open" }, snap.done, parts,
-            parts.count { it >= CASTABLE_LINES }, snap.created, snap.updated, snap.episode?.id,
+            parts.count { it >= 1 }, snap.created, snap.updated, snap.episode?.id,
             snap.ear?.let { OwnScript.castCount(snap.doc).let { (n, of) -> EarCount(n, of) } }, FORMAT, snap.shared,
         )
         root.mkdirs()
@@ -512,7 +512,6 @@ class OwnScripts(
         const val ROW = "row.json"
         const val SCRIPT = "script.json"
         const val DRAFT = "draft.json"
-        const val CASTABLE_LINES = 5
         private const val COPY = " (copy)"
         const val SOURCE_ADDED = "Added by you"
         const val SOURCE_EPISODE = "Automatic transcript"

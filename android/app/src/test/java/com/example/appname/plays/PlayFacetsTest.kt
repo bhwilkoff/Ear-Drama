@@ -9,7 +9,7 @@ class PlayFacetsTest {
     private fun play(id: String, title: String, kind: String, vararg words: Int, sortName: String? = null) =
         fixtureScript().copy(
             id = id, title = title, kind = kind, sortName = sortName,
-            roles = words.mapIndexed { i, w -> PlayScript.Role("R$i", ScriptReading.CASTABLE_LINES, w) },
+            roles = words.mapIndexed { i, w -> PlayScript.Role("R$i", 5, w) },
         )
 
     @Test fun `voices and minutes come from the roles, in bands`() {

@@ -2,7 +2,7 @@ import Foundation
 
 // One row of the published play library's index (contract §4.1, Decision 075/076): what a list draws without
 // fetching the play's script. `cast` is each named speaker's speeches, largest first; `voices` counts the roles
-// with at least `PlayScript.castableLines`. A row published before `cast` draws no cast and never throws.
+// with a spoken line. A row published before `cast` draws no cast and never throws.
 
 nonisolated struct PlayRow: Codable, Hashable, Sendable, Identifiable, PlayListing {
     struct Rights: Codable, Hashable, Sendable {
