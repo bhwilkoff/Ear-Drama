@@ -287,3 +287,8 @@ GRW request sent or not.
   bump for what is new. Follow-ups (B26): part colors differ between the parts page and the script's page (BEN teal, then blue);
   Apple room Remove/leave; Mac Save as Text only by Share; Apple seek accuracy by ear. The owner must answer a standing macOS prompt
   ("Ear Drama" wants Documents: Don't Allow); until then run xctest from a /private/tmp clone.
+- 2026-11-24 21:40: **R4-5 + R4-2c web merged** (share, class, room with an own script; x-take proven in Chrome; 33 suites, bench 135/135, frames
+  read; 654 Apple tests on the merge). Android Build failed on 1.1.0: Robolectric could not download android-all (second time):
+  fix in Gradle (resolve the jars as a configuration, Robolectric offline). B26 additions: web (and check Apple) auto-cast picks
+  macOS novelty voices (Bahh, Bells, Boing) as Defaults; `.os-sheet` backdrop lightens dark pages; an orphan share counts to 20.
+  Next: R4-5 on Apple and Android with the B26 follow-ups.
