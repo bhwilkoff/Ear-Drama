@@ -48,6 +48,9 @@ class AppContainer(context: Context, scope: CoroutineScope) {
     val plays = PlaysLibrary(context, KtorLibraryTransport(api.client)).also { p -> p.signedIn = { accounts.account.value != null } }
     val isTelevision = context.isTelevision()
 
+    /** A script another app handed over, until Add a script reads it (the inbox puts it here; never in a route or saved state). */
+    val ownIncoming = kotlinx.coroutines.flow.MutableStateFlow<com.example.appname.ui.screens.OwnIncoming?>(null)
+
     /**
      * The downloaded voices (Decision 078, S6d): the model under `filesDir/kokoro/v2`, fetched on the one Ktor client only
      * when the person asks, the play's phonemes through the library's client. The download runs in the app's scope so
@@ -63,7 +66,8 @@ class AppContainer(context: Context, scope: CoroutineScope) {
 
     /** The engine, an on-demand Play module installed with the voices (owner 2026-11-15). */
     val kokoroModule: KokoroModule by lazy { KokoroModule(context) }
-    private val appScope = scope
+    /** The app's own scope: what must outlive the screen that began it. */
+    val appScope = scope
     private var voiceDownload: Job? = null
 
     /** "Download voices": the engine module from Play, then the model; one at a time; a partial file resumes. */

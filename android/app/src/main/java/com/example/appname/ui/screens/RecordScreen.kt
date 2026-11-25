@@ -74,6 +74,8 @@ fun RecordScreen(
     onDramas: () -> Unit,
     onRead: (String) -> Unit = {},
     onOpenStudio: OpenStudio = { _, _, _, _ -> },
+    onAddScript: () -> Unit = {},
+    onOpenOwn: (com.example.appname.plays.OwnRow) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val productions by container.plays.store.productions.collectAsState()
@@ -96,8 +98,15 @@ fun RecordScreen(
     val haptics = rememberHaptics()
     val scope = rememberCoroutineScope()
     val reads = !LocalIsTelevision.current
+    val ownRows = rememberOwnRows()
     val bar = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    Scaffold(modifier = Modifier.nestedScroll(bar.nestedScrollConnection), topBar = { TopAppBar(title = { Text("Record") }, scrollBehavior = bar) }) { padding ->
+    Scaffold(modifier = Modifier.nestedScroll(bar.nestedScrollConnection), topBar = {
+        TopAppBar(
+            title = { Text("Record") },
+            actions = { if (reads) AddScriptButton(onAddScript) },
+            scrollBehavior = bar,
+        )
+    }) { padding ->
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val (cols, tileWidth) = tileLayout(maxWidth)
             LazyVerticalGrid(
@@ -122,6 +131,10 @@ fun RecordScreen(
                             }
                         }
                     }
+                }
+                if (ownRows.isNotEmpty()) {
+                    wide("own-h") { SectionHeader("Your scripts") }
+                    for (row in ownRows) wide("o:" + row.id) { OwnScriptRow(row, onOpen = { onOpenOwn(row) }) }
                 }
                 if (reads) wide("class-doors") { ClassDoors() }
                 wide("today") { TodaysScene(onOpenScript, onRead, onOpenStudio) }

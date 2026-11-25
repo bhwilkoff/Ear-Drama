@@ -178,6 +178,11 @@ fun AppRoot(
                     }
                     selected = Tab.Record
                 }
+                is InboxRequest.AddScript -> if (!container.isTelevision) {
+                    container.ownIncoming.value = request.incoming
+                    selected = Tab.Record
+                    stacks.getValue(Tab.Record).navigateTo(Route.AddScript)
+                }
                 InboxRequest.EndDoor -> {
                     container.playback.stop()
                     playerOpen = false
@@ -197,7 +202,11 @@ fun AppRoot(
     }
     val openPerson: (String) -> Unit = { id -> stack.navigateTo(Route.Person(id)) }
     val openTranscript: (String) -> Unit = { id -> stack.navigateTo(Route.Transcript(id)) }
-    val back: () -> Unit = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
+    val roomExit = remember { com.example.appname.ui.screens.RoomExit() }
+    val back: () -> Unit = {
+        if (stack.lastOrNull().let { it is Route.ReadRoom || it is Route.ReadPair }) roomExit.leave()
+        if (stack.size > 1) stack.removeAt(stack.lastIndex)
+    }
     val openScript: (String) -> Unit = { id -> stack.navigateTo(Route.Script(id)) }
     val openDrama: (String) -> Unit = { id -> stack.navigateTo(Route.Drama(id)) }
     val openProduction: (String) -> Unit = { id -> stack.navigateTo(Route.Production(id)) }
@@ -208,7 +217,16 @@ fun AppRoot(
     val accountAsk by container.plays.accountAsk.collectAsState()
     // Reading is full screen (§4.17): the tab bar, the mini player and the offline line step aside.
     val last = stack.lastOrNull()
-    val reading = last is Route.Reader || last is Route.ReadRoom || last is Route.ReadPair
+    val reading = last is Route.Reader || last is Route.ReadRoom || last is Route.ReadPair ||
+        last is Route.AddScript || last is Route.OwnParts || last is Route.Ear
+    // A page that has done its work gives way to the next one: depth stays the same (§1.4).
+    val swap: (Route) -> Unit = { to ->
+        if (stack.size > 1) stack.removeAt(stack.lastIndex)
+        stack.navigateTo(to)
+    }
+    val openOwn: (com.example.appname.plays.OwnRow) -> Unit = { row ->
+        stack.navigateTo(if (row.done) Route.Script(row.id) else row.episode?.let { Route.Ear(it) } ?: Route.OwnParts(row.id))
+    }
 
     CompositionLocalProvider(
         LocalPlayerMuted provides muted,
@@ -220,6 +238,7 @@ fun AppRoot(
             showReading = { stack.navigateTo(Route.ReadPair) },
             openParts = { stack.navigateTo(Route.Parts) },
             openVoiceSettings = { voicesRequest += 1; selected = Tab.Library },
+            exit = roomExit,
         ),
     ) {
         HapticEvents()
@@ -299,6 +318,8 @@ fun AppRoot(
                                     onDramas = { haptics(Haptic.Selection); browseDramas = true; selected = Tab.Browse },
                                     onRead = openReader,
                                     onOpenStudio = openStudio,
+                                    onAddScript = { stack.navigateTo(Route.AddScript) },
+                                    onOpenOwn = openOwn,
                                 )
                             }
                             entry<Route.Search> {
@@ -309,6 +330,8 @@ fun AppRoot(
                                     onOpenPerson = openPerson,
                                     incoming = incomingSearch,
                                     onIncomingTaken = { incomingSearch = null },
+                                    onAddScript = { stack.navigateTo(Route.AddScript) },
+                                    onOpenOwn = openOwn,
                                 )
                             }
                             entry<Route.Library> {
@@ -344,7 +367,17 @@ fun AppRoot(
                                     onOpenTranscript = openTranscript,
                                     onOpenProduction = openProduction,
                                     onOpenPerson = openPerson,
+                                    onCastByEar = { stack.navigateTo(Route.Ear(it)) },
                                 )
+                            }
+                            entry<Route.AddScript> {
+                                com.example.appname.ui.screens.OwnAddScreen(onClose = back, onNext = { swap(Route.OwnParts(it)) })
+                            }
+                            entry<Route.OwnParts> { route ->
+                                com.example.appname.ui.screens.OwnPartsScreen(route.id, onBack = back, onDone = { swap(Route.Script(it)) })
+                            }
+                            entry<Route.Ear> { route ->
+                                com.example.appname.ui.screens.EarScreen(route.episode, onBack = back, onOpenScript = { swap(Route.Script(it)) })
                             }
                             entry<Route.Person> { route ->
                                 PersonScreen(route.id, onBack = back, onOpenEpisode = openEpisode, onOpenSeries = openSeries)
@@ -371,7 +404,7 @@ fun AppRoot(
             entry<Route.Parts> { com.example.appname.ui.screens.PartsScreen(onBack = back, onRecord = openStudio) }
             entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
                             entry<Route.Script> { route ->
-                                ScriptScreen(route.id, onBack = back, onRead = openReader, onOpenProduction = { id ->
+                                ScriptScreen(route.id, onBack = back, onRead = openReader, onOpenEpisode = openEpisode, onEditOwn = { stack.navigateTo(Route.OwnParts(it)) }, onCastByEar = { stack.navigateTo(Route.Ear(it)) }, onOpenProduction = { id ->
                                     // Starting one replaces the play's page with its cast sheet: depth stays two (§1.4).
                                     if (stack.lastOrNull() == route) stack.removeAt(stack.lastIndex)
                                     stack.add(Route.Production(id))

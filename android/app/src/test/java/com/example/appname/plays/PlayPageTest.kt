@@ -71,6 +71,12 @@ class PlayPageTest {
             listOf("It is the first in which" to true, "I" to true, "have been serious." to true, "Sits." to false, "Well." to true),
             stress.speeches[0].rows[0].runs.map { it.text to it.said },
         )
+        // A person's own script (PLAYS-DESIGN §13): brackets they typed are directions, never drawn as words said.
+        val typed = speech("ANNA", say("Words of my own"), dir("she laughs"), say("instead."))
+        fun said(lay: PageLine) = lay.speeches[0].rows[0].runs.filter { it.said }.map { it.text.trim() }
+        assertEquals("control: the catalog's rule draws it as stress", listOf("Words of my own", "she laughs", "instead."), said(PlayPage.layoutOf(typed, listOf("ANNA"))))
+        assertEquals(listOf("Words of my own", "instead."), said(PlayPage.layoutOf(typed, listOf("ANNA"), emphasis = false)))
+
         val em = PlayPage.layoutOf(
             ScriptLine("L5", ScriptLine.Kind.Speech, role = "A", parts = listOf(say("I said"), say("never,"), say("not ever.")), em = listOf(1)), listOf("A"),
         )

@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -49,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -162,6 +165,7 @@ internal fun RoomBar(
     var ending by remember { mutableStateOf(false) }
     var adding by remember { mutableStateOf(false) }
     var takes by remember { mutableStateOf(false) }
+    var people by remember { mutableStateOf(false) }
     var refused by remember { mutableStateOf<String?>(null) }
 
     fun send(m: JsonObject) {
@@ -209,7 +213,12 @@ internal fun RoomBar(
                 roomFact(snap, ended), Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
-            Text("${snap.present} here", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val removable = remember(snap) { ReadCore.removable(snap) }
+            if (removable.isEmpty() || ended != null) {
+                Text("${snap.present} here", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                TextButton(onClick = { people = true }) { Text("${snap.present} here") }
+            }
         }
         if (ended != null) {
             TextButton(onClick = seam.onLeave) { Text("Close") }
@@ -305,8 +314,49 @@ internal fun RoomBar(
         )
     }
     if (adding) AddScreenDialog(seam, onDismiss = { adding = false })
+    if (people && ended == null) {
+        PeopleDialog(ReadCore.removable(snap), refused, onRemove = { send(msg("type" to "remove", "member" to it)) }, onDismiss = { people = false })
+    }
     if (parts) PartsDialog(snap, script, onSend = ::send, onDismiss = { parts = false })
     if (takes) TakesSheet(seam, snap, script, cast, onDismiss = { takes = false }, onSend = ::send)
+}
+
+/** Who is here, for whoever may remove a member (ANDROID-DESIGN §4.19a): each with Remove, whose confirmation says that joining locks. */
+@Composable
+internal fun PeopleDialog(members: List<ReadCore.Removable>, refused: String?, onRemove: (String) -> Unit, onDismiss: () -> Unit) {
+    var removing by remember { mutableStateOf<ReadCore.Removable?>(null) }
+    LaunchedEffect(members.isEmpty()) { if (members.isEmpty()) onDismiss() }
+    val target = removing
+    if (target != null) {
+        AlertDialog(
+            onDismissRequest = { removing = null },
+            title = { Text("Remove ${target.label} and lock joining?") },
+            confirmButton = {
+                TextButton(onClick = { removing = null; onRemove(target.id) }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { removing = null }) { Text("Cancel") } },
+        )
+        return
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Here") },
+        text = {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                members.forEach { m ->
+                    ListItem(
+                        headlineContent = { Text(m.label) },
+                        supportingContent = if (m.live) null else ({ Text("Away") }),
+                        trailingContent = {
+                            TextButton(onClick = { removing = m }, modifier = Modifier.semantics { contentDescription = "Remove ${m.label}" }) { Text("Remove") }
+                        },
+                    )
+                }
+                refused?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
 }
 
 @Composable

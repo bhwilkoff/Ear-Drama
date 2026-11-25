@@ -105,6 +105,7 @@ fun EpisodeScreen(
     onOpenTranscript: (String) -> Unit,
     onOpenProduction: (String) -> Unit,
     onOpenPerson: (String) -> Unit,
+    onCastByEar: (String) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val playRows = rememberCastableRows()
@@ -135,6 +136,8 @@ fun EpisodeScreen(
             // On a TV the D-pad starts on Play (§9.2, tvOS-DESIGN §6.2).
             val play = remember { FocusRequester() }
             ClaimTvFocus(play, row.id)
+            val castable = playRows.firstOrNull { it.id == d.script }
+            val byEar = rememberCanCastByEar(d, asks = castable == null && (d.script == null || playRows.isNotEmpty()))
             var recordingsOpen by rememberSaveable(row.id) { mutableStateOf(false) }
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                 LazyColumn(Modifier.widthIn(max = 720.dp).fillMaxSize(), contentPadding = padding) {
@@ -150,9 +153,9 @@ fun EpisodeScreen(
                         queue = { folded -> QueueToggle(row.id, folded) },
                         share = { folded -> ShareButton(episodeShareTitle(row), SiteLinks.episode(row.id), folded) },
                         download = { folded -> DownloadButton(d, folded) },
-                        earDrama = playRows.firstOrNull { it.id == d.script }?.let { script ->
+                        earDrama = castable?.let { script ->
                             @Composable { StartEarDramaButton(script, onOpenProduction) }
-                        },
+                        } ?: if (byEar) ({ CastByEarButton { onCastByEar(row.id) } }) else null,
                     )
                     if (d.recordings.size > 1) {
                         item(key = "versions-h") {

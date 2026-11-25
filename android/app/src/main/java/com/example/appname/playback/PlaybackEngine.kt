@@ -132,6 +132,47 @@ class PlaybackEngine(
     private var interrupted = false
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
+    /** Any seek, ours or the session's (a page that casts an episode by ear hands nothing across one). */
+    var onSeek: (() -> Unit)? = null
+
+    /** False while a page plays one line on its own: the saved place is not moved by it. */
+    var keepsPlace = true
+
+    /** The person's own speed while a page holds the player, null while none does. */
+    private var speedBeforeHold: Float? = null
+    private val held: Boolean get() = speedBeforeHold != null
+
+    /** Whether audio is sounding now (or would be, muted): what a page that follows the line asks between ticks. */
+    val isPlayingNow: Boolean get() = playerOrNull?.isPlaying == true
+
+    /**
+     * A page keeps the player on the episode it casts by ear (ANDROID-DESIGN §4.23 item 4): at the page's [speed], never the
+     * person's own; its end starts nothing; no other copy is tried, since the lines' times are the first copy's.
+     */
+    fun hold(speed: Float) {
+        if (!held) speedBeforeHold = playerOrNull?.playbackParameters?.speed ?: 1f
+        playerOrNull?.setPlaybackSpeed(speed)
+        syncPauseAtEnd()
+        publish()
+    }
+
+    /** Lets go: the person's own speed, and what is playing plays on. */
+    fun release() {
+        val own = speedBeforeHold ?: return
+        speedBeforeHold = null
+        keepsPlace = true
+        playerOrNull?.setPlaybackSpeed(own)
+        syncPauseAtEnd()
+        publish()
+    }
+
+    /** Plays this copy of [row] from [startMs], held: nothing queued after it, no saved place taken. */
+    fun playHeld(row: EpisodeRow, url: String, startMs: Long, speed: Float) {
+        if (!held) speedBeforeHold = playerOrNull?.playbackParameters?.speed ?: 1f
+        sleep.onUserPlay()
+        playRoomCopy(row, url, startMs, true, speed)
+    }
+
     /** The test doors' mute: silent whatever the fade says. */
     var muted: Boolean = false
         set(value) {
@@ -252,6 +293,7 @@ class PlaybackEngine(
                 // and sends no state change, so only a seek that left READY is in flight.
                 seeking = playerOrNull?.playbackState == Player.STATE_BUFFERING
                 onRoomChange?.invoke()
+                onSeek?.invoke()
             }
         }
 
@@ -356,7 +398,7 @@ class PlaybackEngine(
                 delay((step.seconds * 1000).toLong())
                 url
             }
-            is LoadRecovery.Step.Fallback -> step.url
+            is LoadRecovery.Step.Fallback -> if (held) return false else step.url
         }
         if (playerOrNull?.currentMediaItemIndex != index || episodes.getOrNull(index)?.id != row.id) return true
         urls = urls.toMutableList().also { it[index] = next }
@@ -588,7 +630,7 @@ class PlaybackEngine(
     val sleepOptions: List<SleepMode> get() = sleep.options
 
     private fun syncPauseAtEnd() {
-        exoOrNull?.pauseAtEndOfMediaItems = sleep.pausesAtEndOfItem || !sleep.allowsAutoAdvance()
+        exoOrNull?.pauseAtEndOfMediaItems = held || sleep.pausesAtEndOfItem || !sleep.allowsAutoAdvance()
     }
 
     /** The recording reached its end: the sleep timer's, or a plain end. */
@@ -638,6 +680,7 @@ class PlaybackEngine(
     }
 
     private fun saveNow() {
+        if (!keepsPlace) return
         val p = playerOrNull ?: return
         val id = p.currentMediaItem?.mediaId ?: return
         val position = p.currentPosition

@@ -19,6 +19,7 @@ import com.example.appname.navigation.DeepLink
 import com.example.appname.navigation.InboxRequest
 import com.example.appname.navigation.LaunchDoors
 import com.example.appname.ui.AppRoot
+import com.example.appname.navigation.OwnIntents
 import com.example.appname.ui.LocalIsTelevision
 import com.example.appname.ui.TvFocusClock
 import com.example.appname.ui.isTelevision
@@ -54,6 +55,7 @@ class MainActivity : ComponentActivity() {
 
         // A recreated Activity keeps its back stacks; only a fresh launch routes the link.
         if (savedInstanceState == null) handleDeepLink(intent)
+        if (savedInstanceState == null) handleText(intent)
         // A recreated Activity (rotation) must not re-open the launch doors.
         if (savedInstanceState == null) openDoors(intent)
 
@@ -79,6 +81,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleDeepLink(intent)
+        handleText(intent)
         openDoors(intent)
     }
 
@@ -118,6 +121,12 @@ class MainActivity : ComponentActivity() {
         val url = intent.dataString ?: return
         if (container.accounts.handleCallback(url)) return
         DeepLink.parse(url)?.let { inbox += it }
+    }
+
+    /** A text shared to the app, or a text file opened in it, for Add a script: measured here, read by the page, never parsed unmeasured. */
+    private fun handleText(intent: Intent?) {
+        val found = OwnIntents.incoming(intent) ?: return
+        inbox += InboxRequest.AddScript(found)
     }
 
     private val container get() = (application as AppNameApplication).container

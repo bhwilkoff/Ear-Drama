@@ -958,6 +958,9 @@ private fun TakeRow(model: StudioModel, take: Take, number: Int, chosen: Boolean
                 Text("Take $number", style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
                     Text(seconds(take), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (com.example.appname.plays.OwnScripts.wordsChanged(model.script, take)) {
+                        Text("Words changed", style = MaterialTheme.typography.labelMedium, color = AppSemantics.colors.warning)
+                    }
                     if (take.bleed) {
                         Icon(Icons.Filled.Warning, contentDescription = null, tint = AppSemantics.colors.warning, modifier = Modifier.size(14.dp))
                         Text("Re-take", style = MaterialTheme.typography.labelMedium, color = AppSemantics.colors.warning)

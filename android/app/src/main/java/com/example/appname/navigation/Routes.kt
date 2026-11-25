@@ -46,6 +46,12 @@ sealed interface Route : NavKey {
         /** With [along] and no [productionId]: a finished drama's production id; the reader follows its line files (§2.11 rule 11). */
         val drama: String? = null,
     ) : Route
+    /** Add a script (ANDROID-DESIGN §4.23): the text, then its parts page. Not on a TV. */
+    @Serializable data object AddScript : Route
+    /** An own script's parts, being corrected. */
+    @Serializable data class OwnParts(val id: String) : Route
+    /** An episode cast by ear from its automatic transcript. */
+    @Serializable data class Ear(val episode: String) : Route
     /** A production's cast sheet. */
     @Serializable data class Production(val id: String) : Route
     /** The invitation page for the token the session holds (never in the key: a token is not saved state). */

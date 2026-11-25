@@ -128,7 +128,14 @@ data class PlayScript(
     @SerialName("sort_name") override val sortName: String? = null,
     /** Printed headings the parser set aside (contract §4.1); the bundled scripts carry none. */
     val sections: List<ScriptSection> = emptyList(),
+    /** A person's own script (PLAYS-DESIGN §13): when it was added (milliseconds), the episode it was cast from, and what a line with a take said before. */
+    val created: Long? = null,
+    val episode: String? = null,
+    val edits: Map<String, List<ScriptEdit>> = emptyMap(),
 ) : PlayListing {
+    /** Added by a person or cast by ear: never published, shared or read together from here. */
+    val isOwn: Boolean get() = kind == "own"
+
     @Serializable data class Author(val name: String? = null, val display: String? = null, val born: Int? = null, val died: Int? = null) {
         /** The record's own display name, else the filed name read forward. */
         val shown: String? get() = display?.trim()?.takeIf { it.isNotEmpty() } ?: name?.let(::displayName)
@@ -296,6 +303,10 @@ data class PlayScript(
         }
     }
 }
+
+/** A line's words until [until] (an Apple reference date, as a take's `created` is). */
+@Serializable
+data class ScriptEdit(val until: Double, val text: String)
 
 /** One speech of a play's opening: its part, the role as printed, the said words cleaned, and its line (null from an index row). */
 data class OpeningSpeech(val part: PartID, val name: String, val text: String, val lineId: String?, val verse: Boolean = false)

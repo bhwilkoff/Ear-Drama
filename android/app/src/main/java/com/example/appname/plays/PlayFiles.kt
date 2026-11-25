@@ -242,6 +242,29 @@ class ProductionStore(val root: File) : ShareStore {
         return runCatching { json.decodeFromString(PlayScript.serializer(), file.readText()) }.getOrNull()
     }
 
+    /** The lines of [scriptID] with a take in any of its productions (PLAYS-DESIGN §13 item 4): chosen or not, they may not move. */
+    fun takenLines(scriptID: String): Set<String> = productionsOf(scriptID).flatMap { p -> p.takes.map { it.lineID } }.toSet()
+
+    fun productionsOf(scriptID: String): List<Production> = _productions.value.filter { it.scriptID == scriptID }
+
+    /**
+     * A changed own script reaches its productions here (PLAYS-DESIGN §13 item 5): each takes its lines and revision, keeps
+     * its takes, and gains or loses parts with them. A shared one keeps its own text. Answers the productions changed.
+     */
+    fun adopt(script: PlayScript): List<String> = productionsOf(script.id).filter { share(it.id) == null }.map { found ->
+        val p = production(found.id) ?: found
+        val was = script(p)?.lines?.map { it.id }.orEmpty()
+        val moved = was != script.lines.map { it.id }
+        writeAtomically(File(folder(p.id), "script.json"), json.encodeToString(PlayScript.serializer(), script))
+        save(
+            p.copy(
+                parts = script.castParts.associate { it.id to p.state(it.id) }, title = script.title, scriptRevision = script.revision,
+                listenedThrough = p.listenedThrough && !moved, mixedFrom = if (moved) null else p.mixedFrom,
+            ),
+        )
+        p.id
+    }
+
     override fun save(production: Production) {
         folder(production.id).mkdirs()
         writeAtomically(File(folder(production.id), "production.json"), json.encodeToString(Production.serializer(), production))

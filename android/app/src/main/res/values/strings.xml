@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Ear Drama</string>
+    <!-- The share sheet's and the Open with list's name for what a text does here. -->
+    <string name="add_a_script">Add a script</string>
     <!-- The on-demand :kokoro module, as Play names it while it downloads. -->
     <string name="kokoro_module_title">Downloaded voices</string>
 </resources>
