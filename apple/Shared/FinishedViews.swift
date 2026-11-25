@@ -12,7 +12,11 @@ import SwiftUI
 enum FinishedTiles {
     static let scripts: [PlayScript] = CastableLibrary.load()?.scripts ?? []
 
-    static func script(for play: FinishedPlay) -> PlayScript? { scripts.first { $0.id == play.scriptID } }
+    /// The play a finished drama was made from: the published library's copy as last cached, else the bundle's. A play only the
+    /// library holds draws its label too.
+    static func script(for play: FinishedPlay) -> PlayScript? {
+        LibraryScripts.cachedScript(id: play.scriptID) ?? scripts.first { $0.id == play.scriptID }
+    }
 
     #if DEBUG
     static let rehearsalPrefix = "door-along:"

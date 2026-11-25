@@ -153,6 +153,12 @@ The only shapes; a new one needs a new rule.
 - **§3.4 Detail**: a scroll view of the header, an action row, the
   credits, and the rights line (§4.4).
 - **§3.5 Full-screen cover**: Now Playing and the transcript reader only.
+- **§3.5a A shared own script on the TV** (R4-5 Apple, 2026-11-24; PLAYS-DESIGN §13). The TV records nothing and offers
+  no Share, Report Script or Remove; it plays and shows what others shared. A shared production of an own script
+  (`SharedPlaysScreen`) and a room of one (the shared screen) get their script from `OwnShare.resolve`, the phone's
+  resolver with the library as its catalog: a member's route with the account, a room's with the screen's member key.
+  Nothing draws that did not arrive whole; a refusal is one line ("This script was removed.", "This script did not arrive
+  whole.") with Try Again where trying again can help. Surprise draws from the published library, not the bundle.
 - **§3.6 Share is a QR code sheet** (BACKLOG-LOOP B9, 2026-11-23; §8 promised it; tvOS has no
   share sheet). An episode's action row carries **Share** (`qrcode`), last. It opens a system
   `.sheet`: a QR code of the episode's https twin (`SiteLinks.episode`, the address every other

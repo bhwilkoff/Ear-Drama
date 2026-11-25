@@ -73,7 +73,7 @@ struct SurpriseScreen_tvOS: View {
             guard catalog.state == .ready else { return }
             async let picked = catalog.randomEpisode()
             async let night = SurprisePicks.evening(catalog: catalog)
-            script = await Task.detached { CastableLibrary.load()?.scripts.randomElement() }.value
+            script = await LibraryScripts.random()
             episode = await picked
             var drawn: [EpisodeRow] = []
             for _ in 0..<Self.moreCount {

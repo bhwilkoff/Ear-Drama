@@ -19,7 +19,7 @@ enum PlaysShare {
 
     /// Publish for the director of a complete play (rule 9). Whether the Worker can upload is `PlaysConsent.publishes`.
     static func canPublish(_ rec: SharedRecord, _ script: PlayScript, _ me: String?) -> Bool {
-        me != nil && rec.director == me && rec.archive == nil && complete(rec, script)
+        me != nil && rec.director == me && rec.archive == nil && OwnShare.publishable(rec) && complete(rec, script)
     }
 
     /// Members who hold a chosen take: each consents for their own recording (Decision 059).
@@ -31,7 +31,7 @@ enum PlaysShare {
 
     /// A performer who is not the director, in a complete play, who has not agreed yet.
     static func needsMyConsent(_ rec: SharedRecord, _ script: PlayScript, _ me: String?) -> Bool {
-        guard let me, rec.archive == nil, rec.director != me, complete(rec, script) else { return false }
+        guard let me, rec.archive == nil, OwnShare.publishable(rec), rec.director != me, complete(rec, script) else { return false }
         return performers(rec).contains { $0.userID == me && $0.consented != true }
     }
 
@@ -314,13 +314,20 @@ enum PlaysShare {
         return add.count
     }
 
-    /// "Share": the Worker makes the record; the caller directs it.
+    /// "Share": the Worker makes the record; the caller directs it. An own script's text follows (PLAYS-DESIGN §13 item 11): a
+    /// sending that may pass later leaves the production shared and owed (`unsent`, the error); one that never can undoes the share
+    /// and throws.
     static func share(api: any PlaysTransport, store: ProductionStore, local: Production, script: PlayScript,
-                      displayName: String?) async throws -> SharedRecord {
-        let rec = try await api.create(scriptID: script.id, revision: script.revision, cast: castSheet(script),
-                                       displayName: trimmed(displayName))
+                      displayName: String?, freeze: () async -> Void = {}) async throws -> (record: SharedRecord, unsent: (any Error)?) {
+        let own = PlayScript.isOwnID(script.id)
+        let rec = own ? try await api.createOwn(OwnShare.makeBody(script), displayName: trimmed(displayName))
+            : try await api.create(scriptID: script.id, revision: script.revision, cast: castSheet(script), displayName: trimmed(displayName))
         try store.setShare(local.id, ProductionShare(pid: rec.id))
-        return rec
+        guard own else { return (rec, nil) }
+        guard let unsent = await OwnShare.sendOrUndo(api, pid: rec.id, script: script, freeze: freeze) else { return (rec, nil) }
+        if OwnShare.passes(unsent) { return (rec, unsent) }
+        try? store.unshare(local.id)
+        throw unsent
     }
 
     /// The production on this device for a shared one, made from the bundle's
@@ -446,8 +453,12 @@ enum PlaysShare {
         case "lines_missing":
             let n = r.detailCount ?? 0
             return n == 1 ? "1 line still needs a take." : "\(n) lines still need a take."
+        case "bad_name" where r.detail != nil:
+            return r.detail == "title" ? "The title is not allowed." : "The part name \(PartID(rawValue: r.detail ?? "").title) is not allowed."
+        case "too_many_scripts":
+            return "You have shared \(r.detail ?? "20") scripts. Delete a production of one first."
         default:
-            if let code = r.code, let text = lines[code] { return text }
+            if let code = r.code, let text = lines[code] ?? OwnShare.lines[code] { return text }
         }
         if r.status == 429 { return lines["rate_limited"]! }
         return switch r.kind {

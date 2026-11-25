@@ -488,8 +488,18 @@ nonisolated enum DeviceVoices {
             $0.language.hasPrefix("en")
                 && !$0.voiceTraits.contains(.isPersonalVoice)
                 && !$0.voiceTraits.contains(.isNoveltyVoice)
+                && !isNovelty(identifier: $0.identifier)
         }
         return VoiceCasting.sorted(english.map(cast), language: AVSpeechSynthesisVoice.currentLanguageCode())
+    }
+
+    /// The macOS novelty voices, by the last part of their identifier. The Mac does not always set the novelty trait on them, and a
+    /// Default that picked Bahh or Bells for a part would read the play as a joke (2026-11-24, seen on the web's list).
+    static let noveltyNames: Set<String> = ["albert", "badnews", "bahh", "bells", "boing", "bubbles", "cellos", "deranged", "goodnews",
+                                            "hysterical", "jester", "organ", "superstar", "trinoids", "whisper", "wobble", "zarvox"]
+
+    static func isNovelty(identifier: String) -> Bool {
+        noveltyNames.contains(identifier.split(separator: ".").last.map { $0.lowercased() } ?? "")
     }
 
     static func cast(_ v: AVSpeechSynthesisVoice) -> CastVoice {

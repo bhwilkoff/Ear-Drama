@@ -88,6 +88,28 @@ private struct Env {
     }
 }
 
+/// One color rule for a part on every surface (B26): the parts page, the casting page, the script's page, the reader and the studio.
+///   Broken control: EarModel.hue by the order named (the old rule): BEN, named second and the largest, read teal here and blue there.
+@MainActor
+struct PartColorRuleTests {
+    @Test func aPartHasTheSameColorOnTheCastingPageAndTheScriptsPage() async throws {
+        let env = Env()
+        defer { env.clean() }
+        let rec = try await env.made("Colors", words: "ANNA: One.\nBEN: Two.\nBEN: Three.\nBEN: Four.\nCY: Five.\nCY: Six.\nANNA: Seven.")
+        let script = try #require(env.own.script(rec.id))
+        // Named in the order ANNA, CY, BEN (the order a person names them while listening); sizes BEN 3, ANNA 2, CY 2.
+        let named = [OwnPart(name: "ANNA", lines: 2), OwnPart(name: "CY", lines: 2), OwnPart(name: "BEN", lines: 3)]
+        for part in named {
+            #expect(EarCore.hue(part.name, in: named) == script.partHue(.role(part.name)), "\(part.name)")
+        }
+        #expect(EarCore.hue("BEN", in: named) == PlayScript.partHues[0], "the largest is first, however it was named")
+        #expect(EarCore.hue("DOT", in: named + [OwnPart(name: "DOT", lines: 0)]) == nil, "no line yet, no color")
+        #expect(EarCore.hue(nil, in: named) == nil)
+        let ordered = [OwnPart(name: "BEN", lines: 3), OwnPart(name: "ANNA", lines: 2), OwnPart(name: "CY", lines: 2)]
+        for part in ordered { #expect(EarCore.hue(part.name, in: ordered) == EarCore.hue(part.name, in: named), "the parts page agrees: \(part.name)") }
+    }
+}
+
 private func step(_ rec: inout OwnRecord, _ op: OwnOp, _ takes: Set<String> = []) -> OwnRefusal? {
     let r = OwnScript.apply(rec.doc, op, OwnEnv(takes: takes))
     if r.refusal == nil { rec.doc = r.doc }
@@ -461,7 +483,9 @@ private func speech(_ rec: OwnRecord, _ role: String, _ n: Int = 0) -> OwnLine {
         }
         let plays = try source("Shared/PlaysScreens.swift")
         #expect(plays.contains("if !script.isOwn { ReadStartButton(script: script) }"), "no Read Together on its page")
-        #expect(plays.contains("if !script.isOwn {\n                SharedProductionSection("), "no Share and no Publish on a production of one")
+        // Sharing arrived with R4-5: Share is the production's, and Publish is absent for it, with its reason (OwnShareViews).
+        #expect(plays.contains("SharedProductionSection(production: production, script: script)") && !plays.contains("if !script.isOwn {\n                SharedProductionSection("), "Share on a production of one")
+        #expect(try source("Shared/SharedPlaysViews.swift").contains("if script.isOwn { OwnShareRows("), "and its own rows: readers, Try Again, Report Script")
         #expect(try source("Shared/PlaysGrammar.swift").contains("script.kind == \"own\" ? \"Your script\""), "its kicker is its own")
     }
 

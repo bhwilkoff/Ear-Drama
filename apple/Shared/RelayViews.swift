@@ -139,7 +139,8 @@ struct PartsScreen: View {
             do {
                 let home = try await WorkerSeat(api: .shared).home(key: key)
                 for p in home.productions where !p.assignments.isEmpty {
-                    guard let script = await plays.script(id: p.scriptID, revision: p.scriptRevision) else { failure = ReadCore.refusal("revision_mismatch"); continue }
+                    let got = await plays.resolved(id: p.scriptID, revision: p.scriptRevision, who: .seat(key: key, pid: p.id), fit: OwnShare.Fit.seat(p.assignments))
+                    guard let script = got.script else { failure = OwnShare.scriptLine(got.failure).isEmpty ? ReadCore.refusal("revision_mismatch") : OwnShare.scriptLine(got.failure); continue }
                     out.append(Block(seat: seat, className: home.class.name, production: p, script: script, key: key))
                     if let r = try? await WorkerSeat(api: .shared).receiver(key: key, pid: p.id), let n = r.name { receiverName[p.id] = n }
                 }

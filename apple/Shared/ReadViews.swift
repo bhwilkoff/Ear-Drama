@@ -25,6 +25,7 @@ struct ReadRoomScreen: View {
     @State private var classCode = ""
     @State private var seatList: ReadSeatList?
     @State private var attempt = 0
+    @State private var scriptFailure = ""
 
     private let classWire = WorkerReadClass(api: .shared)
 
@@ -40,6 +41,8 @@ struct ReadRoomScreen: View {
                 ScriptReaderView(scriptID: roomModel.script.id, room: roomModel)
             } else if let ended = session.ended {
                 ContentUnavailableView(ReadCore.refusal(ended), systemImage: "waveform.slash")
+            } else if !scriptFailure.isEmpty {
+                ContentUnavailableView(scriptFailure, systemImage: "waveform.slash")
             } else if session.snapshot != nil {
                 ProgressView()
             } else if let goneCode {
@@ -79,8 +82,13 @@ struct ReadRoomScreen: View {
     private func loadScript(_ id: String?) {
         guard let id, let rev = session.snapshot?.scriptRevision, script == nil else { return }
         Task {
-            let exact = await plays.script(id: id, revision: rev)
-            if let exact { script = exact } else { script = (try? await plays.script(id: id)) ?? nil }
+            // A room carrying an own script reads it with its member key; a catalog play at its revision, else the library's latest.
+            let snap = session.snapshot
+            let who: OwnShare.Who? = session.code.flatMap { code in session.memberKey.map { .room(code: code, key: $0) } }
+            let exact = await plays.resolved(id: id, revision: rev, who: who, fit: snap.map(OwnShare.Fit.room) ?? { _ in true })
+            if let found = exact.script { script = found }
+            else if PlayScript.isOwnID(id) { scriptFailure = OwnShare.scriptLine(exact.failure); if scriptFailure.isEmpty { scriptFailure = PlaysShare.line(exact.failure) } }
+            else { script = (try? await plays.script(id: id)) ?? nil }
             makeModel()
         }
     }
@@ -430,7 +438,7 @@ struct ClassPageScreen: View {
     /// Relay across time (PLAYS-DESIGN §12.11): while this page is open the teacher's app holds each production's pickup, so
     /// takes recorded at home pass through; the progress list moves on every arrival.
     private func holdPickups() {
-        let box = inbox ?? ClassInbox(store: plays.store, script: { id, rev in await plays.script(id: id, revision: rev) })
+        let box = inbox ?? ClassInbox(store: plays.store, script: { pid, id, rev in await plays.resolved(id: id, revision: rev, who: .member(pid: pid)).script })
         if inbox == nil {
             box.onArrival = { Task { @MainActor in progress = try? await wire.progress(id); await loadReviews() } }
             box.setActive(scenePhase == .active)
@@ -451,7 +459,7 @@ struct ClassPageScreen: View {
         for p in progress?.productions ?? [] { if let r = try? await transport.get(p.id) { records.append(r) } }
         var scripts = reviewScripts
         for r in records where scripts[r.scriptID] == nil {
-            if let s = await plays.script(id: r.scriptID, revision: r.scriptRevision) { scripts[r.scriptID] = s }
+            if let s = await plays.resolved(id: r.scriptID, revision: r.scriptRevision, who: .member(pid: r.id), fit: OwnShare.Fit.record(r)).script { scripts[r.scriptID] = s }
         }
         reviewScripts = scripts
         recordScripts = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0.scriptID) })
@@ -490,8 +498,20 @@ struct ClassPageScreen: View {
 
     private var playPicker: some View {
         NavigationStack {
-            List(PlayBrowse.pickList(plays.rows).filter { pickQuery.isEmpty || $0.label.localizedStandardContains(pickQuery) }) { pick in
-                Button(pick.label) { choosing = false; start(pick.id) }
+            List {
+                ForEach(PlayBrowse.pickList(plays.rows).filter { pickQuery.isEmpty || $0.label.localizedStandardContains(pickQuery) }) { pick in
+                    Button(pick.label) { choosing = false; start(pick.id) }
+                }
+                let mine = plays.own.rows.filter { $0.done && (pickQuery.isEmpty || $0.title.localizedStandardContains(pickQuery)) }
+                if !mine.isEmpty {
+                    Section {
+                        ForEach(mine) { row in Button(row.title) { choosing = false; start(row.id) } }
+                    } header: {
+                        Text("Your Scripts")
+                    } footer: {
+                        Text(OwnShare.classReaders)
+                    }
+                }
             }
             .searchable(text: $pickQuery)
             .task { await plays.load() }
@@ -505,11 +525,21 @@ struct ClassPageScreen: View {
         Task {
             do {
                 guard let script = try await plays.script(id: scriptID) else { failure = ReadCore.refusal("not_castable"); return }
-                let prod = try await wire.classProduction(id, scriptID: script.id, revision: script.revision, cast: PlaysShare.castSheet(script))
+                let prod: ReadClassProduction
+                if PlayScript.isOwnID(script.id) {
+                    prod = try await wire.classProduction(id, own: OwnShare.makeBody(script))
+                    let own = plays.own
+                    if let unsent = await OwnShare.sendOrUndo(WorkerPlays(api: .shared), pid: prod.id, script: script, freeze: { try? await own.freeze(script.id) }) {
+                        failure = OwnShare.passes(unsent) ? OwnShare.notSent : PlaysShare.line(unsent)
+                        return
+                    }
+                } else {
+                    prod = try await wire.classProduction(id, scriptID: script.id, revision: script.revision, cast: PlaysShare.castSheet(script))
+                }
                 let session = ReadSession.system()
                 try await session.open(ReadOpening.body(script, classID: id, productionID: prod.id), teacher: true)
                 if let code = session.code { ReadHandover.hold(session); app.push(Route.readRoom(code)) }
-            } catch let f as ReadFailure { failure = ReadCore.refusal(f.code) } catch { failure = ReadCore.refusal("error") }
+            } catch let f as ReadFailure { failure = ReadCore.refusal(f.code) } catch let r as PlaysRefusal { failure = PlaysShare.line(r) } catch { failure = ReadCore.refusal("error") }
         }
     }
 }
@@ -649,9 +679,9 @@ struct CastingBoardScreen: View {
             detail = try await wire.detail(classID)
             let info = try await wire.production(productionID)
             assignments = (info.assignments ?? []).map { ReadCore.Assignment(part: $0.part, seat: $0.seat, from: $0.from, to: $0.to) }
-            let found = await plays.script(id: info.scriptID, revision: info.scriptRevision)
-            script = found
-            if let found { facts = ReadCastingFacts(found) } else { failure = ReadCore.refusal("revision_mismatch") }
+            let got = await plays.resolved(id: info.scriptID, revision: info.scriptRevision, who: .member(pid: productionID))
+            script = got.script
+            if let found = got.script { facts = ReadCastingFacts(found) } else { failure = PlaysShare.line(got.failure) }
         } catch let f as ReadFailure { failure = ReadCore.refusal(f.code) } catch { failure = ReadCore.refusal("error") }
     }
 }

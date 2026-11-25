@@ -64,12 +64,50 @@ final class SharedPlays {
         }
     }
 
-    func share(_ local: Production, script: PlayScript, store: ProductionStore, name: String?) async {
+    func share(_ local: Production, script: PlayScript, store: ProductionStore, name: String?, own: OwnScripts? = nil) async {
         await run(local.id) {
-            let rec = try await PlaysShare.share(api: self.api, store: store, local: local, script: script, displayName: name)
-            self.records[rec.id] = rec
-            try PlaysShare.follow(store, localID: local.id, rec: rec, me: self.me())
+            let made = try await PlaysShare.share(api: self.api, store: store, local: local, script: script, displayName: name,
+                                                  freeze: { try? await own?.freeze(script.id) })
+            self.records[made.record.id] = made.record
+            self.notSent[local.id] = made.unsent.map(PlaysShare.line)
+            try PlaysShare.follow(store, localID: local.id, rec: made.record, me: self.me())
         }
+    }
+
+    /// Why an own script's text was not sent, for this visit (the Worker keeps only that it is owed).
+    private(set) var notSent: [String: String?] = [:]
+
+    /// Try Again: the text of an own script that is owed, from this device's copy. A refusal that can never pass undoes the share.
+    func sendAgain(_ localID: String, script: PlayScript, store: ProductionStore, own: OwnScripts? = nil) async {
+        guard let pid = store.share(localID)?.pid else { return }
+        busy.insert(localID)
+        defer { busy.remove(localID) }
+        let mine = own?.script(script.id)
+        guard let mine, mine.revision == script.revision else {
+            notSent[localID] = .some(PlaysShare.line(PlaysRefusal.code("not_on_device", status: 0)))
+            return
+        }
+        if let why = await OwnShare.sendOrUndo(api, pid: pid, script: mine, freeze: { try? await own?.freeze(script.id) }) {
+            if OwnShare.passes(why) { notSent[localID] = .some(PlaysShare.line(why)); return }
+            try? store.unshare(localID)
+            refusals[localID] = PlaysShare.line(why)
+            records[pid] = nil
+            return
+        }
+        notSent[localID] = nil
+        if let rec = try? await api.get(pid) { records[pid] = rec }
+    }
+
+    /// Report script (item 15): the production is hidden from its reporter while the text is here.
+    func reportScript(_ localID: String, store: ProductionStore, reason: ReportReason, note: String) async -> Bool {
+        guard let pid = store.share(localID)?.pid else { return false }
+        let text = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        var done = false
+        await run(localID) {
+            try await self.api.reportScript(pid, reason: reason, note: text.isEmpty ? nil : text)
+            done = true
+        }
+        return done
     }
 
     func invite(_ localID: String, store: ProductionStore) async {
@@ -184,8 +222,9 @@ final class SharedPlays {
         do {
             let rec = try await api.get(pid)
             records[pid] = rec
-            let script = await plays.script(id: rec.scriptID, revision: rec.scriptRevision)
-            let local = try PlaysShare.localFor(store: plays.store, pid: pid, script: script)
+            let got = await plays.resolved(id: rec.scriptID, revision: rec.scriptRevision, who: .member(pid: pid), fit: OwnShare.Fit.record(rec))
+            if PlayScript.isOwnID(rec.scriptID), let why = got.failure { throw why }
+            let local = try PlaysShare.localFor(store: plays.store, pid: pid, script: got.script)
             try PlaysShare.follow(plays.store, localID: local.id, rec: rec, me: me())
             invitationRefusal = nil
             return local
@@ -199,8 +238,8 @@ final class SharedPlays {
         do {
             let view = try await api.viewInvite(token)
             invitation = view
-            invitationRefusal = await plays.script(id: view.scriptID, revision: view.scriptRevision) == nil
-                ? PlaysShare.line(PlaysRefusal.code("revision_mismatch")) : nil
+            let got = await plays.resolved(id: view.scriptID, revision: view.scriptRevision, who: .invite(token: token), fit: OwnShare.Fit.invite(view))
+            invitationRefusal = got.script == nil ? PlaysShare.line(got.failure ?? PlaysRefusal.code("revision_mismatch")) : nil
         } catch {
             invitation = nil
             invitationRefusal = PlaysShare.line(error)
@@ -209,7 +248,7 @@ final class SharedPlays {
 
     func join(_ token: String, part: PartID, name: String, plays: PlaysLibrary) async -> Production? {
         guard let view = invitation else { return nil }
-        let script = await plays.script(id: view.scriptID, revision: view.scriptRevision)
+        let script = await plays.resolved(id: view.scriptID, revision: view.scriptRevision, who: .invite(token: token), fit: OwnShare.Fit.invite(view)).script
         do {
             let (rec, local) = try await PlaysShare.join(api: api, store: plays.store, token: token, part: part,
                                                          displayName: name, script: script)

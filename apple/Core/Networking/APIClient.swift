@@ -284,11 +284,19 @@ actor APIClient {
         try await inbox(path: path, token: nil, headers: headers)
     }
 
-    private func inbox(path: String, token: String?, headers: [String: String]) async throws -> (Data, Int, String?) {
+    /// An own script's text (docs/WORKER.md "Own scripts"): the bytes as the Worker hashed them and the `x-script` header
+    /// that names them. `bearer` for a member of a production; an invite, a seat and a room carry their own key in `headers`.
+    func scriptResponse(path: String, headers: [String: String], bearer: Bool) async throws -> (Data, Int, String?) {
+        let token = bearer ? try await refreshIfNeeded().accessToken : nil
+        return try await inbox(path: path, token: token, headers: headers, header: "x-script", timeout: 60)
+    }
+
+    private func inbox(path: String, token: String?, headers: [String: String], header: String = "x-take",
+                       timeout: TimeInterval = 40) async throws -> (Data, Int, String?) {
         guard let base = config.workerURL else { throw WorkerError.notConfigured }
         let root = base.absoluteString.hasSuffix("/") ? String(base.absoluteString.dropLast()) : base.absoluteString
         guard let url = URL(string: root + path) else { throw WorkerError.badResponse }
-        var request = URLRequest(url: url, timeoutInterval: 40)
+        var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = "GET"
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
@@ -296,7 +304,7 @@ actor APIClient {
         let response: URLResponse
         do { (data, response) = try await session.data(for: request) } catch { throw WorkerError.transport }
         guard let http = response as? HTTPURLResponse else { throw WorkerError.badResponse }
-        return (data, http.statusCode, http.value(forHTTPHeaderField: "x-take"))
+        return (data, http.statusCode, http.value(forHTTPHeaderField: header))
     }
 
     /// A Worker call that needs no account (a read room, a seat): no bearer, no refresh. `path` is already percent-encoded.

@@ -548,7 +548,7 @@ final class ClassInbox {
     private(set) var idle = false
     @ObservationIgnored let store: ProductionStore
     @ObservationIgnored let transport: any PlaysTransport
-    @ObservationIgnored let script: (String, String) async -> PlayScript?
+    @ObservationIgnored let script: (String, String, String) async -> PlayScript?
     @ObservationIgnored private var loops: [String: PickupLoop] = [:]
     @ObservationIgnored private var known: [String: (scriptID: String, revision: String)] = [:]
     @ObservationIgnored private var shown = true
@@ -557,7 +557,7 @@ final class ClassInbox {
     @ObservationIgnored private let idleMs: Int
     @ObservationIgnored var onArrival: (() -> Void)?
 
-    init(store: ProductionStore, transport: any PlaysTransport = WorkerPlays(api: .shared), script: @escaping (String, String) async -> PlayScript?,
+    init(store: ProductionStore, transport: any PlaysTransport = WorkerPlays(api: .shared), script: @escaping (String, String, String) async -> PlayScript?,
          clock: @escaping @Sendable () -> Int = PickupLoop.wallClock, sleep: @escaping @Sendable (Int) async -> Void = { try? await Task.sleep(for: .milliseconds($0)) },
          idleMs: Int = PickupLoop.idleMs) {
         self.store = store; self.transport = transport; self.script = script
@@ -571,7 +571,7 @@ final class ClassInbox {
         guard loops[pid] == nil, !idle else { return }
         let loop = PickupLoop(active: shown, now: clock, sleep: sleep, idleMs: idleMs,
             inbox: { [weak self] in
-                guard let self, let picked = try await self.transport.nextTake(pid), let s = await self.script(scriptID, revision) else { return false }
+                guard let self, let picked = try await self.transport.nextTake(pid), let s = await self.script(pid, scriptID, revision) else { return false }
                 try self.accept(picked, pid: pid, script: s)
                 return true
             },

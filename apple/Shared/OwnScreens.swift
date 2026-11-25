@@ -327,11 +327,14 @@ struct AddScriptScreen: View {
         let found = await Task.detached(priority: .userInitiated) { () -> (count: (parts: Int, lines: Int)?, why: OwnRefusal?) in
             if let why = OwnScript.textRefusal(words) { return (nil, why) }
             let read = OwnScript.parse(words)
-            return read.lines.count > OwnScript.maxLines ? (nil, .too_long) : ((read.parts.count, read.lines.count), nil)
+            // Judged on what Done would keep, every line with its id: a text that reads but could never be kept is refused here, not at Done.
+            if let why = OwnScript.builtRefusal(read.lines) { return (nil, why) }
+            return ((read.parts.count, read.lines.count), nil)
         }.value
         guard !Task.isCancelled else { return }
         count = found.count
-        refusal = found.why == .too_long ? OwnText.say(.too_long) : (refusal == OwnText.say(.too_long) ? nil : refusal)
+        let tooBig = found.why == .too_long || found.why == .too_many_lines
+        refusal = tooBig ? OwnText.say(.too_long) : (refusal == OwnText.say(.too_long) ? nil : refusal)
     }
 
     private func paste(_ words: String) {
@@ -496,10 +499,16 @@ struct OwnScriptFoot: View {
     let script: PlayScript
     @Environment(PlaysLibrary.self) private var plays
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppStore.self) private var app
     @State private var confirming = false
+    @State private var copyFailure: String?
+    #if os(macOS)
+    @State private var exporting = false
+    #endif
 
     var body: some View {
         let row = plays.own.row(script.id)
+        let frozen = plays.own.frozen(script.id)
         VStack(alignment: .leading, spacing: Spacing.s3) {
             VStack(alignment: .leading, spacing: Spacing.s1) {
                 HStack(spacing: Spacing.s1) {
@@ -509,7 +518,7 @@ struct OwnScriptFoot: View {
                     } else {
                         Text(OwnText.addedByYou)
                     }
-                    Text(verbatim: "\u{00B7} \(OwnText.kept)")
+                    Text(verbatim: "\u{00B7} \(frozen ? "Shared" : OwnText.kept)")
                 }
                 if let row, row.halfCast { Text(verbatim: row.facts).monospacedDigit() }
                 Text(OwnText.cannotPublish)
@@ -517,19 +526,42 @@ struct OwnScriptFoot: View {
             .font(TypeRamp.caption)
             .foregroundStyle(Color.brandTextMuted)
             FlowLayout(spacing: Spacing.s2, rowSpacing: Spacing.s2) {
-                if let row, row.halfCast, let episode = script.episode {
+                if let row, row.halfCast, !frozen, let episode = script.episode {
                     NavigationLink("Cast by Ear", value: PlayRoute.cast(episode)).pageAction()
                 }
-                NavigationLink("Edit", value: PlayRoute.parts(script.id)).pageAction().accessibilityIdentifier("own-edit")
+                if frozen {
+                    // What people were sent is what it stays (§13 item 12): only a copy changes.
+                    Button("Edit a Copy") { Task { await copy() } }.pageAction().accessibilityIdentifier("own-edit-copy")
+                } else {
+                    NavigationLink("Edit", value: PlayRoute.parts(script.id)).pageAction().accessibilityIdentifier("own-edit")
+                }
                 ShareLink(item: OwnTextFile(name: OwnBuild.fileName(script.title), text: OwnBuild.asText(script)),
                           preview: SharePreview(script.title)) { Text("Save as Text") }
                     .pageAction()
                     .accessibilityIdentifier("own-save-text")
+                #if os(macOS)
+                // The Mac's own save panel, beside the share sheet (macOS-DESIGN §4.11): the file goes where the person says.
+                Button("Save as Text\u{2026}") { exporting = true }.pageAction().accessibilityIdentifier("own-save-panel")
+                    .fileExporter(isPresented: $exporting, item: OwnTextFile(name: OwnBuild.fileName(script.title), text: OwnBuild.asText(script)),
+                                  contentTypes: [.plainText], defaultFilename: OwnBuild.fileName(script.title)) { _ in }
+                #endif
                 Button(role: .destructive) { confirming = true } label: { Text("Delete").foregroundStyle(Color.semanticError) }
                     .pageAction()
                     .deleteOwnScriptDialog(id: script.id, title: script.title, isPresented: $confirming) { dismiss() }
                     .accessibilityIdentifier("own-delete")
             }
+            if let copyFailure { Text(verbatim: copyFailure).font(TypeRamp.caption).foregroundStyle(Color.semanticError) }
+        }
+    }
+
+    private func copy() async {
+        copyFailure = nil
+        do {
+            let made = try await plays.own.copy(script)
+            let n = OwnScript.castCount(made.doc)
+            if let episode = made.episode?.id, made.ear != nil, n.cast < n.lines { app.push(PlayRoute.cast(episode)) } else { app.push(PlayRoute.parts(made.id)) }
+        } catch {
+            copyFailure = OwnText.notKept(error)
         }
     }
 }

@@ -41,8 +41,10 @@ struct SharedProductionSection: View {
                     } label: {
                         Label("Share", systemImage: "person.2.badge.plus")
                     }
+                    if script.isOwn { Text(OwnShare.readers).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted) }
                 } else {
                     Text("Sharing needs an account.")
+                    if script.isOwn { Text(OwnShare.readers).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted) }
                     SignInButtons()
                 }
                 if let refusal = shared.refusal(production.id) {
@@ -53,7 +55,7 @@ struct SharedProductionSection: View {
             .ageQuestion(age)
             .alert("Share", isPresented: $naming) {
                 TextField("Your name", text: $name)
-                Button("Share") { Task { await shared.share(production, script: script, store: plays.store, name: name) } }
+                Button("Share") { Task { await shared.share(production, script: script, store: plays.store, name: name, own: plays.own) } }
                 Button("Cancel", role: .cancel) {}
             }
             .sheet(isPresented: $people) {
@@ -72,9 +74,12 @@ struct SharedProductionSection: View {
 
     @ViewBuilder private func sharedRows(_ rec: SharedRecord) -> some View {
         let me = shared.userID
-        if rec.director == me {
+        // No invitation is made until an own script's text is there (docs/WORKER.md "Own scripts"): `kept`, or no own script at all.
+        let ownState = OwnShare.state(rec.ownScript, me: me)
+        if rec.director == me, ownState == nil || ownState?.state == "kept" {
             InviteRow(productionID: production.id, age: age)
         }
+        if script.isOwn { OwnShareRows(production: production, script: script, rec: rec) }
         uploadRow(rec, me: me)
         Button {
             people = true
@@ -109,6 +114,8 @@ struct SharedProductionSection: View {
                 .tint(Color.brandPrimary)
                 Button("Not Now") { notNow = true }
             }
+        } else if let why = OwnShare.neverPublishes(rec), rec.director == me, !script.isOwn {
+            Text(verbatim: why).foregroundStyle(Color.brandTextMuted)
         } else if PlaysShare.canPublish(rec, script, me) {
             if consent?.publishes == true {
                 ForEach(PlaysShare.performers(rec)) { m in
@@ -230,7 +237,7 @@ struct ChangeLinesSection: View {
     @ViewBuilder private func removeControl(_ item: PlaysShare.Change) -> some View {
         if item.needsReason {
             Menu {
-                ForEach(ReportReason.allCases) { reason in
+                ForEach(ReportReason.forTakes) { reason in
                     Button(reason.title) { removing = Removal(change: item, reason: reason.rawValue) }
                 }
             } label: {

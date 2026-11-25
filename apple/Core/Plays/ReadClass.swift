@@ -83,6 +83,8 @@ nonisolated protocol ReadClassWire: Sendable {
     func removeSeat(_ id: String, seat: String) async throws
     func releaseSeat(_ id: String, seat: String) async throws
     func classProduction(_ id: String, scriptID: String, revision: String, cast: [PlaysShare.CastLine]) async throws -> ReadClassProduction
+    /// A class production of an own script (`own: true`, its title and episode): its text is still owed.
+    func classProduction(_ id: String, own body: OwnShare.MakeBody) async throws -> ReadClassProduction
     func assign(_ pid: String, assignments: [ReadCore.Assignment]) async throws -> [ReadCore.Assignment]
     func deleteClass(_ id: String) async throws
     func setEnd(_ id: String, endsOn: String) async throws -> ReadClassEnd
@@ -158,6 +160,14 @@ nonisolated struct WorkerReadClass: ReadClassWire {
         let lines = cast.map { ["id": $0.id, "part": $0.part] }
         let body: [String: Any] = ["script_id": scriptID, "script_revision": revision, "cast": lines]
         return try decode(ReadClassProduction.self, try await call("POST", "\(Self.root)/classes/\(Self.esc(id))/productions", json: body))
+    }
+
+    func classProduction(_ id: String, own body: OwnShare.MakeBody) async throws -> ReadClassProduction {
+        var o: [String: Any] = ["script_id": body.scriptID, "script_revision": body.revision, "own": true,
+                                "cast": body.cast.map { ["id": $0.id, "part": $0.part] }]
+        if let title = body.title { o["title"] = title }
+        if let episode = body.episodeID { o["episode_id"] = episode }
+        return try decode(ReadClassProduction.self, try await call("POST", "\(Self.root)/classes/\(Self.esc(id))/productions", json: o))
     }
 
     func deleteClass(_ id: String) async throws {

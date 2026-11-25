@@ -247,6 +247,8 @@ final class ReadSession {
     @ObservationIgnored private let wire: any ReadWire
     @ObservationIgnored private let now: @Sendable () -> Double
     @ObservationIgnored private var key: String?
+    /// This device's member key, for the one read that needs it (an own script's text); it never goes in a URL.
+    var memberKey: String? { key }
     @ObservationIgnored private var forcePoll = false
     @ObservationIgnored private var socket: (any ReadSocket)?
     @ObservationIgnored private var socketOpen = false
@@ -287,7 +289,15 @@ final class ReadSession {
     /// A TV that was paired becomes this room's screen with the snapshot and key the pairing answered with.
     func adopt(_ joined: ReadJoined) { enter(joined) }
 
+    /// Out of the room for good, by a person's act only (Close, Leave): the room is told, so the person's parts open and an
+    /// adult room's lead passes on at once (PLAYS-DESIGN §12.13). A rotation, a background and a lost network pause instead.
     func leave() {
+        if let code, let key, ended == nil {
+            let data = Self.json(["type": "leave"]), wire = wire
+            // Over HTTP on either transport: the socket closes in the next line. The room drops a quiet member after two
+            // minutes, so a failed goodbye costs nothing.
+            Task { _ = try? await wire.send(code: code, key: key, message: data) }
+        }
         stopTransport()
         key = nil; code = nil; snapshot = nil; ended = nil
     }

@@ -250,6 +250,25 @@ nonisolated enum ReadCore {
         return nil
     }
 
+    /// Who may remove a member: an adult room's leader or opener; in a class only its teacher, never a student who leads
+    /// (PLAYS-DESIGN §12.13).
+    static func canRemove(_ room: Room, memberID: String?) -> Bool {
+        guard let memberID, !memberID.isEmpty else { return false }
+        return memberID == room.owner || (room.kind == "adult" && memberID == room.leader)
+    }
+
+    struct Removable: Equatable, Sendable, Identifiable { var id: String; var label: String; var live: Bool }
+
+    /// The members this device may remove, named as the room names them: a seat, a given name, a screen.
+    static func removable(_ snap: ReadSnapshot?) -> [Removable] {
+        guard let snap, let you = snap.you, you.owner || (snap.kind == "adult" && you.leads) else { return [] }
+        return snap.members.filter { $0.id != you.id }.map { m in
+            let seat = m.seat.flatMap { id in snap.seats.first { $0.id == id }?.label }
+            let name = m.name.flatMap { $0.isEmpty ? nil : $0 }
+            return Removable(id: m.id, label: seat ?? name ?? (m.role == "screen" ? "A screen" : "A reader"), live: m.live)
+        }
+    }
+
     static func leaderName(_ room: Room, members: [Member]) -> String? {
         let lead = members.first { $0.id == room.leader }
         if let seat = lead?.seat, let label = room.seats.first(where: { $0.id == seat })?.label { return label }
@@ -327,6 +346,8 @@ nonisolated enum ReadCore {
         "bad_code": "That is not a reading code.",
         "no_such_room": "No reading with that code.",
         "room_ended": "This reading has ended.",
+        "not_a_member": "You are no longer in this reading.",
+        "no_such_member": "They already left.",
         "room_full": "This reading is full.",
         "joining_locked": "Joining is locked.",
         "seat_in_use": "Someone is already in on another device.",

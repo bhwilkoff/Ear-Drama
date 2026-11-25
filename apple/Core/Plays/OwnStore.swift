@@ -45,6 +45,9 @@ nonisolated extension OwnSpan: Codable {
     }
 }
 
+/// Why a script could not be kept or read back: its files are unreadable, or it was shared and is frozen.
+nonisolated enum OwnKeepFailure: Error { case unreadable, shared }
+
 /// A script being corrected.
 nonisolated struct OwnRecord: Codable, Equatable, Sendable, Identifiable {
     struct Episode: Codable, Equatable, Sendable {
@@ -72,6 +75,8 @@ nonisolated struct OwnRecord: Codable, Equatable, Sendable, Identifiable {
     var done = false
     var episode: Episode?
     var ear: Ear?
+    /// When it was first shared: from then on it is what people were sent, and only a copy can change (§13 item 12).
+    var shared: Date?
 
     static func newID() -> String { "own-" + UUID().uuidString.lowercased() }
 
@@ -98,6 +103,7 @@ nonisolated struct OwnRow: Codable, Equatable, Sendable, Identifiable {
     let updated: Date
     var episode: String?
     var ear: Ear?
+    var shared: Date?
 
     var halfCast: Bool { ear.map { $0.cast < $0.lines } ?? false }
 
@@ -150,8 +156,11 @@ nonisolated enum OwnText {
     static let cannotPublish = "This script can\u{2019}t be published."
     static let wordsChanged = "Words changed"
 
+    static let shared = "This script is shared."
+
     static func notKept(_ error: any Error) -> String {
-        (error as? CocoaError)?.code == .fileWriteOutOfSpace ? "This device is out of space." : "This device could not save it."
+        if let failure = error as? OwnKeepFailure, failure == .shared { return shared }
+        return (error as? CocoaError)?.code == .fileWriteOutOfSpace ? "This device is out of space." : "This device could not save it."
     }
 }
 
@@ -226,7 +235,7 @@ nonisolated enum OwnBuild {
         return OwnRow(id: rec.id, title: rec.title, parts: parts.count, lines: settled.count,
                       open: settled.filter { $0.kind == "open" }.count, done: rec.done, cast: parts,
                       voices: parts.filter { $0 >= PlayScript.castableLines }.count, created: rec.created, updated: rec.updated,
-                      episode: rec.episode?.id, ear: rec.ear == nil ? nil : OwnRow.Ear(cast: n.cast, lines: n.lines))
+                      episode: rec.episode?.id, ear: rec.ear == nil ? nil : OwnRow.Ear(cast: n.cast, lines: n.lines), shared: rec.shared)
     }
 
     /// The castable shape of a Done record. A transcript half cast keeps its lines open: the script's are directions
@@ -324,7 +333,7 @@ final class OwnScripts {
         var isEmpty: Bool { title.isEmpty && text.isEmpty }
     }
 
-    nonisolated enum Failure: Error { case unreadable }
+    typealias Failure = OwnKeepFailure
 
     /// A script's files staged and swapped in together; a seam so a test can fill the disk.
     typealias Commit = @Sendable (_ files: [String: Data], _ folder: URL) throws -> Void
@@ -431,7 +440,50 @@ final class OwnScripts {
         return try await work.value
     }
 
+    /// Shared once, a script is frozen: what people were sent is what it stays (§13 item 12).
+    func frozen(_ id: String) -> Bool { row(id)?.shared != nil }
+
+    func freeze(_ id: String) async throws {
+        guard var rec = try get(id), rec.shared == nil else { return }
+        rec.shared = now()
+        try await keep(rec)
+    }
+
+    /// Edit a Copy (§13 item 12): a new script of `script`'s text, with a new id and its own productions. The kept doc is copied
+    /// while it is that text, so a casting can be taken up again; its line ids are kept, and it is not frozen.
+    func copy(_ script: PlayScript) async throws -> OwnRecord {
+        let was = try get(script.id)
+        let same = was != nil && self.script(script.id)?.revision == script.revision
+        let at = now()
+        var rec: OwnRecord
+        if let was, same {
+            rec = was
+        } else {
+            let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(script))
+            guard let tree = OwnJSON.parse(try JSONSerialization.data(withJSONObject: json)) else { throw Failure.unreadable }
+            rec = OwnRecord(id: script.id, title: script.title, original: "", doc: OwnScript.done(OwnScript.fromScript(tree)), created: at, updated: at,
+                            episode: script.episode.map { OwnRecord.Episode(id: $0, url: script.source.url) })
+        }
+        rec.id = OwnRecord.newID()
+        rec.title = Self.copyTitle(script.title)
+        rec.created = at
+        rec.updated = at
+        rec.done = true
+        rec.shared = nil
+        if let refusal = try await keep(rec) { throw Refused(refusal) }
+        return rec
+    }
+
+    struct Refused: Error { let refusal: OwnRefusal; init(_ r: OwnRefusal) { refusal = r } }
+
+    nonisolated static func copyTitle(_ title: String) -> String {
+        let tail = " (copy)"
+        return String(title.prefix(OwnScript.maxTitle - tail.count)) + tail
+    }
+
     private func write(_ snap: OwnRecord) async throws -> OwnRefusal? {
+        // Shared from another page since this one opened it: what people were sent stands.
+        if row(snap.id)?.shared != nil, snap.shared == nil { throw Failure.shared }
         let taken = plays?.takenLines(of: snap.id) ?? []
         let folder = folder(snap.id), commit = commit
         let made = try await Task.detached(priority: .userInitiated) {

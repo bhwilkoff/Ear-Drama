@@ -59,6 +59,25 @@ nonisolated enum LibraryScripts {
         return index.plays
     }
 
+    /// A play as the published library last gave it, from the cache `PlaysLibrary` and `script` write, with no network and no wait:
+    /// for a tile that draws a label from its parts. Nil before the library has been read; the bundle is the caller's floor.
+    static func cachedScript(id: String, cache: URL = defaultCache) -> PlayScript? {
+        guard let data = try? Data(contentsOf: cache.appending(path: "index.json")),
+              let index = try? JSONDecoder().decode(PlayRowIndex.self, from: data),
+              let path = index.plays.first(where: { $0.id == id })?.path,
+              let file = try? Data(contentsOf: cache.appending(path: path)) else { return nil }
+        return pick(id, from: file)
+    }
+
+    /// One play at random from the published library, else the bundle's: the Apple TV's Surprise draws from what people can read.
+    static func random(fetch: Fetch = { try await APIClient.shared.playsData($0) }, cache: URL = defaultCache,
+                       bundled: @Sendable () -> [PlayScript] = { CastableLibrary.load()?.scripts ?? [] }) async -> PlayScript? {
+        var failure: (any Error)?
+        if let row = await readIndex(fetch: fetch, cache: cache, failure: &failure)?.randomElement(),
+           let found = try? await script(id: row.id, fetch: fetch, cache: cache, bundled: bundled) { return found }
+        return bundled().randomElement()
+    }
+
     static func pick(_ id: String, from data: Data) -> PlayScript? {
         (try? JSONDecoder().decode(CastableLibrary.self, from: data))?.scripts.first { $0.id == id }
     }

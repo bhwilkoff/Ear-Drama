@@ -197,7 +197,10 @@ struct ReadScreenBody: View {
         script = nil
         load = .loading
         do {
-            if let found = try await LibraryScripts.script(id: id, revision: revision) {
+            if PlayScript.isOwnID(id), let revision, let snap = session.snapshot, let code = session.code, let key = session.memberKey {
+                script = try await OwnShare.resolve(id: id, revision: revision, who: .room(code: code, key: key), fit: OwnShare.Fit.room(snap))
+                load = .ready
+            } else if let found = try await LibraryScripts.script(id: id, revision: revision) {
                 script = found
                 load = .ready
             } else {
