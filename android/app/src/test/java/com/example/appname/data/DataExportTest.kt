@@ -53,6 +53,13 @@ class DataExportTest {
         assertEquals(0, Json.parseToJsonElement(sample.json()).jsonObject["marks"]!!.jsonArray.size)
     }
 
+    @Test fun `the json carries the person's own scripts as they are kept`() {
+        val script = kotlinx.serialization.json.buildJsonObject { put("id", kotlinx.serialization.json.JsonPrimitive("own-x")) }
+        val root = Json.parseToJsonElement(sample.copy(scripts = listOf(script)).json()).jsonObject
+        assertEquals(listOf(script), root["scripts"]!!.jsonArray.toList())
+        assertEquals(0, Json.parseToJsonElement(sample.json()).jsonObject["scripts"]!!.jsonArray.size)
+    }
+
     @Test fun `the csv quotes commas and quotes and leaves gaps empty`() {
         val lines = sample.historyCsv().split("\r\n")
         assertEquals(DataExport.HISTORY_COLUMNS.joinToString(","), lines[0])

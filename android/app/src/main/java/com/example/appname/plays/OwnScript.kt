@@ -79,6 +79,9 @@ object OwnScript {
     private const val MAX_NAME_POINTS = 30
 
     private val OWN_ID = Regex("own-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+    /** Whether [id] is a person's own script's. No catalog id begins with `own-`. */
+    fun isOwnId(id: String): Boolean = OWN_ID.matches(id)
     private val LINE_ID = Regex("L[0-9]{4}[a-z]*")
 
     // ---- Characters, one code point at a time ----
@@ -632,8 +635,7 @@ object OwnScript {
         var awaiting = false
         var resume: String? = null
         fun push(kind: String, role: String?, t: String, label: String? = null) {
-            cur = Building(kind, role, t, label?.takeIf { it.isNotEmpty() })
-            out.add(cur!!)
+            cur = Building(kind, role, t, label?.takeIf { it.isNotEmpty() }).also { out.add(it) }
             awaiting = false
             resume = null
         }
@@ -659,8 +661,8 @@ object OwnScript {
                     if (last >= 0) { push("direction", null, rows.subList(i, last + 1).joinToString("\n")); i = last }
                     else push(if (s[0] == '[' && !closes) "direction" else "open", null, s)
                 } else if (blank && isEntrance(s)) push("direction", null, s)
-                else if (!blank && cur != null && cur!!.kind == "speech" && isExit(s)) {
-                    val role = cur!!.role
+                else if (!blank && cur != null && cur.kind == "speech" && isExit(s)) {
+                    val role = cur.role
                     push("direction", null, s)
                     resume = role
                 } else if (!blank && resume != null) push("speech", resume, s)

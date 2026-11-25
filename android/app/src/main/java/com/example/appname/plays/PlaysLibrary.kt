@@ -52,11 +52,31 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
 
     suspend fun loadRows() = feed.loadRows()
 
-    /** One play's whole script: the library's file, else the bundle's; null when neither has it, an error when it could not be fetched. */
-    suspend fun script(id: String, revision: String? = null): PlayScript? = feed.script(id, revision)
+    /** The person's own scripts (PLAYS-DESIGN §13), `filesDir/Scripts/`, beside the productions. */
+    val own: OwnScripts by lazy {
+        OwnScripts(File(context.filesDir, "Scripts"), { store }, onAdopted = { ids -> ids.forEach(cast::remove) })
+    }
+
+    /**
+     * One play's whole script: the library's file, else the bundle's; null when neither has it, an error when it could not be
+     * fetched. An own script is this device's and never asked of the network: the one seam every reader of a script goes through.
+     */
+    suspend fun script(id: String, revision: String? = null): PlayScript? =
+        if (OwnScript.isOwnId(id)) withContext(Dispatchers.IO) { own.script(id) }?.takeIf { revision == null || it.revision == revision }
+        else feed.script(id, revision)
 
     /** The same, as a screen's state: ready, or the words for why not. */
     suspend fun resolve(id: String, revision: String?): ScriptLoad = LibraryScripts.resolve(feed, id, revision)
+
+    /** An own script's marks and voice choices go with it unless a production is left to read them in (§13 item 7). */
+    suspend fun deleteOwn(id: String) {
+        val made = own.productions(id)
+        own.remove(id)
+        if (made.isEmpty()) {
+            VoiceCasting.forget(VoiceCasting.scriptKey(id), PrefsCastStore(context))
+            MarksRepository(MarksDatabase.get(context).marks()).save(id, null, emptyList())
+        }
+    }
 
     /** A play's published phonemes for the downloaded voices; null for a held play or with no published index. */
     suspend fun phonemes(id: String): String? = feed.phonemes(id)

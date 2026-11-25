@@ -107,16 +107,17 @@ object PlayPage {
      * How a line is set. A speech gives `speeches`: one, or more when the printed text runs a second speaker's
      * speech into the first ("Why not?\nGRACE" then ". Never mind why.", a parser miss the page still
      * attributes). Verse keeps a row per printed line; prose is one row, broken only by a cue. A block gives one
-     * row, its enclosing brackets left undrawn. [roles] is the script's role names.
+     * row, its enclosing brackets left undrawn. [roles] is the script's role names. Brackets in a person's own script are
+     * theirs ([emphasis] false): "(she laughs)" is never drawn as said.
      */
-    fun layoutOf(line: ScriptLine, roles: List<String>): PageLine {
+    fun layoutOf(line: ScriptLine, roles: List<String>, emphasis: Boolean = true): PageLine {
         val runs = ScriptReading.runsOf(line).map { PageRun(it.kind, it.text, it.at, it.piece, it.said) }
         val parts = line.parts
         val isSpeech = line.kind == ScriptLine.Kind.Speech && parts != null
 
         // A word or three printed in italics between said words that run on in lowercase is the speaker's
         // emphasis the parser took for a direction: drawn as said, in italic.
-        if (isSpeech) {
+        if (isSpeech && emphasis) {
             val stressed = HashSet<Int>()
             parts.forEachIndexed { i, p ->
                 val prev = parts.getOrNull(i - 1)
