@@ -1,0 +1,12 @@
+# What a public dated catalog Release may not hold. Read by tools/check_cache_release.py,
+# which tools/cut_catalog_release.sh runs before it calls GitHub. A refusal means: take it
+# out of the staged folder (never off this list). A name leaves only with the source's
+# answer, recorded in catalog/DECISIONS.md.
+#
+#   path <folder/name>     a file or folder of that name, at any depth of a tar, any case
+#   table <name pattern>   a table, view or index of that name in any SQLite file
+
+# Generic Radio Workshop: "Assume Copyright"; its text is for matching on our own machines
+# only (Decisions 067 and 088, catalog/tools/harvest_grw.py; found public 2026-11-24, R4-9a).
+path grw/text
+table script_cues*

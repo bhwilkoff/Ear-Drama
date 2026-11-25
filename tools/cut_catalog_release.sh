@@ -10,7 +10,8 @@
 # The folder holds radio-catalog.sqlite.xz, harvest-cache.tar.xz, SHA256SUMS
 # (every other file in it listed there too) and NOTES.md, the release notes,
 # which are not uploaded. Every check runs before anything is written; --dry-run
-# runs the checks and prints what it would do.
+# runs the checks and prints what it would do. A cache or database holding anything
+# on tools/cache_denylist.txt is refused (tools/check_cache_release.py).
 #
 # It never overwrites. It refuses a tag that exists as a Release, a draft or a
 # git tag, a tag that is not newer than every dated Release, and --clobber
@@ -75,6 +76,8 @@ if command -v sha256sum > /dev/null 2>&1; then sumtool=(sha256sum -c); else sumt
 for f in "$dir"/*.xz; do
   xz -t "$f" || die "$(basename "$f") is not a whole xz stream"
 done
+python3 "${CUT_CHECK:-$HERE/check_cache_release.py}" "$dir" \
+  || die "the folder holds what may not be public (tools/cache_denylist.txt), or could not be checked"
 
 # GitHub: the tag exists nowhere, and sorts after every dated Release.
 if ! rel=$(gh api "repos/$REPO/releases" --paginate --jq '.[].tag_name' 2>&1); then

@@ -5,7 +5,9 @@ with series, title and air date, plus a downloadable text file.
 GRW states the scripts "remain, as they should, the copyright of their
 respective owners" and advises "Assume Copyright". So the text is cached for
 SEARCH and matching only; a client links to the GRW page (which GRW hosts and
-funds with ads) and never re-publishes the script. robots.txt blocks only
+funds with ads) and never re-publishes the script. The text stays on this
+machine: grw/text is on tools/cache_denylist.txt, so no Release carries it, and
+text_ids.json (ids only) stands for it in the public cache. robots.txt blocks only
 /eklipse/ and /common/; a 3-second delay is used anyway.
 """
 import html
@@ -17,6 +19,7 @@ import urllib.error
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(__file__))
+import episode_scripts as ES
 import ia_lib as ia
 
 BASE = "https://www.genericradio.com"
@@ -122,7 +125,8 @@ def fetch_texts(out, scripts, n_series, failed):
             f.write(body)
     ia.write_json(os.path.join(out, "scripts.json"), {"series": n_series, "scripts": list(scripts.values()),
                                                        "failed": failed, "complete": True})
-    print(f"{n_series} series, {len(scripts)} scripts, {len(failed)} failed", file=sys.stderr)
+    held = ES.write_held_ids(out)
+    print(f"{n_series} series, {len(scripts)} scripts, {held} texts held, {len(failed)} failed", file=sys.stderr)
     if not scripts:
         sys.exit(1)
 

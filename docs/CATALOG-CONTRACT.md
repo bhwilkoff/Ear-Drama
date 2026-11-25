@@ -35,7 +35,7 @@ field here; it never computes one.
 | `radiologs.tar.xz` | rolling Release `radiologs-latest` | the pipeline only | the measured evenings (`evenings.jsonl`: station, time, program as printed, matched episode) and the log links (`log-urls.json`); facts only, never the newspaper pages, which stay JJ's (docs/research/evenings.md §1) |
 | `loudness.json.gz` (and `loudness.prev.json.gz`, the one before) | rolling Release `loudness-latest` | the pipeline only | the loudness measurements by episode id, with errors and `suspect` rows kept as evidence; written by `.github/workflows/catalog-loudness.yml`, read by the publish step into §3.1's `loudness_i` and `loudness_tp`; never read by a client |
 | `transcripts.json.gz` (and `transcripts.prev.json.gz`, the one before) | rolling Release `transcripts-latest` | the pipeline only | archive.org's automatic transcript of each served episode's default copy, by episode id, with the URL it was read from and the on-screen gate's verdict and features (`catalog/tools/fetch_transcripts.py`); misses and errors kept as evidence; written by `.github/workflows/catalog-transcripts.yml`, read by the publish step into §3.1's `has_transcript` and `transcript_url` and §3.4's search index; never read by a client. MEASURED 2026-10-22: 8,999 candidates; 233 fetched made 1.77 MB, so the full cache is about 68 MB gzipped (about 181 MB of text, median 21 KB a transcript) |
-| `radio-catalog.sqlite.xz`, `harvest-cache.tar.xz`, `SHA256SUMS` | dated Release (`catalog-YYYY-MM-DD`) | the pipeline only | the full research database, hidden rows included, and every harvest cache; never read by a client. The publish step restores from the newest one and does not write it; a dated Release is cut by whoever refreshes the harvests |
+| `radio-catalog.sqlite.xz`, `harvest-cache.tar.xz`, `SHA256SUMS` | dated Release (`catalog-YYYY-MM-DD`) | the pipeline only | the full research database, hidden rows included, and every harvest cache; never read by a client. The publish step restores from the newest one and does not write it; a dated Release is cut by whoever refreshes the harvests, and holds nothing on `tools/cache_denylist.txt` (catalog DECISIONS 043; what each part is: `docs/research/data/public-cache-inventory.md`) |
 
 Audio is never re-hosted. Every client plays `https://archive.org/download/{id}/{file}`
 from the episode's default recording, percent-encoded by the pipeline (the stored
@@ -138,9 +138,10 @@ castable test: the episode's broadcast script exists at a host a reader can open
 the client links there ("Read the script", opening `script_url` outside the app's own
 views). Nothing is fetched, hosted, shown inline or cast from it. `manifest.json` counts
 them as `counts.scriptLinks`; the web Detail row appends `scriptUrl`, `scriptSource` and `scriptId`.
-The script's text is not published: the research database keeps each matched script's
-parsed cues (`script_cues`: order, speaker, spoken words, keyed by `script_id`) for a later
-read-along alignment, which needs a rights basis to show the text first (DECISIONS 030).
+The script's text is not published anywhere, the pipeline's own Releases included (catalog
+DECISIONS 043): they carry the ids of the scripts held (`grw/text_ids.json`), never a word of
+one. Parsed cues for a later read-along alignment are made only on a machine that holds the
+texts (`episode_scripts.py --cues`), and need a rights basis to be shown first (DECISIONS 030).
 Guarded in `catalog/tests/test_episode_scripts.py` and `tests/test_projection.py`.
 
 **Playback loudness** (Decision 067, superseding 061's per-file gain). No

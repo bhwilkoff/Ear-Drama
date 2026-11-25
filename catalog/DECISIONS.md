@@ -1612,3 +1612,25 @@ catalog-2026-11-21 (two full dry runs, HEAD against this change, same Release, 5
 green): 258 of 73,630 episode titles changed and none withheld or added; shouted titles 216 to 41, titles ending "-0" 127
 to 6, numerals cased as words 8 to 0, numerals split letter by letter 21 to 0; two series names ("MTV Killed the Video
 Star", "Area Summerween VX 2 4 Air"). No letter in a changed title that the old title or the episode's file names lack.
+
+## 043 — The public cache holds no text a source has not let us republish (R4-9a)
+
+*Date: 2026-11-24*
+
+**Rule**: a dated Release is publication. What we may read for matching but not republish stays on the machine that
+harvested it, and the Release carries the non-text fact the build needs in its place. `tools/cache_denylist.txt` names
+the paths and tables that never go in, and `tools/cut_catalog_release.sh` refuses a staged folder that holds one.
+
+**Why**: the Generic Radio Workshop's text is for matching only (Decisions 067 and 088: none ships without their
+answer; "Assume Copyright" is their own advice), yet every dated Release from 2026-10-21 on carried its 1,028 scripts in
+`harvest-cache.tar.xz`, and from 2026-11-10 also 251,775 `script_cues` rows made of them in `radio-catalog.sqlite.xz`.
+Nobody decided it: the cache is how the publish job gets its inputs, and "never published" was read as "never in the
+projection". R4-9's design found it.
+
+**How to apply**:
+- `build_db` reads `grw/scripts.json` (id, series, title, date, page) and `grw/text_ids.json` (the ids whose text was
+  read, so `scripts.text_cached` is unchanged); it never opens a text and writes no `script_cues`. 030's cues move to a
+  file of their own on a machine that holds the texts: `python3 tools/episode_scripts.py --cues`.
+- MEASURED on catalog-2026-11-21's assets: see `docs/research/data/public-cache-inventory.md` section 4.
+- A new harvester decides, before its first cut, whether its source's words may be republished. The inventory names the
+  other parts of the cache in question; none is changed here, and each is the owner's.
