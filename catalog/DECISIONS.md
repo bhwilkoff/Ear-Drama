@@ -1612,3 +1612,28 @@ catalog-2026-11-21 (two full dry runs, HEAD against this change, same Release, 5
 green): 258 of 73,630 episode titles changed and none withheld or added; shouted titles 216 to 41, titles ending "-0" 127
 to 6, numerals cased as words 8 to 0, numerals split letter by letter 21 to 0; two series names ("MTV Killed the Video
 Star", "Area Summerween VX 2 4 Air"). No letter in a changed title that the old title or the episode's file names lack.
+
+---
+
+## 043 — A play is read by its printed layout, and the first reader's plays never move (B16, Decision 088.1)
+
+**Rule**: a stage text `script_parse` does not read clean is read again by `play_layouts`, which finds the one way that
+text prints its speakers (a family: the name alone on a line, or opening it; in capitals, italics, `=`, `+`, braces or
+mixed case; ended by a stop, colon, dash, bracket or, for a listed name, a space). The first reader's plays are settled
+first and alone; a second-reader play never displaces, renumbers or changes one. The clean test is the same one, plus
+tests only the second reader must pass (`refuse`): labels it could not read, a recurring label nobody speaks, two casts
+one after the other, words lost between a speech's source and its parts, another language, a novel set as dialogue. A
+play found through a volume's contents list is `gut-<ebook>-<100 + n>`, so it never takes a number `split_volume` gave;
+it is credited to the author printed over it, or held. What is held is in `held.json` beside the index (not in it: phones
+load the index), and a text that is not a play says why (its Gutenberg subject, its title, or its share of speech).
+
+**Why**: the owner, 2026-11-24: "All radio and regular play scripts should be able to be re-recorded." People have takes
+by line id against the first reader's plays, so a better reading of the same text cannot replace them. An unread label is
+the dangerous failure: its words go to the speaker before it and the script still looks clean, so it is counted and holds
+the play. Every wrong speaker found in the read-throughs became a test that holds its class.
+
+**How to apply**: a new layout is a new family or a wider `Family.match`, with a fixture in `tests/test_play_layouts.py`
+the first reader fails. Never widen the first reader for a layout: it would renumber published lines. A defect in a
+published script is fixed in `script_parse` so that every other line keeps its id: a line that should not be one keeps
+its id used (`gone`, as a picture does), a note inside a speech leaves the speech its id. A Latin-1 file is mended only
+where no id, role or speaker moves (`mend`); gut-8499-1, gut-8499-3, gut-8688-4 and gut-8689-3 wait for a ruling.

@@ -130,7 +130,7 @@ def main():
         seen += 1
         record = R.from_gutenberg(p)
         rights = R.judge(record, ctx)
-        parsed = P.parse(open(path, encoding="utf-8", errors="replace").read(), record["kind"], record.get("title"))
+        parsed = P.parse(P.read_text(path), record["kind"], record.get("title"))
         if offered(rights, parsed):
             scripts.append(script_entry(record, rights, parsed))
         else:

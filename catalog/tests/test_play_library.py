@@ -77,7 +77,7 @@ def only_clean_and_castable_plays_are_built():
     entries, report = fixture_build()
     assert [e["id"] for e in entries] == ["gut-1"], [e["id"] for e in entries]
     assert report["parsed"] == 3 and report["clean"] == 1 and report["rights_cleared_uncached"] == 1, report
-    assert report["failures"] == {"stub_too_short": 1, "unclean_fewer_than_two_castable_roles": 1}, report["failures"]
+    assert report["failures"] == {"stub_too_short": 1, "monologue": 1}, report["failures"]
 
 
 @case
