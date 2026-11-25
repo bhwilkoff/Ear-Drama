@@ -286,11 +286,24 @@ const ReadCore = (() => {
     return { rows, counts: [...counts.values()] };
   }
 
+  /** Who may remove a member: an adult room's leader or opener; in a class only its teacher (PLAYS-DESIGN §12.13). */
+  const canRemove = (room, memberId) => !!memberId && (memberId === room.owner || (room.kind === 'adult' && memberId === room.leader));
+  /** The members this device may remove, named as the room names them: a seat, a given name, a screen. */
+  function removable(s) {
+    if (!s || !s.you || !(s.you.owner || (s.kind === 'adult' && s.you.leads))) return [];
+    return s.members.filter((m) => m.id !== s.you.id).map((m) => {
+      const seat = m.seat && (s.seats || []).find((x) => x.id === m.seat);
+      return { id: m.id, live: m.live, label: (seat && seat.label) || m.name || (m.role === 'screen' ? 'A screen' : 'A reader') };
+    });
+  }
+
   /** The refusal words for a Worker code (PLAYS-DESIGN §12.6); one line under the action, never an explanation. */
   const REFUSALS = {
     bad_code: 'That is not a reading code.',
     no_such_room: 'No reading with that code.',
     room_ended: 'This reading has ended.',
+    not_a_member: 'You are no longer in this reading.',
+    no_such_member: 'They already left.',
     room_full: 'This reading is full.',
     joining_locked: 'Joining is locked.',
     seat_in_use: 'Someone is already in on another device.',
@@ -403,7 +416,7 @@ const ReadCore = (() => {
     PROTOCOL_VERSION, CODE_ALPHABET, CODE_LENGTH, MAX_MEMBERS, MEMBER_GONE_MS, LEADER_GONE_MS, POLL_MS, MODES, SLOW_MS,
     normalizeCode, codeFromBytes, clockOffset, canLead, partsOf, whoReads, nextMine, leaderGone, liveMembers,
     NAME_MAX, cleanName, receiverOf, recordRefusal, leaderName, readerName, shouldRecord, settleJustDid, takeRows,
-    roomOf, newer, castOf, mineIndexes, step, sceneStart, nextLine, waitingFor, refusal,
+    canRemove, removable, roomOf, newer, castOf, mineIndexes, step, sceneStart, nextLine, waitingFor, refusal,
     partFacts, seatTotals, fillEvenly, sceneRanges, toWire,
   };
 })();

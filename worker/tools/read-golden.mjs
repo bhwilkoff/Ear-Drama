@@ -135,6 +135,18 @@ add("applyMessage", [world(adultClaimed, adultMembers), "host", { type: "mode", 
 add("applyMessage", [world(adultClaimed, adultMembers), "ann", { type: "release", part: "role:LUCY" }, T + 1000], "a reader releases their part");
 add("applyMessage", [world(adultClaimed, adultMembers), "bob", { type: "ping", t0: 42 }, T + 1000], "a ping is a clock sample and changes nothing");
 add("applyMessage", [world(adultClaimed, adultMembers), "host", { type: "lock", locked: true }, T + 1000], "Lock joining");
+// Remove and leave (App Store 1.2, PLAYS-DESIGN §12.13).
+for (const [who, room] of [["host", adultClaimed], ["ann", adultClaimed], ["teacher", klass], ["d1", { ...klass, leader: "d1" }], [null, adult]]) add("canRemove", [room, who], "an adult room's leader or opener; a class's teacher alone");
+add("applyMessage", [world(adultClaimed, adultMembers), "host", { type: "remove", member: "ann" }, T + 1000], "the leader removes a reader: out, their part open, joining locked");
+add("applyMessage", [world(adultClaimed, adultMembers), "bob", { type: "remove", member: "ann" }, T + 1000], "a reader removes nobody");
+add("applyMessage", [world({ ...adultClaimed, leader: "ann" }, adultMembers), "ann", { type: "remove", member: "host" }, T + 1000], "the opener is never removed");
+add("applyMessage", [world({ ...adultClaimed, leader: "ann" }, adultMembers), "host", { type: "remove", member: "ann" }, T + 1000], "the opener removes a leader and leads again");
+add("applyMessage", [world(adultClaimed, adultMembers), "host", { type: "remove", member: "nobody" }, T + 1000], "no such member");
+add("applyMessage", [world({ ...klass, leader: "d1" }, classMembers), "d1", { type: "remove", member: "d2" }, T + 1000], "a student who leads removes nobody");
+add("applyMessage", [world({ ...klass, leader: "d1" }, classMembers), "teacher", { type: "remove", member: "d1" }, T + 1000], "the teacher removes a student who leads; the lead comes back");
+add("applyMessage", [world(adultClaimed, adultMembers), "ann", { type: "leave" }, T + 1000], "leaving opens the parts they held");
+add("applyMessage", [world(klass, classMembers), "teacher", { type: "leave" }, T + 1000], "a class's teacher keeps their place");
+add("applyMessage", [world(adult, [m("host", 0, 0), m("tv", 500, 500, "screen")]), "host", { type: "leave" }, T + 1000], "the last reader to leave ends the room");
 add("applyMessage", [world(adultClaimed, adultMembers), "host", { type: "read-open", open: true }, T + 1000], "the leader turns Read open parts on");
 add("applyMessage", [world(adultClaimed, adultMembers), "ann", { type: "read-open", open: true }, T + 1000], "only the leader turns Read open parts on");
 add("applyMessage", [world(adultClaimed, adultMembers), "host", { type: "read-open", open: "yes" }, T + 1000], "read-open takes a boolean");

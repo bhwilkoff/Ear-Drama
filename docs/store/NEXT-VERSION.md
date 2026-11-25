@@ -357,7 +357,9 @@ CarPlay (dormant), Android Auto (Android, internal track until the car review).
 
 ## 8. What the app, the build or the paperwork must change before submitting, ranked
 
-1. **Reports must reach a person (Decision 088.6; not built).** Today a report writes a `play_reports` row with
+1. **Reports must reach a person (Decision 088.6). Built 2026-11-24, not deployed and not yet seen to send an email**
+   (`.github/workflows/reports.yml`, `tools/reports.py`, `docs/runbooks/reports.md`); section 5's bracketed sentence
+   waits for the planted report's email. As found: a report writes a `play_reports` row with
    status open (`worker/src/plays.js:766-768`) and nothing notifies anyone (`docs/PLAYS-DESIGN.md:1324`, P4;
    no workflow in `.github/workflows/` reads reports). **Does this apply to classes today? Not on their own:**
    a student sees only the teacher's names and notes, the teacher hears the student, and no student sees another
@@ -370,8 +372,10 @@ CarPlay (dormant), Android Auto (Android, internal track until the car review).
 2. **The microphone string is wrong** (`project.yml:136`): "The recording stays on this device." It is false once
    a take is sent to a director, a teacher or a room, or published. Replace with: "Ear Drama records your part in
    a play. The recording stays on this device unless you send it to a teacher, a director or a room you joined."
-   Needs a build, so it is a change to make before the build that carries the submission.
-3. **Privacy manifest** (`PrivacyInfo.xcprivacy:4-5,23-24`): the header and an empty `NSPrivacyCollectedDataTypes`
+   Needs a build, so it is a change to make before the build that carries the submission. **Done 2026-11-24**: the
+   words end "until you share it with a director, a teacher or a room, or publish it."
+3. **Privacy manifest. Done 2026-11-24** (`tools/test_built_info_plist.py` holds both). As found
+   (`PrivacyInfo.xcprivacy:4-5,23-24`): the header and an empty `NSPrivacyCollectedDataTypes`
    say nothing is collected. Update to the section 2 list in the same build.
 4. **The App Privacy label** in Connect to the section 2 answers. No API reads or sets it, so it is a step in the
    Connect web page (`tools/asc_listing.py:2-3`). The Play Data safety form to section 4.1 in the Console. Both
@@ -390,7 +394,8 @@ CarPlay (dormant), Android Auto (Android, internal track until the car review).
    approved 2026-11-21): no school consent can be recorded, so an under-13 class takes no student recording and a
    reviewer who makes one sees "Waits for the school's consent" and nothing more. Set it at the deploy, or
    leave the notes' sentence as written, which is true either way.
-9. **Report and Block for read-room readers**: a room has Lock and End for its leader but no per-member remove and no
+9. **Report and Block for read-room readers. Remove and leave built 2026-11-24 on the Worker and the web, Apple and
+   Android to follow; why a room has no Report: PLAYS-DESIGN §12.13 item 5.** As found: a room has Lock and End for its leader but no per-member remove and no
    Report (`worker/src/read-protocol.js`, no kick message). Apple may ask; add Report on a member's typed name
    (the same endpoint, a room target) before wide release.
 10. **Privacy page**: one phrase for the Kokoro download ("GitHub: requests for the website, catalog files and

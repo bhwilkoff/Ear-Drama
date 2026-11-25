@@ -286,6 +286,76 @@ describe("read rooms over the Durable Object", () => {
 
 // 2026-11-23: with the account's daily rows used up, every save and alarm threw. Creating a room failed,
 // and the one room in progress lost the alarm that erases it.
+describe("the leader removes a reader, and anyone leaves (App Store 1.2, PLAYS-DESIGN §12.13)", () => {
+  const modes = [["the Durable Object", {}], ["D1 polling", { envOverride: NO_DO }]];
+  for (const [name, opts] of modes) {
+    it(`${name}: a removed reader's key stops working, joining locks, and their part opens`, async () => {
+      const h = await open({}, opts);
+      const g = await enter(h.code, { name: "Ann" }, opts);
+      const other = await enter(h.code, { name: "Bob" }, opts);
+      expect((await send(h.code, g.member_key, { type: "claim", part: speaking[0] }, opts)).status).toBe(200);
+      expect((await send(h.code, other.member_key, { type: "remove", member: g.you.id }, opts)).status).toBe(403);
+      const r = await (await send(h.code, h.member_key, { type: "remove", member: g.you.id }, opts)).json();
+      expect(r.members.map((m) => m.name)).toEqual([null, "Bob"]);
+      expect([r.locked, r.claims]).toEqual([true, {}]);
+      for (const attempt of [
+        read("GET", `/${h.code}`, { key: g.member_key, ...opts }),
+        send(h.code, g.member_key, { type: "claim", part: speaking[0] }, opts),
+        read("GET", `/${h.code}/takes/inbox`, { key: g.member_key, ...opts }),
+      ]) {
+        const out = await attempt;
+        expect([out.status, (await out.json()).error]).toEqual([403, "not_a_member"]);
+      }
+      const back = await read("POST", `/${h.code}/join`, { body: { name: "Ann" }, headers: { "x-read-key": g.member_key }, ...opts });
+      expect([back.status, (await back.json()).error]).toEqual([409, "joining_locked"]);
+      // Nobody else is put out.
+      expect((await read("GET", `/${h.code}`, { key: other.member_key, ...opts })).status).toBe(200);
+    });
+
+    it(`${name}: a reader leaves at once, their part opens, and an adult room's lead passes on`, async () => {
+      const h = await open({}, opts);
+      const g = await enter(h.code, {}, opts);
+      expect((await send(h.code, h.member_key, { type: "claim", part: speaking[0] }, opts)).status).toBe(200);
+      const r = await send(h.code, h.member_key, { type: "leave" }, opts);
+      expect([r.status, await r.json()]).toEqual([200, { left: true }]);
+      const seen = await poll(h.code, g.member_key, opts);
+      expect([seen.you.leads, seen.claims, seen.present]).toEqual([true, {}, 1]);
+      expect((await read("GET", `/${h.code}`, { key: h.member_key, ...opts })).status).toBe(403);
+      expect(await (await send(h.code, g.member_key, { type: "leave" }, opts)).json()).toEqual({ ended: true });
+      expect((await read("POST", `/${h.code}/join`, { body: {}, ...opts })).status).toBe(410);
+    });
+  }
+
+  it("a removed reader's socket is told and closed; a waiting poll is answered, with the room only while its member is in it", async () => {
+    const h = await open();
+    const g = await enter(h.code);
+    const p = await enter(h.code);
+    const s = await socket(h.code, g.member_key);
+    await s.until((m) => m.type === "snapshot" && m.you);
+    const now = await poll(h.code, p.member_key);
+    const waiting = read("GET", `/${h.code}?gen=${now.generation}`, { key: p.member_key });
+    await new Promise((r) => setTimeout(r, 50));
+    expect((await send(h.code, h.member_key, { type: "remove", member: g.you.id })).status).toBe(200);
+    expect(await s.until((m) => m.type === "error")).toEqual({ type: "error", error: "not_a_member" });
+    const seen = await (await waiting).json();
+    expect(seen.members.length).toBe(2);
+    const parked = read("GET", `/${h.code}?gen=${seen.generation}`, { key: p.member_key });
+    await new Promise((r) => setTimeout(r, 50));
+    expect((await send(h.code, h.member_key, { type: "remove", member: p.you.id })).status).toBe(200);
+    const out = await parked;
+    expect([out.status, (await out.json()).error]).toEqual([403, "not_a_member"]);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(s.closed()).toBe(4003);
+  });
+
+  it("the opener's name passes the name filter, as a joiner's does", async () => {
+    const bad = await read("POST", "", { body: body({ owner_name: "sh1t head" }) });
+    expect([bad.status, (await bad.json()).error]).toEqual([422, "bad_name"]);
+    const h = await open({ owner_name: "Ann" });
+    expect((await read("POST", `/${h.code}/join`, { body: { name: "sh1t head" } })).status).toBe(422);
+  });
+});
+
 describe("when storage refuses writes", () => {
   const object = (code) => env.READ_ROOMS.get(env.READ_ROOMS.idFromName(code));
   const refuse = (ctx) => {

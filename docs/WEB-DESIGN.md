@@ -1182,7 +1182,9 @@ web app follows today.
      the cursor generation; a stale one resyncs silently. A `<details>` "Reading" disclosure in
      the bar holds the rare jobs: the mode (Table read / Rehearse, a native radio group), **Lock
      joining**, **Open the screen** (the `&screen=1` link in a new window), **End the reading**
-     (`confirm()`). A reader's own arrows turn their page as in §4.16 and stop following.
+     (`confirm()`). For whoever may remove a member (PLAYS-DESIGN §12.13), "{n} here" is a button
+     opening a `<dialog>` **Here**: each member by name, seat or "A screen", "Away" when away, and
+     **Remove** (`confirm()` "Remove {name} and lock joining?"). Closing the reader leaves the room. A reader's own arrows turn their page as in §4.16 and stop following.
   5. **Rehearse** adds the reader's **Hide my lines** (peek on tap) and, for the leader,
      **Again** (the cursor back to the scene's first line, ReadCore.sceneStart).
   6. **Failure words** (PLAYS-DESIGN §12.6, each a warning or a refusal): "Waiting for the

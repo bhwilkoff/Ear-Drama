@@ -243,10 +243,16 @@ const ReadSession = (() => {
           throw err;
         }
       },
-      /** Stops following on this device (the room drops a quiet member after 2 minutes). */
       /** Stops the transport on leaving the page; the key stays in this tab, so coming back resumes. */
       pause() { stopTransport(); },
-      leave() { stopTransport(); st.key = null; st.code = null; st.snap = null; st.ended = null; save(); emit('left'); },
+      /** Out of the room for good: the room is told (its parts open, its lead passes on), and the key is dropped. */
+      leave() {
+        if (st.key && !st.ended) {
+          if (ws && wsOpen) ws.send(JSON.stringify({ type: 'leave' }));
+          else api.read.send(st.code, st.key, { type: 'leave' }).catch(() => { /* the room drops a quiet member after 2 minutes */ });
+        }
+        stopTransport(); st.key = null; st.code = null; st.snap = null; st.ended = null; save(); emit('left');
+      },
       offset: () => st.offset,
     };
   }

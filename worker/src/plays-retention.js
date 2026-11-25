@@ -223,6 +223,7 @@ export const isOperatorRoute = (pathname) => pathname === "/v1/operator" || path
  * DELETE /v1/operator/classes/:id deletes one exactly as its teacher's Delete class does.
  */
 export async function handleOperator(url, request, env) {
+  if (url.pathname === "/v1/operator/reports/count") return reportsCount(url, request, env);
   const caller = await githubCaller(request, env, url, "operator");
   if (!caller) return problem(403, "forbidden");
   const m = request.method;
@@ -249,6 +250,17 @@ export async function handleOperator(url, request, env) {
     return json({ deleted: true, class_id: c.id, deleted_at: Date.now() });
   }
   return problem(404, "not_found");
+}
+
+/**
+ * GET /v1/operator/reports/count, asked hourly by .github/workflows/reports.yml (Decision 088.6): how many reports
+ * wait, and nothing else, because the answer becomes a public issue. One read, no write.
+ */
+async function reportsCount(url, request, env) {
+  if (!(await githubCaller(request, env, url, "reports"))) return problem(403, "forbidden");
+  if (request.method !== "GET") return problem(405, "method_not_allowed");
+  const { n } = await env.DB.prepare("SELECT COUNT(*) AS n FROM play_reports WHERE status = 'open'").first();
+  return json({ open: n });
 }
 
 /* ---- The hourly sweep ---- */

@@ -22,11 +22,12 @@ export const MAIN = "refs/heads/main";
 export const OWNER_WORKFLOWS = {
   operator: { workflow: ".github/workflows/operator.yml", events: ["workflow_dispatch"] },
   takedown: { workflow: ".github/workflows/takedown-check.yml", events: ["schedule", "workflow_dispatch"] },
+  reports: { workflow: ".github/workflows/reports.yml", events: ["schedule", "workflow_dispatch"] },
 };
 
 /**
  * The verified claims of the bearer's GitHub token for `route`, or null. Never throws.
- * @param {"operator"|"takedown"} route
+ * @param {"operator"|"takedown"|"reports"} route
  */
 export async function githubCaller(request, env, url, route, nowMs = Date.now()) {
   const rule = OWNER_WORKFLOWS[route];

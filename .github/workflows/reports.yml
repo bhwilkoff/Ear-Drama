@@ -1,0 +1,35 @@
+name: Reports
+
+# Reports reach a person (Decision 088.6): asks the Worker how many reports wait and
+# keeps one issue, assigned to the owner, that says the number. The repository is
+# public: the log and the issue say how many and nothing else
+# (tools/reports_issue.py, proven by tools/test_reports_issue.py). No stored key: the
+# job's GitHub OIDC token, taken by the Worker from this file on main alone
+# (worker/src/github-oidc.js), so renaming this file locks the route.
+
+on:
+  schedule:
+    - cron: '41 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: reports
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  ask:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test the issue's rules and its privacy
+        run: python3 tools/test_reports_issue.py
+      - name: Ask, and keep the one issue
+        run: python3 tools/reports_issue.py
