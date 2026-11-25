@@ -1248,7 +1248,11 @@ Bring the next change back to a rule here, or bring a new rule first.
      itself (a polite live region) and the haptic is `selection`, or `error` with a refusal.
   3. **An own script's page** is the play's page (§4.9) with the kicker "Your script": Record this, Read; its Parts; "Added by
      you · Kept on this device" (or "Automatic transcript", a link to its episode), "This script can't be published.", then
-     Edit, Save as text (`CreateDocument` `text/plain`) and Delete (an `AlertDialog`). No Read together here, and no Share of a production of one.
+     Edit, Save as text (`CreateDocument` `text/plain`) and Delete (an `AlertDialog`). **Read together** is here (item 8); once a
+     production of it is shared the page says "Shared" in place of "Kept on this device" and **Edit a copy** takes Edit's place
+     (item 7). Casting by ear's **Delete** and the parts page's stand in the sheet or menu the title leads to, for a script not yet
+     Done: the title's dialog on the parts page, a **More** menu on the casting page (Material's own overflow; the web's title button
+     has no twin here), each asking "Delete {title}?" and keeping nothing more for it once asked.
   4. **Casting by ear** (`Route.Ear`, from **Record this** on an episode with a shown transcript whose times were read, or begun
      here, and no castable script) uses the session's own Media3 player, held to the episode (`PlaybackEngine.hold`): at the
      page's speed (0.75x at first, then the last chosen here, never the person's own), nothing queued after it, no other copy
@@ -1263,4 +1267,38 @@ Bring the next change back to a rule here, or bring a new rule first.
   6. **States**: loading, the spinner; a script not here, "This script is not on this device."; a failed read, "This did not
      load." with Try again ("You are offline." with no network); "No lines." with Undo in reach; a write that fails, "This
      device is out of space." or "This device could not save it." above the page with Try again, the work kept on the page.
-- **§4.22 Student privacy** (Decision 084, PLAYS-DESIGN §12.12; `ui/screens/PrivacyUi.kt`, `plays/AgeGate.kt`). The teacher's class page ends with **Class** (Ends {date}, **Change date** in the Material date picker bounded today to 400 days ahead, **Export class** through `CreateDocument("application/json")` as "{class name} export.json", **Delete class** in an `AlertDialog` whose confirm is in the error role) and an under-13 class without approval is headed by **School approval**. The class list shows "Deleted {date} unless opened". A class publish adds the two confirmations. The age question ("What year were you born?", a year list with no default) comes before Share, Invite, Take part and Publish / I agree, outside a class; only the Boolean is kept in preferences `ed.over13`. A director's **Delete for everyone** is offered only while the production has no archive job. Roborazzi `android-*` frames in `docs/research/design/img/privacy/` (`PrivacyRenderTest`).
+  7. **Sharing** (R4-5; PLAYS-DESIGN §13 items 11 to 16; docs/WORKER.md "Own scripts"; code `plays/OwnShare.kt`, `SharedPlays.kt`,
+     `ui/screens/OwnShareUi.kt`). **Share** on an own script's production is the play's, and one caption under it says who can
+     read it ("Only people you invite can read this script."; a class's "Only this class can read this script."; to a member,
+     "Only people invited can read this script."). It asks for an account first ("Sharing needs an account.", the sign-in row).
+     The Worker makes the production (`own: true`, the title, the cast sheet), then the text goes once as canonical JSON. A sending
+     that may pass later (no network, a full server, a busy one, signed out) leaves the production shared and the cast sheet reads
+     "The script was not sent." with why, **Try again**, and no Invite; one that never can (too long, another revision, removed)
+     undoes the share and says so where Share was. `already_there` is success. What is shared is **frozen** on this device
+     (`OwnScripts.freeze`; a page that opened it before gets "This script is shared." instead of a write): its parts page opens its
+     page, and **Edit a copy** (a new script, the same lines' ids, no takes, "{title} (copy)") stands where Edit was. A removed text
+     reads "This script was removed." (by the owner no part is taken; with the bringer's account gone members go on). **Report
+     script** (a member who did not bring it) offers Copyright first, then the usual reasons, and ends in "Reported. This production
+     is hidden from you." with this device's copy left to delete. **Publish** is never drawn for one: "This script can't be
+     published." stands in its place, and "This play cannot be published." where any other cannot. Nothing lists, searches or
+     recommends a shared script.
+  8. **One resolver for the script of a production, invite, class, seat or room** (`OwnShare.Resolver.scriptOf`). A catalog play
+     is the library's at the recorded revision. An own script is the production's own copy, then this device's script at that
+     revision, then the Worker's by that door's key (`x-invite`, `x-seat-key`, `x-read-key`, the member's own sign-in), drawn only
+     when its SHA-256 is the revision, it is canonical, the core keeps it and it matches the cast sheet the door knows (an invite's
+     parts and line counts, a record's parts and takes, a room's cursor and claims, a seat's casting); else "This script did not
+     arrive whole." with **Try again** (none for a removed one). A joiner's copy is made in their production's folder, and
+     recording, relay, listen through and export read that. **Read together** on an own script asks once ("Share {title}? People who
+     join the reading can read it."), uses the production already shared if there is one, and opens a room that carries it.
+  9. **A class**: the teacher's own scripts stand after the plays in Start a reading; a class production of one is made with its
+     title, the text goes after it, a text owed shows "The script was not sent." with Try again beside that production, a removed
+     one "This script was removed."; a seat fetches the text with its seat key and sends none; **Export class** adds each kept
+     script's lines from this device (what did not load is named). A class script is never published ("This script can't be
+     published.").
+  10. **Casting by ear**: **Rename** stands under + Part (a part's name on every line of theirs and in its place in the order; a
+     name another part has joins the two; one Undo takes it back; refused where a line it moves has a take).
+  11. **Large text**: when the widest tab label no longer fits its tab as a whole word the bottom bar shows its icons alone, each
+     named for TalkBack (`TabLabels.fit`; the rail keeps its labels); a play's label puts its "+N" clear of its bars
+     (`LabelSpec`, the web's formula); Add a script's Next judges the built canonical size, not only the raw text's; a part's color
+     is `PlayScript.partHue` on every page (the parts page counts the same parts in the same order); Defaults never pick a novelty
+     voice (`VoiceCasting.NOVELTY`, off unless ticked).- **§4.22 Student privacy** (Decision 084, PLAYS-DESIGN §12.12; `ui/screens/PrivacyUi.kt`, `plays/AgeGate.kt`). The teacher's class page ends with **Class** (Ends {date}, **Change date** in the Material date picker bounded today to 400 days ahead, **Export class** through `CreateDocument("application/json")` as "{class name} export.json", **Delete class** in an `AlertDialog` whose confirm is in the error role) and an under-13 class without approval is headed by **School approval**. The class list shows "Deleted {date} unless opened". A class publish adds the two confirmations. The age question ("What year were you born?", a year list with no default) comes before Share, Invite, Take part and Publish / I agree, outside a class; only the Boolean is kept in preferences `ed.over13`. A director's **Delete for everyone** is offered only while the production has no archive job. Roborazzi `android-*` frames in `docs/research/design/img/privacy/` (`PrivacyRenderTest`).

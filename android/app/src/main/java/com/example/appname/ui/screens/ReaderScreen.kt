@@ -269,12 +269,15 @@ fun ReaderScreen(
     onBack: () -> Unit,
     onOpenStudio: (String, String, String?) -> Unit = { _, _, _ -> },
     room: RoomSeam? = null,
+    /** The play a room already holds whole (an own script's, fetched by the member's key): read as it stands, not asked for again. */
+    held: PlayScript? = null,
 ) {
     val container = LocalAppContainer.current
     val plays = container.plays
     var attempt by remember { mutableStateOf(0) }
     val loaded by produceState<Loaded>(Loaded.Loading, scriptId, productionId, drama, attempt) {
         value = Loaded.Loading
+        if (held != null) { value = Loaded.Ready(held); return@produceState }
         value = try {
             if (drama != null) {
                 val play = (container.finished.state.value as? FinishedList.State.Ready)?.plays?.firstOrNull { it.id == drama } ?: container.openPlays.finished(drama)

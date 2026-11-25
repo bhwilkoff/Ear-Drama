@@ -316,7 +316,7 @@ fun ReadRoomScreen(code: String, onBack: () -> Unit, onOpenScreen: (String) -> U
             LaunchedEffect(record) { record.start(); record.resume() }
             DisposableEffect(record) { onDispose { record.detach() } }
             val seam = remember(record) { RoomSeam(session, record, wire, scope, onOpenScreen, onLeave = onBack) }
-            com.example.appname.ui.screens.ReaderScreen(s.id, startLine = snap.cursor, onBack = onBack, room = seam)
+            com.example.appname.ui.screens.ReaderScreen(s.id, startLine = snap.cursor, onBack = onBack, room = seam, held = s)
         }
         snap != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             ScriptWait(load, onRetry = { scriptAttempt += 1 })
