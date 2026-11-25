@@ -52,6 +52,7 @@ const Player = (() => {
   let pausing = false;      // the pause in flight is the person's (or the timer's), not an interruption
   let interrupted = false;  // the browser paused us (a call, another tab's audio); resuming rewinds REWIND_S
   let following = false;    // a Listen Together guest: the host drives, so the person's transport verbs do nothing
+  let held = null;          // { rate }: a page holds this episode (casting by ear, WEB-DESIGN §4.22): its own speed, and the end starts nothing
   let guestHold = null;     // set by js/together.js: a guest's own pause (true) and resume (false)
   let arc = null;           // the current episode's arc ({ part, parts, next, nextStory }), once read
   let arcWait = null;       // the read in flight, or null once settled
@@ -88,12 +89,12 @@ const Player = (() => {
     else if (audio.removeAttribute) audio.removeAttribute('crossorigin');
     audio.src = ep.url;
     setOutput(1);
-    audio.defaultPlaybackRate = nearestSpeed(Store.rate());
+    audio.defaultPlaybackRate = speedNow();
     const at = startAt !== null ? startAt : Store.resumeAt(ep.id, ep.length);
     audio.addEventListener('loadedmetadata', () => {
       if (recovery) recovery.retried = false;
       if (at) audio.currentTime = at;
-      audio.playbackRate = nearestSpeed(Store.rate());
+      audio.playbackRate = speedNow();
     }, { once: true });
     Store.addHistory(current);
     Store.dequeue(ep.id);
@@ -144,6 +145,24 @@ const Player = (() => {
   function nearestSpeed(r) {
     const n = Number(r) || 1;
     return SPEEDS.reduce((best, s) => (Math.abs(s - n) < Math.abs(best - n) ? s : best), 1);
+  }
+
+  const speedNow = () => (held ? held.rate : nearestSpeed(Store.rate()));
+  /** A page keeps the player on its episode, at a speed that is never kept as the person's own, until it lets go. Playing goes on either way. */
+  function holdPage(rate) {
+    held = { rate: nearestSpeed(rate) };
+    paceNow();
+  }
+  function release() {
+    if (!held) return;
+    held = null;
+    paceNow();
+  }
+  function paceNow() {
+    if (following) return;
+    audio.playbackRate = speedNow();
+    audio.defaultPlaybackRate = speedNow();
+    emit('rate');
   }
 
   function setRate(r) {
@@ -425,9 +444,10 @@ const Player = (() => {
     if (current && isFinite(audio.duration)) Store.savePosition(current.id, audio.duration, audio.duration);
     if (sleep && sleep.kind === 'end') { fireSleep(); return; }
     if (fired) return;
+    if (held) { emit('ended'); return; }
     if (!arcWait) { advance(); return; }
     const id = current && current.id;
-    arcWait.then(() => { if (!fired && current && current.id === id && audio.ended) advance(); });
+    arcWait.then(() => { if (!fired && !held && current && current.id === id && audio.ended) advance(); });
   });
   window.addEventListener('pagehide', savePosition);
 
@@ -471,7 +491,7 @@ const Player = (() => {
   function setGuestHold(fn) { guestHold = fn; }
   function setFollowing(on) {
     following = !!on;
-    if (!following) audio.playbackRate = nearestSpeed(Store.rate());
+    if (!following) audio.playbackRate = speedNow();
     emit('following');
   }
   /** Applied by js/together.js only. A drift nudge sets the element's rate and is never kept as the person's speed. */
@@ -490,7 +510,7 @@ const Player = (() => {
       seekforward: d => skip((d && d.seekOffset) || FWD_S),
       seekto: d => seek(d.seekTime),
       previoustrack: () => seek(0),
-      nexttrack: () => { const n = upNext(); if (n) load(n.card); },
+      nexttrack: () => { const n = held ? null : upNext(); if (n) load(n.card); },
     };
     for (const [action, fn] of Object.entries(handlers)) {
       const guarded = ['play', 'pause', 'stop'].includes(action) ? fn : person(fn);
@@ -505,11 +525,12 @@ const Player = (() => {
     setArcSource(fn) { arcSource = fn; },
     play: personPlay, pause: personPause, toggle: personToggle, seek: person(seek),
     back: person(back), forward: person(forward), setRate: person(setRate),
-    setFollowing, follow, setGuestHold, setLeveling, wake,
+    hold: holdPage, release, setFollowing, follow, setGuestHold, setLeveling, wake,
     get leveling() { return leveling(); },
     get canLevel() { return canLevel(); },
     get leveled() { return !!graph && levelOn(); },
     get following() { return following; },
+    get held() { return !!held; },
     get current() { return current; },
     get sleep() { return sleep; },
     get fired() { return fired; },

@@ -50,16 +50,18 @@ const OwnUI = (() => {
     let t = null;
     const go = () => { t = null; return fn(); };
     const f = () => { clearTimeout(t); t = setTimeout(go, ms); };
+    f.pending = () => t !== null;
     f.flush = () => { if (t === null) return null; clearTimeout(t); return go(); };
     return f;
   };
 
   const REFUSAL = {
     too_long: 'That text is too long.', too_many_lines: 'That text is too long.', empty: 'There are no words.', bad_name: 'That name does not work.',
-    line_has_take: 'This line has a take.', part_has_take: 'A line of this part has a take.', no_parts: 'No line has a part.', no_lines: 'No lines.',
+    line_has_take: 'This line has a take.', lines_have_take: 'A line there has a take.', part_has_take: 'A line of this part has a take.', no_parts: 'No line has a part.', no_lines: 'No lines.',
     not_text: 'That is not a text file.', no_title: 'Add a title.', title_too_long: 'That title is too long.',
   };
   const say = (code) => REFUSAL[code] || 'That did not work.';
+  const nameWhy = (why) => (why === 'too_long' ? 'That name is too long.' : why === 'empty' ? 'Add a name.' : say(why));
   /** Why a write failed, in essential words. */
   function notKept(err) {
     console.error(err);
@@ -212,6 +214,68 @@ const OwnUI = (() => {
     if (f) open(f); else if (document.activeElement === $('own-h') || document.activeElement === document.body) (title.value ? text : title).focus({ preventScroll: true });
   }
 
+  /* ---- What the sheets are made of, here and on the casting page (§4.22) ---- */
+
+  const inner = (d, ...kids) => { d.replaceChildren(h.el('div', { class: 'os-sheet-in' }, ...kids)); };
+  const closeBtn = (d) => h.el('button', { type: 'button', class: 'icon-btn os-sheet-x', 'aria-label': 'Close', onclick: () => d.close() }, svg('close'));
+  /** A name field with one button: rename, a new part, the title. `act(value)` answers a refusal's words or null. */
+  function nameForm({ label, value = '', button, max, act, hint = null }) {
+    const err = h.el('p', { class: 'caption refusal', role: 'alert' });
+    const field = h.el('input', { class: 'field-input', type: 'text', value, maxlength: String(max), autocomplete: 'off', 'aria-label': label, placeholder: hint });
+    return h.el('form', { class: 'os-form', onsubmit: (e) => {
+      e.preventDefault();
+      err.textContent = act(field.value) || '';
+      if (err.textContent) field.focus();
+    } }, h.el('div', { class: 'os-form-row' }, field, h.el('button', { type: 'submit', class: 'btn' }, button)), err);
+  }
+  /** The words with a place to cut: a slider over the gaps between them (item 5). */
+  function cutter(text, onMove) {
+    const words = [...text.matchAll(/\S+/g)].map(m => ({ at: m.index, end: m.index + m[0].length }));
+    let gap = 0;
+    let at = -1;
+    const places = words.length > 1;
+    const node = h.el('p', { class: `os-cutline${verse(text)}`, ...(places ? { role: 'slider', tabindex: '0', 'aria-label': 'Cut', 'aria-valuemin': '0',
+      'aria-valuemax': String(words.length - 1), 'aria-valuenow': '0', 'aria-valuetext': 'None' } : {}) });
+    function paint() {
+      const kids = [];
+      words.forEach((w, i) => {
+        const till = i + 1 < words.length ? words[i + 1].at : text.length;
+        const span = h.el('span', { class: 'os-w', dataset: { i: String(i) } });
+        if (at > w.at && at < till && at < w.end) span.append(text.slice(w.at, at), h.el('span', { class: 'os-cut', 'aria-hidden': 'true' }), text.slice(at, till));
+        else span.append(...(at === w.at ? [h.el('span', { class: 'os-cut', 'aria-hidden': 'true' })] : []), text.slice(w.at, till));
+        kids.push(span);
+      });
+      node.replaceChildren(...(words.length ? kids : [text]));
+    }
+    function place(g) {
+      const to = Math.max(0, Math.min(words.length - 1, g));
+      const p = to > 0 ? O.cutAt(text, words[to].at) : -1;
+      gap = to;
+      at = p;
+      node.setAttribute('aria-valuenow', String(to));
+      node.setAttribute('aria-valuetext', p < 0 ? 'None' : `${words.slice(Math.max(0, to - 3), to).map(w => text.slice(w.at, w.end)).join(' ')} | ${words.slice(to, to + 3).map(w => text.slice(w.at, w.end)).join(' ')}`);
+      paint();
+      onMove(at);
+    }
+    paint();
+    if (places) {
+      node.addEventListener('click', (e) => {
+        const w = e.target.closest('.os-w');
+        if (!w) return;
+        const i = Number(w.dataset.i);
+        const r = [...w.getClientRects()].find(x => e.clientY >= x.top && e.clientY <= x.bottom) || w.getBoundingClientRect();
+        place(e.clientX > r.left + r.width / 2 ? i + 1 : i);
+      });
+      node.addEventListener('keydown', (e) => {
+        const to = { ArrowRight: gap + 1, ArrowUp: gap + 1, ArrowLeft: gap - 1, ArrowDown: gap - 1, PageUp: gap + 10, PageDown: gap - 10, Home: 1, End: words.length - 1 }[e.key];
+        if (to === undefined) return;
+        e.preventDefault();
+        place(to);
+      });
+    }
+    return { node, places, at: () => at };
+  }
+
   /* ---- The parts page (§4.21 items 3 to 6) ---- */
 
   async function renderParts(body, my, id) {
@@ -231,6 +295,7 @@ const OwnUI = (() => {
     if (my !== seq) return;
     if (!rec) { body.replaceChildren(missing()); return; }
     rec.extras = rec.extras || [];
+    if (rec.ear) rec.doc = O.settle(rec.doc);
     h.setTitle(rec.title);
     $('own-h').textContent = rec.title;
 
@@ -252,7 +317,7 @@ const OwnUI = (() => {
     const chips = h.el('div', { class: 'os-chips', role: 'group', 'aria-label': 'Parts' });
     const list = h.el('div', { class: 'os-list', role: 'list', 'aria-label': 'Lines' });
     const none = h.el('div', { hidden: true }, h.stateBox('empty', { text: 'No lines.' }));
-    const scroller = h.el('div', { class: 'os-scroll' }, h.el('div', { class: 'os-page' }, chips, list, none));
+    const scroller = h.el('div', { class: 'os-scroll' }, h.el('div', { class: 'os-page' }, rec.ear ? h.el('p', { class: 'caption ec-auto' }, API.transcriptLabel) : null, chips, list, none));
     const sheets = h.el('div');
     body.replaceChildren(h.el('div', { class: 'os' },
       bar({ out: 'back', outLabel: 'Back', onOut: () => goBack(rec.done ? `?play=${encodeURIComponent(id)}` : '?view=record'), titles: titleBtn, tools: [undoBtn], primary: doneBtn }),
@@ -462,7 +527,7 @@ const OwnUI = (() => {
     async function finish() {
       doneBtn.disabled = true;
       const doc = O.done(P.rec.doc);
-      const why = O.refusalOf(O.toScript(doc, { id, title: P.rec.title }));
+      const why = O.refusalOf(O.toScript(doc, { id, title: P.rec.title, ...(rec.episode ? { episode: rec.episode } : {}) }));
       if (why) {
         problem.replaceChildren(h.el('span', { class: 'body' }, why === 'too_long' || why === 'too_many_lines' ? 'This script is too long.' : say(why)));
         problem.hidden = false;
@@ -498,20 +563,6 @@ const OwnUI = (() => {
       sheets.append(d);
       return d;
     }
-    const inner = (d, ...kids) => { d.replaceChildren(h.el('div', { class: 'os-sheet-in' }, ...kids)); };
-    const closeBtn = (d) => h.el('button', { type: 'button', class: 'icon-btn os-sheet-x', 'aria-label': 'Close', onclick: () => d.close() }, svg('close'));
-
-    /** A name field with one button: rename, a new part, the title. `act(value)` answers a refusal's words or null. */
-    function nameForm({ label, value = '', button, max, act, hint = null }) {
-      const err = h.el('p', { class: 'caption refusal', role: 'alert' });
-      const field = h.el('input', { class: 'field-input', type: 'text', value, maxlength: String(max), autocomplete: 'off', 'aria-label': label, placeholder: hint });
-      return h.el('form', { class: 'os-form', onsubmit: (e) => {
-        e.preventDefault();
-        err.textContent = act(field.value) || '';
-        if (err.textContent) field.focus();
-      } }, h.el('div', { class: 'os-form-row' }, field, h.el('button', { type: 'submit', class: 'btn' }, button)), err);
-    }
-
     function renameScript() {
       const d = sheet('Title', 'os-small', () => titleBtn.focus());
       inner(d, h.el('div', { class: 'os-sheet-head' }, h.el('h2', { class: 'section-header' }, 'Title'), closeBtn(d)),
@@ -531,7 +582,7 @@ const OwnUI = (() => {
     function addExtra(v) {
       const name = O.partName(O.normalize(v));
       const why = O.partNameRefusal(name);
-      if (why) return { why: why === 'too_long' ? 'That name is too long.' : why === 'empty' ? 'Add a name.' : say(why) };
+      if (why) return { why: nameWhy(why) };
       if (!partsNow().some(p => p.name === name)) P.rec.extras.push(name);
       return { name };
     }
@@ -569,7 +620,7 @@ const OwnUI = (() => {
           nameForm({ label: 'Name', value: name, button: 'Rename', max: O.MAX_PART_NAME, act: (v) => {
             const to = O.partName(O.normalize(v));
             const why = O.partNameRefusal(to);
-            if (why) return why === 'too_long' ? 'That name is too long.' : why === 'empty' ? 'Add a name.' : say(why);
+            if (why) return nameWhy(why);
             return act({ op: 'rename', part: name, to: v }, to);
           } }),
           others.length ? h.el('p', { class: 'caption os-lab' }, 'Join to') : null,
@@ -638,61 +689,22 @@ const OwnUI = (() => {
           (all ? f.querySelector('input') : partsBox.children[near.length]).focus();
         } }), ['direction', 'sound', ...(l.kind === 'music' ? ['music'] : [])].map(kindChip));
       if (all) partsBox.querySelector('[aria-expanded]').textContent = 'New part';
+      const last = index(k) === P.rec.doc.lines.length - 1;
+      const wider = index(k) === 0 && last ? null : btn('More', (e) => {
+        const b = e.currentTarget;
+        const two = [index(k) > 0 ? btn('Leave out everything above', () => act({ op: 'leaveOutAbove', line: k }, 'Left out')) : null,
+          last ? null : btn('Leave out everything below', () => act({ op: 'leaveOutBelow', line: k }, 'Left out'))].filter(Boolean);
+        b.replaceWith(...two);
+        two[0].focus();
+        two[two.length - 1].scrollIntoView({ block: 'nearest' });
+      }, { 'aria-expanded': 'false' });
       inner(d, top, cut.node, partsBox, more,
         h.el('div', { class: 'os-four' },
           cut.places ? split : null,
           index(k) > 0 ? btn('Join to line above', () => act({ op: 'join', line: k }, 'Joined', 'above'), { class: 'btn btn-way' }) : null,
-          btn('Edit words', edit), btn('Leave out', () => act({ op: 'leaveOut', line: k }, 'Left out', 'next'))), err);
+          btn('Edit words', edit), btn('Leave out', () => act({ op: 'leaveOut', line: k }, 'Left out', 'next')), wider), err);
       d.showModal();
       if (cut.places) cut.node.focus();
-    }
-
-    /** The words with a place to cut: a slider over the gaps between them (item 5). */
-    function cutter(text, onMove) {
-      const words = [...text.matchAll(/\S+/g)].map(m => ({ at: m.index, end: m.index + m[0].length }));
-      let gap = 0;
-      let at = -1;
-      const places = words.length > 1;
-      const node = h.el('p', { class: `os-cutline${verse(text)}`, ...(places ? { role: 'slider', tabindex: '0', 'aria-label': 'Cut', 'aria-valuemin': '0',
-        'aria-valuemax': String(words.length - 1), 'aria-valuenow': '0', 'aria-valuetext': 'None' } : {}) });
-      function paint() {
-        const kids = [];
-        words.forEach((w, i) => {
-          const till = i + 1 < words.length ? words[i + 1].at : text.length;
-          const span = h.el('span', { class: 'os-w', dataset: { i: String(i) } });
-          if (at > w.at && at < till && at < w.end) span.append(text.slice(w.at, at), h.el('span', { class: 'os-cut', 'aria-hidden': 'true' }), text.slice(at, till));
-          else span.append(...(at === w.at ? [h.el('span', { class: 'os-cut', 'aria-hidden': 'true' })] : []), text.slice(w.at, till));
-          kids.push(span);
-        });
-        node.replaceChildren(...(words.length ? kids : [text]));
-      }
-      function place(g) {
-        const to = Math.max(0, Math.min(words.length - 1, g));
-        const p = to > 0 ? O.cutAt(text, words[to].at) : -1;
-        gap = to;
-        at = p;
-        node.setAttribute('aria-valuenow', String(to));
-        node.setAttribute('aria-valuetext', p < 0 ? 'None' : `${words.slice(Math.max(0, to - 3), to).map(w => text.slice(w.at, w.end)).join(' ')} | ${words.slice(to, to + 3).map(w => text.slice(w.at, w.end)).join(' ')}`);
-        paint();
-        onMove(at);
-      }
-      paint();
-      if (places) {
-        node.addEventListener('click', (e) => {
-          const w = e.target.closest('.os-w');
-          if (!w) return;
-          const i = Number(w.dataset.i);
-          const r = [...w.getClientRects()].find(x => e.clientY >= x.top && e.clientY <= x.bottom) || w.getBoundingClientRect();
-          place(e.clientX > r.left + r.width / 2 ? i + 1 : i);
-        });
-        node.addEventListener('keydown', (e) => {
-          const to = { ArrowRight: gap + 1, ArrowUp: gap + 1, ArrowLeft: gap - 1, ArrowDown: gap - 1, PageUp: gap + 10, PageDown: gap - 10, Home: 1, End: words.length - 1 }[e.key];
-          if (to === undefined) return;
-          e.preventDefault();
-          place(to);
-        });
-      }
-      return { node, places, at: () => at };
     }
 
     /* ---- Shown ---- */
@@ -722,7 +734,8 @@ const OwnUI = (() => {
     h = helpers;
     body.replaceChildren(h.stateBox('loading'));
     try {
-      if (O.OWN_ID.test(id) && await store().get(id)) { h.navigate(`?script=${encodeURIComponent(id)}&edit=parts`, true); return; }
+      const rec = O.OWN_ID.test(id) ? await store().get(id) : null;
+      if (rec) { h.navigate(rec.episode ? `?cast=${encodeURIComponent(rec.episode.id)}` : `?script=${encodeURIComponent(id)}&edit=parts`, true); return; }
       body.replaceChildren(missing());
     } catch (err) {
       console.error(err);
@@ -749,10 +762,21 @@ const OwnUI = (() => {
         h.navigate('?view=record', true);
       } catch (e) { console.error(e); err.textContent = 'This browser could not delete it.'; del.disabled = false; }
     } }, 'Delete');
+    // A transcript cast in part: how much, and the way back to it.
+    const left = script.episode ? h.el('p', { class: 'caption tabular', hidden: true }) : null;
+    const cast = script.episode ? h.el('a', { class: 'btn', href: `?cast=${encodeURIComponent(script.episode)}`, hidden: true }, 'Cast by ear') : null;
+    if (left) store().list().then(rows => {
+      const row = rows.find(r => r.id === script.id);
+      if (!row || !row.ear || row.ear.cast >= row.ear.lines) return;
+      left.textContent = castLine(row.ear);
+      left.hidden = cast.hidden = false;
+    }).catch(e => console.error(e));
     return h.el('section', { class: 'os-own' },
-      h.el('p', { class: 'caption' }, 'Added by you · Kept on this device'),
+      script.episode ? h.el('p', { class: 'caption' }, h.el('a', { class: 'eyebrow-link', href: `?item=${encodeURIComponent(script.episode)}` }, script.source.name), ' · Kept on this device')
+        : h.el('p', { class: 'caption' }, 'Added by you · Kept on this device'),
+      left,
       h.el('p', { class: 'caption' }, 'This script can’t be published.'),
-      h.el('div', { class: 'actions' },
+      h.el('div', { class: 'actions' }, cast,
         h.el('a', { class: 'btn', href: `?script=${encodeURIComponent(script.id)}&edit=parts` }, 'Edit'),
         h.el('button', { type: 'button', class: 'btn', onclick: () => DataExport.save(OwnScripts.fileName(script.title), 'text/plain;charset=utf-8', OwnScripts.asText(script)) }, 'Save as text'),
         del), err);
@@ -760,8 +784,9 @@ const OwnUI = (() => {
 
   /* ---- Your scripts: Record's section and Search's (§4.15 item 1a, §4.6) ---- */
 
-  const rowFacts = (row) => (!row.done && row.open ? noPart(row.open) : partsAndLines(row.parts, row.lines));
-  const rowHref = (row) => (row.done ? `?play=${encodeURIComponent(row.id)}` : `?script=${encodeURIComponent(row.id)}&edit=parts`);
+  const castLine = (n) => `${num.format(n.cast)} of ${num.format(n.lines)} lines cast`;
+  const rowFacts = (row) => (row.ear && row.ear.cast < row.ear.lines ? castLine(row.ear) : !row.done && row.open ? noPart(row.open) : partsAndLines(row.parts, row.lines));
+  const rowHref = (row) => (row.done ? `?play=${encodeURIComponent(row.id)}` : row.episode ? `?cast=${encodeURIComponent(row.episode)}` : `?script=${encodeURIComponent(row.id)}&edit=parts`);
   function scriptRow(row, helpers) {
     const el = helpers.el;
     return el('li', { class: 'series-row g-row ear-drama-only' }, el('a', { class: 'g-link', href: rowHref(row) },
@@ -804,5 +829,11 @@ const OwnUI = (() => {
     return renderAdd(body, my);
   }
 
-  return { render, leave, notDone, foot, yours, scriptRow, matching, addLink, dropOn };
+  /** What casting by ear (js/ear-ui.js) shares with the parts page. */
+  function kit(helpers) {
+    h = helpers;
+    return { svg, bar, goBack, later, say, nameWhy, notKept, inner, closeBtn, nameForm, cutter, castLine, verse };
+  }
+
+  return { render, leave, notDone, foot, yours, scriptRow, matching, addLink, dropOn, kit };
 })();

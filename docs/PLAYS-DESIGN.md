@@ -1071,7 +1071,7 @@ no take.
 | Takes, one file per kept take, never overwritten | `Plays/<production>/takes/` as FLAC (if the floor OS cannot write FLAC, ALAC in CAF; to measure) | `filesDir/Plays/<production>/takes/` as 24-bit WAV (§4.5) | IndexedDB, `<production>/takes/`, 24-bit WAV, written with `add()` |
 | Room tone, per session | `Plays/<production>/roomtone/` | the same | IndexedDB, `<production>/roomtone/` |
 | The production record (parts, who took which part by the name they typed, what each take heard, the timeline) | `Plays/<production>/production.json` | the same | IndexedDB, `<production>/production.json`, the same fields |
-| A script the person added (§13): its castable shape, the working copy it is corrected in, and the text as pasted | ⏳ (R4-6) `Scripts/<id>/` | ⏳ (R4-7) `filesDir/Scripts/<id>/` | IndexedDB `ed-plays`, object store `scripts`, keys `scripts/<id>/script.json`, `doc.json` and `row.json`; the text being added, `scripts/draft.json` |
+| A script the person added (§13): its castable shape, the working copy it is corrected in (cast by ear: its lines' times, the parts, the place), and the text as pasted | ⏳ (R4-6) `Scripts/<id>/` | ⏳ (R4-7) `filesDir/Scripts/<id>/` | IndexedDB `ed-plays`, object store `scripts`, keys `scripts/<id>/script.json`, `doc.json` and `row.json`; the text being added, `scripts/draft.json` |
 | The rendered mix of a finished play | `Plays/<production>/mix.m4a`, rebuilt from the takes whenever they change | the same | IndexedDB, `<production>/mix.wav`; `navigator.storage.persist()` is asked when a play is cast |
 | Stand-in audio, transcripts of takes, analytics | Never stored | Never stored | Never stored |
 | Apple TV | Nothing: it records nothing and stores no plays in phase 1 (tvOS writes only to Caches) | | |
@@ -1919,13 +1919,13 @@ and has no class page). Words are exactly these; a refusal is `ReadCore.refusal(
 The owner, 2026-11-24: *"You should be able to record your own version of
 anything you want with your own casting."* Research and frames:
 `docs/research/design/R4-record-anything.md`. Core: `js/own-core.js`
-(`R4-core-port-brief.md`). Built on the web, on the device only (R4-2); casting
-by ear is R4-3, sharing and classes are R4-4 and R4-5, and Apple and Android are
-R4-6 and R4-7. Until sharing is built, an own script and its productions offer no
+(`R4-core-port-brief.md`). Built on the web, on the device only: adding (R4-2) and
+casting by ear (R4-3). Sharing and classes are R4-4 and R4-5, and Apple and Android
+are R4-6 and R4-7. Until sharing is built, an own script and its productions offer no
 Share, no Read together, no Invite and no Publish: the buttons are absent, never
 dead.
 
-1. **An own script** is a script a person brought. It has the castable shape, an
+1. **An own script** is a script a person brought or cast by ear. It has the castable shape, an
    id `own-<uuid>`, line ids given once and never reused, and the catalog's
    revision formula. It is kept on the device (§6) and needs no account: adding,
    reading, editing and the first production ask for none (Decision 079).
@@ -1934,12 +1934,22 @@ dead.
    `catalog/tests/golden/own_script_parse.json`) proposes parts; a paragraph it
    cannot place is shown as **No part**. Every piece is a slice of the person's
    text. The app never writes, completes, or corrects a word. The text being added
-   is kept as it is typed, so a closed page loses nothing.
+   is kept as it is typed, so a closed page loses nothing. A Project Gutenberg text
+   is read between its own marker rows (`*** START OF THE` or `THIS PROJECT
+   GUTENBERG EBOOK ...` and its END, with or without a space after the stars, a
+   title that runs on to the next row included; the last row `End of [the] Project
+   Gutenberg ...`; and the older small print, before the play or after it): of the
+   pipeline's 1,721 cached texts, 1,683 carry START and END, 1,097 the last row and
+   24 the small print, and 1,689 are read without their wrapping (the 32 of one 1990s
+   Complete Shakespeare have none of these rows). Nothing else is cut, and the text
+   kept is the text as pasted.
 3. **The parts page** draws the script as the reader does. A line: give it to a
    part, Direction, or Sound; Split here; Join to line above; Edit words; Leave
    out. A part: rename; Join to; Not a part (its words go back, with no part). A
    strip counts the lines with no part, and Next goes to the next one. Undo takes
-   back any step since the page opened. Done turns a line with no part into a
+   back any step since the page opened. A line's **More** leaves out everything above
+   it or everything below it, as one step, refused when a line there has a take ("A
+   line there has a take."). Done turns a line with no part into a
    direction. Every step is kept as it is made; a script not yet Done is in Your
    scripts and opens here.
 4. **After a take** on a line (a take in any production of the script, chosen or
@@ -1960,3 +1970,38 @@ dead.
    device's own voices are.
 9. Its kicker is **Your script** (`kind: "own"`), never Radio play or Stage play:
    either would be a claim.
+10. **Cast by ear.** On an episode with a shown transcript and no castable script,
+   **Record this** opens the transcript in lines (R4 §2.4, golden
+   `ear_cast_lines.json`) with the episode playing and the line being said lit. A
+   tap on a part gives it that line and those after, until the next tap; only lines
+   the episode was heard through carry, so a seek hands nothing to anyone. **+ Part**
+   names a voice, and the lit line is theirs. Leave out works the same way. Undo takes
+   back any step since the page opened. The app proposes no speaker and analyzes no
+   voice. "Automatic transcript" stays on the page. The broadcast's sound is never a
+   cue, a take, or in a mix, and no time is in the script.
+   - **Kept on the device** from the first step (never by looking), one for an
+     episode: the lines as they were then, the parts, and the place. Coming back goes
+     on from there. When archive.org has since remade the transcript, the kept lines
+     stay ("The transcript has changed. Your lines are kept."); when the episode's
+     first copy is another file, "The recording has changed. The times may be off."
+   - **Done** at any time: what is cast is its script, the rest are directions, and
+     Your scripts and its page say "37 of 149 lines cast" with **Cast by ear** to go
+     on. The parts page (Edit) finishes it as any script; opening it makes the marks
+     the lines' own parts, and left-out lines are gone.
+   - **Its source** is "Automatic transcript", linked to the episode. It never
+     publishes, as no own script does.
+   - **The door** stands only when it is sure to open: the transcript's times were
+     read (R4 §1.3), or a casting was begun here. An episode the catalog no longer
+     serves (a take-down, §8) has no page, no door and no casting ("Not in the
+     catalog."); a script already made from it stays on its device and is refused
+     wherever an own script is shared. Nothing here recommends an episode, so
+     `no_recommend` is kept by having nothing to break it: no next, no suggestion,
+     and the end of the episode starts nothing.
+   - **Times**, measured 2026-11-24 against the decoded audio: a cue's words are
+     said within a second of its start, late in an episode as early (nine episodes,
+     median -0.6 to +0.9 s). Chrome's clock stays within 0.02 s of the decoded audio
+     after a seek on seven of the nine, a VBR file whose length reads 41 s long among
+     them. On a damaged file it runs 2.4 s behind after 27 minutes. On one whose header
+     is a Xing table (100 places, each to 1/256 of the file) it plays 0.6 to 4.7 s
+     early after a seek, and is right when played from its start. Nothing corrects for
+     either: the page only lights a line.

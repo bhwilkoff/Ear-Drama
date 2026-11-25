@@ -600,7 +600,11 @@ a.g-field-cell:hover { background: var(--color-surface-alt); }
 @media (min-width: 600px) { .g-gallery-fig > .g-shaped { height: 200px; } }
 .pl-open.pl-open-hero { padding: var(--space-5, 20px); gap: var(--space-3); font-size: var(--type-body-size); }
 .pl-open-hero .pl-open-sp:first-child b { padding-right: 0; }
-.pl-open-hero .pl-open-said { -webkit-line-clamp: 3; line-clamp: 3; }
+.pl-open-hero .pl-open-said, .pl-open-hero .pl-open-sp:last-of-type .pl-open-said { -webkit-line-clamp: 3; line-clamp: 3; }
+/* Whole speeches only: one that does not fit above the foot takes a second column, off the page. */
+.pl-open-hero.pl-open-foot { padding-bottom: 16%; }
+.pl-open.pl-open-hero { flex-wrap: wrap; align-content: flex-start; column-gap: 48px; }
+.pl-open-hero .pl-open-sp { flex: none; width: 100%; }
 
 /* Series and episode pages (WEB-DESIGN 6.4d): one button row that never wraps apart. Play and Follow take
    the room; the others fold to their icons when the row is under 480 px, and keep their label as the name. */
@@ -2145,5 +2149,71 @@ body.scripting .site-footer { display: none; }
 }
 /* An own script's page, and its way in. */
 .os-own { margin-top: var(--space-2); }
+
+/* ---- Casting an episode by ear (WEB-DESIGN §4.22): the lines, and the parts with the transport at the foot of a phone, a rail from 860 px ---- */
+body.casting .player { display: none; }
+.ec-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ec-lines { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ec-page { padding-bottom: 30vh; }
+.ec-auto { margin: 0 0 var(--space-1); }
+.ec-note { flex: none; margin: 0; padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--color-border); }
+.ec-note[hidden] { display: none; }
+.ec-state { flex: 1; padding: var(--space-4); }
+.ec-list { line-height: 1.5; }
+.ec-line { margin: 0 calc(-1 * var(--space-2) - 2px); padding: 4px var(--space-2); min-height: 32px; border: 2px solid transparent; border-radius: var(--radius-control); cursor: pointer; }
+.ec-line:hover { background: var(--color-surface); }
+.ec-line:focus-visible { outline-offset: -2px; }
+.ec-line .rd-name { display: block; }
+.ec-words { display: block; overflow-wrap: break-word; }
+.ec-uncast .ec-words, .ec-out .ec-words, .ec-out .rd-name { color: var(--color-text-muted); }
+.ec-out .ec-words { text-decoration: line-through; }
+.ec-aside .ec-words { font-style: italic; }
+.ec-lit .ec-line { border-color: var(--color-text); background: var(--color-surface); }
+.ec-lit .ec-words { color: var(--color-text); }
+.ec-back-line { position: absolute; left: 50%; bottom: var(--space-3); transform: translateX(-50%); box-shadow: 0 2px 8px rgb(0 0 0 / 0.16); }
+.ec-back-line[hidden] { display: none; }
+.ec-dock { flex: none; display: flex; flex-direction: column; border-top: 1px solid var(--color-border); background: var(--color-background); }
+.ec-dock-parts { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-3) 0; }
+.ec-parts, .ec-verbs, .ec-part { display: contents; }
+/* Five parts and more: two rows that scroll, and the verbs always in reach under them. */
+.ec-many .ec-parts { display: flex; flex-wrap: wrap; gap: var(--space-2); width: 100%; max-height: 96px; overflow-y: auto; overscroll-behavior: contain; }
+.ec-many .ec-verbs { display: flex; gap: var(--space-2); }
+.ec-who { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: var(--tap); padding: 0 var(--space-3); border: 1px solid var(--color-border); border-radius: 22px;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ec-who:hover { background: var(--color-surface-alt); }
+.ec-who[aria-pressed="true"] { border-color: var(--color-text); box-shadow: inset 0 0 0 1px var(--color-text); }
+.ec-verb:disabled { opacity: 0.45; cursor: default; }
+.ec-verb[aria-pressed="true"] { border-color: var(--color-text); box-shadow: inset 0 0 0 1px var(--color-text); }
+.ec-name { min-width: 0; overflow-wrap: anywhere; }
+.ec-num, .ec-who .pl-face, .ec-n, .ec-hear { display: none; }
+.ec-transport { display: grid; grid-template-columns: 1fr auto 64px auto 1fr; align-items: center; padding: var(--space-2) var(--space-3); }
+.ec-transport > .ec-time { grid-column: 1; }
+.ec-transport > .icon-btn:not(.ec-play) { grid-column: 2; margin-right: var(--space-4); }
+.ec-play { grid-column: 3; width: 56px; height: 56px; justify-self: center; }
+.ec-play svg { width: 28px; height: 28px; }
+.ec-play .i-pause, .ec-play.is-playing .i-play { display: none; }
+.ec-play.is-playing .i-pause { display: block; }
+.ec-speed { grid-column: 4 / span 2; justify-self: end; min-height: var(--tap); min-width: 72px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--color-link);
+  font: inherit; font-weight: var(--type-body-strong-weight); cursor: pointer; }
+@media (min-width: 860px) {
+  .ec-body { flex-direction: row; }
+  .ec-lines .os-page { max-width: 860px; padding-left: var(--space-8, 48px); padding-right: var(--space-6); }
+  .ec-dock { width: 340px; border-top: 0; border-left: 1px solid var(--color-border); }
+  .ec-dock-parts { flex: 1; min-height: 0; flex-direction: column; flex-wrap: nowrap; gap: 0; padding: var(--space-3) var(--space-5, 20px); }
+  .ec-parts, .ec-many .ec-parts { display: block; flex: 0 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+  .ec-part { display: flex; align-items: center; gap: var(--space-1); border-bottom: 1px solid var(--color-border); }
+  .ec-who { flex: 1; min-width: 0; gap: var(--space-3); min-height: 60px; padding: var(--space-1); border: 0; border-radius: var(--radius-control); }
+  .ec-who[aria-pressed="true"] { background: var(--color-surface-alt); box-shadow: inset 0 0 0 2px var(--color-text); }
+  .ec-who .os-dot { display: none; }
+  .ec-num, .ec-n { display: block; }
+  .ec-num { flex: none; width: 26px; padding: 2px 0; border: 1px solid var(--color-border); border-radius: 6px; text-align: center; }
+  .ec-num:empty { visibility: hidden; }
+  .ec-who .pl-face { display: inline-flex; }
+  .ec-name .body-strong { display: block; }
+  .ec-hear { display: inline-flex; }
+  .ec-verbs, .ec-many .ec-verbs { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin-top: var(--space-4); }
+  .ec-verb { justify-content: center; border-radius: var(--radius-control); }
+  .ec-transport { padding: var(--space-3) var(--space-5, 20px); }
+}
 .os-own p { margin: 0 0 2px; }
 .os-add-link svg { width: 20px; height: 20px; fill: currentColor; }
