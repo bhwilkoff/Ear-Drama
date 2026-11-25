@@ -507,6 +507,16 @@ ANNA: Sit down.
         assertEquals("every speech is castable", s.lines.count { it.kind == ScriptLine.Kind.Speech }, s.speechLineIDs.size)
     }
 
+    @Test fun `Next asks what Done would keep - a text under the raw cap can still build past the kept size`() {
+        fun words(n: Int) = (1..n).joinToString("\n") { "ANNA: Hello there $it." } + "\n"
+        val long = words(5_900)
+        assertNull("the raw text is under every cap", OwnScript.textRefusal(long))
+        assertTrue("and under the line cap", OwnScript.parse(long).lines.size <= OwnScript.MAX_LINES)
+        assertEquals("but Done would refuse it, so Next does", "too_long" to true, OwnScripts.judge(long).let { it.first to (it.second != null) })
+        assertNull("a shorter one goes on", OwnScripts.judge(words(3_000)).first)
+        assertEquals("too many lines is the same answer", "too_many_lines", OwnScripts.judge((1..OwnScript.MAX_LINES + 1).joinToString("\n") { "A: x" }).first)
+    }
+
     @Test fun `nothing leaves the device - no own-script file names the network, the Worker, or a sign-in`() {
         val leak = Regex("HttpClient|okHttp|WebSocket|WorkerApi|PlaysApi|accounts|SharedPlays|readWire")
         val src = File("src/main/java/com/example/appname")
@@ -517,8 +527,10 @@ ANNA: Sit down.
         val ear = File(src, "ui/screens/EarScreen.kt").readText()
         for (word in listOf("ExoPlayer.Builder", "MediaPlayer(", "AudioRecord", "RECORD_AUDIO", "PlaysApi", "Publish")) assertFalse("EarScreen has $word", ear.contains(word))
         val plays = File(src, "ui/screens/PlaysScreens.kt").readText()
-        assertTrue("no Share on a production of one", plays.contains("link == null && !script.isOwn"))
-        assertTrue("no Read together on its page", plays.contains("if (!script.isOwn) ReadTogetherButton(script)"))
+        // Sharing is the person's own act (R4-5): Share carries the line that says who can read it, and Read together shares first.
+        assertTrue("Share on a production of one says who can read it", plays.contains("readers = if (script.isOwn) com.example.appname.plays.OwnShare.READERS"))
+        assertTrue("Read together is on its page", plays.contains("        ReadTogetherButton(script)\n    },"))
+        assertTrue("and shares first", File(src, "ui/screens/ReadScreens.kt").readText().contains("Share \${script.title}?"))
         assertTrue("no Kokoro voice offered", File(src, "ui/CastUi.kt").readText().contains("script?.isOwn != true"))
     }
 }

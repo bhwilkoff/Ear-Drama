@@ -182,11 +182,9 @@ fun OwnAddScreen(onClose: () -> Unit, onNext: (String) -> Unit) {
         snapshotFlow { text.text.toString() }.collectLatest { t ->
             valid = false
             if (t.isNotEmpty()) delay(180)
-            val (why, read) = withContext(Dispatchers.Default) {
-                val why = OwnScript.textRefusal(t)
-                why to (if (why == null) OwnScript.parse(t) else null)
-            }
-            val long = why == "too_long" || (read != null && read.lines.size > OwnScript.MAX_LINES)
+            // Done would refuse what the text builds to, so Next does too: the built canonical size, not only the raw text's (R4-2c).
+            val (why, read) = withContext(Dispatchers.Default) { com.example.appname.plays.OwnScripts.judge(t) }
+            val long = why == "too_long" || why == "too_many_lines"
             if (long) refuse(OwnWords.say("too_long")) else if (refusal == OwnWords.say("too_long")) refusal = null
             tally = if (read != null && !long) OwnWords.partsAndLines(read.parts.size, read.lines.size) else ""
             valid = read != null && !long

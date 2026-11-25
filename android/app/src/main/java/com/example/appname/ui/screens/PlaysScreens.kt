@@ -527,7 +527,7 @@ fun ProductionScreen(
                 }
             }
             if (link != null && sheet != null) {
-                if (sheet?.reported != true) syncError?.let { item(key = "sync-error") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
+                if (!sheet.reported) syncError?.let { item(key = "sync-error") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
                 sharedCastRows(
                     sheet, rec, me, pendingByPart, onRecord, onReplace, voiceChip = castHandle?.takeIf { !television }?.let { h -> { p: PartID -> VoiceChip(h, p, onClick = { pickingVoice = p }) } },
                     notSent = notSent[id], onReadTogether = { ReadTogetherButton(script) },

@@ -30,6 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay5
@@ -263,6 +264,14 @@ internal class EarModel(
     private var starting = false
 
     val keeper = OwnKeeper(container.plays.own, container.appScope) { record() }
+
+    /** A casting begun and not Done can be deleted (§13 item 11). */
+    val deletable: Boolean get() = rec != null && rec?.done != true
+
+    suspend fun delete() {
+        keeper.drop()
+        rec?.id?.let { container.plays.deleteOwn(it) }
+    }
 
     fun say(words: String) { said = words to said.second + 1 }
 
@@ -506,6 +515,9 @@ private fun EarPage(model: EarModel, onBack: () -> Unit, onOpenScript: (String) 
     var away by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<EarSheet?>(null) }
     var naming by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf<String?>(null) }
+    var moreMenu by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
     var resumeAfter by remember { mutableStateOf(false) }
     var refused by remember { mutableStateOf<Pair<String, Int>?>(null) }
     var note by remember { mutableStateOf<String?>(null) }
@@ -655,7 +667,7 @@ private fun EarPage(model: EarModel, onBack: () -> Unit, onOpenScript: (String) 
         LaunchedEffect(wide) { if (!first && follow.following && model.lit != 0) bring(model.lit, animate = false) }
         Scaffold(
             modifier = Modifier.focusRequester(focus).onKeyEvent { e ->
-                if (sheet != null || naming || e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                if (sheet != null || naming || renaming != null || e.type != KeyEventType.KeyDown) return@onKeyEvent false
                 when (val key = keyOf(e) ?: return@onKeyEvent false) {
                     EarCore.Key.Toggle -> if (e.nativeKeyEvent.repeatCount == 0) model.toggle()
                     EarCore.Key.Back -> model.back()
@@ -666,6 +678,14 @@ private fun EarPage(model: EarModel, onBack: () -> Unit, onOpenScript: (String) 
             }.focusable(),
             topBar = {
                 EarBar(model.title, under.takeUnless { large }, onBack, refused = refused != null) {
+                    if (remember(model.version) { model.deletable }) {
+                        Box {
+                            IconButton(onClick = { moreMenu = true }) { Icon(androidx.compose.material.icons.Icons.Filled.MoreVert, contentDescription = "More") }
+                            DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {
+                                DropdownMenuItem(text = { Text("Delete") }, onClick = { moreMenu = false; deleting = true })
+                            }
+                        }
+                    }
                     IconButton(onClick = ::undo, enabled = remember(model.version) { model.session.canUndo }) { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo") }
                     OutlinedButton(onClick = ::finish, enabled = !finishing, modifier = Modifier.padding(end = Spacing.S3.dp)) { Text("Done") }
                 }
@@ -717,7 +737,24 @@ private fun EarPage(model: EarModel, onBack: () -> Unit, onOpenScript: (String) 
             closeSheet()
         }
         why
-    }, onDismiss = { closeSheet() })
+    }, onDismiss = { closeSheet() }, below = if (parts.isEmpty()) null else ({
+        // A part's name, while it is cast: the sheet becomes its one field. A name another part has joins the two.
+        Text("Rename", style = MaterialTheme.typography.labelMedium)
+        ChipFlow { parts.forEach { p -> OwnPartChip(p.name, hues[p.name], onClick = { naming = false; renaming = p.name }, label = "Rename ${p.name}") } }
+    }))
+    if (deleting) {
+        DestructiveConfirm(
+            message = "Delete ${model.title}?", action = "Delete",
+            onConfirm = { deleting = false; scope.launch { try { model.delete(); onBack() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { refuse("not_kept") } } },
+            onDismiss = { deleting = false },
+        )
+    }
+    renaming?.let { from ->
+        NameDialog(from, "Name", "Rename", OwnScript.MAX_PART_NAME, value = from, act = { v ->
+            val why = model.press(v.trim()) { model.session.rename(from, v).refusal }
+            if (why != null) OwnWords.name(why) else { renaming = null; closeSheet(); null }
+        }, onDismiss = { renaming = null; closeSheet() })
+    }
 }
 
 private fun keyOf(e: KeyEvent): EarCore.Key? {

@@ -308,10 +308,9 @@ class OwnScripts(
     suspend fun copy(script: PlayScript): OwnRecord {
         val was = get(script.id)
         val here = if (was?.done == true) script(script.id) else null
-        val same = was != null && here != null && here.revision == script.revision
         val at = now()
         val title = script.title.take(OwnScript.MAX_TITLE - COPY.length) + COPY
-        val base = if (same) was!! else OwnRecord(
+        val base = if (was != null && here != null && here.revision == script.revision) was else OwnRecord(
             "", "", "", OwnScript.fromScript(mapOf("lines" to OwnShare.linesOf(script))), created = at, updated = at,
             episode = script.episode?.let { OwnEpisode(it, script.source.url) },
         )
@@ -519,6 +518,13 @@ class OwnScripts(
         const val SOURCE_EPISODE = "Automatic transcript"
 
         val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+        /** What Next asks of a pasted text: why Done would refuse what it builds to (null when it may go on), and what it parses to. */
+        fun judge(text: String): Pair<String?, OwnParsed?> {
+            val why = OwnScript.textRefusal(text)
+            val parsed = if (why == null) OwnScript.parse(text) else null
+            return (why ?: parsed?.let { OwnScript.builtRefusal(it.lines) }) to parsed
+        }
 
         fun newId() = "own-" + UUID.randomUUID().toString().lowercase(java.util.Locale.ROOT)
 

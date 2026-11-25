@@ -492,7 +492,7 @@ private fun rememberRoomScript(snap: ReadSnapshot?, attempt: Int, key: String?):
         value = ScriptLoad.Loading
         if (!own) { value = plays.resolve(id, revision); return@produceState }
         // An own script is this device's copy, else the room's own route read by the member's key, drawn only once it is whole.
-        if (revision == null || snap == null) { value = ScriptLoad.Failed(com.example.appname.plays.PlaysShare.line(com.example.appname.plays.PlaysException("script_damaged"))); return@produceState }
+        if (revision == null) { value = ScriptLoad.Failed(com.example.appname.plays.PlaysShare.line(com.example.appname.plays.PlaysException("script_damaged"))); return@produceState }
         if (key == null) return@produceState
         value = try {
             ScriptLoad.Ready(

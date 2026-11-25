@@ -96,6 +96,25 @@ class LabelSpecTest {
         assertEquals("L", LabelSpec.make(LabelItem(name = "A"), 320.0).tier)
     }
 
+    /** The "+N" never stands on its bars, whatever the parts' sizes, and the bars keep their shares (R4-2c). */
+    @Test fun aPlaysPlusNNeverStandsOnItsBars() {
+        fun overlap(cast: List<Int>): Boolean {
+            val s = LabelSpec.make(LabelItem(kind = LabelKind.entries.first { it.key == "play" }, voices = cast.size, cast = cast), 48.0)
+            val t = s.text[0]
+            val last = s.cast!!.bars.last()
+            val left = t.x - t.size * LabelMath.textWidth(t.s, "body")
+            return last.x + last.w + LabelMath.castGap > left + 0.01
+        }
+        val casts = listOf(List(58) { 8 }, List(120) { 3 }, listOf(40, 38, 36, 30, 28, 27, 26, 25, 1), listOf(9, 9, 9, 9, 9, 9, 9, 1))
+        for (cast in casts) {
+            assertTrue("+${cast.size - 7} on its bars", !overlap(cast))
+            val bars = LabelSpec.make(LabelItem(kind = LabelKind.entries.first { it.key == "play" }, voices = 9, cast = cast), 48.0).cast!!.bars
+            bars.forEachIndexed { i, b -> assertTrue("bar $i's share", abs(b.w / bars[0].w - Math.round(100.0 * cast[i] / cast[0]) / 100.0) < 0.01) }
+        }
+        val fits = LabelSpec.make(LabelItem(kind = LabelKind.entries.first { it.key == "play" }, voices = 3, cast = listOf(30, 20, 10)), 48.0).cast!!.bars
+        assertEquals("a cast that fits draws full width", 76.0, fits[0].w, 0.001)
+    }
+
     /** V8: the rim and the head name `series.network`, never the first of the `networks` list. */
     @Test fun theRimNamesThePrimaryNetworkNotTheList() {
         val lux = SeriesRow(key = "lux", name = "Lux", genre = "drama", firstDate = "1935", lastDate = "1955", episodes = 9,

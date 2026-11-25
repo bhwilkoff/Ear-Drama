@@ -204,12 +204,12 @@ android {
 // Robolectric never downloads at test time (its own fetcher failed in CI with
 // no retry): Gradle resolves the instrumented Android jars, with its cache,
 // and the tests run offline from a copy. Every test pins sdk 35.
-val robolectricJars by configurations.creating {
+val robolectricJars = configurations.create("robolectricJars") {
     isCanBeConsumed = false
     isCanBeResolved = true
 }
 val robolectricJarDir = layout.buildDirectory.dir("robolectric-jars")
-val stageRobolectricJars by tasks.registering(Sync::class) {
+val stageRobolectricJars = tasks.register<Sync>("stageRobolectricJars") {
     from(robolectricJars)
     into(robolectricJarDir)
 }
@@ -317,6 +317,8 @@ dependencies {
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.core)
     testImplementation(libs.robolectric)
+    // The build Robolectric 4.16 asks for by name (its DefaultSdkProvider, sdk 35): a newer one is not a better one.
+    //noinspection NewerVersionAvailable,UseTomlInstead
     robolectricJars("org.robolectric:android-all-instrumented:15-robolectric-13954326-i7")
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)
