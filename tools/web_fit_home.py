@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Fit gate and frames for Home and Record (WEB-DESIGN 4.2, 4.15; Decision 075), light and dark, at 320,
 375, 390, 430 and 1440 px: Home with no history and with history (Continue leads under On the air),
-during tonight's evening and in the day (a genre station leads), and Record. Fails on a door row or
-button row that wraps apart, a word broken inside itself, a sideways scroll, an overflowing tile name,
-an opening line that runs out sideways, a Home that drew no On the air block, no doors, or no rows, a
+during tonight's evening and in the day (a genre station leads), and Record. Fails on a button row
+that wraps apart, a word broken inside itself, a sideways scroll, an overflowing tile name,
+an opening line that runs out sideways, a Home that drew no On the air block or no rows, or draws the doors again (Decision 089), a
 Record with no play tiles, or either page without Today's scene and its opening (2026-11-15 review).
 
 Reads the live catalog (network) in headless Chrome, muted; never presses Play.
@@ -12,20 +12,18 @@ Reads the live catalog (network) in headless Chrome, muted; never presses Play.
     python3 tools/web_fit_home.py --shots DIR  # also write a PNG per frame
     python3 tools/web_fit_home.py --data URL   # read another projection (default https://eardrama.org/data/)
 
-V5 (WEB-DESIGN 4.2r, Decision 081) adds: the doors are two; nothing on the first screen is as large as
+V5 (WEB-DESIGN 4.2r, Decision 081) adds: nothing on the first screen is as large as
 the hero's window; no rail opens on a show the row above shows; no show twice on Home (Continue is
 personal and outside the rule); at 1024 px and wider Today's scene's board is at most 60% of the
 column; and On the air never shows an upload's `#NNN` tag, against fx.html, which reads the same data
 through /fx/ with every slot's episode given a raw upload title (frames home-raw-*, 375 px).
 `--only PREFIX` runs only the frames whose name starts with PREFIX.
 
-Negative controls (V5, each seen to fail 2026-11-19): add the Listen door back in homeDoors (js/app.js)
--> "the doors are 3"; set `.home-live-win > .g-window` to `width: 96px` -> "as large as the hero";
+Negative controls (V5, each seen to fail 2026-11-19; the doors' 2026-11-25): draw a `nav.home-doors` in
+renderListen -> "the doors are back"; set `.home-live-win > .g-window` to `width: 96px` -> "as large as the hero";
 call `sceneCard(scene)` on Home without `{ wide: true }` -> "a full-width slab"; drop `seen.has(k)` in
 API.homeShows -> "opens on a show the row above shows" and "appears twice"; draw `epTitle(ep)` in
 On the air without `API.uploadTagged` -> "raw upload title in On the air" (home-raw-*).
-The doors-wrap check stays; its first control (deleting the doors' `grid-auto-flow: column`) named a
-grid the two quiet doors no longer use.
 Second (2026-11-15): delete `flex-wrap: nowrap;` from `.pl-scene-actions`; at 320 px Try a line, Hear
 it and Read wrap and "a button row wrap apart" fails (it did, before that rule).
 """
@@ -52,7 +50,6 @@ JS = r"""(() => {
     const tops = new Set(kids.map(k => Math.round(k.getBoundingClientRect().top)));
     if (tops.size > 1) bad.push(name + ' wrap apart');
   });
-  rowsApart('.home-doors', 'the doors');
   rowsApart('.home-live-actions', 'On the air’s buttons');
   rowsApart('.actions-one', 'a button row');
   root.querySelectorAll('.pl-scene-said, .pl-open-sp').forEach(n => { if (n.scrollWidth > n.clientWidth + 1) bad.push('an opening line runs out sideways'); });
@@ -60,7 +57,7 @@ JS = r"""(() => {
   if (de.scrollWidth > innerWidth) bad.push(`page scrolls sideways: ${de.scrollWidth} > ${innerWidth}`);
   root.querySelectorAll('.g-name').forEach(n => { if (n.scrollWidth > n.clientWidth + 1) bad.push('tile name overflows: ' + n.textContent.slice(0, 30)); });
   // A word broken inside itself: one word's glyphs on two lines.
-  const sel = '.pl-open-said, .pl-scene-said, .pl-scene-who, .home-door-lab, .btn, .g-name, .ep-title, .section-header, .g-kicker, .segmented button, .tab span, .g-facts span, .g-head-name';
+  const sel = '.pl-open-said, .pl-scene-said, .pl-scene-who, .btn, .g-name, .ep-title, .section-header, .g-kicker, .segmented button, .tab span, .g-facts span, .g-head-name';
   document.querySelectorAll(sel).forEach(n => {
     if (!n.getBoundingClientRect().width) return;
     const walk = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
@@ -74,11 +71,9 @@ JS = r"""(() => {
     }
   });
   if (view === 'home') {
-    if (!root.querySelector('.home-doors')) bad.push('no doors');
+    if (root.querySelector('.home-doors')) bad.push('the doors are back');
     // §4.2r (Decision 081): the composition rules.
     const shown = (n) => n.getBoundingClientRect().width > 0;
-    const doors = [...root.querySelectorAll('.home-doors > a')].filter(shown);
-    if (doors.length !== 2) bad.push(`the doors are ${doors.length}, not two`);
     const screen = Math.min(innerHeight, innerWidth < 600 ? 812 : 900);
     const hero = root.querySelector('.home-live .g-window');
     if (hero) {
@@ -223,7 +218,7 @@ def main():
             fn = f'{name}-{"dark" if dark else "light"}-{w}.png'
             out = os.path.join(shots, fn) if shots else os.path.join(work, 'fit.png')
             rec = web_run.shoot(f'http://127.0.0.1:{port}/{q}', w, 2400 if w < 600 else 1600, out,
-                                r'Plays' if view == 'record' else r'Find a show')
+                                r'Plays' if view == 'record' else r'Start a show')
             if rec.get('timed_out'):
                 state['out'].append('timed out waiting')
             problems += len(state['out'])

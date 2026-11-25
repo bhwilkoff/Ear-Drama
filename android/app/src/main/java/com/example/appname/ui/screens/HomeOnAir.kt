@@ -17,8 +17,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -234,22 +232,4 @@ fun StationMark(e: DialEntry, side: androidx.compose.ui.unit.Dp, modifier: Modif
         LabelItem(LabelKind.Station, e.station.name, e.station.genre, tickYear = e.year?.toString()),
         modifier.size(side).clip(RoundedCornerShape(4.dp)),
     )
-}
-
-/** The doors (§4.2r rule 3): two quiet buttons in one row. A TV draws none: focus does the work and Find a show is a tab. */
-@Composable
-fun HomeDoors(onFind: () -> Unit, onRecord: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
-    ) {
-        OutlinedButton(onClick = onFind, modifier = Modifier.tvFocusMark()) {
-            Icon(Icons.Filled.Explore, contentDescription = null)
-            Text("Find a show", Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
-        }
-        OutlinedButton(onClick = onRecord, modifier = Modifier.tvFocusMark()) {
-            Icon(Icons.Filled.Mic, contentDescription = null)
-            Text("Record a play", Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
-        }
-    }
 }

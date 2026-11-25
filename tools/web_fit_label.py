@@ -85,7 +85,7 @@ def pages(data):
     person = next(v for v in sorted(voices['rows'], key=lambda v: -(v[VF['episodes']] or 0)) if not v[VF['art']])
     q = urllib.parse.quote
     return [
-        ('home', '?view=home&mute=1', r'Find a show', True),
+        ('home', '?view=home&mute=1', r'Start a show', True),
         ('browse', '?view=browse&mute=1', r'\d shows', True),
         ('series-picture', f"?series={q(pic[F['key']])}&mute=1", re.escape(pic[F['name']]), False),
         ('series-label', f"?series={q(nopic[F['key']])}&mute=1", re.escape(nopic[F['name']]), True),

@@ -104,8 +104,6 @@ private final class HomeRig {
                 OnAirHeroBoard(on: on, series: series, now: now, listening: false, onListen: {}, onStations: {})
                     .padding(.horizontal, Spacing.s4)
                 DialRow(entries: Array(entries.prefix(width < 500 ? 4 : 8)), listening: nil, scrolls: false, tune: { _ in })
-                HomeDoors()
-                    .padding(.horizontal, Spacing.s4)
                 DayBoard(model: day, selected: .constant(1941), interactive: false)
                     .padding(.horizontal, Spacing.s4)
             }

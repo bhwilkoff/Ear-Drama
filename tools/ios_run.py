@@ -60,7 +60,7 @@ APP_ANCHOR_RX = IOS_ANCHOR_RX  # see tools/app_config.py
 # 2026-10-24: the tab bar's "Browse"/"Library"/"Search" made Release-build Home frames pass).
 SCENARIOS = {
     "home":        {"env": {HOOK_START_TAB: "home"}, "minutes": 0.6,
-                    "expect_any": r"Listen Live|Find a Show|Record a Play|Continue"},
+                    "expect_any": r"Listen Live|All Stations|Start a show|Continue"},
     "record":      {"env": {HOOK_START_TAB: "record"}, "minutes": 0.6,
                     "expect_any": r"Today.s (play|scene)|Voices|Plays|Yours"},
     "search":      {"env": {HOOK_START_TAB: "search"}, "minutes": 0.6,

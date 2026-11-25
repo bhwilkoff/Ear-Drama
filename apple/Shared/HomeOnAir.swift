@@ -272,30 +272,4 @@ struct DialRow: View {
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
-
-// MARK: - The doors
-
-/// Two quiet buttons in one row (WEB-DESIGN §4.2r rule 3; iOS-DESIGN §4.1r: borderless, an SF Symbol and a verb each):
-/// the dial does what the Listen door did.
-struct HomeDoors: View {
-    @Environment(AppStore.self) private var store
-
-    var body: some View {
-        PageSection {
-            HStack(spacing: Spacing.s6) {
-                Button { store.selectedTab = .browse } label: { Label("Find a Show", systemImage: AppTab.browse.symbol) }
-                    .accessibilityIdentifier("door-Find a Show")
-                Button { store.selectedTab = .record } label: { Label("Record a Play", systemImage: AppTab.record.symbol) }
-                    .accessibilityIdentifier("door-Record a Play")
-                Spacer(minLength: 0)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Color.brandSecondary)
-            .font(TypeRamp.bodyStrong)
-            .lineLimit(1)
-            .frame(minHeight: 44)
-            .gridRow(.words)
-        }
-    }
-}
 #endif

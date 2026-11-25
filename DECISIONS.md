@@ -971,3 +971,15 @@ for the room. New client states or words for a take are changed in §12.11 first
 **How to apply**: never hide Record behind a rights bucket; put the check on Publish, and test that a production of an unevidenced script has no Publish and the Worker refuses the job. A take-down removes a script from recording as it removes a recording.
 
 **Supersedes**: 068's "Script rights rules stand" and 059's casting test as they apply to recording; both stand for publishing. SCRATCHPAD item 16 is answered.
+
+---
+
+## 089: Home has no doors (owner 2026-11-25)
+
+**Rule**: Home draws no Find a show and no Record a play button on any platform. It opens on the air, then Continue (with history), then the rows. Where the doors stood, a finished ear drama leads (079) or Start a show follows.
+
+**Why**: the owner, 2026-11-25: *"The find a show and record a play buttons on the Home Screen now feel very out of place with the new and improved design. I think we can remove them entirely given the updated purpose of the home page."* They were Home's explanation when it opened on a database (075), then two quiet buttons (081). Browse and Record are tabs at every width, and Home's own rows now start a show and record a scene.
+
+**How to apply**: never add a button on Home that only opens a tab. `tools/web_fit_home.py` fails when the doors return. The Record a play **row** (Today's scene, open parts) stays. Replaces the doors in 075, 079 and 081 rule 3.
+
+**Who was in the room, who gains, who pays:** the owner, looking at the app; listeners gain a first screen with one lead; a newcomer who read the buttons as the app's two verbs now finds them in the tab bar.

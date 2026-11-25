@@ -647,7 +647,7 @@
      LISTEN
   ================================================================ */
 
-  /* Home (WEB-DESIGN §4.2, Decision 075): what is on the air, three doors, then rows each filled
+  /* Home (WEB-DESIGN §4.2, Decision 075): what is on the air, then rows each filled
      by one published rule. Every row is its own box with its own four states, so one file that
      fails never blanks the page; a row whose rule yields nothing is absent. */
   function renderListen(r) {
@@ -662,9 +662,9 @@
     const voicesBox = el('div');
     const madeBox = el('div', { class: 'ear-drama-only' });
     const leadBox = el('div', { class: 'ear-drama-only' });
-    // §4.2r rhythm: the hero (L) and its dial (S), the quiet doors, Start a show (M), Today's scene (L),
+    // §4.2r rhythm: the hero (L) and its dial (S), Start a show (M), Today's scene (L),
     // By length (M), voices (S), This day in radio (L), Made here (M).
-    body.replaceChildren(liveBox, contBox, homeDoors(), leadBox, startBox, recordBox, lengthBox, voicesBox, dayBox, madeBox);
+    body.replaceChildren(liveBox, contBox, leadBox, startBox, recordBox, lengthBox, voicesBox, dayBox, madeBox);
 
     // §4.2r rule 5: rows that show shows wait for the rows above them, then skip any show already drawn.
     const above = homeOrder();
@@ -744,16 +744,6 @@
         return { above, done: () => release() };
       },
     };
-  }
-
-  /** The doors (§4.2r rule 3): two quiet buttons in one row, an icon and a verb each. The dial under
-      On the air does what the Listen door did. */
-  function homeDoors() {
-    const door = (href, ic, label, cls = '') => el('a', { class: `btn btn-ghost home-door ${cls}`.trim(), href }, icon(ic),
-      el('span', { class: 'home-door-lab' }, label));
-    return el('nav', { class: 'home-doors', 'aria-label': 'Start here' },
-      door('?view=browse', 'find', 'Find a show'),
-      door('?view=record', 'mic', 'Record a play', 'ear-drama-only'));
   }
 
   /** An episode as a show tile with Play on it: its series' window and name, the title and length. */

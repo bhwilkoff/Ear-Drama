@@ -34,7 +34,6 @@ import com.example.appname.radio.HomeLive
 import com.example.appname.radio.RadioSlot
 import com.example.appname.radio.Station
 import com.example.appname.ui.screens.HomeDial
-import com.example.appname.ui.screens.HomeDoors
 import com.example.appname.ui.screens.OnAirHero
 import com.example.appname.ui.theme.AppTheme
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -119,7 +118,6 @@ class HomeRenderTest {
                 Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
                     OnAirHero(on, now, ellery, tuned = false, onTune = {}, onOpenStations = {}, onOpenEpisode = {}, liveFocus = FocusRequester())
                     HomeDial(DialEntry.entries(stations, now), liveStation = null, onTune = {})
-                    HomeDoors(onFind = {}, onRecord = {})
                     val rows = listOf(
                         row("a", "1938-04-02", "drama"), row("b", "1938-04-02", "mystery"), row("c", "1939-04-02", "western"),
                         row("d", "1941-04-02", "comedy"), row("e", "1941-04-02", "drama"), row("f", "1944-04-02", "news"),

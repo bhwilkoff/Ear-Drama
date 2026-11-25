@@ -98,7 +98,7 @@ web app follows today.
   to start, Browse is every show by facet, Record is making an ear drama
   (your productions, then the plays), Search finds, Library is yours.
   **Stations** is a page Home opens (its live block's "All stations" and
-  the Listen door), and **Surprise** is a button in Home's heading row;
+  the dial), and **Surprise** is a button in Home's heading row;
   both keep their URLs (§3.1) and light the Home tab. The phone's five
   reduce to the car's four (Continue, Stations, Browse, Downloads) without
   a new one (R17). Depth is at most two from a section: section, series,
@@ -130,16 +130,14 @@ web app follows today.
      caption "Tonight in 19xx · Starts at 5:00 PM". Then **Listen live**
      (ink; "Listening live" while on, and pressing it pauses, as on
      Stations) and **All stations** (a ghost link to `?view=stations`).
-     When neither file has anything on, the block is absent and the doors
-     lead. The live machinery is Stations' own (§4.9): the same `tuneIn`,
+     When neither file has anything on, the block is absent and Continue
+     or Start a show leads. The live machinery is Stations' own (§4.9): the same `tuneIn`,
      the same rules (R14).
   3. **Continue** (`Store.inProgress`): resume rows with Play, drawn only
      when this device has history, directly under On the air. Nothing else
      on Home is personal.
-  4. **Three doors**: one row of three equal blocks, an icon over a verb,
-     never wrapping apart: **Listen** (`?view=stations`), **Find a show**
-     (`?view=browse`), **Record a play** (`?view=record`). A door's label
-     may break between its words, never inside one.
+  4. **No doors** (Decision 089, owner 2026-11-25: *"The find a show and record a play buttons on the Home Screen now feel very out of place with the new and improved design. I think we can remove them entirely given the updated purpose of the home page."*). Browse and Record are tabs.
+     - *Replaced*: "**Three doors** ..." (Decision 075), then two quiet ones (081).
   5. **Start a show**: chips over a rail of first episodes, each tile with
      Play on it. The chips are "Most downloaded" (the `mostDownloaded`
      shelf) then each published `genreFirsts` genre by its published name,
@@ -203,7 +201,7 @@ web app follows today.
        productions, and counted sound and directions as open parts).
   7a. **Made here, leading** (Decision 079, owner 2026-11-15, R2 review Q3):
      while there are finished ear dramas and fewer than six, item 10's row
-     is drawn here, directly under the three doors (before Start a show),
+     is drawn here, directly above Start a show,
      and not at the end: the first proof of what an ear drama sounds like
      sits where a newcomer looks first. At six or more it returns to item
      10. The row, its tiles and "All" are item 10's; nothing else changes.
@@ -239,12 +237,12 @@ web app follows today.
      column width, its window at tier L (the show's picture, else its label with the evening's
      year ticked on the dial, §6.4r), the kicker "● On the air · Tonight in 19xx", the show's name
      in page-title type, the event line (episode · N min in), **Listen live** (ink), **All
-     stations**. Nothing else on the first screen is as large. When nothing is on, the doors lead.
+     stations**. Nothing else on the first screen is as large. When nothing is on, Continue or Start a show leads.
   2. **The dial under the hero.** The eight genre stations (`stations.json`) as one row of S-tier
      labels, each on its genre's board with the genre's name and what is on now as a caption;
      a press tunes in. It takes over the Listen door's job.
-  3. **Doors get quieter.** Item 4 becomes two ghost buttons with icons in one row, **Find a
-     show** and **Record a play**, not bordered blocks.
+  3. **No doors** (Decision 089, 2026-11-25; was two quiet ghost buttons). Nothing on Home repeats
+     a tab.
   4. **One art system in every rail.** Every window on Home is a graded picture or a label, the
      show tile's 200-unit window in every rail (Start a show, By length, Stories in parts, Made
      here): one size, one rhythm.
@@ -272,7 +270,7 @@ web app follows today.
   never shows, AGENTS.md). The dial is a 56 px station label per genre (tick: the year of what it
   has on), the genre's name, and the show on now as one muted line; it scrolls on a phone and
   is eight equal columns from 768 px; a station with nothing on is shown dimmed and does not
-  press. Order: hero, dial, Continue (personal, so outside rule 5), the two doors, Made here when
+  press. Order: hero, dial, Continue (personal, so outside rule 5), Made here when
   it leads, Start a show, Today's scene, By length, Most heard voices, This day in radio, Made
   here. Rule 5 is `API.homeShows(episodes, seen)` over the hero's show, then Start a show's and
   By length's first-drawn chip, then the night's tiles (which only skip); a chip pressed later
@@ -280,7 +278,7 @@ web app follows today.
   drama board holding the opening, then the buttons; from 600 px the board (320 px) at the left
   and the words and buttons beside it. The day chart's bars are muted ink, the chosen year's in
   text, and the genre key is gone (a key to one ink keys nothing). Checks (each seen to fail):
-  the doors are two; nothing on the first screen (812 px on a phone, 900 wide) is as large as the
+  no doors (Decision 089); nothing on the first screen (812 px on a phone, 900 wide) is as large as the
   hero's window; no rail opens on a show the row above shows; no show twice (hero, rails, night
   tiles); at 1024 px and wider the scene's board is at most 60% of the column; On the air never
   shows a `#NNN` upload tag, against a fixture that gives every slot a raw title (`fx.html`).

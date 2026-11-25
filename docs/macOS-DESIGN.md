@@ -109,9 +109,8 @@ Mac uses the same Core, so the same code holds them:
   easily"*): Home, Browse, Record, Search, Library, in `AppTab` order
   (`apple/Core/Store/AppStore.swift`), ⌘1 to ⌘5 in the Go menu (§5.5).
   Home is iOS-DESIGN §4.1 as a `WidePage` (§4.0a): On the air, Continue,
-  the three doors as three equal buttons in one row, then the rule rows.
-  **Stations** is pushed in Home's stack (On the air's All Stations, the
-  Listen door) and **Surprise** by Home's toolbar button (⇧⌘S in the Go
+  then the rule rows (no doors, Decision 089).
+  **Stations** is pushed in Home's stack (On the air's All Stations) and **Surprise** by Home's toolbar button (⇧⌘S in the Go
   menu); neither is a sidebar section. **Record** is iOS-DESIGN §4.14 as
   a `WidePage`: Yours, Today's Scene, the plays under the chip bar, Made
   here. "Record This" beside Play on a play's page, or on an episode

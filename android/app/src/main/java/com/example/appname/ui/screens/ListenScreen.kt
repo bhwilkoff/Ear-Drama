@@ -61,7 +61,7 @@ private const val TOP = 12
 
 /**
  * Home (Decision 075, ANDROID-DESIGN §4.1): On the air with Listen live, Continue (only with
- * history), the three doors, Start a show, By length, Record a play (not on a TV), This day in
+ * history), Start a show, By length, Record a play (not on a TV), This day in
  * radio, Most heard voices, and Made here. Every row is filled by one published rule and has its
  * own states; a row whose rule yields nothing is not drawn. The top bar's one action opens Surprise.
  */
@@ -73,7 +73,6 @@ fun ListenScreen(
     onSurprise: () -> Unit,
     onBrowse: () -> Unit,
     onOpenStations: () -> Unit,
-    onOpenRecord: () -> Unit,
     onOpenScript: (String) -> Unit,
     onOpenProduction: (String) -> Unit,
     onRead: (String) -> Unit = {},
@@ -156,7 +155,6 @@ fun ListenScreen(
                     )
                 }
             }
-            if (!television) item(key = "doors") { HomeDoors(onFind = onBrowse, onRecord = onOpenRecord) }
             if (madeLeads) item(key = "made") { NewEarDramas(onOpen = onOpenDrama, onAll = onDramas) }
             if (published == null) {
                 if (shelves is Loadable.Loading) item(key = "start-wait") { RowSpinner() }

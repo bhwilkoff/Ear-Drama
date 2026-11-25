@@ -109,7 +109,6 @@ struct ListenScreen: View {
             if !continuing.isEmpty {
                 continuingRows
             }
-            HomeDoors()
             MadeHereSection(leading: true)
             if catalog.state == .unavailable {
                 CatalogUnavailableView()

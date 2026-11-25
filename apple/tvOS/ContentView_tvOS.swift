@@ -311,7 +311,7 @@ private struct ListenScreen_tvOS: View {
     }
 
     /// The dial (§4.2r rule 2): every genre station as a label, its name and the show on now; a press tunes in.
-    /// The TV has no doors: Find a Show is a tab, and the hero holds All Stations and Surprise.
+    /// The hero holds All Stations and Surprise.
     @ViewBuilder private var dial: some View {
         if case let .ready(_, stations) = onAirLoad {
             let entries = DialEntry.entries(stations, now: now)

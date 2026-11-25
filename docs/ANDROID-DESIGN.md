@@ -249,8 +249,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   significantly buried"*). **Five tabs, hard set: Home, Browse, Record,
   Search, Library** (`Tab`, `navigation/Routes.kt`), with Material icons
   Home, Explore, Mic, Search, and Bookmarks. **Stations** is pushed from
-  Home (`Route.Radio`, from On the air's "All stations" and the Listen
-  door) and **Surprise** is the Home top bar's one action (Shuffle),
+  Home (`Route.Radio`, from On the air's "All stations") and **Surprise** is the Home top bar's one action (Shuffle),
   pushing `Route.Surprise`; neither is a tab. `NavigationSuiteScaffold`
   draws a bar, a rail, or a drawer by window size; five items is inside
   Material's three to five. Each tab owns one verb: Home what is on now
@@ -259,7 +258,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   "Record this" sits beside Play on any page with a castable script.
   **On a TV** (Android TV, Fire TV) there is no Record tab: a TV records
   nothing (PLAYS-DESIGN §2), so the rail shows Home, Browse, Search,
-  Library, Home has no Record a play door or row, and the plays, the
+  Library, Home has no Record a play row, and the plays, the
   Surprise play, and Ear dramas are not shown.
   - *Replaced* (2026-11-14, Decision 075): "**Five tabs, hard set: Home,
     Browse, Stations, Search, Library** ... No tab is named for a content
@@ -302,9 +301,8 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   tonight's slot on now, else the first genre station with a playable
   slot, as a `GrammarRow`, then **Listen live**, a filled `Button` in
   ink, and **All stations**, an `OutlinedButton` pushing `Route.Radio`;
-  absent when nothing is on); **Continue** (only with history); **three
-  doors**, one `Row` of three equal `OutlinedCard`s, a Material icon over
-  a verb (Listen `Radio`, Find a show `Explore`, Record a play `Mic`);
+  absent when nothing is on); **Continue** (only with history); no doors
+  (Decision 089, 2026-11-25);
   **Start a show** (`FilterChip`s, "Most downloaded" then each published
   genre, over a `LazyRow` of 220 dp tiles with a Play `IconButton`);
   **By length** (Under 15 min, About 30 min, An hour, from `byLength`;
@@ -333,7 +331,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     Record a play moves up between Start a show and By length. Not on a TV.
   - **Made here, leading** (Decision 079; WEB-DESIGN §4.2 item 7a): while
     there are one to five finished ear dramas, Made here is drawn directly
-    under the three doors instead of last; at six or more it returns to the
+    above Start a show instead of last; at six or more it returns to the
     end.
   - *Replaced* (2026-11-15, Decision 079): "**Record a play** (Today's play,
     `todaysPlay` in `plays/`, as `PlayHeadBoard` with Record this and
@@ -354,11 +352,11 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   - *Replaced* (2026-11-14): "a `LazyColumn` of shelves ... Continue
     listening, then Following ..., then the published shelves in order".
 - **§4.1r Home reads as one thing** (Decision 081, owner 2026-11-19: *"the home screen ... still reads like a long list of items that feel unrelated ... The goal is to have the home view feel more cohesive and inviting from the moment that you open the app."*; rulings: "Home: all of R3a §4.1", "label art C on every platform"). Binding over §4.1 wherever they differ; the shared
-  rules are WEB-DESIGN §4.2r 1-8 (one lead object, the dial of genre stations under it, two quiet
+  rules are WEB-DESIGN §4.2r 1-8 (one lead object, the dial of genre stations under it, no
   doors, one art system and one window size in every rail, a show at most once per Home, two inks
   per screen, rhythm L S M L M S, framing from data only). Android's idiom: the hero is the On the air board
   at full width, its window at tier L, **Listen live** a filled ink button; the dial is a `LazyRow`
-  of S-tier labels; the doors are two `TextButton`s with Material Symbols in one row. On Google TV
+  of S-tier labels. On Google TV
   the hero and the dial follow tvOS-DESIGN §4.1r (focus does the work; the label never adds focus
   chrome a picture would not). Built in Round 3 V6.
 - **§4.2 Browse** (was Series) lists radio series; the plays moved to

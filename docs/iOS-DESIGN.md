@@ -231,7 +231,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   `Tab(role: .search)` so the system places it. The same five on every
   width: the tab bar on iPhone, the sidebar on iPad, the vertical strip on
   the open Duo. **Stations** is a push from Home (`Route.stations`, from
-  On the air's "All Stations" and the Listen door) and **Surprise** a push
+  On the air's "All Stations") and **Surprise** a push
   from Home's toolbar button (`Route.surprise`, the shuffle symbol), as
   Archive Watch's §2.6: modes are pushes on the phone. Neither is a tab at
   any width, so the Duo's strip shows nothing twice (the 2026-11-14 Duo
@@ -299,7 +299,7 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   scope and chips) takes the same margin (`pageBarPadding()`).
 - **§3.6b Two edges for what stands on a page: boxes and words.** In a
   page List at regular width a **filled block** (a card, a board, a grid
-  of tiles, Today's Scene, the doors) stands on the **box edge**, the
+  of tiles, Today's Scene) stands on the **box edge**, the
   grouped cards' own edge (`gridRow()`, `RowLine.box`: no horizontal
   inset), so every box on the page lines up with the cards. **Unfilled
   content** (text, a row of buttons, a picture with its words, On the air,
@@ -380,10 +380,7 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   grammar row, then **Listen Live** `.borderedProminent` in ink and **All
   Stations** `.bordered`, pushing `Route.stations`; absent when nothing is
   on); **Continue** (the ten most recent in progress, only with history);
-  **three doors** in one `Grid` row of three equal buttons, an SF Symbol
-  over a verb (Listen `dot.radiowaves.left.and.right`, Find a Show
-  `square.grid.2x2`, Record a Play `mic`), Listen pushing Stations, the
-  other two selecting the Browse and Record tabs; **Start a Show** (a
+  no doors (Decision 089, 2026-11-25); **Start a Show** (a
   segmented `Picker` of "Most downloaded" and each published genre, over a
   horizontal rail of first-episode tiles, each with a Play button);
   **By Length** (Under 15 min, About 30 min, An hour; the `byLength`
@@ -413,7 +410,7 @@ device. Audit frames: `build/qa/duo-audit/` (local).
     a Play moves up between Start a Show and By Length.
   - **Made Here, leading** (Decision 079; WEB-DESIGN §4.2 item 7a): while
     there are one to five finished ear dramas, Made Here is drawn directly
-    under the three doors instead of last; at six or more it returns to the
+    above Start a Show instead of last; at six or more it returns to the
     end.
   - *Replaced* (2026-11-15, Decision 079): "**Record a Play** (Today's play
     board, `PlayScript.todaysPlay`, with Record This and Parts, ...) drawn
@@ -434,12 +431,11 @@ device. Audit frames: `build/qa/duo-audit/` (local).
     is the same card. Play tiles show the index row's `opening` as a page in
     the window when it is present. Same rules on iPad and Mac.
 - **§4.1r Home reads as one thing** (Decision 081, owner 2026-11-19: *"the home screen ... still reads like a long list of items that feel unrelated ... The goal is to have the home view feel more cohesive and inviting from the moment that you open the app."*; rulings: "Home: all of R3a §4.1", "label art C on every platform"). Binding over §4.1 wherever they differ; the shared
-  rules are WEB-DESIGN §4.2r 1-8 (one lead object, the dial of genre stations under it, two quiet
+  rules are WEB-DESIGN §4.2r 1-8 (one lead object, the dial of genre stations under it, no
   doors, one art system and one window size in every rail, a show at most once per Home, two inks
   per screen, rhythm L S M L M S, framing from data only). The phone's idiom: the hero is the On the
   air board at full width with its window at tier L and **Listen live** as the ink button; the dial
-  is a horizontally scrolling row of S-tier labels that tunes in on a tap (`selection` haptic);
-  the doors are two borderless buttons with SF Symbols in one row. At regular width (the open
+  is a horizontally scrolling row of S-tier labels that tunes in on a tap (`selection` haptic). At regular width (the open
   Duo, an iPad, §3.6) the hero keeps one column's width beside the dial and Continue, never
   stretched past its tier. Built in Round 3 V6.
 - **§4.2 Browse** (was Series) is a `List` of radio series (the plays

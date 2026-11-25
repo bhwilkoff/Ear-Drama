@@ -294,7 +294,6 @@ fun AppRoot(
                                     onOpenPerson = openPerson,
                                     onVoices = { haptics(Haptic.Selection); browseVoices = true; selected = Tab.Browse },
                                     onOpenStations = { stack.navigateTo(Route.Radio) },
-                                    onOpenRecord = { haptics(Haptic.Selection); selected = Tab.Record },
                                     onOpenScript = openScript,
                                     onOpenProduction = openProduction,
                                     onRead = openReader,

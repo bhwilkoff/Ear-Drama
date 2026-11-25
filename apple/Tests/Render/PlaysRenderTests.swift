@@ -258,7 +258,6 @@ private final class RenderRig {
                 ScenePage(opening: opening, hue: { SceneScript.hue(today, $0) }, current: opening.dropFirst().first?.id)
                     .padding(Spacing.s4)
                     .background(Color.board(PlayScript.boardGenre), in: RoundedRectangle(cornerRadius: Radius.card))
-                HomeDoors()
             }
             .padding(Spacing.s4)
         }
