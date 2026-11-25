@@ -36,6 +36,17 @@ const EarCore = (() => {
   }
 
   /**
+   * A part's hue by the one rule every surface shares (PlayScript.partHue, EarCore.hue on Apple): the first seven parts
+   * with a line, largest first, ties by who was named first; the rest, and a part with no line yet, have none.
+   */
+  function hueOf(name, parts) {
+    const ranked = parts.map((p, i) => ({ p, i })).filter(x => x.p.lines > 0)
+      .sort((a, b) => b.p.lines - a.p.lines || a.i - b.i);
+    const at = ranked.findIndex(x => x.p.name === name);
+    return at >= 0 && at < PlaysCore.PART_HUES.length ? PlaysCore.PART_HUES[at] : 'none';
+  }
+
+  /**
    * The lines as they are drawn: `{ k, text, kind, who, named }`. `who` is a name, OwnCore.OUT, or null; `named`
    * says the speaker (or Left out) is not the line above's, so it is printed.
    */
@@ -163,5 +174,5 @@ const EarCore = (() => {
     return p > 0 && p < last ? p : 0;
   }
 
-  return { SPEED, BACK_S, LEAST_MS, signature, refusalOf, partsOf, rows, session, spanOf, keyOf, placeOf };
+  return { SPEED, BACK_S, LEAST_MS, signature, refusalOf, partsOf, hueOf, rows, session, spanOf, keyOf, placeOf };
 })();

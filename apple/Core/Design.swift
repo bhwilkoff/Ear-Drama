@@ -17,6 +17,7 @@ extension Color {
     nonisolated static let brandSurface = Color.tokenPair(light: 0xF4F4F5, dark: 0x19191C)
     nonisolated static let brandSurfaceAlt = Color.tokenPair(light: 0xE8E8EB, dark: 0x232327)
     nonisolated static let brandText = Color.tokenPair(light: 0x131316, dark: 0xF2F2F4)
+    nonisolated static let brandScrim = Color.tokenPair(light: 0x131316, dark: 0x000000)
     nonisolated static let brandTextMuted = Color.tokenPair(light: 0x5C5C66, dark: 0xC4C4CC)
     nonisolated static let brandBorder = Color.tokenPair(light: 0xD8D8DD, dark: 0x34343A)
     nonisolated static let brandSecondary = Color.tokenPair(light: 0x0B6E99, dark: 0x6CC0E0)

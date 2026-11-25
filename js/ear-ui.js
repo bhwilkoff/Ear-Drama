@@ -25,7 +25,7 @@ const EarUI = (() => {
   const $ = (id) => document.getElementById(id);
   const store = () => OwnScripts.shared();
   const num = new Intl.NumberFormat('en-US');
-  const hueAt = (i) => PlaysCore.PART_HUES[i] || 'none';
+  const hueAt = (name, parts) => EarCore.hueOf(name, parts);
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   function path(d, cls) {
     const ns = 'http://www.w3.org/2000/svg';
@@ -235,15 +235,15 @@ const EarUI = (() => {
     }
     function paintParts() {
       const ps = S.parts();
-      P.hues = new Map(ps.map((p, i) => [p.name, hueAt(i)]));
+      P.hues = new Map(ps.map(p => [p.name, hueAt(p.name, ps)]));
       const who = S.lit ? S.who(S.lit) : null;
       box.classList.toggle('ec-many', ps.length > 4);
       const had = parts.contains(document.activeElement) ? document.activeElement.dataset : null;
-      parts.replaceChildren(...ps.map((p, i) => h.el('div', { class: 'ec-part', dataset: { hue: hueAt(i) } },
+      parts.replaceChildren(...ps.map((p, i) => h.el('div', { class: 'ec-part', dataset: { hue: hueAt(p.name, ps) } },
         h.el('button', { type: 'button', class: 'ec-who', dataset: { part: p.name }, 'aria-pressed': String(p.name === who),
           'aria-label': p.name, 'aria-keyshortcuts': i < 9 ? String(i + 1) : null, onclick: () => give(p.name) },
           h.el('span', { class: 'ec-num caption tabular', 'aria-hidden': 'true' }, i < 9 ? String(i + 1) : ''),
-          h.el('span', { class: 'pl-face', dataset: { hue: hueAt(i) }, 'aria-hidden': 'true' }, p.name.charAt(0)),
+          h.el('span', { class: 'pl-face', dataset: { hue: hueAt(p.name, ps) }, 'aria-hidden': 'true' }, p.name.charAt(0)),
           h.el('i', { class: 'os-dot', 'aria-hidden': 'true' }),
           h.el('span', { class: 'ec-name' }, h.el('span', { class: 'body-strong' }, p.name),
             h.el('span', { class: 'caption tabular ec-n' }, p.lines === 1 ? '1 line' : `${num.format(p.lines)} lines`))),
@@ -512,7 +512,7 @@ const EarUI = (() => {
           return null;
         } }),
         others.length ? h.el('p', { class: 'caption os-lab' }, 'Rename') : null,
-        others.length ? h.el('div', { class: 'os-acts' }, others.map((p, i) => h.el('button', { type: 'button', class: 'os-chip', dataset: { hue: hueAt(i) }, 'aria-label': `Rename ${p.name}`, onclick: () => renamePart(el, p.name) },
+        others.length ? h.el('div', { class: 'os-acts' }, others.map(p => h.el('button', { type: 'button', class: 'os-chip', dataset: { hue: hueAt(p.name, S.parts()) }, 'aria-label': `Rename ${p.name}`, onclick: () => renamePart(el, p.name) },
           h.el('i', { class: 'os-dot', 'aria-hidden': 'true' }), h.el('span', { class: 'body-strong' }, p.name)))) : null);
       el.showModal();
       el.querySelector('input').focus();
@@ -586,7 +586,7 @@ const EarUI = (() => {
       const split = btn('Split here', () => act(() => S.apply({ op: 'split', line: k, at: cut.at() }), 'Split', 'made'), { disabled: true });
       const cut = kit.cutter(l.text, (at) => { split.disabled = at < 0; });
       const who = S.who(k);
-      const chips = S.parts().map((p, i) => h.el('button', { type: 'button', class: 'os-chip', dataset: { hue: hueAt(i) }, 'aria-pressed': String(p.name === who), onclick: () => act(() => S.assign(k, { role: p.name }), p.name) },
+      const chips = S.parts().map((p, i, all) => h.el('button', { type: 'button', class: 'os-chip', dataset: { hue: hueAt(p.name, all) }, 'aria-pressed': String(p.name === who), onclick: () => act(() => S.assign(k, { role: p.name }), p.name) },
         h.el('i', { class: 'os-dot', 'aria-hidden': 'true' }), h.el('span', { class: 'body-strong' }, p.name)));
       const kinds = ['direction', 'sound'].map(kind => h.el('button', { type: 'button', class: 'os-chip os-plain', 'aria-pressed': String(l.kind === kind), onclick: () => act(() => S.assign(k, kind), KIND_WORD[kind]) }, KIND_WORD[kind]));
       kit.inner(el, top, cut.node, h.el('div', { class: 'os-acts' }, chips, kinds),

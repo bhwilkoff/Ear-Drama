@@ -314,6 +314,25 @@ test('the Default pool: downloaded first, then the person\'s order; left-out voi
   eq(VoiceCast.poolOf(all, allOff).length, all.length, 'every voice left out: the pool falls back to them all, never silence');
 });
 
+test('novelty voices are never a Default unless ticked; the web, Apple and Android lists agree by name', () => {
+  const novel = ['Bahh', 'Bells', 'Boing', 'Bad News', 'Good News', 'Zarvox', 'Albert'].map(n => ({ name: n, voiceURI: `com.apple.speech.synthesis.voice.${n.replace(/ /g, '')}`, lang: 'en-US', localService: true, default: false }));
+  const sys = VoiceCast.systemVoices([...RAW, ...novel], 'en-US');
+  const pool = (d) => VoiceCast.poolOf(sys, d).map(v => v.name);
+  ok(novel.every(n => !pool().includes(n.name)), 'no novelty voice in the Default pool');
+  ok(pool().includes('Samantha'), 'a person voice stays');
+  const bahh = sys.find(v => v.name === 'Bahh');
+  ok(pool({ order: [], off: { [VoiceCast.voiceKey(bahh)]: false }, rate: 1 }).includes('Bahh'), 'ticked, it is in the pool');
+  const swift = fs.readFileSync(path.join(__dirname, '..', 'apple/Core/Plays/VoiceCast.swift'), 'utf8');
+  const kt = fs.readFileSync(path.join(__dirname, '..', 'android/app/src/main/java/com/example/appname/plays/VoiceCast.kt'), 'utf8');
+  const names = (src, open) => [...src.slice(src.indexOf(open)).match(/\[[^\]]*\]|setOf\([^)]*\)/)[0].matchAll(/"([^"]+)"/g)].map(m => m[1].toLowerCase().replace(/[^a-z]+/g, '')).sort();
+  const web = [...VoiceCast.NOVELTY].sort();
+  const apple = names(swift, 'noveltyNames');
+  const droid = names(kt, 'val NOVELTY');
+  eq(apple, web, 'Apple noveltyNames = web NOVELTY');
+  // Android's list lacks two names Apple has (Deranged, Hysterical); web work does not edit Kotlin, so the gap is pinned: any other drift, or the fix landing, fails this line.
+  eq(web.filter(n => !droid.includes(n)).concat(droid.filter(n => !web.includes(n))), ['deranged', 'hysterical'], 'Android NOVELTY = web NOVELTY less the pinned gap');
+});
+
 test('untouched parts read Default at the defaults\' speed; a choice overrides and Default takes it back', () => {
   const storage = memoryStorage();
   const f = fakeSynth();
