@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B31 mock: finding a play</title>
+<!-- B31 design mock, not product code. ?s=labels|tiles|find|filters|search|play|states|ios|ipad|tv|android &theme=dark &w=.
+     Every title, author, count, character and line comes from data.js (make_data.py over the real play library);
+     the only words written here are the controls' own labels. Fonts are the repo's (served from the repo root). -->
+<style>
+@font-face { font-family: "Big Shoulders"; src: url("../../../../fonts/big-shoulders.woff2") format("woff2"); font-weight: 700; }
+@font-face { font-family: "Public Sans"; src: url("../../../../fonts/public-sans.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Public Sans"; src: url("../../../../fonts/public-sans-italic.woff2") format("woff2"); font-weight: 100 900; font-style: italic; }
+:root { --bg:#FFFFFF; --surface:#F4F4F5; --alt:#E8E8EB; --text:#131316; --muted:#5C5C66; --border:#D8D8DD; --secondary:#0B6E99; --onsec:#fff; --primary:#131316; --onprimary:#fff;
+  --print:#EDEDED; --edge:rgba(19,19,22,.18); --display:"Big Shoulders", "Arial Narrow", sans-serif; --body:"Public Sans", system-ui, sans-serif; }
+:root[data-theme="dark"] { --bg:#0F0F11; --surface:#19191C; --alt:#232327; --text:#F2F2F4; --muted:#C4C4CC; --border:#34343A; --secondary:#6CC0E0; --onsec:#06141B; --primary:#F2F2F4; --onprimary:#0F0F11;
+  --print:#2A2A2E; --edge:rgba(242,242,244,.16); }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 var(--body); -webkit-font-smoothing: antialiased; }
+.l1 { font: 700 28px/1.15 var(--display); margin: 0; }
+.l2 { font: 700 20px/1.2 var(--display); margin: 0; }
+.l3 { font-weight: 600; font-size: 16px; }
+.l5 { font-size: 13px; color: var(--muted); }
+.l6 { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.page { padding: 16px; }
+.hdr { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 24px 0 8px; }
+.hdr a { color: var(--secondary); text-decoration: none; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.hdr .rule { font-size: 13px; color: var(--muted); font-weight: 400; }
+.search { display: flex; align-items: center; gap: 8px; height: 44px; border-radius: 12px; background: var(--surface); padding: 0 12px; color: var(--muted); font-size: 16px; border: 1px solid var(--border); }
+.search b { color: var(--text); font-weight: 400; }
+.chips { display: flex; gap: 8px; overflow: hidden; margin: 12px -16px 0; padding: 0 16px; }
+.chip { flex: none; height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 18px; border: 1px solid var(--border); font-size: 14px; font-weight: 600; background: var(--bg); color: var(--text); white-space: nowrap; }
+.chip.on { background: var(--secondary); color: var(--onsec); border-color: var(--secondary); }
+.chip .n { font-weight: 400; color: var(--muted); }
+.chip.on .n { color: var(--onsec); opacity: .85; }
+.chev { width: 10px; height: 10px; }
+.rail { display: flex; gap: 10px; overflow: hidden; margin: 0 -16px; padding: 0 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 12px; }
+/* The play tile (WEB-DESIGN 6.4b grammar): board, window, name, strip, facts. */
+.tile { border-radius: 12px; padding: 6px 6px 10px; background: var(--board); color: var(--onboard); display: grid; gap: 6px; align-content: start; position: relative; }
+.tile .win { aspect-ratio: 1; border-radius: 4px; overflow: hidden; background: var(--print); outline: 1px solid var(--edge); outline-offset: -1px; display: grid; place-items: center; }
+.tile[data-hue] .win { outline-color: color-mix(in srgb, var(--onboard) 32%, transparent); }
+.tile .win svg { display: block; width: 100%; height: 100%; }
+.tile .win img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); }
+.tile .win img.whole { object-fit: contain; padding: 6%; }
+.tile .name { font: 700 20px/1.05 var(--display); text-transform: uppercase; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; text-wrap: balance; }
+.tile .name.s1 { font-size: 17px; } .tile .name.s2 { font-size: 15px; }
+.tile .facts { font-size: 13px; line-height: 1.3; opacity: .92; }
+.tile .read { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 16px; background: var(--onboard); color: var(--board); display: grid; place-items: center; }
+.tile .read svg { width: 16px; height: 16px; }
+.rail .tile { width: 132px; flex: none; }
+.rail .tile .name { font-size: 16px; }
+.strip { height: 18px; display: flex; align-items: center; gap: 2px; }
+.strip i { display: block; height: 8px; border-radius: 1.5px; background: currentColor; }
+.strip i.rest { opacity: .42; }
+[data-hue="drama"] { --board:#86426F; --onboard:#fff; } [data-hue="comedy"] { --board:#795700; --onboard:#fff; } [data-hue="documentary"] { --board:#296E38; --onboard:#fff; }
+[data-hue="scifi"] { --board:#006A79; --onboard:#fff; } [data-hue="serial"] { --board:#684D92; --onboard:#fff; } [data-hue="mystery"] { --board:#375C9B; --onboard:#fff; } [data-hue="news"] { --board:#615D53; --onboard:#fff; }
+:root[data-theme="dark"] [data-hue="drama"] { --board:#5F2A4D; --onboard:#F2F2F4; } :root[data-theme="dark"] [data-hue="comedy"] { --board:#543B00; --onboard:#F2F2F4; }
+:root[data-theme="dark"] [data-hue="documentary"] { --board:#154C22; --onboard:#F2F2F4; } :root[data-theme="dark"] [data-hue="scifi"] { --board:#004854; --onboard:#F2F2F4; }
+:root[data-theme="dark"] [data-hue="serial"] { --board:#473368; --onboard:#F2F2F4; } :root[data-theme="dark"] [data-hue="mystery"] { --board:#223F6F; --onboard:#F2F2F4; } :root[data-theme="dark"] [data-hue="news"] { --board:#424038; --onboard:#F2F2F4; }
+.tile:not([data-hue]) { --board: var(--alt); --onboard: var(--text); }
+/* The 64 px row. */
+.row { display: grid; grid-template-columns: 48px 1fr auto; gap: 12px; align-items: center; min-height: 64px; border-bottom: 1px solid var(--border); }
+.row .v { width: 48px; height: 48px; border-radius: 4px; overflow: hidden; outline: 1px solid var(--edge); outline-offset: -1px; background: var(--print); }
+.row .v svg, .row .v img { width: 48px; height: 48px; display: block; object-fit: cover; filter: grayscale(1); }
+.row .t { min-width: 0; } .row .t .l3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .said { font-style: italic; font-size: 14px; color: var(--text); margin-top: 2px; }
+.btn { height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: 600 14px var(--body); display: inline-flex; align-items: center; gap: 6px; }
+.btn.ink { background: var(--primary); color: var(--onprimary); border-color: var(--primary); }
+.scene { flex: none; width: 220px; border-radius: 12px; background: var(--surface); padding: 12px; display: grid; gap: 4px; border: 1px solid var(--border); }
+.scene .k { font: 600 12px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.scene .ttl { font: 700 18px/1.1 var(--display); text-transform: uppercase; }
+.lbl { font: 600 12px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+/* labels sheet */
+.sheet { display: grid; grid-template-columns: repeat(3, 432px); gap: 28px 32px; padding: 28px 24px; }
+.card { display: grid; grid-template-columns: 320px 100px; gap: 12px; align-items: start; }
+.card .side { display: grid; gap: 10px; justify-items: start; }
+.card .cap { grid-column: 1 / -1; font-size: 13px; color: var(--muted); margin-top: -4px; }
+.card .cap b { color: var(--text); }
+.edge { outline: 1px solid var(--edge); outline-offset: -1px; border-radius: 4px; overflow: hidden; display: block; line-height: 0; }
+.picwin { width: 100px; height: 100px; background: var(--print); display: grid; place-items: center; }
+.picwin img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); }
+/* head board */
+.head { background: var(--board); color: var(--onboard); border-radius: 12px; padding: 12px; display: grid; grid-template-columns: 128px 1fr; gap: 12px; }
+.head .win { width: 128px; height: 128px; border-radius: 4px; overflow: hidden; background: var(--print); outline: 1px solid color-mix(in srgb, var(--onboard) 32%, transparent); outline-offset: -1px; }
+.head .win svg, .head .win img { width: 128px; height: 128px; display: block; }
+.head .win img { object-fit: contain; filter: grayscale(1); background: var(--print); }
+.head .kick { font: 600 12px var(--body); letter-spacing: .1em; text-transform: uppercase; opacity: .9; }
+.head .nm { font: 700 28px/1.02 var(--display); text-transform: uppercase; margin: 4px 0; }
+.head .f { font-size: 13px; }
+.head .bar { grid-column: 1 / -1; }
+.head:not([data-hue]) { --board: var(--alt); --onboard: var(--text); }
+.parts { display: grid; gap: 6px; margin-top: 8px; }
+.part { display: grid; grid-template-columns: 1fr 120px 44px; gap: 10px; align-items: center; font-size: 14px; }
+.part i { height: 8px; border-radius: 2px; background: var(--text); display: block; }
+.part .l6 { text-align: right; }
+.state { border: 1px dashed var(--border); border-radius: 12px; padding: 16px; margin: 12px 0; }
+.state .lbl { margin-bottom: 10px; display: block; }
+.skel { background: var(--surface); border-radius: 12px; height: 240px; }
+.spin { width: 22px; height: 22px; border: 3px solid var(--border); border-top-color: var(--text); border-radius: 50%; }
+.tabbar { position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--border); background: color-mix(in srgb, var(--bg) 92%, transparent); padding: 6px 0 22px; font-size: 10px; text-align: center; color: var(--muted); }
+.tabbar .on { color: var(--secondary); font-weight: 600; }
+.tabbar svg { width: 24px; height: 24px; display: block; margin: 0 auto 2px; }
+</style>
+<script src="data.js"></script>
+<script src="play-label.js"></script>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const Q = new URLSearchParams(location.search);
+const S = Q.get('s') || 'labels', THEME = Q.get('theme') || 'light', WID = +(Q.get('w') || 375);
+document.documentElement.dataset.theme = THEME;
+const D = window.B31, P = D.plays;
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const FORM_NAME = { comedy: 'Comedy', farce: 'Farce', tragedy: 'Tragedy', tragicomedy: 'Tragicomedy', history: 'History', fantasy: 'Fairy and fantasy', religious: 'Religious', libretto: 'Libretto', melodrama: 'Melodrama' };
+const label = (p, px) => PlayLabel.playLabelSVG(PlayLabel.playLabelSpec(p, px), THEME, px);
+const hueAttr = (p) => (p.hue ? ` data-hue="${p.hue}"` : '');
+const step = (t) => { const L = Math.max(...t.split(/\s+/).map((w) => w.length)); return L > 14 ? 's2' : L > 10 ? 's1' : ''; };
+const ICON = {
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  search: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>',
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11 12 4l9 7v9H3z"/></svg>',
+  browse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+  lib: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4v16M9 4v16M14 4l6 16"/></svg>',
+};
+function strip(p, max = 7) {
+  const c = p.cast.filter((n) => n > 0), tot = c.reduce((a, n) => a + n, 0) || 1;
+  const shown = c.slice(0, max), rest = c.slice(max).reduce((a, n) => a + n, 0);
+  return `<div class="strip">${shown.map((n) => `<i style="flex:${n / tot}"></i>`).join('')}${rest ? `<i class="rest" style="flex:${rest / tot}"></i>` : ''}</div>`;
+}
+// A picture of the play itself (a work image, a production photograph, the book's own plate) leads in every window;
+// a title page and an author portrait lead only on the play's own page, where they are read large.
+const OF_PLAY = new Set(['work', 'production', 'book']);
+const leads = (p, page) => p.pic && (page || OF_PLAY.has(p.pic.kind));
+function win(p, px, page) {
+  if (leads(p, page)) return `<img src="${p.pic.src}" class="${p.pic.kind === 'titlePage' || p.id === 'gut-59421' || p.id === 'gut-3790' ? 'whole' : ''}" alt="">`;
+  return label(p, px);
+}
+const facts = (p) => `${p.voices} voices<br>About ${p.minutes} min`;
+function tile(p, px = 156, read = true) {
+  return `<div class="tile"${hueAttr(p)}><div class="win">${win(p, px)}</div>${read ? `<span class="read">${ICON.book}</span>` : ''}
+    <div class="name ${step(p.title)}">${esc(p.title)}</div>${strip(p)}<div class="facts">${facts(p)}</div></div>`;
+}
+function row(p, sub, said) {
+  return `<div class="row"><div class="v">${leads(p) ? `<img src="${p.pic.src}" alt="">` : label(p, 48)}</div>
+    <div class="t"><div class="l3">${esc(p.title)}</div><div class="l5">${esc(sub ?? `${p.author} · ${p.voices} voices · About ${p.minutes} min`)}</div>${said ? `<div class="said">${esc(said)}</div>` : ''}</div>
+    <button class="btn" aria-label="Read">${ICON.book.replace('<svg', '<svg width="16" height="16"')}</button></div>`;
+}
+const fmt = (n) => n.toLocaleString('en-US');
+function chips(active = {}) {
+  const C = D.counts;
+  const c = (name, val) => `<span class="chip${active[name] ? ' on' : ''}">${active[name] ? `${esc(active[name])}` : name}${val !== undefined ? ` <span class="n">${val}</span>` : ''}${ICON.chev}</span>`;
+  return `<div class="chips">${c('Voices')}${c('Length')}${c('Form')}${c('Era')}${c('Sort')}</div>`;
+}
+const SEEN = new Set();   // a play appears once per screen; a rail never repeats the rails above it (081 rule 5)
+function rail(c, n = 6) {
+  const ids = c.plays.filter((id) => !SEEN.has(id)).slice(0, n);
+  ids.forEach((id) => SEEN.add(id));
+  return `<div class="hdr"><h3 class="l2">${esc(c.title)} <span class="rule">${fmt(c.count)}</span></h3><a>All</a></div>
+    <div class="rail">${ids.map((id) => tile(P[id], 120, false)).join('')}</div>`;
+}
+function scenes(n = 4) {
+  return `<div class="hdr"><h3 class="l2">Scenes for two voices <span class="rule">${fmt(224)}</span></h3><a>All</a></div>
+    <div class="rail">${D.scenes.slice(0, n).map((s) => `<div class="scene"><span class="k">${esc(s.heading)} · ${s.minutes} min</span><span class="ttl">${esc(s.play)}</span><span class="l5">${esc(s.parts.join(' and '))}</span></div>`).join('')}</div>`;
+}
+const CO = Object.fromEntries(D.collections.map((c) => [c.title, c]));
+function findBody(cols) {
+  const body = `<h1 class="l1" style="margin-top:8px">Plays</h1>
+    <div class="search" style="margin-top:12px">${ICON.search}<span>Titles, authors, characters, lines</span></div>
+    ${chips()}
+    ${scenes()}
+    ${rail(CO['Ten minutes or less'])}
+    ${rail(CO['Plays for two voices'])}
+    ${rail(CO['A star part'])}
+    ${rail(CO['One Act Plays'])}`;
+  const grid = D.grid.concat(Object.keys(P)).filter((id, i, a) => a.indexOf(id) === i && !SEEN.has(id)).slice(0, cols ? 12 : 6).map((id) => tile(P[id])).join('');
+  return body + `<div class="hdr"><h3 class="l2">Fewest voices <span class="rule">${fmt(D.counts.total)}</span></h3></div><div class="grid">${grid}</div>`;
+}
+const V = {};
+V.labels = () => {
+  const cards = D.featured.map((id) => {
+    const p = P[id];
+    const pic = p.pic ? `<span class="edge picwin"><img src="${p.pic.src}" alt=""></span>` : '';
+    return `<div class="card"><span class="edge">${label(p, 320)}</span><div class="side"><span class="edge">${label(p, 100)}</span><span class="edge">${label(p, 48)}</span>${pic}</div>
+      <div class="cap"><b>${esc(p.title)}</b> · ${esc(p.author)} · ${p.form ? FORM_NAME[p.form] : 'form unnamed'} · ${p.era || 'undated'} · ${p.voices} voices${p.pic ? ` · picture: ${p.pic.kind === 'book' ? "the book's own" : p.pic.kind}` : ''}</div></div>`;
+  }).join('');
+  return `<div class="sheet">${cards}</div>`;
+};
+V.tiles = () => `<div class="page"><div class="grid">${D.featured.map((id) => tile(P[id])).join('')}</div></div>`;
+V.find = () => (WID > 900
+  ? `<div style="display:grid;grid-template-columns:220px 1fr;min-height:900px"><nav style="background:var(--surface);padding:20px 12px;display:grid;align-content:start;gap:4px;font-weight:600">
+      <div class="l2" style="padding:0 8px 16px">Ear Drama</div>${['Home', 'Browse', 'Record', 'Search', 'Library'].map((t) => `<div style="padding:8px;border-radius:8px;${t === 'Record' ? 'background:var(--alt);color:var(--secondary)' : ''}">${t}</div>`).join('')}</nav>
+      <main class="page" style="padding:24px 32px">${findBody(true)}</main></div>`
+  : `<div class="page">${findBody(false)}</div>`);
+V.filters = () => {
+  const C = D.counts;
+  const group = (name, entries) => `<div style="margin:16px 0 0"><div class="lbl" style="margin-bottom:8px">${name}</div><div style="display:flex;flex-wrap:wrap;gap:8px">${entries.map(([k, n, on]) => `<span class="chip${on ? ' on' : ''}">${esc(k)} <span class="n">${fmt(n)}</span></span>`).join('')}</div></div>`;
+  const fo = Object.entries(C.form).filter(([k]) => k !== 'unnamed').sort((a, b) => b[1] - a[1]).map(([k, n]) => [FORM_NAME[k], n]);
+  fo.push(['Not named', C.form.unnamed]);
+  return `<div class="page" style="background:var(--surface);min-height:812px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h2 class="l2">Filters</h2><span class="btn ink">Show ${fmt(C.voices['3-4'])} plays</span></div>
+    ${group('Voices', [['1-2', C.voices['1-2']], ['3-4', C.voices['3-4'], true], ['5-6', C.voices['5-6']], ['7-10', C.voices['7-10']], ['11+', C.voices['11+']]])}
+    ${group('Length', Object.entries(C.length).sort((a, b) => ['Up to 10 min', '10-20 min', '20-40 min', '40-90 min', 'Longer'].indexOf(a[0]) - ['Up to 10 min', '10-20 min', '20-40 min', '40-90 min', 'Longer'].indexOf(b[0])))}
+    ${group('How the lines are shared', [['Ensemble', C.balance.ensemble], ['Mixed', C.balance.mixed], ['A star part', C.balance.lead]])}
+    ${group('Form', fo)}
+    ${group('Era of the playwright', PlayLabel.ERAS.map((e) => [e, C.era[e] || 0]).concat([['Undated', C.era.undated]]))}
+    </div>`;
+};
+V.search = () => {
+  const s = D.search;
+  const c1 = s.chars.map((c) => row(P[c.id], `${c.role} · ${fmt(c.lines)} lines · ${P[c.id].author}`)).join('');
+  const l2 = s.lines.map((h) => row(P[h.id], `${h.role} · ${P[h.id].author}`, h.text)).join('');
+  const playHit = Object.values(P).filter((p) => /candida/i.test(p.title)).map((p) => row(p)).join('');
+  return `<div class="page"><div class="search">${ICON.search}<b>${esc(s.q1)}</b></div>
+    <div class="hdr"><h3 class="l2">Plays</h3></div>${playHit}
+    <div class="hdr"><h3 class="l2">Characters</h3></div>${c1}
+    <div class="search" style="margin-top:32px">${ICON.search}<b>${esc(s.q2)}</b></div>
+    <div class="hdr"><h3 class="l2">Lines</h3></div>${l2}</div>`;
+};
+V.play = () => {
+  const p = P[THEME === 'dark' ? 'gut-59432-101' : 'gut-3544'];
+  const tot = p.cast.reduce((a, n) => a + n, 0);
+  const kick = ['Stage play', p.form ? FORM_NAME[p.form] : null, p.oneAct ? 'One act' : null].filter(Boolean).join(' · ');
+  const same = Object.values(P).filter((q) => q.id !== p.id && Math.abs(q.voices - p.voices) <= 1 && Math.abs(q.minutes - p.minutes) <= 15).slice(0, 6);
+  const by = Object.values(P).filter((q) => q.id !== p.id && q.surname === p.surname).slice(0, 6);
+  return `<div class="page"><div class="head"${hueAttr(p)}><div class="win">${leads(p, true) ? `<img src="${p.pic.src}" alt="">` : label(p, 128)}</div>
+      <div><div class="kick">${esc(kick)}</div><div class="nm">${esc(p.title)}</div><div class="f">${esc(p.author)}${p.years ? `, ${p.years}` : ''}<br>${p.voices} voices · About ${p.minutes} min</div></div>
+      <div class="bar">${strip(p)}</div></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><span class="btn ink">Record this</span><span class="btn">${ICON.book.replace('<svg', '<svg width="16" height="16"')} Read</span><span class="btn">Parts</span></div>
+    <div class="hdr"><h3 class="l2">Parts</h3></div>
+    <div class="parts">${p.cast.slice(0, 7).map((n, i) => `<div class="part"><span>${esc(p.roles[i])}</span><i style="width:${Math.round((120 * n) / p.cast[0])}px"></i><span class="l6">${Math.round((100 * n) / tot)}%</span></div>`).join('')}</div>
+    ${same.length ? `<div class="hdr"><h3 class="l2">Same voices and length</h3></div><div class="rail">${same.map((q) => tile(q, 120, false)).join('')}</div>` : ''}
+    ${by.length ? `<div class="hdr"><h3 class="l2">More by ${esc(p.surname)}</h3><a>All</a></div><div class="rail">${by.map((q) => tile(q, 120, false)).join('')}</div>` : ''}
+  </div>`;
+};
+V.states = () => `<div class="page">
+  <div class="state"><span class="lbl">Loading</span><div style="display:flex;gap:12px;align-items:center"><span class="spin"></span><span class="l5">Plays</span></div><div class="grid" style="margin-top:12px"><div class="skel"></div><div class="skel"></div></div></div>
+  <div class="state"><span class="lbl">Empty: filters match nothing</span>${chips({ Voices: '1-2', Length: 'Longer' })}<p>Nothing matches these filters.</p><span class="btn">Clear filters</span></div>
+  <div class="state"><span class="lbl">Error</span><p>This did not load.</p><span class="btn">Try again</span></div>
+  <div class="state"><span class="lbl">Offline</span><p>You are offline.</p></div></div>`;
+/* Platform frames: same verbs, native idiom. */
+const tabs = (on) => `<div class="tabbar">${[['Home', ICON.home], ['Browse', ICON.browse], ['Record', ICON.mic], ['Search', ICON.search.replace('width="18" height="18"', '')], ['Library', ICON.lib]].map(([t, i]) => `<div class="${t === on ? 'on' : ''}">${i}${t}</div>`).join('')}</div>`;
+V.ios = () => `<div style="font-family:var(--body);min-height:844px;display:flex;flex-direction:column">
+  <div style="height:47px;display:flex;justify-content:space-between;align-items:center;padding:0 28px;font-weight:600;font-size:16px"><span>9:41</span><span>●●●</span></div>
+  <div class="page" style="flex:1;padding-top:4px"><h1 style="font:700 34px/1.1 var(--body);margin:0">Record</h1>
+  <div class="search" style="margin-top:10px;border:0;background:var(--alt);height:36px;border-radius:10px">${ICON.search}<span>Titles, authors, characters, lines</span></div>
+  <div class="chips">${['Voices', 'Length', 'Form', 'Era', 'Sort'].map((t) => `<span class="chip" style="border-radius:8px;background:var(--surface);border:0">${t}${ICON.chev}</span>`).join('')}</div>
+  ${scenes(3)}${rail(CO['Plays for two voices'], 4)}${rail(CO['A star part'], 4)}</div>${tabs('Record')}</div>`;
+V.ipad = () => `<div style="font-family:var(--body);display:grid;grid-template-columns:280px 1fr;height:820px;overflow:hidden">
+  <nav style="background:var(--surface);padding:24px 16px;display:grid;align-content:start;gap:2px;font-size:17px"><div style="font:700 28px var(--body);padding:0 10px 14px">Ear Drama</div>
+  ${['Home', 'Browse', 'Record', 'Search', 'Library'].map((t) => `<div style="padding:9px 10px;border-radius:10px;${t === 'Record' ? 'background:var(--secondary);color:var(--onsec);font-weight:600' : ''}">${t}</div>`).join('')}</nav>
+  <main class="page" style="padding:20px 28px;overflow:hidden"><h1 style="font:700 34px var(--body);margin:0">Record</h1>
+  <div style="display:flex;gap:12px;align-items:center;margin-top:10px"><div class="search" style="flex:1;border:0;background:var(--alt);height:36px;border-radius:10px">${ICON.search}<span>Titles, authors, characters, lines</span></div>
+  ${['Voices', 'Length', 'Form', 'Era', 'Sort'].map((t) => `<span class="chip" style="border-radius:8px;background:var(--surface);border:0">${t}${ICON.chev}</span>`).join('')}</div>
+  ${scenes(4)}${rail(CO['Ten minutes or less'], 7)}<div class="hdr"><h3 class="l2">Fewest voices <span class="rule">${fmt(D.counts.total)}</span></h3></div>
+  <div class="grid" style="grid-template-columns:repeat(6,1fr)">${D.grid.slice(0, 6).map((id) => tile(P[id])).join('')}</div></main></div>`;
+V.tv = () => {
+  // Ten feet: focus does the work (tvOS-DESIGN 4.1r); 29 pt body floor, so the tile grammar is drawn at 2.2x.
+  const sh = (c, focus) => { const ids = c.plays.filter((id) => !SEEN.has(id)).slice(0, 5); ids.forEach((id) => SEEN.add(id));
+    return `<div style="margin:26px 0 0"><div style="font:700 38px var(--display);color:#C4C4CC;margin-bottom:14px">${esc(c.title)}</div>
+    <div style="display:flex;gap:18px;zoom:2.2">${ids.map((id, i) => `<div style="width:142px;flex:none;${focus && i === 1 ? 'transform:scale(1.08);transform-origin:center top;filter:drop-shadow(0 8px 14px rgba(0,0,0,.7))' : 'opacity:.6'}">${tile(P[id], 130, false)}</div>`).join('')}</div></div>`; };
+  return `<div style="height:1080px;overflow:hidden;padding:48px 90px;background:#0F0F11">
+    <div style="display:flex;gap:44px;justify-content:center;font:600 31px var(--body);color:#8a8a94">${['Home', 'Browse', 'Search', 'Library'].map((t) => `<span style="${t === 'Browse' ? 'color:#F2F2F4;border-bottom:3px solid #F2F2F4;padding-bottom:6px' : ''}">${t}</span>`).join('')}</div>
+    <div style="display:flex;gap:16px;margin-top:28px;font:600 29px var(--body)">${['Shows', 'Voices', 'Ear dramas', 'Plays'].map((t) => `<span style="padding:10px 24px;border-radius:30px;${t === 'Plays' ? 'background:#F2F2F4;color:#0F0F11' : 'background:#232327;color:#C4C4CC'}">${t}</span>`).join('')}</div>
+    ${sh(CO['A star part'], true)}${sh(CO['Plays for two voices'])}</div>`;
+};
+V.android = () => `<div style="font-family:var(--body);min-height:915px;display:flex;flex-direction:column">
+  <div style="height:36px"></div>
+  <div class="page" style="flex:1;padding-top:8px"><h1 style="font:400 28px/1.2 var(--body);margin:0 0 12px">Record</h1>
+  <div class="search" style="border:0;border-radius:28px;height:56px;background:var(--alt)">${ICON.search}<span>Titles, authors, characters, lines</span></div>
+  <div class="chips">${['Voices', 'Length', 'Form', 'Era', 'Sort'].map((t) => `<span class="chip" style="border-radius:8px;height:32px">${t}${ICON.chev}</span>`).join('')}</div>
+  ${scenes(3)}${rail(CO['Plays for two voices'], 4)}${rail(CO['Ensemble pieces'], 4)}</div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);height:80px;background:var(--surface);align-items:center;text-align:center;font-size:12px;font-weight:600">${['Home', 'Browse', 'Record', 'Search', 'Library'].map((t) => `<div><span style="display:inline-block;width:56px;height:30px;border-radius:15px;${t === 'Record' ? 'background:var(--alt)' : ''}"></span><br>${t}</div>`).join('')}</div></div>`;
+document.getElementById('app').innerHTML = (V[S] || V.labels)();
+</script>
+</body>
+</html>
