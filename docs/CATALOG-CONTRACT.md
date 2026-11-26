@@ -958,7 +958,7 @@ offline floor.
   fails when the two differ. For the Worker; no client reads it. MEASURED 2026-11-24: 803 rows, 332
   bytes each, 270 KB, 1.5 s.
 
-- **Finding a play** (BACKLOG-LOOP B31 C1, C3, C4; catalog DECISIONS 049; design
+- **Finding a play** (BACKLOG-LOOP B31 C1, C3, C4; catalog DECISIONS 050; design
   `docs/research/design/B31-finding-a-play.md`). Additive, every field absent when unknown, computed once by
   `catalog/tools/play_facets.py` and never by a client:
   - Row fields: `form` (`comedy`, `farce`, `tragedy`, `tragicomedy`, `history`, `fantasy`, `religious`, `melodrama`,
@@ -971,7 +971,7 @@ offline floor.
     the playwright's working years, born + 25 to died, at most born + 70; LoCC `PA` is Antiquity when undated),
     `life` (`{born, died}`, negative for BCE, of the first author with dates), `oneAct` (true when a subject,
     bookshelf or the title says one act), `balance` (`ensemble`: no part over a quarter of the spoken lines;
-    `lead`: one part at least half and twice the next; else `mixed`), `subjects` (the topics of the record's
+    `lead`: one part of three or more speaks at least half; else `mixed`), `subjects` (the topics of the record's
     "X -- Drama" headings that five or more plays share), `locc` (the record's LoCC class), `translated` (true
     when a subject says "Translations into English"), `attributed` (true when the author shown is the catalog's
     "Dubious author": a client says "attributed to"), `scenes` (at most six, text order: `{line, heading, voices,

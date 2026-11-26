@@ -1,4 +1,4 @@
-"""The play library's title audit (BACKLOG-LOOP B31 C4, catalog DECISIONS 049): a title is the key of every surface
+"""The play library's title audit (BACKLOG-LOOP B31 C4, catalog DECISIONS 050): a title is the key of every surface
 that finds a play (a tile, a search hit, a collection), so a row whose title is not the name of a play is held, and a
 play whose record names no author is credited from the catalog's own words.
 

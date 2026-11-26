@@ -1,4 +1,4 @@
-"""Finding a play (BACKLOG-LOOP B31 C1, C3, C4; catalog DECISIONS 049): the pictures attach for real or the build
+"""Finding a play (BACKLOG-LOOP B31 C1, C3, C4; catalog DECISIONS 050): the pictures attach for real or the build
 stops, the facets and scenes every row carries, the collections, characters and words said, and the title audit.
 
     python3 tests/test_play_facets.py
@@ -73,7 +73,7 @@ ENTRY = {"id": "gut-7", "authors": [{"name": "Shaw, Bernard", "born": 1856, "die
          "lines": [speech(i, "HER" if i % 2 else "HE") for i in range(1, 41)] + [speech(i, "HUSBAND") for i in range(41, 81)],
          "sections": [{"line": "L0001", "source": "SCENE I.--_A FLAT IN CROMWELL ROAD._"}, {"line": "L0041", "source": "SCENE II"}]}
 ROW = {"id": "gut-7", "title": "How He Lied to Her Husband", "sort_name": "how he lied", "authors": ["Bernard Shaw"],
-       "voices": 3, "minutes": 20, "cast": [40, 30, 10]}
+       "voices": 3, "minutes": 20, "cast": [35, 30, 15]}
 row = PF.facet_row(dict(ROW), ENTRY, REC)
 check("row: form, its source and the board it borrows", (row.get("form"), row.get("formSource"), row.get("hue")), ("comedy", "subject", "comedy"))
 check("row: era and life from the record's author", (row.get("era"), row.get("life")), ("1900-1930", {"born": 1856, "died": 1950}))
@@ -82,6 +82,7 @@ check("row: balance from the cast", row.get("balance"), "mixed")
 check("row: a scene for two voices, cut at its first punctuation", row.get("scenes"),
       [{"line": "L0001", "heading": "Scene I", "voices": 2, "minutes": 8, "parts": ["HE", "HER"]}])
 check("control: a one-voice section is no scene", [s["line"] for s in row["scenes"]], ["L0001"])
+check("LoCC from the catalog's class number when the record lists none", PF.facet_row(dict(ROW), ENTRY, dict(REC, subjects=["Comedies"]), {"LoCC": "E201"}).get("locc"), "E")
 bare = PF.facet_row(dict(ROW, id="gut-8"), dict(ENTRY, id="gut-8"), None)
 check("a row with no record keeps only what its script says", sorted(k for k in bare if k not in ROW), ["balance", "era", "life", "scenes"])
 

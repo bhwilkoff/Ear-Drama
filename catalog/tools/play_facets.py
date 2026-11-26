@@ -1,5 +1,5 @@
 """How a play is found (BACKLOG-LOOP B31 C3, design `docs/research/design/B31-finding-a-play.md` sections 2.3 and 3,
-catalog DECISIONS 049): the facets each library row carries, the scenes for two to four voices, the collections, the
+catalog DECISIONS 050): the facets each library row carries, the scenes for two to four voices, the collections, the
 characters and the words said, all computed once here from the record and the script and never by a client.
 
     facet_row(row, entry, record)       the row with form, era, life, oneAct, balance, subjects, locc, scenes ...
@@ -15,8 +15,8 @@ Every value is a rule a person can be shown, never a judgment:
             Gilbert's volume is filed under "Operas -- Librettos", and Engaged is a comedy).
   era       the playwright's working years (born + 25 to died, at most born + 70), from the record's author dates,
             on seven fixed cells; LoCC PA (Greek and Latin literature) is Antiquity when undated.
-  balance   the largest part's share of the spoken lines: ensemble at most a quarter, lead at least half and
-            twice the next part.
+  balance   the largest part's share of the spoken lines: ensemble at most a quarter, lead at least half with
+            three or more parts.
   scenes    a printed section with 2 to 4 speaking parts and 1 to 12 minutes.
 """
 import collections
@@ -103,15 +103,15 @@ def era_of(born, died):
 
 
 def balance_of(cast):
-    """ensemble: no part over a quarter of the spoken lines; lead (a star part): one part speaks at least half of them
-    and at least twice as many as the next, so an evenly shared two-hander is not a star part; else mixed."""
+    """ensemble: no part over a quarter of the spoken lines; lead (a star part): one part of three or more speaks at
+    least half of them (in a two-hander one part always has half: that is not a star part); else mixed."""
     spoken = sorted((n for n in cast or [] if n > 0), reverse=True)
     if not spoken:
         return None
     share = spoken[0] / sum(spoken)
     if share <= ENSEMBLE:
         return "ensemble"
-    return "lead" if share >= LEAD and (len(spoken) == 1 or spoken[0] >= 2 * spoken[1]) else "mixed"
+    return "lead" if share >= LEAD and len(spoken) >= 3 else "mixed"
 
 
 def topics(subjects):
@@ -176,7 +176,7 @@ def facet_row(row, entry, record=None, catalog_row=None):
         if named:
             born, died = named[0].get("born"), named[0].get("died")
     locc = next((s for s in (record or {}).get("subjects") or [] if LOCC.match(s)), None) or \
-        ((catalog_row or {}).get("LoCC") or "").split(";")[0].strip()[:2] or None
+        (re.match(r"[A-Z]{1,2}", ((catalog_row or {}).get("LoCC") or "").strip()) or [None])[0]
     era = era_of(born, died) or ("Antiquity" if locc == "PA" else None)
     if era:
         row["era"] = era

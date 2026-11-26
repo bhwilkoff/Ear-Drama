@@ -1,5 +1,5 @@
 {
- "about": "B31 C3 and C4 golden cases (catalog/tools/play_facets.py, play_titles.py; catalog DECISIONS 049). Each form case is the record as the build reads it; each expectation is the rule's answer, read by hand.",
+ "about": "B31 C3 and C4 golden cases (catalog/tools/play_facets.py, play_titles.py; catalog DECISIONS 050). Each form case is the record as the build reads it; each expectation is the rule's answer, read by hand.",
  "form": [
   {"name": "a subject heading names the form", "subjects": ["Tragedies (Drama)", "Antigone (Mythological character) -- Drama"], "title": "Plays of Sophocles: Oedipus the King; Oedipus at Colonus; Antigone", "form": "tragedy", "source": "subject"},
   {"name": "the Gutenberg title's subtitle names it when no subject does", "subjects": ["English drama"], "title": "The Schoolmistress: A Farce in Three Acts", "form": "farce", "source": "title"},
@@ -25,6 +25,8 @@
  "balance": [
   {"cast": [10, 10], "balance": "mixed"},
   {"cast": [60, 40], "balance": "mixed"},
+  {"cast": [90, 10], "balance": "mixed"},
+  {"cast": [40, 30, 10], "balance": "lead"},
   {"cast": [70, 20, 10], "balance": "lead"},
   {"cast": [50, 5, 5, 5, 5], "balance": "lead"},
   {"cast": [5, 5, 5, 5, 5, 5], "balance": "ensemble"},

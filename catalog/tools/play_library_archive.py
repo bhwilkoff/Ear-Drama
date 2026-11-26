@@ -5,7 +5,7 @@
 
 The archive holds `plays-library/index.json`, `scripts/<id>.json`, `phonemes/<id>.json`,
 `phonemes-report.json` (Decision 078), and since B31 C3 `collections.json`, `characters.json` and
-`search/said/<p>.json` (catalog DECISIONS 049), nothing else, in sorted order with no owner or time, so the same
+`search/said/<p>.json` (catalog DECISIONS 050), nothing else, in sorted order with no owner or time, so the same
 library packs to the same bytes. `unpack` refuses a member that is not one of those shapes (a path that climbs out, a link, a stray file), then runs the shape check
 over what it wrote; a bad archive raises, so a caller never ships it.
 """
