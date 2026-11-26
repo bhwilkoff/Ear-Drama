@@ -86,9 +86,9 @@ import Testing
     }
 
     @Test func lowStorageRefusesUnderSizePlusAFifth() {
-        #expect(VoicesSpace.short(free: 600_000_000, size: 532_310_241))
-        #expect(!VoicesSpace.short(free: 700_000_000, size: 532_310_241))
-        #expect(!VoicesSpace.short(free: nil, size: 532_310_241))
+        #expect(VoicesSpace.short(free: 200_000_000, size: 184_759_454))
+        #expect(!VoicesSpace.short(free: 250_000_000, size: 184_759_454))
+        #expect(!VoicesSpace.short(free: nil, size: 184_759_454))
         #expect(VoicesSpace.warning(free: 310_000_000) == "Not enough space: 310 MB free.")
     }
 }

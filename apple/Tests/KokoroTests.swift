@@ -39,9 +39,9 @@ func kokoroPhonemeFile(_ script: PlayScript) -> Data {
 
 nonisolated func kokoroManifestJSON(files: [[String: Any]], precision: String = "fp16-int8w", runtime: String = "coreml",
                                     voices: [String] = Kokoro.voices.map(\.id), frameBuckets: [Int] = [64, 128],
-                                    tokenBuckets: [Int] = [32]) -> Data {
+                                    tokenBuckets: [Int] = [32], version: Int = KokoroModelStore.version) -> Data {
     try! JSONSerialization.data(withJSONObject: [
-        "format": 1, "version": 3, "name": "Kokoro-82M v1.0", "attribution": "x", "voices": voices,
+        "format": 1, "version": version, "name": "Kokoro-82M v1.0", "attribution": "x", "voices": voices,
         "voiceShape": [510, 256], "sampleRate": 24_000, "precision": precision, "runtime": runtime,
         "frameBuckets": frameBuckets, "tokenBuckets": tokenBuckets, "files": files,
     ], options: [.sortedKeys])
@@ -68,7 +68,7 @@ nonisolated func kokoroFixtureFiles(license: String = "Apache-2.0") -> [(entry: 
 }
 
 /// A model folder as a finished download leaves it.
-func kokoroDownloadedRoot() -> URL {
+func kokoroDownloadedRoot(version: Int = KokoroModelStore.version) -> URL {
     let root = FileManager.default.temporaryDirectory.appending(path: "kokoro-\(UUID().uuidString)", directoryHint: .isDirectory)
     let files = kokoroFixtureFiles()
     for f in files {
@@ -76,7 +76,7 @@ func kokoroDownloadedRoot() -> URL {
         try! FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try! f.bytes.write(to: url)
     }
-    try! kokoroManifestJSON(files: files.map(\.entry)).write(to: root.appending(path: KokoroInstall.keptName))
+    try! kokoroManifestJSON(files: files.map(\.entry), version: version).write(to: root.appending(path: KokoroInstall.keptName))
     KokoroInstall.invalidate()
     return root
 }
@@ -343,8 +343,28 @@ struct KokoroModelStoreTests {
         await store.wait()
         #expect(store.state == .failed)
         #expect(!FileManager.default.fileExists(atPath: root.appending(path: "tokenizer.json").path))
-        #expect(!FileManager.default.fileExists(atPath: root.appending(path: "tokenizer.json.part").path))
+        #expect(!FileManager.default.fileExists(atPath: root.appending(path: "next/tokenizer.json.part").path))
         #expect(KokoroInstall.manifest(at: root) == nil)
+    }
+
+    @Test func anOlderModelKeepsWorkingUntilTheNewOneIsWhole() async throws {
+        let (release, _) = host()
+        let root = kokoroDownloadedRoot(version: KokoroModelStore.version - 1)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = KokoroModelStore(root: root, fetch: release.fetch)
+        #expect(store.ready && store.outdated, "the older model counts as downloaded")
+        release.cutAt["kokoro-v3-voices-en.bin"] = 5_000_000
+        store.download()
+        await store.wait()
+        #expect(store.ready && store.outdated, "a stopped fetch leaves the older model in use")
+        #expect(KokoroInstall.manifest(at: root)?.version == KokoroModelStore.version - 1)
+        #expect(KokoroInstall.castable(at: root).count == 28)
+        release.cutAt.removeAll()
+        store.download()
+        await store.wait()
+        #expect(store.ready && !store.outdated)
+        #expect(KokoroInstall.manifest(at: root)?.version == KokoroModelStore.version)
+        #expect(!FileManager.default.fileExists(atPath: root.appending(path: "next").path))
     }
 }
 

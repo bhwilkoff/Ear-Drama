@@ -24,10 +24,12 @@ final class KokoroModelStore {
 
     static let shared = KokoroModelStore()
     nonisolated static let release = URL(string: "https://github.com/bhwilkoff/Ear-Drama/releases/download/kokoro-model/")!
-    nonisolated static let manifestName = "kokoro-v3-apple-manifest.json"
-    /// What the picker says before the manifest is read: kokoro-v3-apple-manifest.json's files as published 2026-11-22
-    /// (fp32, uncompressed: the compressed conversions failed the check against PyTorch; R2-kokoro-feasibility S6e).
-    nonisolated static let knownBytes: Int64 = 532_310_241
+    nonisolated static let manifestName = "kokoro-v4-apple-manifest.json"
+    /// The manifest version this app fetches; an older one on disk keeps working until a fetch of this one verifies.
+    nonisolated static let version = 4
+    /// What the picker says before the manifest is read: kokoro-v4-apple-manifest.json's files as published
+    /// 2026-11-26 (fp32 compute, fp16-stored weights, 185 MB; passes the check against PyTorch; Decision 078).
+    nonisolated static let knownBytes: Int64 = 184_759_454
 
     private(set) var state: State = .absent
     let root: URL
@@ -48,12 +50,16 @@ final class KokoroModelStore {
 
     var ready: Bool { state == .ready }
 
+    /// A working model of an older version is on disk: it stays in use, and a fetch replaces it only once whole.
+    var outdated: Bool { state == .ready && (KokoroInstall.manifest(at: root)?.version ?? Self.version) < Self.version }
+
     /// The bytes a download moves (or moved), as the picker says it.
     var downloadBytes: Int64 { KokoroInstall.manifest(at: root)?.totalBytes ?? Self.knownBytes }
 
     /// Starts the download (a person's tap; never started for them). A second tap while it runs does nothing.
     func download() {
-        guard task == nil, state != .ready else { return }
+        guard task == nil, state != .ready || outdated else { return }
+        let keeping = outdated
         state = .downloading(done: 0, total: Self.knownBytes)
         task = Task { [weak self] in
             guard let self else { return }
@@ -63,7 +69,7 @@ final class KokoroModelStore {
             } catch is CancellationError {
                 self.state = KokoroInstall.manifest(at: self.root) != nil ? .ready : .absent
             } catch {
-                self.state = .failed
+                self.state = keeping ? .ready : .failed
             }
             self.task = nil
         }
@@ -83,9 +89,17 @@ final class KokoroModelStore {
                 self.state = .downloading(done: done, total: total)
             }
         }
+        let stage = root.appending(path: Self.stageName, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: stage, withIntermediateDirectories: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var r = root
+        try? r.setResourceValues(values)
         try await Task.detached(priority: .utility) {
-            try await Self.fetchAll(root: root, base: base, manifestName: name, fetch: fetch, progress: progress)
+            try await Self.fetchAll(root: stage, base: base, manifestName: name, fetch: fetch, progress: progress)
         }.value
+        await KokoroReader.shared.unload()
+        try await Task.detached(priority: .utility) { try Self.install(stage: stage, into: root) }.value
         KokoroInstall.invalidate()
     }
 
@@ -135,6 +149,20 @@ final class KokoroModelStore {
         let kept = root.appending(path: KokoroInstall.keptName)
         try? fm.removeItem(at: kept)
         try fm.moveItem(at: fresh, to: kept)
+    }
+
+    /// Fetched files wait here, beside any model already installed, so a fetch never touches a working model.
+    nonisolated private static let stageName = "next"
+
+    /// Moves a whole, checked stage into place: each top-level item replaces its old one, the manifest last.
+    nonisolated private static func install(stage: URL, into root: URL) throws {
+        let fm = FileManager.default
+        let names = try fm.contentsOfDirectory(atPath: stage.path)
+        for name in names.filter({ $0 != KokoroInstall.keptName }) + names.filter({ $0 == KokoroInstall.keptName }) {
+            let from = stage.appending(path: name), to = root.appending(path: name)
+            if fm.fileExists(atPath: to.path) { _ = try fm.replaceItemAt(to, withItemAt: from) } else { try fm.moveItem(at: from, to: to) }
+        }
+        try? fm.removeItem(at: stage)
     }
 
     nonisolated private static func size(_ url: URL) -> Int64 {

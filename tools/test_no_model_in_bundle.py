@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """No voice model ships in a store download (Decision 090, PLAYS-DESIGN 2.8 rule 13).
 
-The Kokoro model (532 MB on Apple, 107 MB on Android) is fetched only by the person's tap.
+The Kokoro model (185 MB on Apple, 107 MB on Android) is fetched only by the person's tap.
 An accidental bundle is the one real size risk, so this fails when:
 
   * a model file sits anywhere a build packs from: apple/ (XcodeGen bundles whole source
