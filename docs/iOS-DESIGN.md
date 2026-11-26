@@ -543,7 +543,7 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   a flow, or slides) headed Better voices"*). A `.sheet` on the root with
   `.presentationDetents([.medium])` and a drag indicator: a `NavigationStack`-less `Form` whose
   header is "Better Voices" in the title type, the fact line, then `KokoroControls` itself (the
-  control `VoicesSection` draws: Download Voices (532 MB), progress and Cancel, The download failed.
+  control `VoicesSection` draws: Download Voices (185 MB), progress and Cancel, The download failed.
   and Try Again), then **Not Now** (**Done** once ready). A swipe down is a skip. Offered only while
   `KokoroDownloadState.offersBetterVoices` holds and the store is not downloading
   (`VoicesOffer` in `Core/Plays`, the record `ed.voicesStep` in `UserDefaults`): at launch once the
@@ -1020,7 +1020,7 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   then **Delete Downloaded Voices (SIZE)** (`role: .destructive`), and the attribution as the
   section footer. A play without published phonemes shows "Not available for this play." in
   place of the voices. The model is our own Core ML conversion (`tools/convert_kokoro_coreml.py`,
-  fp32 with uncompressed weights, 532 MB with the voice table; `kokoro-v3-apple-manifest.json` on the
+  fp32 compute with fp16-stored weights, 185 MB with the voice table; `kokoro-v4-apple-manifest.json` (v3, 532 MB, before 2026-11-26) on the
   Release `kokoro-model` since 2026-11-22; every compressed variant failed the check against PyTorch),
   fetched by `KokoroModelStore` through `APIClient.download` (HTTP Range resume, SHA-256 per
   file), kept in Application Support/Kokoro (never Caches; excluded from backup), compiled
