@@ -57,6 +57,51 @@ data class Take(
     }
 }
 
+/** The sound block (B32 §5.1): lanes' duck depths, and a slot per line a cue was placed against. */
+@Serializable
+data class SoundBlock(
+    val v: Int = 1,
+    val lanes: Map<String, SoundLane> = emptyMap(),
+    val slots: List<SoundSlot> = emptyList(),
+)
+
+@Serializable
+data class SoundLane(val duckDb: Double? = null)
+
+@Serializable
+data class SoundSlot(
+    val id: String,
+    val line: String,
+    val piece: Int? = null,
+    val added: Boolean = false,
+    val silent: Boolean = false,
+    val sounds: List<SoundCue> = emptyList(),
+)
+
+/** One cue: where it comes from, where it sits against its line, and how it is shaped. */
+@Serializable
+data class SoundCue(
+    val id: String,
+    val src: SoundSource,
+    val at: String,
+    val until: String? = null,
+    val startMs: Double = 0.0,
+    val gainDb: Double = 0.0,
+    val fadeInMs: Double = 0.0,
+    val fadeOutMs: Double = 0.0,
+    val loop: Boolean = false,
+    val duckDb: Double? = null,
+)
+
+/** A pack cue (`pack`, `cue`), the person's own file (`own`), or a take they performed (`take`). */
+@Serializable
+data class SoundSource(
+    val pack: String? = null,
+    val cue: String? = null,
+    val own: String? = null,
+    val take: String? = null,
+)
+
 /** One line's part in a run (Run through): the take the line had before the run, and every take the run made for it. */
 data class RunNote(val lineID: String, val prior: String?, val takes: List<String>)
 
@@ -97,6 +142,8 @@ data class Production(
     val roomPid: String? = null,
     val roomKind: String? = null,
     val roomOutbox: List<String> = emptyList(),
+    /** Cues placed against lines (B32 §5.1); absent from `production.json` until a sound is placed. */
+    val sound: SoundBlock? = null,
 ) {
     val isEmpty: Boolean get() = takes.isEmpty()
 
@@ -144,7 +191,7 @@ data class Production(
 
     val unusedTakes: List<Take>
         get() {
-            val keep = chosen.values.toSet()
+            val keep = chosen.values.toSet() + soundTakeIDs
             return takes.filter { it.id !in keep }
         }
 
@@ -164,12 +211,20 @@ data class Production(
      */
     fun deleteTake(takeID: String): Pair<Production, List<Take>> {
         val take = take(takeID) ?: return this to emptyList()
-        if (chosen[take.lineID] == takeID) return this to emptyList()
+        if (chosen[take.lineID] == takeID || takeID in soundTakeIDs) return this to emptyList()
         return copy(takes = takes.filter { it.id != takeID }) to listOf(take)
     }
 
+    /** Takes a sound slot plays (a performed cue): kept like a chosen take, never in [chosen]. */
+    val soundTakeIDs: Set<String>
+        get() = sound?.slots.orEmpty().flatMap { slot -> slot.sounds.mapNotNull { it.src.take } }.toSet()
+
+    /** The chosen takes, and the sound block when it places any sound: a change to either makes the mix stale. */
     val chosenFingerprint: String
-        get() = chosen.entries.sortedBy { it.key }.joinToString(",") { "${it.key}=${it.value}" }
+        get() {
+            val takes = chosen.entries.sortedBy { it.key }.joinToString(",") { "${it.key}=${it.value}" }
+            return if (MixSound.hasSound(this)) "$takes|sound=${MixSound.canonical(sound!!)}" else takes
+        }
 
     val isFinished: Boolean get() = listenedThrough && mixedFrom == chosenFingerprint
 

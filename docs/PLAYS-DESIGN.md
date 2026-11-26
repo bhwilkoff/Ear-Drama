@@ -983,6 +983,14 @@ mix is normalized to -16 LUFS integrated and -1 dBTP. Sound and music cues
 show as text and are silent until someone records them or picks a sound with
 evidence (08a §8); phase 1 ships no effects library.
 
+**Sound lanes and the duck (B32 K2, Decision 091; binding on every stack).** A production's optional `sound` block places
+cues on lines (`docs/research/design/B32-sound-board.md` §3.3, §5.1). Before and After cues sit in the gap and move later
+lines; Under and Bed cues move nothing. Each sound's gain is its level (effects to −19 LUFS, music and beds to −20 LUFS)
+times a duck computed from the voice takes' places (merged across gaps under 1 s; attack 120 ms before, release 600 ms
+after; −6 dB effects, −12 dB music, a cue's own value or Off) times its fades; a mix with sound is scaled once so its
+peak sits at −1 dBFS. A play with no sound keeps its timeline byte for byte. One function per language, golden
+`catalog/tests/golden/mix_sound.json`.
+
 ### §4.4 As built on Apple (2026-10-22)
 
 - One `AVAudioEngine` per recording session (`Core/Plays/LiveAudio.swift`): one

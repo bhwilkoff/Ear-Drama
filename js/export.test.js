@@ -36,6 +36,10 @@ assert.deepStrictEqual(data.following, [{ series: 'a', name: 'A Show' }]);
 assert.deepStrictEqual(data.queue.map(q => [q.position, q.episode]), [[1, 'a|3']]);
 assert.deepStrictEqual(data.takes[0].takes.map(t => [t.id, t.chosen]), [['t1', true], ['t2', false]]);
 assert.deepStrictEqual(data.marks, marks, 'the script marks travel as given (MarksCore.exportRows)');
+assert.ok(!('sound' in data.takes[0]), 'a production with no sound has no sound key');
+const sound = { v: 1, lanes: { effects: { duckDb: -6 } }, slots: [{ id: 'S1', line: 'l1', piece: null, added: true, silent: false,
+  sounds: [{ id: 'C1', src: { pack: 'eardrama-sounds-1', cue: 'thunder-close' }, at: 'after', startMs: 0, gainDb: 0, fadeInMs: 0, fadeOutMs: 0, loop: false, duckDb: null }] }] };
+assert.deepStrictEqual(DataExport.build(Store, [{ ...productions[0], sound }]).takes[0].sound, sound, 'the sound cues travel with their production (B32 §5.1)');
 
 const scripts = [{ id: 'own-1', title: 'Mine', source: 'Added by you', created: '2026-11-24T12:00:00.000Z', done: true, lines: [] }];
 assert.deepStrictEqual(DataExport.build(Store, [], 0, [], scripts).scripts, scripts, 'the scripts the person added travel as given (OwnScripts.exportRows)');

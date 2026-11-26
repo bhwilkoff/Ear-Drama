@@ -41,6 +41,8 @@ nonisolated struct DataExport: Sendable, Equatable {
         var title: String
         var created: Date
         var takes: [Take]
+        /// The sound board's block (B32 §5.1), nil when the production places none.
+        var sound: SoundBlock? = nil
     }
 
     /// One script mark (docs/EXPORT.md `marks[]`): offsets in UTF-16 units into the line's printed words.
@@ -135,11 +137,17 @@ nonisolated struct DataExport: Sendable, Equatable {
                       ("airDate", q.airDate)])
             },
             "takes": takes.map { p in
-                drop([("production", p.id), ("title", p.title), ("created", Self.iso(p.created)),
+                var o = drop([("production", p.id), ("title", p.title), ("created", Self.iso(p.created)),
                       ("takes", p.takes.map { t in
                           drop([("id", t.id), ("lineID", t.line), ("part", t.part), ("created", Self.iso(t.created)),
                                 ("seconds", t.seconds), ("chosen", t.chosen)])
                       })])
+                if let sound = p.sound,
+                   let data = try? JSONEncoder().encode(sound),
+                   let object = try? JSONSerialization.jsonObject(with: data) {
+                    o["sound"] = object
+                }
+                return o
             },
             "marks": marks.map { m in
                 drop([("script", m.script), ("title", m.title), ("revision", m.revision), ("line", m.line), ("start", m.start),

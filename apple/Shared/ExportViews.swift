@@ -105,7 +105,7 @@ struct ExportRow: View {
                 DataExport.Production(id: p.id, title: p.title, created: p.created, takes: p.takes.map { t in
                     DataExport.Take(id: t.id, line: t.lineID, part: t.part.rawValue, created: t.created, seconds: t.seconds,
                                     chosen: p.chosen[t.lineID] == t.id)
-                })
+                }, sound: p.sound)
             },
             marks: MarkStore().exportRows(), ink: InkStore().exportRows(), scripts: plays.own.exportRows())
     }

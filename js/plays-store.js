@@ -331,9 +331,11 @@ const PlayStore = (() => {
       /**
        * Renders mix.wav from the chosen takes when every speaking line has one
        * (§2.7) and records which takes it was made from. A partial play throws
-       * MixFailure('incomplete') and writes nothing.
+       * MixFailure('incomplete') and writes nothing. With sound (B32), `resolveSound`
+       * and `loadSound` reach the pack and the person's own sounds; a performed cue is
+       * a take read from here. A mix made without missing sounds is never recorded as current.
        */
-      async renderMix(id, makeContext) {
+      async renderMix(id, makeContext, { resolveSound = null, loadSound = null, withoutMissing = false } = {}) {
         const p = store.production(id);
         const script = p && await store.script(p);
         if (!p || !script) throw new Error('production not found');
@@ -342,12 +344,15 @@ const PlayStore = (() => {
           const existing = await backend.get(mixPath(id));
           if (existing !== null) return new Blob([existing], { type: 'audio/wav' });
         }
-        const timeline = C.buildTimeline(script, p);
-        const blob = await C.renderMix(timeline,
-          async (placement) => C.decodeWav(await store.readTake(id, placement.file)).samples, makeContext);
+        const timeline = C.buildTimeline(script, p, { resolveSound, withoutMissing });
+        const blob = await C.renderMix(timeline, async (placement) => {
+          if (placement.takeID || (placement.src && placement.src.take)) return C.decodeWav(await store.readTake(id, placement.file)).samples;
+          if (!loadSound) throw new C.MixFailure('missingSounds', [placement.soundID]);
+          return loadSound(placement);
+        }, makeContext);
         await backend.put(mixPath(id), await blob.arrayBuffer());
         const latest = store.production(id);
-        if (latest) await store.save({ ...latest, mixedFrom: from });
+        if (latest && !(timeline.left && timeline.left.length)) await store.save({ ...latest, mixedFrom: from });
         return blob;
       },
 

@@ -76,6 +76,8 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
     var room: String?
     var roomPid: String?
     var roomOutbox: [String]?
+    /// The sound board's cues placed against lines (B32 §5.1); absent from the record until a sound is placed.
+    var sound: SoundBlock?
 
     init(id: String = UUID().uuidString, script: PlayScript, created: Date = .now) {
         self.id = id
@@ -112,8 +114,11 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
         chosen[take.lineID] = takeID
     }
 
+    /// Takes a sound slot plays (a performed cue, B32 §3.1 item 6): kept like a chosen take.
+    var soundTakeIDs: Set<String> { sound?.takeIDs ?? [] }
+
     var unusedTakes: [Take] {
-        let keep = Set(chosen.values)
+        let keep = Set(chosen.values).union(soundTakeIDs)
         return takes.filter { !keep.contains($0.id) }
     }
 
@@ -130,7 +135,7 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
     /// Deletes one take, the person's own act (§2.9 rule 4): only when it is not its line's chosen take, the
     /// one the play uses. Returns what went, so the store deletes its file; the chosen take is refused (empty).
     mutating func deleteTake(_ takeID: String) -> [Take] {
-        guard let take = take(takeID), chosen[take.lineID] != takeID else { return [] }
+        guard let take = take(takeID), chosen[take.lineID] != takeID, !soundTakeIDs.contains(takeID) else { return [] }
         takes.removeAll { $0.id == takeID }
         return [take]
     }
@@ -166,7 +171,9 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
     }
 
     var chosenFingerprint: String {
-        chosen.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ",")
+        let takes = chosen.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ",")
+        guard SoundMix.hasSound(sound), let sound else { return takes }
+        return "\(takes)|sound=\(sound.canonical)"
     }
 
     var isFinished: Bool { listenedThrough && mixedFrom == chosenFingerprint }

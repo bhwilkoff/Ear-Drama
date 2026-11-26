@@ -11,6 +11,9 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 
 /**
  * What the microphone captured: the only thing a take or room-tone file is
@@ -272,7 +275,7 @@ class ProductionStore(val root: File) : ShareStore {
 
     override fun save(production: Production) {
         folder(production.id).mkdirs()
-        writeAtomically(File(folder(production.id), "production.json"), json.encodeToString(Production.serializer(), production))
+        writeAtomically(File(folder(production.id), "production.json"), encodeRecord(production))
         val list = _productions.value
         _productions.value = if (list.any { it.id == production.id }) {
             list.map { if (it.id == production.id) production else it }
@@ -368,16 +371,22 @@ class ProductionStore(val root: File) : ShareStore {
      * play throws [MixTimeline.Incomplete] and writes nothing. [sink] is handed
      * a partial file beside the mix; it replaces the mix only once finished.
      */
-    fun renderMix(id: String, sink: (File) -> MixSink): File {
+    fun renderMix(
+        id: String,
+        resolveSound: ((SoundSource, SoundCue) -> MixTimeline.SoundInfo?)? = null,
+        loadSound: ((MixTimeline.SoundPlacement) -> FloatArray?)? = null,
+        withoutMissing: Boolean = false,
+        sink: (File) -> MixSink,
+    ): File {
         val production = production(id) ?: error("no production $id")
         val script = script(production) ?: error("no script for $id")
         val mix = mixFile(id)
         if (production.mixedFrom == production.chosenFingerprint && mix.isFile) return mix
-        val timeline = MixTimeline.build(script, production)
+        val timeline = MixTimeline.build(script, production, resolveSound = resolveSound, withoutMissing = withoutMissing)
         val partial = File(folder(id), ".mix-${shortId()}.m4a")
         val out = sink(partial)
         try {
-            MixRenderer.render(timeline, takesFolder(id), out)
+            MixRenderer.render(timeline, takesFolder(id), out, loadSound)
             out.finish()
         } catch (e: Throwable) {
             out.abandon()
@@ -385,7 +394,7 @@ class ProductionStore(val root: File) : ShareStore {
         }
         mix.delete()
         check(partial.renameTo(mix)) { "the mix could not be saved" }
-        production(id)?.let { save(it.copy(mixedFrom = production.chosenFingerprint)) }
+        if (timeline.left.isEmpty()) production(id)?.let { save(it.copy(mixedFrom = production.chosenFingerprint)) }
         return mix
     }
 
@@ -409,5 +418,11 @@ class ProductionStore(val root: File) : ShareStore {
 
     companion object {
         val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+        /** `production.json` as written: a record with no sound block has no `sound` key, as before the block existed. */
+        fun encodeRecord(production: Production): String {
+            val element = json.encodeToJsonElement(Production.serializer(), production).jsonObject
+            return JsonObject(element.filterNot { it.key == "sound" && it.value is JsonNull }).toString()
+        }
     }
 }

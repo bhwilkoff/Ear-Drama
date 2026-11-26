@@ -5,8 +5,11 @@ import Foundation
 extension ProductionStore {
     /// Renders `mix.m4a` from the chosen takes when every speaking line has one
     /// (PLAYS-DESIGN §2.7), off the main actor, and records which takes it was
-    /// made from. A partial play throws `.incomplete` and writes nothing.
-    func renderMix(_ id: String) async throws -> URL {
+    /// made from. A partial play throws `.incomplete` and writes nothing. Sounds from a pack or the person's own
+    /// files come through `resolveSound` and `loadSound`; with `withoutMissing` the ones not on this device are left
+    /// out and the mix is not recorded as current (`MixTimeline.left`).
+    func renderMix(_ id: String, resolveSound: ((SoundSource, SoundCue) -> SoundInfo?)? = nil,
+                   loadSound: (@Sendable (SoundSource) throws -> [Float])? = nil, withoutMissing: Bool = false) async throws -> URL {
         guard let production = production(id), let script = script(for: production) else {
             throw CocoaError(.fileNoSuchFile)
         }
@@ -14,12 +17,13 @@ extension ProductionStore {
         if production.mixedFrom == production.chosenFingerprint, FileManager.default.fileExists(atPath: url.path) {
             return url
         }
-        let timeline = try MixTimeline.build(script: script, production: production)
+        let timeline = try MixTimeline.build(script: script, production: production, resolveSound: resolveSound,
+                                             withoutMissing: withoutMissing)
         let folder = takesFolder(id)
         try await Task.detached(priority: .userInitiated) {
-            try MixRenderer.render(timeline, takesFolder: folder, to: url)
+            try MixRenderer.render(timeline, takesFolder: folder, to: url, loadSound: loadSound)
         }.value
-        if var latest = self.production(id) {
+        if timeline.left.isEmpty, var latest = self.production(id) {
             latest.mixedFrom = production.chosenFingerprint
             update(latest)
         }
@@ -28,7 +32,8 @@ extension ProductionStore {
 
     /// Export (§2.7): whenever every speaking line is human and no chosen take
     /// is flagged, rendering the mix first when it is missing or stale.
-    func exportMix(_ id: String) async throws -> URL {
+    func exportMix(_ id: String, resolveSound: ((SoundSource, SoundCue) -> SoundInfo?)? = nil,
+                   loadSound: (@Sendable (SoundSource) throws -> [Float])? = nil, withoutMissing: Bool = false) async throws -> URL {
         guard let production = production(id), let script = script(for: production) else {
             throw CocoaError(.fileNoSuchFile)
         }
@@ -36,7 +41,7 @@ extension ProductionStore {
         guard missing.isEmpty else { throw MixTimeline.Failure.incomplete(missing: missing) }
         let flagged = Relay.needsRetake(production, script)
         guard flagged.isEmpty else { throw MixTimeline.Failure.bleed(lines: flagged) }
-        return try await renderMix(id)
+        return try await renderMix(id, resolveSound: resolveSound, loadSound: loadSound, withoutMissing: withoutMissing)
     }
 
     /// Someone listened from the top to the end: the play is finished (§2.7).
