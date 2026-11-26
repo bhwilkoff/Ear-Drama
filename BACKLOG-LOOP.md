@@ -165,6 +165,9 @@ download remains small, but ... an onboarding ... to download the better quality
   themes from data or a human editor only (no AI-written lists); images for plays (first-edition plates, Wikimedia
   Commons productions, author portraits, all under the 2026-11-21 image rule) and a data-drawn mark like the shows'
   for plays with no picture. Design doc with frames, owner sees it, then build.
+  Designed 2026-11-26 (`B31-finding-a-play.md` §5 batches C1-C4, W1-W2, A1, D1; frames sent to the owner). Decided:
+  librettos stay recordable (form Libretto; "all clean Gutenberg plays"); C2 plates wait for the owner (archive.org
+  item under the project's account vs nothing). Order: C1+C3+C4 catalog first, then W, A, D.
 - [ ] **B32 Sound: a foley and music board for recording.** Research (public-domain and CC0 sound effects and music:
   archive.org, Musopen, Freesound CC0, Library of Congress, NASA; no attribution-required or non-commercial sets
   unless recorded as such), then design (learning-orientation-design): stage directions read by a person cast as
@@ -376,3 +379,4 @@ GRW request sent or not.
 - 2026-11-25 09:20: B27 live (plays-library-2026-11-25-3, Worker 3f2ea827); one Site deploy refused the old library until the new one was up (the shape check, as meant). 1.1.3 on TestFlight and Play internal (Play needed a second run: two dispatched back to back reused a versionCode). B28 running.
 - 2026-11-25 11:00: B28 live (plays-library-2026-11-25-4, Worker f43df857): 5,936 italic words spoken again in 636 plays (45 of 45 sampled right; em kept), 5,339 verse line numbers gone, 27 corrections. 2,792 short italics left as they were, uncertain. One more Site deploy red on the way (the shape check, until the new library was up): order the library upload before the push next time.
 - 2026-11-26 (Mountain, morning): round 3 started. B29 (page flips, Opus), B30 (gendered stand-in voices, Opus) and B31 research (Sonnet) running; B32 sound board and B33 voices onboarding research next.
+- 2026-11-26 12:00: research done for B31, B32, B33 (docs in docs/research/design); B31 design merged, frames sent. B29, B30 running.
