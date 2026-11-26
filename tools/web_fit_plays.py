@@ -10,7 +10,9 @@ Chrome will not lay a page out narrower than about 500) and 1440 px, light and d
     `book` lead outside the play's own page; read from the index's `picture.kind`);
   - a play twice among the rails (B31 3.1);
   - "quality of mercy" not finding a line in The Merchant of Venice, or "candida" no character;
-  - a state frame that does not show its state's words.
+  - a state frame that does not show its state's words;
+  - a search ("quality of mercy", "to be or not to be", "love", a word one play says) that fetches more than about
+    2 MB compressed in search files and scripts (each file's gzip size, counted by the server).
 
 The play library is the local build (catalog/out/plays-library, B31 C1/C3: `--library DIR`); every other data path
 is proxied to the published projection (`--data URL`, default https://eardrama.org/data/), so the series and the
@@ -25,7 +27,7 @@ the way out.
 Negative control: in js/api.js playWindowPicture, return artRow(p) for any kind; the author-portrait check fails on
 Record and in Search (seen 2026-11-26).
 """
-import base64, http.server, json, os, re, shutil, socketserver, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
+import base64, gzip, http.server, json, os, re, shutil, socketserver, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
@@ -67,6 +69,7 @@ FRAME = """<!doctype html><meta charset="utf-8"><style>html,body{margin:0;backgr
 def serve(work, library, data, fault):
     """The app from `work`, /data/plays/library/ from `library`, the rest of /data/ from `data` (cached)."""
     cache = {}
+    gz = {}
 
     class H(http.server.SimpleHTTPRequestHandler):
         def __init__(self, *a, **k):
@@ -88,6 +91,10 @@ def serve(work, library, data, fault):
                         self.send_error(404)
                         return
                     body = open(fn, 'rb').read()
+                    if rel.startswith(('plays/library/search/', 'plays/library/scripts/', 'plays/library/characters')):
+                        if fn not in gz:
+                            gz[fn] = len(gzip.compress(body, 6))
+                        fault.setdefault('bytes', []).append(gz[fn])
                 else:
                     if rel not in cache:
                         try:
@@ -104,7 +111,10 @@ def serve(work, library, data, fault):
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Content-Length', str(len(body)))
                 self.end_headers()
-                self.wfile.write(body)
+                try:
+                    self.wfile.write(body)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass   # the page moved on before the file arrived
                 return
             return super().do_GET()
 
@@ -118,7 +128,7 @@ def serve(work, library, data, fault):
     return srv, port
 
 
-def pages(index):
+def pages(index, rare):
     rows = index['plays']
     by_title = {r['title']: r for r in rows}
     # The play page: the design's first frame play when the library has it, else the first with a form and a picture.
@@ -132,12 +142,27 @@ def pages(index):
         ('search-candida', '?view=record&q=candida&mute=1', r'Characters', r'Characters[\s\S]*Candida', None),
         ('search-mercy', '?view=record&q=quality%20of%20mercy&mute=1', r'Lines[\s\S]*(quality|Quality) of mercy', r'The Merchant of Venice', None),
         ('search-view', '?view=search&q=quality%20of%20mercy&mute=1', r'Lines[\s\S]*(quality|Quality) of mercy', r'Merchant of Venice', None),
+        ('search-hamlet', '?view=record&q=to%20be%20or%20not%20to%20be&mute=1', r'Lines|No plays match', None, None),
+        ('search-love', '?view=record&q=love&mute=1', r'Lines|No plays match', r'Lines', None),
+        ('search-rare', f'?view=record&q={urllib.parse.quote(rare)}&mute=1', r'Lines|No plays match', r'Lines', None),
         ('play', f"?play={urllib.parse.quote(play['id'])}&mute=1", r'Record this', r'Parts', None),
         ('play-bare', f"?play={urllib.parse.quote(bare['id'])}&mute=1", r'Record this', r'Parts', None),
         ('state-empty', '?view=record&voices=2-2&length=91%2B&mute=1', r'Nothing matches|Fewest voices', r'Nothing matches these filters', None),
         ('state-error', '?view=record&mute=1', r'did not load', r'This did not load', 'fault'),
         ('state-offline', '?view=record&mute=1', r'offline', r'You are offline', 'offline'),
     ]
+
+
+def rare_word(library):
+    """A word one play says, from the library's own shards (never pinned): the first such of eight letters or more."""
+    for f in sorted(os.listdir(os.path.join(library, 'search', 'said'))):
+        for w, deltas in sorted(json.load(open(os.path.join(library, 'search', 'said', f))).items()):
+            if len(deltas) == 1 and len(w) >= 8 and w.isalpha() and w.isascii():
+                return w
+    return 'quality'
+
+
+BUDGET = 2_100_000   # B31 W2: no search fetches more than about 2 MB compressed (the shards, characters and scripts)
 
 
 def main():
@@ -166,7 +191,7 @@ def main():
         proc, cdp = launch(profile)
         cdp.call('Page.enable')
         cdp.call('Network.enable')
-        for name, q, ready, expect, state in pages(index):
+        for name, q, ready, expect, state in pages(index, rare_word(library)):
             if only and name not in only:
                 continue
             for dark in (False, True):
@@ -186,6 +211,7 @@ def main():
                         url = f'http://127.0.0.1:{port}/{fn}'
                     cdp.call('Emulation.setDeviceMetricsOverride', {'width': w if w > 600 else 600, 'height': h, 'deviceScaleFactor': 1, 'mobile': False})
                     cdp.call('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': 'dark' if dark else 'light'}]})
+                    fault['bytes'] = []
                     cdp.call('Page.navigate', {'url': url}, timeout=30)
                     if state == 'offline':
                         time.sleep(5)
@@ -200,6 +226,10 @@ def main():
                             break
                         time.sleep(0.3)
                     time.sleep(2.5)
+                    if name.startswith('search'):
+                        t1 = time.time()
+                        while time.time() - t1 < 60 and cdp.call('Runtime.evaluate', {'expression': "(() => { const f = document.querySelector('iframe#fit'); const d = f ? f.contentDocument : document; return !!d.querySelector('.pl-lines-busy'); })()", 'returnByValue': True})['result'].get('value'):
+                            time.sleep(0.3)
                     if state == 'filters':
                         cdp.call('Runtime.evaluate', {'expression': "(() => { const f = document.querySelector('iframe#fit'); const d = f ? f.contentDocument : document; const b = [...d.querySelectorAll('.pl-facet-btn')][0]; if (b) b.click(); })()"})
                         time.sleep(1)
@@ -221,6 +251,11 @@ def main():
                     flat = [i for rail in out['rails'] for i in rail]
                     if name == 'record' and len(flat) != len(set(flat)):
                         bad.append('a play twice among the rails')
+                    if name.startswith('search'):
+                        got = sum(fault.get('bytes') or [])
+                        print(f'     {name} {w}: {got / 1e6:.2f} MB compressed in {len(fault.get("bytes") or [])} search files and scripts')
+                        if got > BUDGET:
+                            bad.append(f'a search fetched {got / 1e6:.2f} MB compressed, over {BUDGET / 1e6:.1f}')
                     if name == 'record' and not out['rails']:
                         bad.append('no rails')
                     if name in ('record', 'facets', 'play') and not out['labels']:

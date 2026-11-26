@@ -338,10 +338,14 @@ web app follows today.
   `search/people/`, most episodes first, eight shown with the total), then
   plays (B31 §3.3: **Plays**, word prefix on the title and author; **Characters**, a role's printed name from
   the library's `characters.json`, each row the play with "Role · N lines · author", most lines first; **Lines**,
-  the plays whose spoken words hold every word of three letters or more, from the library's `search/said/` shards
-  (exact words before prefixes), then the line found in the script itself, the words in order before scattered
-  words, at most six rows from at most 24 scripts read six at a time, each row the play, "Role · author" and the
-  matched line, italic, verbatim; it opens the reader at that line. The client never builds an index of its own;
+  the plays with one speech line holding every word of three letters or more, from the library's `search/lines/`
+  shards intersected at the line, rarest word first (a whole word where the shards hold it, else a prefix; a library
+  without them falls back to the plays that say every word, `search/said/`), then those lines checked in the script:
+  a line must hold every word of the query, and when any line holds the exact phrase (case and punctuation aside)
+  only phrase lines are shown. Scripts are read once and not kept, a play whose title or author holds the words
+  first, then the plays with the most such lines, within about 1.6 MB a press (about 2 MB with the shards;
+  `tools/web_fit_plays.py` fails a search over 2.1 MB); **More lines (N plays)** reads the next batch. Each row is
+  the play, "Role · author" and the matched line, italic, verbatim; it opens the reader at that line. The client never builds an index of its own;
   not on a TV; *replaced* 2026-11-26: "word-prefix on the title and author of `castable-scripts.json`"),
   then **Your scripts** (own scripts on this browser whose title matches, as Record's rows; a search
   that finds no play and no own script offers **Add a script**, not on a TV),

@@ -4,7 +4,7 @@ characters and the words said, all computed once here from the record and the sc
 
     facet_row(row, entry, record)       the row with form, era, life, oneAct, balance, subjects, locc, scenes ...
     facets_meta(rows)                   index["facets"]: each facet's values, bounds and counts
-    write_finding(out, rows, entries)   collections.json, characters.json, search/said/<p>.json beside index.json
+    write_finding(out, rows, entries)   collections.json, characters.json, search/said/ and search/lines/ beside index.json
 
 Every value is a rule a person can be shown, never a judgment:
   form      the first form heading in the book's LCSH Subjects, else in the Gutenberg title ("...: A Comedy in Three
@@ -363,8 +363,58 @@ def said_shards(rows, entries):
     return shards
 
 
+def line_shards(rows, entries):
+    """{shard: {word: postings}}: the speech lines each spoken word of three letters or more is said in, so a search for
+    several words fetches only the scripts with one line holding them all (B31 3.3; the play-level search/said shards
+    cannot tell "the quality of mercy" from a play that says "quality" in one act and "mercy" in another). A word's
+    postings are one flat list of integers: for each play holding it, in play order, the play number minus the
+    previous play's (the first from 0), the count of its lines, then those lines' places in the script's `lines`
+    (the archive's scripts/<id>.json, built with this index) each minus the one before (the first from 0). Filed as
+    search/said is (build_web_projection.tokens, term_file); never the text."""
+    import build_web_projection as W
+    num = {r["id"]: i for i, r in enumerate(rows)}
+    post = collections.defaultdict(list)
+    for e in sorted(entries, key=lambda e: num.get(e["id"], -1)):
+        if e["id"] not in num:
+            continue
+        for i, l in enumerate(e["lines"]):
+            if l.get("kind") != "speech":
+                continue
+            words = set()
+            for p in l.get("parts") or []:
+                words.update(w for w in W.tokens(p.get("say")) if len(w) >= SAID_MIN_WORD)
+            for w in words:
+                post[w].append((num[e["id"]], i))
+    shards = collections.defaultdict(dict)
+    for w in sorted(post):
+        flat, last_play, cur, count_at, last_line = [], 0, None, 0, 0
+        for play, line in post[w]:
+            if play != cur:
+                flat += [play - last_play, 0]
+                last_play, cur, count_at, last_line = play, play, len(flat) - 1, 0
+            flat.append(line - last_line)
+            last_line = line
+            flat[count_at] += 1
+        shards[W.term_file(w)][w] = flat
+    return shards
+
+
+def decode_lines(flat):
+    """A word's line postings as [(play number, [line places])], the inverse of line_shards' coding."""
+    out, i, play = [], 0, 0
+    while i < len(flat):
+        play += flat[i]
+        n, line, lines = flat[i + 1], 0, []
+        for d in flat[i + 2:i + 2 + n]:
+            line += d
+            lines.append(line)
+        out.append((play, lines))
+        i += 2 + n
+    return out
+
+
 def write_finding(out, rows, entries, records, editor=None):
-    """collections.json, characters.json and search/said/<p>.json beside index.json; returns their sizes."""
+    """collections.json, characters.json, search/said/<p>.json and search/lines/<p>.json beside index.json."""
     editor = editor if editor is not None else json.load(open(EDITOR_FILE, encoding="utf-8"))
     dump = lambda path, obj: (os.makedirs(os.path.dirname(path), exist_ok=True),
                               open(path, "w", encoding="utf-8").write(json.dumps(obj, ensure_ascii=False, separators=(",", ":")) + "\n"))
@@ -373,3 +423,5 @@ def write_finding(out, rows, entries, records, editor=None):
     shutil.rmtree(os.path.join(out, "search"), ignore_errors=True)
     for name, words in sorted(said_shards(rows, entries).items()):
         dump(os.path.join(out, "search", "said", f"{name}.json"), words)
+    for name, words in sorted(line_shards(rows, entries).items()):
+        dump(os.path.join(out, "search", "lines", f"{name}.json"), words)

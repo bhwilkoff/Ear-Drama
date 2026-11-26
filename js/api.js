@@ -1238,6 +1238,7 @@ const API = (() => {
   const playCollections = (get = getJSON) => playSide('collections.json', get);
   const playCharacters = (get = getJSON) => playSide('characters.json', get);
   const playSaid = (shard, get = getJSON) => playSide(`search/said/${shard}.json`, get);
+  const playLines = (shard, get = getJSON) => playSide(`search/lines/${shard}.json`, get);
   /** A library script read once and not kept (a line search reads many and opens few): the entry, or null. */
   async function playScriptOnce(row, timeout = 30000) {
     if (!row || !row.path) return null;
@@ -1882,7 +1883,7 @@ const API = (() => {
     personPage, lifeYears, personGroups, searchPeople, voices,
     transcript, transcriptCues, cuesURL, transcriptLines, transcriptLabel, transcriptSnippet, saidWords, searchSaidNumbers,
     dateQuery, dateLabel, searchAired,
-    localDate, tonight, tonightFile, onAir, stations, onNow, ahead, castableScripts, playLibrary, playIndex, playCollections, playCharacters, playSaid, playScriptOnce, playScript, playWindowPicture, account,
+    localDate, tonight, tonightFile, onAir, stations, onNow, ahead, castableScripts, playLibrary, playIndex, playCollections, playCharacters, playSaid, playLines, playScriptOnce, playScript, playWindowPicture, account,
   };
 })();
 

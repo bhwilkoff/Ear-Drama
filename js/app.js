@@ -1128,8 +1128,8 @@
       PlaysUI.readLink(script.id, { icon: true }));
   }
 
-  /** The most scripts one line search reads (B31 §3.3: the shards carry no lines, so the line is found in the script). */
-  const LINE_SCAN_MAX = 200;
+  /** The bytes one press of a line search may read in scripts (about 2 MB over the wire with the shards). */
+  const LINE_BUDGET = 1600000;
   let playSearchSeq = 0;
   /** Plays searched by title and author, character, and spoken line (B31 §3.3), each its own section, in that
       order, appended to `box`. Returns whether any section found something. */
@@ -1138,8 +1138,8 @@
       el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: `${ids}-${id}-h` }, title),
         count ? el('span', { class: 'caption' }, count) : null), list);
     const titled = FindCore.titleHits(rows, q);
-    const [names, said] = await Promise.all([API.playCharacters().catch((e) => { console.error(e); return null; }),
-      FindCore.saidPlays(q, (f) => API.playSaid(f)).catch((e) => { console.error(e); return { all: [], exact: [] }; })]);
+    const [names, lined] = await Promise.all([API.playCharacters().catch((e) => { console.error(e); return null; }),
+      FindCore.lineCandidates(q, (f) => API.playLines(f)).catch((e) => { console.error(e); return null; })]);
     if (!current()) return false;
     const chars = FindCore.characterHits(rows, names && names.names, q);
     if (titled.length) box.append(section('p', 'Plays', plural(titled.length, 'play', 'plays'), el('ul', { class: 'series-list' }, titled.slice(0, 30).map(s => playListRow(s)))));
@@ -1147,48 +1147,47 @@
       box.append(section('c', 'Characters', null, el('ul', { class: 'series-list' }, chars.map(({ row, role, lines }) =>
         playListRow(row, { sub: eventLine([titleCase(role), plural(lines, 'line', 'lines'), firstAuthor(row)]) })))));
     }
-    // Plays where every word is a whole word first, then those that hold the words only as prefixes; A to Z within.
-    const exact = new Set(said.exact);
-    const pool = [...said.exact, ...said.all.filter(n => !exact.has(n))].map(n => rows[n]).filter(Boolean).slice(0, LINE_SCAN_MAX);
-    if (!pool.length) return titled.length > 0 || chars.length > 0;
+    // The line shards (contract §4.1 search/lines) name the plays with one line holding every word, rarest word
+    // first; a library built before them falls back to the plays that say every word (search/said).
+    const said = lined ? null : await FindCore.saidPlays(q, (f) => API.playSaid(f)).catch((e) => { console.error(e); return { all: [], exact: [] }; });
+    if (!current()) return false;
+    const cands = lined ? lined.cands : (said.exact.length ? said.exact : said.all).map(play => ({ play, lines: null }));
+    const prefix = lined ? lined.prefix : new Set();
+    const ordered = FindCore.orderCandidates(cands, rows, q);
+    if (!ordered.length) return titled.length > 0 || chars.length > 0;
     const list = el('ul', { class: 'series-list' });
+    const more = el('button', { type: 'button', class: 'btn btn-ghost pl-more-lines' });
     const sec = section('l', 'Lines', null, list);
-    const busy = el('li', {}, stateBox('loading'));
-    list.append(busy);
+    sec.append(el('div', { class: 'actions' }, more));
     box.append(sec);
-    // The shards say which plays hold every word; the line is found in each script itself (read once, not kept),
-    // the words in order before scattered ones. Scripts are read in the pool's order, six at a time, and the reading
-    // stops once the plays read so far, from the first, hold six lines with the words in order; the rows shown are
-    // always drawn from that read prefix, so the same query shows the same rows.
-    (async () => {
-      const done = new Array(pool.length);
-      let next = 0, prefix = 0;
-      const ordered = () => done.slice(0, prefix).filter(h => h && h.order);
-      const paint = (final) => {
-        const got = done.slice(0, prefix).filter(Boolean);
-        const shown = [...got.filter(h => h.order), ...got.filter(h => !h.order)].slice(0, 6);
-        if (final && !shown.length) { sec.remove(); if (!box.childElementCount) box.append(stateBox('empty', { text: `No plays match “${q.trim()}”.` })); return; }
-        list.replaceChildren(...shown.map(h => playListRow(h.row, { sub: eventLine([h.role, firstAuthor(h.row)]), said: FindCore.snippet(h.text, q),
-          href: `?read=${encodeURIComponent(h.row.id)}&line=${encodeURIComponent(h.line)}` })), ...(final ? [] : [busy]));
-      };
-      const worker = async () => {
-        while (next < pool.length && current() && ordered().length < 6) {
-          const i = next++, row = pool[i];
-          let hit = null;
-          try {
-            const script = await API.playScriptOnce(row);
-            const best = script && FindCore.bestLine(script, q, PlaysCore.spokenText, (l) => titleCase(l.role || ''));
-            hit = best ? { row, ...best } : null;
-          } catch (e) { console.error(e); }
-          done[i] = hit || false;
-          const before = prefix;
-          while (prefix < pool.length && done[prefix] !== undefined) prefix += 1;
-          if (prefix !== before && current()) paint(false);
-        }
-      };
-      await Promise.all(Array.from({ length: 6 }, worker));
-      if (current()) paint(true);
-    })();
+    // Scripts are read once and not kept, a batch at a time within LINE_BUDGET bytes; More lines reads the next.
+    const hits = [];
+    let from = 0;
+    const paint = () => {
+      const shown = FindCore.shownHits(hits);
+      list.replaceChildren(...shown.map(h => playListRow(h.row, { sub: eventLine([h.role, firstAuthor(h.row)]), said: FindCore.snippet(h.text, q),
+        href: `?read=${encodeURIComponent(h.row.id)}&line=${encodeURIComponent(h.line)}` })));
+      const left = ordered.length - from;
+      more.hidden = left <= 0;
+      more.textContent = `More lines (${plural(left, 'play', 'plays')})`;
+    };
+    const read = async () => {
+      more.disabled = true;
+      list.append(el('li', { class: 'pl-lines-busy' }, stateBox('loading')));
+      const { to } = FindCore.nextBatch(ordered, from, LINE_BUDGET);
+      const got = await Promise.all(ordered.slice(from, to).map(c => API.playScriptOnce(c.row).then((script) => {
+        const hit = script && FindCore.lineHit(script, q, c.lines, PlaysCore.spokenText, (l) => titleCase(l.role || ''), prefix);
+        return hit ? { row: c.row, ...hit } : null;
+      }).catch((e) => { console.error(e); return null; })));
+      if (!current()) return;
+      from = to;
+      hits.push(...got.filter(Boolean));
+      more.disabled = false;
+      if (!hits.length && from >= ordered.length) { sec.remove(); if (!box.childElementCount) box.append(stateBox('empty', { text: `No plays match “${q.trim()}”.` })); return; }
+      paint();
+    };
+    more.addEventListener('click', read);
+    read();
     return true;
   }
 

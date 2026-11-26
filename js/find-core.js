@@ -227,35 +227,106 @@ const FindCore = (() => {
     const p = Array.from(word).slice(0, 2).join('');
     return /^[a-z0-9]{2}$/.test(p) ? p : 'x' + Array.from(p).map(c => c.codePointAt(0).toString(16)).join('');
   }
-  /** The best line in a script for a query: the words in order first (a phrase), then every word anywhere in one
-      speech; `{ line, role, text, order }` or null. `spoken(line)` is the line's said words. */
-  function bestLine(script, q, spoken, roleName) {
-    const words = tokens(q).filter(w => w.length >= 2);
+  /** A word's line postings (search/lines, contract §4.1) as a Map of play number to its line places. */
+  function decodeLines(flat) {
+    const out = new Map();
+    let i = 0, play = 0;
+    while (i < flat.length) {
+      play += flat[i];
+      const n = flat[i + 1], lines = [];
+      let line = 0;
+      for (let k = 0; k < n; k++) { line += flat[i + 2 + k]; lines.push(line); }
+      out.set(play, lines);
+      i += 2 + n;
+    }
+    return out;
+  }
+  /** The plays with one speech line holding every query word, from the line shards `get(file)` returns, each
+      `{ play, lines }`; the rarest word is intersected first. A word the shards hold whole is matched whole, else as
+      a prefix (`prefix` names those words, for the check in the script). Null when the library has no line shards. */
+  async function lineCandidates(q, get) {
+    const words = saidWords(q);
+    if (!words.length) return { cands: [], prefix: new Set(), words };
+    const sets = [], prefix = new Set();
+    for (const w of words) {
+      const terms = await get(termFile(w));
+      if (terms === null) return null;
+      const keys = terms && terms[w] ? [w] : Object.keys(terms || {}).filter(t => t.startsWith(w));
+      if (!(terms && terms[w])) prefix.add(w);
+      const m = new Map();
+      let size = 0;
+      for (const k of keys) for (const [play, lines] of decodeLines(terms[k])) {
+        const s = m.get(play) || new Set();
+        lines.forEach(l => s.add(l));
+        m.set(play, s);
+        size += lines.length;
+      }
+      sets.push({ m, size });
+    }
+    sets.sort((a, b) => a.size - b.size);
+    let cur = sets[0].m;
+    for (const { m } of sets.slice(1)) {
+      const next = new Map();
+      for (const [play, lines] of cur) {
+        const other = m.get(play);
+        if (!other) continue;
+        const both = new Set([...lines].filter(l => other.has(l)));
+        if (both.size) next.set(play, both);
+      }
+      cur = next;
+      if (!cur.size) break;
+    }
+    return { cands: [...cur].map(([play, lines]) => ({ play, lines: [...lines].sort((a, b) => a - b) })), prefix, words };
+  }
+  /** About how many bytes a script costs over the wire, from its spoken words (measured 2026-11-26: 2.4 to 6.8
+      gzipped bytes a word, 3.3 on average, over a tenth of the library). */
+  const scriptBytes = (row) => Math.round(3.3 * (Number(row.words) || 3000) + 2000);
+  /** The order scripts are read in: a play whose title or author holds the words first, then the plays with the most
+      lines holding them, then the index's order (A to Z). */
+  function orderCandidates(cands, rows, q) {
+    const words = tokens(q);
+    const named = (r) => { const have = tokens(`${r.title} ${authorText(r)}`); return words.every(w => have.some(h => h.startsWith(w))); };
+    return cands.filter(c => rows[c.play]).map(c => ({ ...c, row: rows[c.play], named: named(rows[c.play]) }))
+      .sort((a, b) => (b.named - a.named) || ((b.lines ? b.lines.length : 0) - (a.lines ? a.lines.length : 0)) || a.play - b.play);
+  }
+  /** The next batch to read within `budget` bytes (at least one script). */
+  function nextBatch(ordered, from, budget) {
+    let i = from, used = 0;
+    while (i < ordered.length && (i === from || used + scriptBytes(ordered[i].row) <= budget)) { used += scriptBytes(ordered[i].row); i += 1; }
+    return { to: i, bytes: used };
+  }
+  /** A play's best line for a query: a line holding the exact phrase (every word in order, case and punctuation
+      aside), else a line holding every word. `places` limits the check to those line places (from the line shards);
+      null checks every speech. A word in `prefix` matches as a word prefix. `{ line, role, text, phrase }` or null. */
+  function lineHit(script, q, places, spoken, roleName, prefix = new Set()) {
+    const words = tokens(q);
     if (!words.length || !script || !Array.isArray(script.lines)) return null;
-    let prefixed = null, scattered = null;
-    for (const l of script.lines) {
+    const is = (w, h) => h === w || (prefix.has(w) && h.startsWith(w));
+    let any = null;
+    const at = places ? places.map(i => script.lines[i]).filter(Boolean) : script.lines;
+    for (const l of at) {
       if (l.kind && l.kind !== 'speech') continue;
       const text = spoken(l);
       if (!text) continue;
       const have = tokens(text);
-      if (!words.every(w => have.some(h => h.startsWith(w)))) continue;
-      const hit = { line: l.id, role: roleName(l), text, order: false };
+      if (!words.every(w => have.some(h => is(w, h)))) continue;
+      const hit = { line: l.id, role: roleName(l), text, phrase: false };
       for (let i = 0; i + words.length <= have.length; i++) {
-        if (!words.every((w, k) => (k === words.length - 1 ? have[i + k].startsWith(w) : have[i + k] === w))) continue;
-        // The last word whole ("candida") before the last word as a prefix ("candidate").
-        if (have[i + words.length - 1] === words[words.length - 1]) return { ...hit, order: true, at: i };
-        if (!prefixed) prefixed = { ...hit, order: true, at: i };
+        if (words.every((w, k) => is(w, have[i + k]))) return { ...hit, phrase: true };
       }
-      if (!scattered) scattered = hit;
+      if (!any) any = hit;
     }
-    return prefixed || scattered;
+    return any;
   }
+  /** What the Lines section shows: only the exact-phrase hits when there is one, else every hit. */
+  const shownHits = (hits) => (hits.some(h => h.phrase) ? hits.filter(h => h.phrase) : hits);
   /** The matched line cut near `max` characters around the words, with "…" where it was cut. */
   function snippet(text, q, max = 120) {
     const t = String(text || '').replace(/_/g, '').replace(/\s+/g, ' ').trim();
     if (t.length <= max) return t;
-    const w = tokens(q)[0] || '';
-    const at = Math.max(0, t.toLowerCase().indexOf(w));
+    const w = tokens(q).sort((a, b) => b.length - a.length)[0] || '';
+    const m = new RegExp(`(^|[^\\p{L}\\p{N}])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'iu').exec(t);
+    const at = m ? m.index + m[1].length : 0;
     let from = Math.max(0, at - Math.floor(max / 4));
     if (from > 0) { const sp = t.indexOf(' ', from); if (sp > 0 && sp < at) from = sp + 1; }
     let to = Math.min(t.length, from + max);
@@ -264,7 +335,7 @@ const FindCore = (() => {
   }
 
   return { VOICE_BINS, MINUTE_BINS, FORM_LABEL, BALANCE_LABEL, LOCC_LABEL, SORTS, RAIL_IDS, facetsOf, stateFrom, urlOf, active, filter,
-           counts, sorted, rails, collection, sceneRows, sameShape, byAuthor, titleHits, characterHits, saidWords, saidPlays, bestLine,
+           counts, sorted, rails, collection, sceneRows, sameShape, byAuthor, titleHits, characterHits, saidWords, saidPlays, decodeLines, lineCandidates, scriptBytes, orderCandidates, nextBatch, lineHit, shownHits,
            snippet, voicesOf, minutesOf };
 })();
 if (typeof module !== 'undefined') module.exports = FindCore;

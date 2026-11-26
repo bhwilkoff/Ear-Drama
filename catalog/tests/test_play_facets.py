@@ -8,6 +8,7 @@ collection's subject taken as a play's form, an editor's play id that does not r
 an empty picture cache, a credit line or a periodical issue kept as a title.
 """
 import json
+import shutil
 import os
 import subprocess
 import sys
@@ -122,6 +123,15 @@ shards = PF.said_shards(rows[:3], ents)
 check("said: a word filed by its first two letters, play numbers delta-coded", shards["qu"]["quality"], [1])
 check("said: a word in every play", shards["wo"]["word"], [0, 2])
 check("control: words under three letters are not filed", "is" in shards.get("is", {}), False)
+ents[2] = dict(ents[2], lines=[{"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "Mercy!"}]},
+                               {"id": "L0002", "kind": "direction", "source": "quality enters"},
+                               {"id": "L0003", "kind": "speech", "role": "B", "parts": [{"say": "Quality, and mercy too."}]}])
+lines = PF.line_shards(rows[:3], ents)
+check("lines: a word's plays and lines, play then count then line places, each delta-coded", lines["me"]["mercy"], [1, 1, 0, 1, 2, 0, 2])
+check("lines: decoded", PF.decode_lines(lines["me"]["mercy"]), [(1, [0]), (2, [0, 2])])
+check("lines: a direction is never a line said", PF.decode_lines(lines["qu"]["quality"]), [(1, [0]), (2, [2])])
+both = {p: set(a) & set(dict(PF.decode_lines(lines["me"]["mercy"])).get(p, [])) for p, a in PF.decode_lines(lines["qu"]["quality"])}
+check("lines: intersecting two words finds the lines that hold both", {p: sorted(v) for p, v in both.items() if v}, {1: [0], 2: [2]})
 
 # --- the title audit holds by one rule, and never a bundled play --------------------------------------
 entries = [{"id": "gut-1", "title": "Edited by Havelock Ellis"}, {"id": "gut-2", "title": "Candida"},
@@ -177,6 +187,18 @@ with tempfile.TemporaryDirectory() as d:
     os.makedirs(os.path.join(d, "search", "said"))
     json.dump({"word": [0, 5]}, open(os.path.join(d, "search", "said", "wo.json"), "w"))
     raises("planted: a said play number past the index fails the check", lambda: C.check_finding(d, lib), AssertionError)
+    shutil.rmtree(os.path.join(d, "search", "said"))
+    os.makedirs(os.path.join(d, "scripts"))
+    for pid in ("gut-1", "gut-2"):
+        json.dump({"format": 1, "scripts": [{"id": pid, "lines": [{}, {}, {}]}]}, open(os.path.join(d, "scripts", f"{pid}.json"), "w"))
+    lib = {"plays": [dict(ROW, id="gut-1", path="scripts/gut-1.json"), dict(ROW, id="gut-2", path="scripts/gut-2.json")]}
+    os.makedirs(os.path.join(d, "search", "lines"))
+    json.dump({"word": [0, 1, 2, 1, 2, 0, 1]}, open(os.path.join(d, "search", "lines", "wo.json"), "w"))
+    C.check_finding(d, lib)
+    json.dump({"word": [0, 1, 5]}, open(os.path.join(d, "search", "lines", "wo.json"), "w"))
+    raises("planted: a line place past the script fails the check", lambda: C.check_finding(d, lib), AssertionError)
+    json.dump({"word": [3, 1, 0]}, open(os.path.join(d, "search", "lines", "wo.json"), "w"))
+    raises("planted: a lines play number past the index fails the check", lambda: C.check_finding(d, lib), AssertionError)
 
 # --- the real library, when built ------------------------------------------------------------------------
 REAL = os.path.join(HERE, "..", "out", "plays-library", "index.json")

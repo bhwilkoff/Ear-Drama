@@ -134,25 +134,50 @@ const collections = { format: 1, editor: [], data: [
     ok((await F.saidPlays('of', () => ({}))).all.length === 0, 'short words alone search nothing');
   });
 
-  await test('the best line: the words in order before scattered ones', () => {
-    const script = { lines: [
-      { id: 'L1', kind: 'speech', role: 'ANN', text: 'Of mercy, the quality is great.' },
-      { id: 'L2', kind: 'speech', role: 'PORTIA', text: 'The quality of mercy is not strained.' },
-    ] };
-    const b = F.bestLine(script, 'quality of mercy', (l) => l.text, (l) => l.role);
-    ok(b && b.line === 'L2' && b.order === true && b.role === 'PORTIA', JSON.stringify(b));
-    const s = F.bestLine({ lines: [script.lines[0]] }, 'quality of mercy', (l) => l.text, (l) => l.role);
-    ok(s && s.order === false, 'scattered when nothing is in order');
-    const mutant = load(CORE_SRC.replace('return { ...hit, order: true, at: i };', 'continue;'));
-    ok(mutant.bestLine(script, 'quality of mercy', (l) => l.text, (l) => l.role).line === 'L1', 'negative control: without the order rule the first scattered line wins');
+  await test('a line result holds every word; when a line holds the exact phrase only phrase lines show', () => {
+    const say = (l) => l.text, who = (l) => l.role;
+    // The two lines the first build showed for "quality of mercy" (Landor's Citation, The Two Noble Kinsmen), and Portia.
+    const citation = { lines: [{ id: 'L1', kind: 'speech', role: 'SIR THOMAS', text: 'on another of very different quality; that the plain sense of his discourse' },
+                               { id: 'L2', kind: 'speech', role: 'SIR THOMAS', text: 'Have mercy upon us.' }] };
+    const kinsmen = { lines: [{ id: 'L1', kind: 'speech', role: 'EMILIA', text: 'alters to The quality of his thoughts, and mercy follows' }] };
+    const merchant = { lines: [{ id: 'L9', kind: 'speech', role: 'PORTIA', text: 'The quality of mercy is not strain’d, It droppeth as the gentle rain' }] };
+    ok(F.lineHit(citation, 'quality of mercy', null, say, who) === null, 'Citation: the words in different lines are no hit');
+    const k = F.lineHit(kinsmen, 'quality of mercy', null, say, who);
+    ok(k && !k.phrase, 'Kinsmen: every word in one line, not the phrase');
+    const m = F.lineHit(merchant, 'quality of mercy', null, say, who);
+    ok(m && m.phrase && m.line === 'L9', 'Merchant: the phrase');
+    const shown = F.shownHits([{ id: 'k', ...k }, { id: 'm', ...m }]);
+    ok(shown.length === 1 && shown[0].id === 'm', 'with a phrase hit, only phrase hits show');
+    ok(F.shownHits([{ id: 'k', ...k }]).length === 1, 'with none, the every-word hits show');
+    ok(F.lineHit({ lines: [{ id: 'L1', kind: 'speech', text: 'QUALITY -- of... Mercy!' }] }, 'quality of mercy', null, say, who).phrase, 'case and punctuation aside');
+    ok(F.lineHit({ lines: [{ id: 'L1', kind: 'speech', text: 'He is a candidate.' }] }, 'candida', null, say, who) === null, 'a whole word, not a prefix');
+    ok(F.lineHit({ lines: [{ id: 'L1', kind: 'speech', text: 'He is a candidate.' }] }, 'candida', null, say, who, new Set(['candida'])), 'a prefix only where the shards hold no whole word');
+    ok(F.lineHit({ lines: [{ id: 'L1', kind: 'direction', text: 'quality of mercy' }] }, 'quality of mercy', null, say, who) === null, 'never a direction');
+    ok(F.lineHit({ lines: [{ id: 'L0', kind: 'speech', text: 'quality of mercy' }, { id: 'L1', kind: 'speech', text: 'x' }] }, 'quality of mercy', [1], say, who) === null, 'only the line places the shards name');
+    const mutant = load(CORE_SRC.replace('if (words.every((w, k) => is(w, have[i + k]))) return { ...hit, phrase: true };', ''));
+    ok(!mutant.lineHit(merchant, 'quality of mercy', null, say, who).phrase, 'negative control: without the phrase test nothing is a phrase');
     ok(F.snippet('word '.repeat(60) + 'mercy ' + 'tail '.repeat(40), 'mercy', 60).startsWith('…'), 'a long line is cut with …');
-    const cand = { lines: [
-      { id: 'L1', kind: 'direction', text: 'Candida enters.' },
-      { id: 'L2', kind: 'speech', role: 'DUNN', text: 'He is not a candidate.' },
-      { id: 'L3', kind: 'speech', role: 'MORELL', text: 'A wife like my Candida.' },
-    ] };
-    ok(F.bestLine(cand, 'candida', (l) => l.text, (l) => l.role).line === 'L3', 'the whole word before a prefix, and never a direction');
     ok(F.snippet('beside _Geltrude_ and _Candida_', 'candida') === 'beside Geltrude and Candida', 'italic marks are not shown');
+  });
+
+  await test('line shards: decoded, intersected at the line (rarest first), whole words before prefixes', async () => {
+    // quality: play 0 lines 3, 7; play 2 line 1.  mercy: play 0 line 7; play 2 line 4; play 5 line 0.
+    const shards = { qu: { quality: [0, 2, 3, 4, 2, 1, 1] }, me: { mercy: [0, 1, 7, 2, 1, 4, 3, 1, 0] } };
+    ok(JSON.stringify([...F.decodeLines(shards.me.mercy)]) === '[[0,[7]],[2,[4]],[5,[0]]]', 'decoded');
+    const got = await F.lineCandidates('quality of mercy', (f) => Promise.resolve(shards[f] || {}));
+    ok(JSON.stringify(got.cands) === '[{"play":0,"lines":[7]}]', JSON.stringify(got.cands));
+    ok((await F.lineCandidates('quality', () => Promise.resolve(null))) === null, 'no line shards: null, and the caller falls back');
+    const pre = await F.lineCandidates('qual', (f) => Promise.resolve(shards[f] || {}));
+    ok(pre.prefix.has('qual') && pre.cands.length === 2, 'a prefix when no whole word');
+  });
+
+  await test('the budget: batches stay within it; the order puts a named play first, then the most lines', () => {
+    const rs = [{ id: 'x', title: 'Mercy Me', words: 20000 }, { id: 'y', title: 'Y', words: 300000 }, { id: 'z', title: 'Z', words: 10000 }];
+    const o = F.orderCandidates([{ play: 1, lines: [1, 2, 3] }, { play: 2, lines: [1] }, { play: 0, lines: [5] }], rs, 'mercy');
+    ok(o.map(c => c.row.id).join() === 'x,y,z', o.map(c => c.row.id).join());
+    const b = F.nextBatch(o, 0, 200000);
+    ok(b.to === 1 && b.bytes <= 200000, JSON.stringify(b));
+    ok(F.nextBatch(o, 1, 200000).to === 2, 'one script over the budget is still read alone');
   });
 
   await test('a library built before B31 (no facets): voices and length from the stand-in bins, nothing else', () => {

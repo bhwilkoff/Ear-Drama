@@ -104,7 +104,7 @@ ERAS = ("Antiquity", "Medieval", "1500s", "1600s", "1700s", "1800s", "1900-1930"
 
 def check_finding(root, idx):
     """The finding facets on each row (contract 4.1, B31 C3) and the files beside the index: collections.json,
-    characters.json and search/said/. A library built before them carries none and passes."""
+    characters.json, search/said/ and search/lines/. A library built before them carries none and passes."""
     rows = idx["plays"]
     n = len(rows)
     ids = {p["id"] for p in rows}
@@ -151,6 +151,25 @@ def check_finding(root, idx):
                     assert (d >= 0 if i == 0 else d >= 1), (f, w)
                     k = d if i == 0 else k + d
                 assert 0 <= k < n, (f, w, "a play number past the index")
+    folder = os.path.join(root, "search", "lines")
+    if os.path.isdir(folder):
+        sizes = {p["id"]: None for p in rows}
+        for f in sorted(os.listdir(folder)):
+            assert re.fullmatch(r"([a-z0-9]{2}|x[0-9a-f]+)\.json", f), f
+            for w, flat in json.load(open(os.path.join(folder, f), encoding="utf-8")).items():
+                i, k = 0, 0
+                while i < len(flat):
+                    assert flat[i] >= (0 if i == 0 else 1) and flat[i + 1] >= 1, (f, w, "a play out of order or with no line")
+                    k += flat[i]
+                    assert 0 <= k < n, (f, w, "a play number past the index")
+                    ds = flat[i + 2:i + 2 + flat[i + 1]]
+                    assert len(ds) == flat[i + 1] and all(d >= (0 if j == 0 else 1) for j, d in enumerate(ds)), (f, w, "lines out of order")
+                    pid = rows[k]["id"]
+                    if sizes[pid] is None:
+                        sp = os.path.join(root, rows[k].get("path") or f"scripts/{pid}.json")
+                        sizes[pid] = len(json.load(open(sp, encoding="utf-8"))["scripts"][0]["lines"]) if os.path.exists(sp) else 10 ** 9
+                    assert sum(ds) < sizes[pid], (f, w, pid, "a line place past the script")
+                    i += 2 + flat[i + 1]
 
 
 def check_phonemes(root, idx, min_share):
