@@ -550,8 +550,8 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   first tab is drawn, and once more when the reader, a cast sheet or the recorder first opens. Free
   space is `volumeAvailableCapacityForImportantUsageKey` of Application Support; under the size plus
   20% Download is disabled with "Not enough space: N MB free." iOS draws no system-voices line (the
-  Voices pane cannot be opened from an app). `APP_SKIP_ONBOARD=1` keeps it away (every UI test sets
-  it); `APP_VOICES_STEP=1` (DEBUG) shows it without reading or writing the record. Playback carries
+  Voices pane cannot be opened from an app). `APP_SKIP_ONBOARD=1`, or any other launch door, keeps it away (every UI test sets
+  it; a harness launch on an owner device never meets the sheet); `APP_VOICES_STEP=1` (DEBUG) shows it without reading or writing the record. Playback carries
   on under the sheet.
 - **§4.7 The transcript** is a sheet (`TranscriptSheet_iOS`,
   `apple/Shared/TranscriptViews.swift`) from Detail or the player, with
