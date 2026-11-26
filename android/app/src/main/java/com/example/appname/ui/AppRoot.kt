@@ -242,6 +242,8 @@ fun AppRoot(
         ),
     ) {
         HapticEvents()
+        // The Better voices step (§4.6b): at launch once, and once more at the first reader, cast or recorder.
+        VoicesStepHost(firstUse = last is Route.Reader || last is Route.Production || last is Route.Recording)
         // §9.2a: on a TV the whole app sits inside the safe area; the background still fills the screen.
         val safeArea = if (container.isTelevision) {
             Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
