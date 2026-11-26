@@ -39,7 +39,7 @@ data class DataExport(
     data class Follow(val series: String, val name: String?)
     data class Queued(val episode: String, val title: String?, val seriesName: String?, val airDate: String?)
     data class Take(val id: String, val line: String, val part: String, val createdMs: Long, val seconds: Double, val chosen: Boolean)
-    data class Production(val id: String, val title: String, val createdMs: Long, val takes: List<Take>)
+    data class Production(val id: String, val title: String, val createdMs: Long, val takes: List<Take>, val sound: JsonElement? = null)
 
     fun json(): String {
         fun obj(vararg pairs: Pair<String, JsonElement>) = JsonObject(mapOf(*pairs))
@@ -62,15 +62,18 @@ data class DataExport(
                 )
             }))
             put("takes", JsonArray(takes.map { p ->
-                obj(
-                    "production" to text(p.id), "title" to text(p.title), "created" to text(iso(p.createdMs)),
-                    "takes" to JsonArray(p.takes.map { t ->
+                JsonObject(buildMap {
+                    put("production", text(p.id))
+                    put("title", text(p.title))
+                    put("created", text(iso(p.createdMs)))
+                    put("takes", JsonArray(p.takes.map { t ->
                         obj(
                             "id" to text(t.id), "lineID" to text(t.line), "part" to text(t.part),
                             "created" to text(iso(t.createdMs)), "seconds" to num(t.seconds), "chosen" to JsonPrimitive(t.chosen),
                         )
-                    }),
-                )
+                    }))
+                    p.sound?.let { put("sound", it) }
+                })
             }))
             put("scripts", JsonArray(scripts))
             put("marks", JsonArray(marks.map { m ->

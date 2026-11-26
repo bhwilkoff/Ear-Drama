@@ -264,8 +264,17 @@ const PlaysCore = (() => {
     return next;
   }
 
+  /** Takes a sound slot plays (a performed cue, B32 §3.1 item 6): kept like a chosen take, never in `chosen`. */
+  function soundTakeIDs(p) {
+    const out = new Set();
+    for (const slot of (p.sound && Array.isArray(p.sound.slots) ? p.sound.slots : [])) {
+      for (const s of slot.sounds || []) if (s.src && s.src.take) out.add(s.src.take);
+    }
+    return out;
+  }
+
   function unusedTakes(p) {
-    const keep = new Set(Object.values(p.chosen));
+    const keep = new Set([...Object.values(p.chosen), ...soundTakeIDs(p)]);
     return p.takes.filter(t => !keep.has(t.id));
   }
 
@@ -286,14 +295,16 @@ const PlaysCore = (() => {
   /** One take deleted by the person (§2.9 rule 4); never a line's chosen take, which the play uses. */
   function deleteTake(p, takeID) {
     const t = takeById(p, takeID);
-    if (!t || p.chosen[t.lineID] === takeID) return { production: p, gone: [] };
+    if (!t || p.chosen[t.lineID] === takeID || soundTakeIDs(p).has(takeID)) return { production: p, gone: [] };
     const next = clone(p);
     next.takes = next.takes.filter(x => x.id !== takeID);
     return { production: next, gone: [t] };
   }
 
+  /** The chosen takes, and the sound block when it places any sound (B32): a change to either makes the mix stale. */
   function fingerprint(p) {
-    return Object.keys(p.chosen).sort().map(k => `${k}=${p.chosen[k]}`).join(',');
+    const takes = Object.keys(p.chosen).sort().map(k => `${k}=${p.chosen[k]}`).join(',');
+    return hasSound(p) ? `${takes}|sound=${stableStringify(p.sound)}` : takes;
   }
   const isFinished = (p) => !!p.listenedThrough && p.mixedFrom === fingerprint(p);
 
@@ -669,75 +680,300 @@ const PlaysCore = (() => {
     constructor(kind, detail) { super(kind); this.kind = kind; this.detail = detail; }
   }
 
-  /** The gain to -16 LUFS, held so the sample peak stays at or below -1 dBFS, within +-24 dB. */
-  function gain(loudness, peak) {
+  /** The gain to -16 LUFS (or `target`), held so the sample peak stays at or below -1 dBFS, within +-24 dB. */
+  function gain(loudness, peak, target = TARGET_LUFS) {
     if (loudness === null || loudness === undefined || !isFinite(loudness)) return 1;
-    let db = TARGET_LUFS - loudness;
+    let db = target - loudness;
     if (peak > 0) db = Math.min(db, PEAK_CEILING - 20 * Math.log10(peak));
     db = Math.min(Math.max(db, -24), 24);
     return Math.pow(10, db / 20);
   }
 
-  function buildTimeline(script, p, { sampleRate = TAKE_RATE, gap = DEFAULT_GAP } = {}) {
+  /* ---- Sound in the mix (B32 §3.3, §4.2, §5.1) ----
+     The production's `sound` block places cues against lines: Before and After sit in the gap and move later
+     lines; Under and Bed move nothing. The duck is computed from where voice takes sit, never detected from
+     audio, so every device and every export computes the same envelope (catalog/tests/golden/mix_sound.json). */
+
+  const SOUND_VERSION = 1;
+  /** UNVERIFIED depths and times (B32 §4.2 item 3): to set on a listening pass before the board ships. */
+  const SOUND_DEFAULTS = Object.freeze({
+    effectsDuckDb: -6, musicDuckDb: -12, attackMs: 120, releaseMs: 600, holdMs: 1000,
+    effectsLufs: -19, musicLufs: -20, startMinMs: -2000, gainMinDb: -12, gainMaxDb: 6,
+  });
+  const PLACEMENTS = ['before', 'under', 'after', 'bed'];
+
+  /** Frames for a time in ms, rounded half up the same way on every stack. */
+  const msFrames = (ms, rate) => Math.floor((ms * rate) / 1000 + 0.5);
+  const clampNum = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
+
+  /** The sound block as the timeline reads it, or null when it places nothing. A newer version is refused, never guessed. */
+  function readSound(block) {
+    if (!block || typeof block !== 'object') return null;
+    if (typeof block.v === 'number' && block.v > SOUND_VERSION) throw new MixFailure('soundVersion', block.v);
+    const slots = (Array.isArray(block.slots) ? block.slots : []).filter(s => s && !s.silent && Array.isArray(s.sounds) && s.sounds.length);
+    return slots.length ? { lanes: block.lanes || {}, slots } : null;
+  }
+  function hasSound(p) {
+    try { return !!(p && readSound(p.sound)); } catch { return true; }
+  }
+
+  function buildTimeline(script, p, { sampleRate = TAKE_RATE, gap = DEFAULT_GAP, resolveSound = null, withoutMissing = false } = {}) {
     const missing = missingSpeech(p, script);
     if (missing.length) throw new MixFailure('incomplete', missing);
     const flagged = needsRetake(p, script);
     if (flagged.length) throw new MixFailure('bleed', flagged);
-    const placements = [];
-    let cursor = 0;
-    const gapFrames = Math.floor(gap * sampleRate);
-    for (const line of script.lines) {
-      const t = chosenTake(p, line.id);
-      if (!t) continue;
-      if (t.sampleRate !== sampleRate) throw new MixFailure('sampleRate', t.id);
-      const start = placements.length ? cursor + gapFrames : 0;
-      placements.push({ lineID: line.id, takeID: t.id, file: t.file, start, inFrame: 0, outFrame: t.frames,
-                        frames: t.frames, gain: gain(t.loudness, t.peak), bleed: !!t.bleed });
-      cursor = start + t.frames;
+    const sound = readSound(p.sound);
+    const D = SOUND_DEFAULTS;
+
+    // Each sound with what it needs from its source; a source not on this device is named, never dropped silently.
+    const entries = [];
+    const left = [];
+    if (sound) {
+      sound.slots.forEach((slot) => slot.sounds.forEach((s) => {
+        if (!PLACEMENTS.includes(s.at)) return;
+        let info = null;
+        if (s.src && s.src.take) {
+          const t = takeById(p, s.src.take);
+          if (t && t.bleed) throw new MixFailure('bleed', [slot.line]);
+          if (t && t.sampleRate !== sampleRate) throw new MixFailure('sampleRate', t.id);
+          if (t) info = { file: t.file, frames: t.frames, kind: 'effect', loudness: t.loudness, peak: t.peak };
+        } else if (resolveSound && s.src) {
+          info = resolveSound(s.src, s) || null;
+        }
+        if (!info || !(info.frames > 0)) { left.push(s.id); return; }
+        entries.push({ slot, s, info, order: entries.length + left.length });
+      }));
+      if (left.length && !withoutMissing) throw new MixFailure('missingSounds', left);
     }
-    return { sampleRate, placements, totalFrames: cursor };
+    const byLine = new Map();
+    for (const e of entries) {
+      if (!byLine.has(e.slot.line)) byLine.set(e.slot.line, []);
+      byLine.get(e.slot.line).push(e);
+    }
+
+    const placements = [];
+    const voice = [];
+    const out = new Map();
+    const anchors = new Map();
+    const endAt = new Map();
+    let cursor = 0;
+    let placed = false;
+    let lastVoiceEnd = 0;
+    const gapFrames = Math.floor(gap * sampleRate);
+    const nominal = () => (placed ? cursor + gapFrames : 0);
+    const startOf = (e) => msFrames(clampNum(e.s.startMs, D.startMinMs, 600000, 0), sampleRate);
+    const lane = (e) => (e.s.at === 'bed' || e.info.kind === 'music' ? 'music' : 'effects');
+    const place = (e, start, frames) => {
+      const ln = lane(e);
+      const laneDb = ((sound.lanes || {})[ln] || {}).duckDb;
+      const duck = typeof e.s.duckDb === 'number' ? e.s.duckDb : (typeof laneDb === 'number' ? laneDb : (ln === 'music' ? D.musicDuckDb : D.effectsDuckDb));
+      const level = gain(e.info.loudness, e.info.peak || 0, ln === 'music' ? D.musicLufs : D.effectsLufs)
+        * Math.pow(10, clampNum(e.s.gainDb, D.gainMinDb, D.gainMaxDb, 0) / 20);
+      const loop = (e.s.at === 'under' || e.s.at === 'bed') && !!e.s.loop;
+      out.set(e.order, { slotID: e.slot.id, soundID: e.s.id, lineID: e.slot.line, at: e.s.at, src: e.s.src, file: e.info.file || null,
+        lane: ln, start, frames, inFrame: 0, outFrame: e.info.frames, loop, gain: level,
+        fadeIn: msFrames(clampNum(e.s.fadeInMs, 0, 600000, 0), sampleRate), fadeOut: msFrames(clampNum(e.s.fadeOutMs, 0, 600000, 0), sampleRate),
+        duck: Math.min(0, Math.max(-60, duck)) });
+    };
+
+    for (const line of script.lines) {
+      const mine = byLine.get(line.id) || [];
+      for (const e of mine.filter(x => x.s.at === 'before')) {
+        const s = Math.max(0, nominal() + startOf(e));
+        place(e, s, e.info.frames);
+        cursor = Math.max(cursor, s + e.info.frames);
+        placed = true;
+      }
+      const t = chosenTake(p, line.id);
+      let anchor;
+      if (t) {
+        if (t.sampleRate !== sampleRate) throw new MixFailure('sampleRate', t.id);
+        const start = nominal();
+        placements.push({ lineID: line.id, takeID: t.id, file: t.file, start, inFrame: 0, outFrame: t.frames,
+                          frames: t.frames, gain: gain(t.loudness, t.peak), bleed: !!t.bleed });
+        cursor = start + t.frames;
+        placed = true;
+        lastVoiceEnd = cursor;
+        if (linePart(line) !== SOUND) voice.push([start, cursor]);
+        anchor = [start, cursor];
+      } else {
+        const at = nominal();
+        anchor = [at, at];
+      }
+      anchors.set(line.id, anchor);
+      endAt.set(line.id, lastVoiceEnd);
+      for (const e of mine.filter(x => x.s.at === 'after')) {
+        const s = Math.max(0, nominal() + startOf(e));
+        place(e, s, e.info.frames);
+        cursor = Math.max(cursor, s + e.info.frames);
+        placed = true;
+      }
+    }
+    // Under and Bed move nothing, so they are placed once every line has its place.
+    for (const e of entries) {
+      if (e.s.at !== 'under' && e.s.at !== 'bed') continue;
+      const anchor = anchors.get(e.slot.line);
+      if (!anchor) continue;
+      const s = Math.max(0, anchor[0] + startOf(e));
+      let frames;
+      if (e.s.at === 'under') {
+        frames = e.s.loop ? anchor[1] - s : e.info.frames;
+      } else {
+        const until = endAt.has(e.s.until) ? endAt.get(e.s.until) : anchor[1];
+        frames = until + msFrames(clampNum(e.s.fadeOutMs, 0, 600000, 0), sampleRate) - s;
+        if (!e.s.loop) frames = Math.min(frames, e.info.frames);
+      }
+      if (frames <= 0) frames = e.info.frames;
+      place(e, s, frames);
+    }
+    if (!sound) return { sampleRate, placements, totalFrames: cursor };
+    const sounds = [...out.keys()].sort((a, b) => a - b).map(k => out.get(k));
+    const merged = [];
+    const hold = msFrames(D.holdMs, sampleRate);
+    for (const v of voice) {
+      const last = merged[merged.length - 1];
+      if (last && v[0] - last[1] < hold) last[1] = Math.max(last[1], v[1]);
+      else merged.push([v[0], v[1]]);
+    }
+    const totalFrames = sounds.reduce((m, x) => Math.max(m, x.start + x.frames), cursor);
+    return { sampleRate, placements, totalFrames, sounds, voice: merged, left };
   }
+
+  /**
+   * The duck as breakpoints [frame, dB] for one depth: full level outside voice, `depthDb` inside, ramping
+   * linearly in dB over the attack before each voice interval and the release after it. Empty for Off (0 dB).
+   */
+  function duckEnvelope(voice, depthDb, sampleRate = TAKE_RATE) {
+    if (!(depthDb < 0)) return [];
+    const a = msFrames(SOUND_DEFAULTS.attackMs, sampleRate), r = msFrames(SOUND_DEFAULTS.releaseMs, sampleRate);
+    const out = [];
+    for (const [s, e] of voice) out.push([s - a, 0], [s, depthDb], [e, depthDb], [e + r, 0]);
+    return out;
+  }
+
+  /** The envelope's linear gain for each of `count` frames from `from`. */
+  function duckGains(points, from, count) {
+    const g = new Float64Array(count).fill(1);
+    if (!points.length) return g;
+    let j = 0;
+    let lastDb = 0, lastLin = 1;
+    for (let i = 0; i < count; i++) {
+      const f = from + i;
+      while (j < points.length && points[j][0] <= f) j++;
+      let db;
+      if (j === 0 || j === points.length) db = 0;
+      else {
+        const [f0, d0] = points[j - 1], [f1, d1] = points[j];
+        db = f1 === f0 ? d1 : d0 + ((d1 - d0) * (f - f0)) / (f1 - f0);
+      }
+      if (db !== lastDb) { lastDb = db; lastLin = Math.pow(10, db / 20); }
+      g[i] = lastLin;
+    }
+    return g;
+  }
+
+  /**
+   * One sound placement's samples over timeline frames [from, from + count), added into `into`: the source (looped
+   * when the placement loops), times its gain, the duck, and its fades (linear in amplitude).
+   */
+  function renderSound(x, samples, points, from, count, into) {
+    const a = Math.max(from, x.start), b = Math.min(from + count, x.start + x.frames);
+    if (a >= b) return into;
+    const end = Math.min(x.outFrame, samples.length);
+    const span = end - x.inFrame;
+    if (span <= 0) return into;
+    const duck = duckGains(points, a, b - a);
+    for (let f = a; f < b; f++) {
+      const k = f - x.start;
+      if (!x.loop && k >= span) break;
+      const src = x.inFrame + (x.loop ? k % span : k);
+      let g = x.gain * duck[f - a];
+      if (x.fadeIn > 0 && k < x.fadeIn) g *= k / x.fadeIn;
+      if (x.fadeOut > 0 && x.frames - k < x.fadeOut) g *= (x.frames - k) / x.fadeOut;
+      into[f - from] += samples[src] * g;
+    }
+    return into;
+  }
+
+  /** The one scalar that holds a mix with sound at or below -1 dBFS sample peak (no limiter, B32 §4.3). */
+  const mixScalar = (peak) => { const ceiling = Math.pow(10, PEAK_CEILING / 20); return peak > ceiling ? ceiling / peak : 1; };
 
   /**
    * Renders a timeline into a 16-bit mono WAV Blob, in chunks of `chunkSeconds`
    * so a long play never holds its whole mix in memory. `makeContext(channels,
    * frames, rate)` is an OfflineAudioContext in the browser; `loadTake(placement)`
-   * returns the take's samples. It reads only takes the timeline names, and a
-   * timeline holds only human takes, so a device voice cannot reach the mix. A take
-   * the bleed check flagged is refused, never mixed (§8 rule 3).
+   * returns the samples of a take or, for a sound placement, its cue. It reads only
+   * what the timeline names, and a timeline holds only human takes and evidenced
+   * cues, so a device voice cannot reach the mix. A take the bleed check flagged is
+   * refused, never mixed (§8 rule 3). With sound, the mix renders twice: the first
+   * pass measures the sum's peak, the second writes it with one scalar (B32 §4.3).
    */
   async function renderMix(timeline, loadTake, makeContext, { chunkSeconds = 30 } = {}) {
     const flagged = timeline.placements.find(x => x.bleed);
     if (flagged) throw new MixFailure('bleed', [flagged.lineID]);
     const rate = timeline.sampleRate;
     const chunk = Math.max(1, Math.round(chunkSeconds * rate));
-    const parts = [wavHeader(timeline.totalFrames, rate, 16)];
-    const loaded = new Map();
-    for (let c0 = 0; c0 < timeline.totalFrames; c0 += chunk) {
-      const c1 = Math.min(timeline.totalFrames, c0 + chunk);
-      const ctx = makeContext(1, c1 - c0, rate);
-      for (const p of timeline.placements) {
-        if (p.start + p.frames <= c0 || p.start >= c1) continue;
-        if (!loaded.has(p.takeID)) loaded.set(p.takeID, await loadTake(p));
-        const samples = loaded.get(p.takeID);
-        const win = samples.subarray(Math.min(p.inFrame, samples.length), Math.min(p.outFrame, samples.length));
-        if (!win.length) continue;
-        const buffer = ctx.createBuffer(1, win.length, rate);
-        buffer.getChannelData(0).set(win);
-        const src = ctx.createBufferSource();
-        src.buffer = buffer;
-        const g = ctx.createGain();
-        g.gain.value = p.gain;
-        src.connect(g);
-        g.connect(ctx.destination);
-        src.start(Math.max(0, p.start - c0) / rate, Math.max(0, c0 - p.start) / rate);
+    const sounds = timeline.sounds || [];
+    const points = new Map();
+    const pointsFor = (depth) => { if (!points.has(depth)) points.set(depth, duckEnvelope(timeline.voice || [], depth, rate)); return points.get(depth); };
+    const keyOf = (x) => (x.takeID ? `t:${x.takeID}` : `s:${x.soundID}`);
+    const pass = async (write) => {
+      const loaded = new Map();
+      const load = async (x) => { const k = keyOf(x); if (!loaded.has(k)) loaded.set(k, await loadTake(x)); return loaded.get(k); };
+      for (let c0 = 0; c0 < timeline.totalFrames; c0 += chunk) {
+        const c1 = Math.min(timeline.totalFrames, c0 + chunk);
+        const ctx = makeContext(1, c1 - c0, rate);
+        const add = (data, at, offset) => {
+          const buffer = ctx.createBuffer(1, data.length, rate);
+          buffer.getChannelData(0).set(data);
+          const src = ctx.createBufferSource();
+          src.buffer = buffer;
+          return { src, start: () => src.start(at, offset) };
+        };
+        for (const p of timeline.placements) {
+          if (p.start + p.frames <= c0 || p.start >= c1) continue;
+          const samples = await load(p);
+          const win = samples.subarray(Math.min(p.inFrame, samples.length), Math.min(p.outFrame, samples.length));
+          if (!win.length) continue;
+          const { src, start } = add(win, Math.max(0, p.start - c0) / rate, Math.max(0, c0 - p.start) / rate);
+          const g = ctx.createGain();
+          g.gain.value = p.gain;
+          src.connect(g);
+          g.connect(ctx.destination);
+          start();
+        }
+        if (sounds.length) {
+          const bed = new Float32Array(c1 - c0);
+          for (const x of sounds) {
+            if (x.start + x.frames <= c0 || x.start >= c1) continue;
+            renderSound(x, await load(x), pointsFor(x.duck), c0, c1 - c0, bed);
+          }
+          const { src, start } = add(bed, 0, 0);
+          const g = ctx.createGain();
+          g.gain.value = 1;
+          src.connect(g);
+          g.connect(ctx.destination);
+          start();
+        }
+        const rendered = await ctx.startRendering();
+        write(rendered.getChannelData(0));
+        for (const k of [...loaded.keys()]) {
+          const done = [...timeline.placements, ...sounds].filter(x => keyOf(x) === k).every(x => x.start + x.frames <= c1);
+          if (done) loaded.delete(k);
+        }
       }
-      const rendered = await ctx.startRendering();
-      parts.push(pcmBytes(rendered.getChannelData(0), 16));
-      for (const p of timeline.placements) {
-        if (p.start + p.frames <= c1) loaded.delete(p.takeID);
-      }
+    };
+    let scalar = 1;
+    if (sounds.length) {
+      let peak = 0;
+      await pass((d) => { for (let i = 0; i < d.length; i++) { const v = Math.abs(d[i]); if (v > peak) peak = v; } });
+      scalar = mixScalar(peak);
     }
+    const parts = [wavHeader(timeline.totalFrames, rate, 16)];
+    await pass((d) => {
+      if (scalar !== 1) { const s = new Float32Array(d.length); for (let i = 0; i < d.length; i++) s[i] = d[i] * scalar; d = s; }
+      parts.push(pcmBytes(d, 16));
+    });
     return new Blob(parts, { type: 'audio/wav' });
   }
 
@@ -964,12 +1200,13 @@ const PlaysCore = (() => {
     role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, spokenText, displayName, authorName, authorLine,
     WORDS_PER_MINUTE, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, pickList, fnv1a64, todaysPlay, scenePool, todaysScene, openingOf,
     linesFor, speechLineIDs, castParts,
-    newProduction, isEmptyProduction, secondProductionNeedsAccount, madeHereLeads, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused, deleteTake,
+    newProduction, isEmptyProduction, secondProductionNeedsAccount, madeHereLeads, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, soundTakeIDs, discardUnused, deleteTake,
     fingerprint, isFinished, stableStringify,
     Refusal, order, current, next, take, finish, leaveSilent, reopen, missingLines, missingSpeech, needsRetake, isComplete,
     cueLines, sectionLevel, sectionTitle, actKey, sectionsOf, contentsOf, placeOf, lineText, fold, searchScript,
     lineIndexesOf, nextLineOf, openSpeakingParts, refusalText, listenPlan, runPlan, discardRun, PART_HUES, partHue, MODES, lengthLine, authorFacts,
     MixFailure, gain, buildTimeline, renderMix,
+    SOUND_VERSION, SOUND_DEFAULTS, hasSound, readSound, msFrames, duckEnvelope, duckGains, renderSound, mixScalar,
     integratedLoudness, samplePeak, rms, thresholdFor, LineEndDetector, lineWindow, CueMeter,
     wavHeader, pcmBytes, encodeWav, decodeWav,
   };

@@ -27,8 +27,10 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..');
+/** tools/sound_mutants.mjs points this at a broken copy of js/. */
+const JS = process.env.PLAYS_JS_DIR || __dirname;
 for (const f of ['plays-core.js', 'plays-store.js', 'voice-cast.js', 'plays-voice.js', 'plays-session.js']) {
-  vm.runInThisContext(fs.readFileSync(path.join(__dirname, f), 'utf8'), { filename: f });
+  vm.runInThisContext(fs.readFileSync(path.join(JS, f), 'utf8'), { filename: f });
 }
 const C = vm.runInThisContext('PlaysCore');
 const PlayStore = vm.runInThisContext('PlayStore');
@@ -1022,6 +1024,137 @@ test('The level meter follows the microphone while a line records', async () => 
   ok(s.levels.length <= 48 && s.levels.every(v => v >= 0 && v <= 1), 'bounded, newest last, 0 to 1');
   ok(loudest > 0.5, 'the tone reads loud');
   s.end();
+});
+
+/* ---- Sound in the mix (B32 K2): catalog/tests/golden/mix_sound.json, shared with Swift and Kotlin ---- */
+
+const SOUND_GOLDEN = JSON.parse(fs.readFileSync(path.join(ROOT, 'catalog/tests/golden/mix_sound.json'), 'utf8'));
+function goldenSynth(spec, frames) {
+  const out = new Float32Array(frames);
+  for (let k = 0; k < frames; k++) {
+    out[k] = spec.type === 'sine' ? spec.amp * Math.sin((2 * Math.PI * spec.hz * k) / SOUND_GOLDEN.sampleRate) : (k % spec.every === 0 ? spec.amp : 0);
+  }
+  return out;
+}
+function goldenProduction(sound) {
+  const g = SOUND_GOLDEN;
+  const p = { ...C.newProduction(g.script), takes: g.takes.map(t => ({ ...take(t.id, t.lineID, t.part, t.frames, t.loudness, t.peak) })), chosen: { ...g.chosen } };
+  if (sound) p.sound = JSON.parse(JSON.stringify(sound));
+  return p;
+}
+const goldenResolver = (have = () => true) => (src) => {
+  const c = SOUND_GOLDEN.cues.find(x => x.pack === src.pack && x.cue === src.cue);
+  return c && have(c) ? { key: `${c.pack}/${c.cue}`, frames: c.frames, kind: c.kind, loudness: c.loudness, peak: c.peak } : null;
+};
+const near = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol;
+function sameShape(t, want, name) {
+  eq(t.totalFrames, want.totalFrames, `${name}: total frames`);
+  eq(t.placements.map(x => [x.lineID, x.takeID, x.start, x.frames]), want.placements.map(x => [x.lineID, x.takeID, x.start, x.frames]), `${name}: voice placements`);
+  ok(t.placements.every((x, i) => near(x.gain, want.placements[i].gain)), `${name}: voice gains`);
+  eq('sounds' in t, 'sounds' in want, `${name}: sound lanes present only with sound`);
+  if (!want.sounds) return;
+  const fields = ['soundID', 'slotID', 'lane', 'start', 'frames', 'inFrame', 'outFrame', 'loop', 'fadeIn', 'fadeOut', 'duck'];
+  eq(t.sounds.map(x => fields.map(f => x[f])), want.sounds.map(x => fields.map(f => x[f])), `${name}: sound placements`);
+  ok(t.sounds.every((x, i) => near(x.gain, want.sounds[i].gain)), `${name}: sound gains`);
+  eq(t.voice, want.voice, `${name}: voice activity, gaps under 1 s held`);
+  eq(t.left, want.left, `${name}: sounds left out`);
+}
+
+test('sound cues place against the takes as the golden says (B32 §3.3)', () => {
+  const g = SOUND_GOLDEN, e = g.expect;
+  const voiceOnly = C.buildTimeline(g.script, goldenProduction(null));
+  sameShape(voiceOnly, e.voiceOnly, 'voice only');
+  eq(Object.keys(voiceOnly).sort(), ['placements', 'sampleRate', 'totalFrames'], 'a play with no sound has the timeline it always had');
+  sameShape(C.buildTimeline(g.script, goldenProduction({ v: 1, slots: [g.sound.slots[2]] })), e.silentOnly, 'only a silent slot');
+  sameShape(C.buildTimeline(g.script, goldenProduction(g.sound), { resolveSound: goldenResolver() }), e.full, 'full');
+  throwsKind(() => C.buildTimeline(g.script, goldenProduction(g.sound), { resolveSound: goldenResolver(c => c.cue !== 'rain-steady-1') }),
+    e.missing.kind, e.missing.detail, 'a sound not on this device is named, never dropped');
+  sameShape(C.buildTimeline(g.script, goldenProduction(g.sound), { resolveSound: goldenResolver(c => c.cue !== 'rain-steady-1'), withoutMissing: true }),
+    e.withoutMissing, 'export without them');
+  throwsKind(() => C.buildTimeline(g.script, goldenProduction({ ...g.sound, v: 2 }), { resolveSound: goldenResolver() }), 'soundVersion', 2, 'a newer sound block is refused');
+});
+
+test('the duck is computed from the voice takes, as the golden says (B32 §4.2)', () => {
+  const g = SOUND_GOLDEN, e = g.expect;
+  for (const [depth, points] of Object.entries(e.envelopes)) eq(C.duckEnvelope(e.full.voice, Number(depth), g.sampleRate), points, `breakpoints at ${depth} dB`);
+  eq(C.duckEnvelope(e.full.voice, 0, g.sampleRate), [], 'Off has no duck');
+  let worst = 0;
+  for (const [depth, frame, db] of e.duckAt) {
+    const got = 20 * Math.log10(C.duckGains(C.duckEnvelope(e.full.voice, depth, g.sampleRate), frame, 1)[0]);
+    worst = Math.max(worst, Math.abs(got - db));
+  }
+  ok(worst < 1e-6, `the envelope at each probe (worst ${worst} dB)`);
+  const d = g.defaults;
+  eq([d.effectsDuckDb, d.musicDuckDb, d.attackMs, d.releaseMs, d.holdMs], [-6, -12, 120, 600, 1000], 'the design defaults');
+});
+
+test('the mix with sound renders the golden samples to 1 LSB, held under -1 dBFS (B32 §4.3)', async () => {
+  const g = SOUND_GOLDEN, e = g.expect;
+  const t = C.buildTimeline(g.script, goldenProduction(g.sound), { resolveSound: goldenResolver() });
+  const takes = new Map(g.takes.map(x => [x.id, goldenSynth(x.synth, x.frames)]));
+  const cues = new Map(g.cues.map(x => [`${x.pack}/${x.cue}`, goldenSynth(x.synth, x.frames)]));
+  const load = async (x) => (x.takeID ? takes.get(x.takeID) : x.src.take ? takes.get(x.src.take) : cues.get(`${x.src.pack}/${x.src.cue}`));
+  for (const chunkSeconds of [1, 0.37]) {
+    const mix = C.decodeWav(await (await C.renderMix(t, load, fakeOffline, { chunkSeconds })).arrayBuffer()).samples;
+    eq(mix.length, e.full.totalFrames, `the mix is as long as its timeline (chunks of ${chunkSeconds} s)`);
+    let worst = 0, at = -1;
+    e.samples.forEach((want, i) => { const d = Math.abs(Math.round(mix[i * e.samplesEvery] * 32768) - want); if (d > worst) { worst = d; at = i * e.samplesEvery; } });
+    for (const [f, want] of e.samplesAt) { const d = Math.abs(Math.round(mix[f] * 32768) - want); if (d > worst) { worst = d; at = f; } }
+    ok(worst <= 1, `every golden sample within 1 LSB (chunks of ${chunkSeconds} s; worst ${worst} at ${at})`);
+    let peak = 0;
+    for (const v of mix) peak = Math.max(peak, Math.abs(v));
+    ok(peak <= Math.pow(10, -1 / 20) + 1 / 32768, `the sample peak is held at -1 dBFS (${peak})`);
+  }
+  ok(near(C.mixScalar(e.peak), e.scalar), 'the one scalar');
+  eq(C.mixScalar(0.5), 1, 'a quiet mix is not raised');
+});
+
+test('the sound block in the record: old records unchanged, performed cues kept (B32 §5.1)', () => {
+  const g = SOUND_GOLDEN;
+  const plain = goldenProduction(null);
+  eq(C.fingerprint(plain), 'L0001=t1,L0002=t2,L0004=t4,L0005=t5', 'a record with no sound keeps its fingerprint, so its mix stays current');
+  eq(C.fingerprint(goldenProduction({ v: 1, slots: [g.sound.slots[2]] })), C.fingerprint(plain), 'only silent slots change nothing');
+  const withSound = goldenProduction(g.sound);
+  ok(C.fingerprint(withSound) !== C.fingerprint(plain), 'placing a sound makes the mix stale');
+  const moved = goldenProduction(g.sound);
+  moved.sound.slots[1].sounds[2].startMs = -400;
+  ok(C.fingerprint(moved) !== C.fingerprint(withSound), 'moving a sound makes the mix stale');
+  eq(C.unusedTakes(withSound).map(t => t.id), [], 'a take a slot plays is not unused');
+  eq(C.unusedTakes(plain).map(t => t.id), ['k-door'], 'without the slot it is');
+  eq(C.deleteTake(withSound, 'k-door').gone, [], 'a take a slot plays is not deleted');
+  eq(C.discardUnused(withSound).gone, [], 'nor discarded');
+  ok(!C.hasSound(plain) && C.hasSound(withSound), 'hasSound');
+});
+
+test('the store mixes a performed cue from its own takes, and names a pack cue it cannot reach (B32)', async () => {
+  const script = fixtureScript();
+  const backend = PlayStore.memoryBackend();
+  const store = PlayStore.open(backend);
+  await store.load();
+  let p = await store.create(script);
+  const samples = tone([440], 0.3);
+  for (const l of script.lines) {
+    if (l.kind !== 'speech') continue;
+    const file = await store.writeTake({ samples, sampleRate: 48000 }, p, l.id);
+    p = C.addTake(p, { ...take(`t-${l.id}`, l.id, C.linePart(l), samples.length), file });
+  }
+  const knock = tone([200], 0.2, 0.5);
+  const kfile = await store.writeTake({ samples: knock, sampleRate: 48000 }, p, 'L0005');
+  p = { ...p, takes: [...p.takes, { ...take('knock', 'L0005', C.SOUND, knock.length), file: kfile }] };
+  p.sound = { v: 1, slots: [{ id: 'S1', line: 'L0005', piece: null, added: true, silent: false,
+    sounds: [{ id: 'C1', src: { take: 'knock' }, at: 'before', startMs: 0, gainDb: 0, fadeInMs: 0, fadeOutMs: 0, loop: false, duckDb: null }] }] };
+  await store.save(p);
+  const blob = await store.renderMix(p.id, fakeOffline);
+  const mix = C.decodeWav(await blob.arrayBuffer()).samples;
+  const t = C.buildTimeline(script, p);
+  eq(mix.length, t.totalFrames, 'the mix holds the cue');
+  ok(rmsAround(mix, t.sounds[0].start + 4800) > 0.05, 'the knock sounds before the line');
+  eq(store.production(p.id).mixedFrom, C.fingerprint(p), 'the record says which takes and sounds it was made from');
+  const q = { ...store.production(p.id), sound: { v: 1, slots: [{ ...p.sound.slots[0], sounds: [{ ...p.sound.slots[0].sounds[0], id: 'C2', src: { pack: 'eardrama-sounds-1', cue: 'thunder-close' } }] }] } };
+  await store.save(q);
+  let kind = null, detail = null;
+  try { await store.renderMix(q.id, fakeOffline); } catch (e) { kind = e.kind; detail = e.detail; }
+  eq([kind, detail], ['missingSounds', ['C2']], 'a pack cue with no pack is named');
 });
 
 (async () => {
