@@ -1438,6 +1438,21 @@ web app follows today.
   `tools/web_fit_voices.py` shoots the four Kokoro states and the cast sheet's
   Defaults at 375 and 1440 px, light and dark.
 
+- **§4.11b Better voices at first launch** (Decision 090; owner, 2026-11-26: *"Can we also ensure that the app download remains small, but that we start working on a onboarding for the app that allows for people to download the better quality voices for their chosen device?"*; PLAYS-DESIGN §2.8 rule 13 is
+  binding and quoted: *"One step, skippable, never forced. A platform sheet over the app (never a page,
+  a flow, or slides) headed Better voices"*). A `<dialog id="voices-step">` opened with `showModal()`
+  (a bottom sheet at 375 px, a 440 px sheet from 768 px, as Now Playing, §5.1): the heading "Better
+  voices", the one fact line, then the Kokoro control of §4.11a item 1 itself (`VoiceSettings.hifi`,
+  the same function Library draws, so the size, progress, Cancel, failure and Try again are one code
+  path), then **Not now** (ghost), **Done** once the voices are ready. Escape and the backdrop are a
+  skip. Offered only where `Voices.offered()` holds after the probe (a WebGPU adapter, not refused,
+  not here, not downloading): at page start once the first route is drawn, and once more at the first
+  `?read=`, cast sheet or recorder (`js/voices-step.js`; the record is `localStorage` `ed.voicesStep`,
+  0, 1 or 2). Low storage (`navigator.storage.estimate()`: quota less usage under the size plus 20%)
+  disables Download with "Not enough space: N MB free." The web draws no system-voices line (a page
+  cannot open speech settings). `?onboard=0` keeps it away; `?voices_step=1` shows it without
+  reading or writing the record. `tools/web_fit_voices.py` adds the step at 375 px.
+
 - **§4.11 The account lives in one row of Library** (Decision 057, 063;
   LOOP-PLAN M5). An account is a rare
   job, so it gets no tab, no route, and no header chrome: the first row of
