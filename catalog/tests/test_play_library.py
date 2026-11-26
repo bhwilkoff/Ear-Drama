@@ -85,7 +85,8 @@ def a_play_is_the_bundles_entry_byte_for_byte():
     entries, _ = fixture_build()
     parsed = P.parse(TEXTS["1"], "stage")
     direct = B.script_entry(L.R.from_gutenberg(PLAYS[0]), L.R.judge(L.R.from_gutenberg(PLAYS[0]), CTX), parsed)
-    assert entries[0] == direct and entries[0]["revision"] == direct["revision"]
+    plain = {**entries[0], "roles": [{k: v for k, v in r.items() if k != "register"} for r in entries[0]["roles"]]}
+    assert plain == direct and entries[0]["revision"] == direct["revision"], "the same entry but each role's register"
 
 
 @case
@@ -173,6 +174,28 @@ def an_index_row_carries_its_cast_largest_first():
     entries, _ = fixture_build()
     row = L.index_row(entries[0])
     assert row["cast"] == sorted((r["lines"] for r in entries[0]["roles"]), reverse=True) and len(row["cast"]) == row["roles"]
+
+
+@case
+def each_role_carries_its_stand_in_register_and_the_index_says_it_in_cast_order():
+    # catalog DECISIONS 049: "MRS PETERS" is a woman by her title; nothing says what the SHERIFF is (no list, no direction)
+    entries, report = fixture_build()
+    roles = {r["name"]: r.get("register") for r in entries[0]["roles"]}
+    assert roles == {"SHERIFF": None, "MRS PETERS": "high"}, roles
+    row = L.index_row(entries[0])
+    order = sorted(entries[0]["roles"], key=lambda r: -r["lines"])
+    assert row["registers"] == "".join("h" if r.get("register") == "high" else "-" for r in order), row["registers"]
+    with tempfile.TemporaryDirectory() as d:
+        L.write(entries, report, d)
+        check_library(d)
+        idx = json.load(open(os.path.join(d, "index.json")))
+        idx["plays"][0]["registers"] = idx["plays"][0]["registers"][::-1]
+        json.dump(idx, open(os.path.join(d, "index.json"), "w"))
+        try:
+            check_library(d)
+        except AssertionError:
+            return
+        raise AssertionError("an index whose registers disagree with its script passed the check")
 
 
 @case

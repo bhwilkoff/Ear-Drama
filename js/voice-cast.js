@@ -7,7 +7,8 @@
  * own voices), 'kokoro' (the downloaded voices, S6) or 'none' (Not read); voice is
  * the engine's identifier (a voiceURI here), never a language. Auto-cast reads only the
  * voices (their quality, the person's language, and a gender only when the platform reports
- * one for the VOICE); it never reads a part's name or the script (§2.8 rule 4).
+ * one for the VOICE) and the register the catalog publishes for a part (catalog DECISIONS 049);
+ * it never reads a part's name or the script's words (§2.8 rule 4).
  *
  * Only a person's choices are kept (Decision 086). A part nobody chose reads its Default: auto-cast
  * over the device's voice defaults (Settings > Voices: the order, the voices left out, a speed),
@@ -187,31 +188,53 @@ const VoiceCast = (() => {
 
   const entryOf = (v, pitch = 1, rate = 1) => ({ engine: v.engine, voice: v.id, name: v.name, rate, pitch });
 
+  /** A voice's kind: high for a reported female gender or a measured 'higher' register, low for male or 'lower', else null. */
+  const kindOf = (v) => (v.gender === 'female' || (!v.gender && v.register === 'higher') ? 'high'
+    : v.gender === 'male' || (!v.gender && v.register === 'lower') ? 'low' : null);
+  /** Pitch orders (catalog/tests/golden/voice_register_cast.json): a part of a register on a voice of its kind, on a voice not of it. */
+  const MATCHED = { high: [1.0, 1.14, 1.07, 0.93, 0.86], low: [1.0, 0.86, 0.93, 1.07, 1.14] };
+  const BIASED = { high: [1.14, 1.07, 1.0, 0.93, 0.86], low: [0.86, 0.93, 1.0, 1.07, 1.14] };
+
   /**
    * Auto-cast (§2.8 rule 4). `parts` in cast order (largest first: PlaysCore.castParts), `voices`
-   * best first. Speaking parts take distinct voices, the best first; where voices report a
-   * gender, each next part takes the best remaining voice of the other one. When voices run
-   * out the list starts again at the next pitch. Directions and sound are Not read.
-   * Reads nothing of a part but its place in the list.
+   * best first. Speaking parts take distinct voices, the best first, until every voice is used once.
+   * A part the catalog gives a register (`register`, "high" or "low", from the play's own print:
+   * catalog DECISIONS 049) takes the least-used voice of that kind, else of no kind pitched its way,
+   * else any pitched its way; a part without one takes the least-used voice, where voices report a
+   * gender (else a measured register) the next of the other kind. A voice used again takes the next
+   * pitch not yet used on it. Directions and sound are Not read. Reads nothing of a part but its
+   * place in the list and its register; never its name.
    */
   function autoCast(parts, voices, rate = 1) {
     const out = {};
-    let pool = [];
-    let round = -1;
+    const uses = voices.map(() => 0);
+    const pitched = voices.map(() => []);
+    const kinds = voices.map(kindOf);
     let last = null;
+    const least = (idx) => idx.reduce((m, i) => (uses[i] < uses[m] ? i : m), idx[0]);
     for (const part of parts) {
       const id = typeof part === 'string' ? part : part.id;
       if (!isSpeaking(id)) { out[id] = { ...NOT_READ }; continue; }
       if (!voices.length) continue;
-      if (!pool.length) { pool = voices.slice(); round += 1; }
-      let k = 0;
-      if (last) {
-        const j = pool.findIndex(v => (v.gender || v.register) && (v.gender || v.register) !== last);
-        if (j >= 0) k = j;
+      const want = part && (part.register === 'high' || part.register === 'low') ? part.register : null;
+      const all = voices.map((_, i) => i);
+      let k;
+      if (want) {
+        const mine = all.filter(i => kinds[i] === want);
+        const none = all.filter(i => kinds[i] === null);
+        k = least(mine.length ? mine : none.length ? none : all);
+      } else {
+        const min = Math.min(...uses);
+        const pool = all.filter(i => uses[i] === min);
+        k = pool[0];
+        if (last) { const j = pool.find(i => kinds[i] && kinds[i] !== last); if (j !== undefined) k = j; }
       }
-      const v = pool.splice(k, 1)[0];
-      if (v.gender || v.register) last = v.gender || v.register;
-      out[id] = entryOf(v, PITCHES[round % PITCHES.length], rate);
+      const order = !want ? PITCHES : kinds[k] === want ? MATCHED[want] : BIASED[want];
+      const pitch = order.find(p => !pitched[k].includes(p)) ?? PITCHES[pitched[k].length % PITCHES.length];
+      pitched[k].push(pitch);
+      uses[k] += 1;
+      if (kinds[k]) last = kinds[k];
+      out[id] = entryOf(voices[k], pitch, rate);
     }
     return out;
   }
@@ -350,6 +373,8 @@ const VoiceCast = (() => {
     const api = {
       key,
       parts: ids,
+      /** The parts as given (each with its register, when the catalog publishes one), for auto-cast elsewhere. */
+      castParts: parts,
       voices: list,
       defaults: () => defaults() || EMPTY_DEFAULTS,
       /** How `part` is read now (resolve), and whether it is its Default (nobody chose). */
@@ -384,7 +409,7 @@ const VoiceCast = (() => {
     return api;
   }
 
-  return { label, accentOf, localeNamed, KEY, DEFAULTS_KEY, PITCHES, RATE, PITCH, NOT_READ, tierOf, genderOf, systemVoices, autoCast, resolve, normalize,
+  return { label, accentOf, localeNamed, kindOf, KEY, DEFAULTS_KEY, PITCHES, RATE, PITCH, NOT_READ, tierOf, genderOf, systemVoices, autoCast, resolve, normalize,
            load, save, forget, productionKey, scriptKey, caster,
            voiceKey, loadDefaults, saveDefaults, normalizeDefaults, usesVoice, ordered, poolOf, move, NOVELTY, isNovelty };
 })();

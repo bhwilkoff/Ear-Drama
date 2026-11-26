@@ -47,6 +47,7 @@ import play_emphasis as PE
 import play_layouts as PL
 import play_margins as PM
 import play_punctuation as PN
+import play_voices as PV
 import script_parse as P
 import script_rights as R
 
@@ -335,6 +336,9 @@ def index_row(entry):
         # Each named role's speeches, largest first: the cast window and fingerprint a list draws
         # without fetching the script (Decision 076, WEB-DESIGN §4.15).
         "cast": sorted((r["lines"] for r in entry["roles"]), reverse=True),
+        # The register of each of those roles' stand-in voice, in the same order: h high, l low, - unknown (DECISIONS 049).
+        "registers": "".join({"high": "h", "low": "l"}.get(r.get("register"), "-")
+                             for r in sorted(entry["roles"], key=lambda r: -r["lines"])),
         "lines": sum(1 for l in entry["lines"] if l["kind"] == "speech"),
         "words": words,
         "minutes": max(1, math.ceil(words / WORDS_PER_MINUTE)),
@@ -708,9 +712,10 @@ def build(plays, ctx, read_text, protect=(), read_as_published=None):
 
 def refined(entry):
     """The kept play with its roles mended (play_roles, catalog DECISIONS 044). Which plays are kept, and which edition, was
-    settled on the readings as they were; a play nothing is mended in is the same entry, byte for byte."""
+    settled on the readings as they were; a play nothing is mended in keeps its lines byte for byte. Last, each role the
+    play's own print settles takes the register of its stand-in voice (play_voices, catalog DECISIONS 049): no line moves."""
     read, args = entry.pop("_read")
-    return PN.mend(PE.mend(PM.mend(PC.apply(B.refined_entry(entry, read(*args, refine=True))))))
+    return PV.annotate(PN.mend(PE.mend(PM.mend(PC.apply(B.refined_entry(entry, read(*args, refine=True)))))), args[0])
 
 
 def same_title_words(a, b):

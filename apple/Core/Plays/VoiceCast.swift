@@ -11,8 +11,8 @@ import AVFoundation
 // S6e: KokoroEngine.swift), never a language. The cast keeps only a person's choices; a part nobody cast reads its
 // Default, worked out at each read (never written) by auto-cast over the device's voice defaults (Settings >
 // Voices, Decision 086): downloaded Kokoro voices first, then the device's own, best first. Auto-cast reads only
-// the voices (their quality, the person's language, and the gender the VOICE reports); it never reads a part's
-// name or the script (§2.8 rule 4).
+// the voices (their quality, the person's language, and the gender the VOICE reports) and the register the catalog
+// publishes for a part (catalog DECISIONS 049); it never reads a part's name or the script's words (§2.8 rule 4).
 
 nonisolated enum VoiceEngine: String, Sendable, Codable {
     case system, kokoro, none
@@ -35,6 +35,8 @@ nonisolated struct CastVoice: Equatable, Sendable, Identifiable {
     var grade: String? = nil
     /// Kokoro's grades under C- start unticked in the defaults.
     var offByDefault = false
+    /// "lower" or "higher" where a voice's pitch was measured and it reports no gender (Android's rule 12; the golden).
+    var register: String? = nil
     /// "engine:id", the key the voice defaults use.
     var key: String { "\(engine.rawValue):\(id)" }
 
@@ -143,30 +145,58 @@ nonisolated enum VoiceCasting {
         return next
     }
 
-    /// Auto-cast (§2.8 rule 4). `parts` in cast order (largest first), `voices` best first. Speaking parts
-    /// take distinct voices, the best first; where voices report a gender, each next part takes the best
-    /// remaining voice of the other one. When voices run out the list starts again at the next pitch.
-    /// Directions and sound are Not read. Reads nothing of a part but its place in the list.
-    static func autoCast(_ parts: [PartID], _ voices: [CastVoice], rate: Double = 1) -> [PartID: VoiceCastEntry] {
+    /// A voice's kind: high for a reported female gender or a measured "higher" register, low for male or "lower".
+    static func kind(_ v: CastVoice) -> String? {
+        switch v.gender {
+        case .female: return "high"
+        case .male: return "low"
+        case nil: return v.register == "higher" ? "high" : v.register == "lower" ? "low" : nil
+        }
+    }
+
+    /// Pitch orders (catalog/tests/golden/voice_register_cast.json): a part of a register on a voice of its kind, on one not.
+    private static let matched: [String: [Double]] = ["high": [1.0, 1.14, 1.07, 0.93, 0.86], "low": [1.0, 0.86, 0.93, 1.07, 1.14]]
+    private static let biased: [String: [Double]] = ["high": [1.14, 1.07, 1.0, 0.93, 0.86], "low": [0.86, 0.93, 1.0, 1.07, 1.14]]
+
+    /// Auto-cast (§2.8 rule 4). `parts` in cast order (largest first), `voices` best first. Speaking parts take
+    /// distinct voices, the best first, until every voice is used once. A part `registers` names ("high" or "low",
+    /// published by the catalog from the play's own print: catalog DECISIONS 049) takes the least-used voice of that
+    /// kind, else of no kind pitched its way, else any pitched its way; a part without one takes the least-used voice,
+    /// where voices report a gender the next of the other one. A voice used again takes the next pitch not yet used on
+    /// it. Directions and sound are Not read. Reads nothing of a part but its place in the list and its register.
+    static func autoCast(_ parts: [PartID], _ voices: [CastVoice], rate: Double = 1,
+                         registers: [PartID: String] = [:]) -> [PartID: VoiceCastEntry] {
         var out: [PartID: VoiceCastEntry] = [:]
-        var pool: [CastVoice] = []
-        var round = -1
-        var last: VoiceGender?
+        var uses = Array(repeating: 0, count: voices.count)
+        var pitched = Array(repeating: [Double](), count: voices.count)
+        let kinds = voices.map(kind)
+        let all = Array(voices.indices)
+        var last: String?
+        func least(_ idx: [Int]) -> Int { idx.dropFirst().reduce(idx[0]) { uses[$1] < uses[$0] ? $1 : $0 } }
         for part in parts {
             guard part.isSpeaking else {
                 out[part] = .notRead
                 continue
             }
             guard !voices.isEmpty else { continue }
-            if pool.isEmpty {
-                pool = voices
-                round += 1
+            let want = registers[part].flatMap { $0 == "high" || $0 == "low" ? $0 : nil }
+            var k: Int
+            if let want {
+                let mine = all.filter { kinds[$0] == want }
+                let none = all.filter { kinds[$0] == nil }
+                k = least(!mine.isEmpty ? mine : !none.isEmpty ? none : all)
+            } else {
+                let low = uses.min() ?? 0
+                let pool = all.filter { uses[$0] == low }
+                k = pool[0]
+                if let last, let j = pool.first(where: { kinds[$0] != nil && kinds[$0] != last }) { k = j }
             }
-            var k = 0
-            if let last, let j = pool.firstIndex(where: { $0.gender != nil && $0.gender != last }) { k = j }
-            let v = pool.remove(at: k)
-            if let g = v.gender { last = g }
-            out[part] = entry(v, pitch: pitches[round % pitches.count], rate: clamp(rate, rateRange, 1))
+            let order = want.map { kinds[k] == $0 ? matched[$0]! : biased[$0]! } ?? pitches
+            let pitch = order.first { !pitched[k].contains($0) } ?? pitches[pitched[k].count % pitches.count]
+            pitched[k].append(pitch)
+            uses[k] += 1
+            if let g = kinds[k] { last = g }
+            out[part] = entry(voices[k], pitch: pitch, rate: clamp(rate, rateRange, 1))
         }
         return out
     }
@@ -331,6 +361,8 @@ nonisolated enum VoiceCastBook {
 nonisolated final class VoiceCast: Sendable {
     let key: String
     let parts: [PartID]
+    /// Each part's stand-in register where the catalog publishes one (catalog DECISIONS 049): auto-cast only, never shown.
+    let registers: [PartID: String]
     /// The play whose published phonemes a Kokoro voice reads (contract §4.1).
     let playID: String?
     private let seed: String?
@@ -340,7 +372,7 @@ nonisolated final class VoiceCast: Sendable {
     private let storage: CastStorage
 
     /// `voices` are the device's own; `downloaded` the Kokoro voices when the model is here. The Default pool is both.
-    init(key: String, seed: String? = nil, playID: String? = nil, parts: [PartID],
+    init(key: String, seed: String? = nil, playID: String? = nil, parts: [PartID], registers: [PartID: String] = [:],
          voices: @escaping @Sendable () -> [CastVoice], downloaded: @escaping @Sendable () -> [CastVoice] = { [] },
          defaults: @escaping @Sendable () -> VoiceDefaults = { VoiceDefaultsStore.load() },
          storage: CastStorage = .defaults()) {
@@ -348,6 +380,7 @@ nonisolated final class VoiceCast: Sendable {
         self.seed = seed
         self.playID = playID
         self.parts = parts
+        self.registers = registers
         self.voicesNow = voices
         self.downloadedNow = downloaded
         self.defaultsNow = defaults
@@ -366,7 +399,8 @@ nonisolated final class VoiceCast: Sendable {
     /// A production's cast, starting from its play's. The voices are this device's (`DeviceVoices`).
     static func production(_ id: String, script: PlayScript) -> VoiceCast {
         VoiceCast(key: VoiceCastBook.productionKey(id), seed: VoiceCastBook.scriptKey(script.id), playID: script.id,
-                  parts: script.castParts.map(\.id), voices: { DeviceVoices.castable() }, downloaded: downloaded(for: script))
+                  parts: script.castParts.map(\.id), registers: script.registers, voices: { DeviceVoices.castable() },
+                  downloaded: downloaded(for: script))
     }
 
     /// An own script has no published phonemes, so no downloaded voice is offered for it (PLAYS-DESIGN §13 item 8).
@@ -378,7 +412,7 @@ nonisolated final class VoiceCast: Sendable {
     /// A play's own cast, the reader's (Hear the cast).
     static func script(_ script: PlayScript) -> VoiceCast {
         VoiceCast(key: VoiceCastBook.scriptKey(script.id), playID: script.id, parts: script.castParts.map(\.id),
-                  voices: { DeviceVoices.castable() }, downloaded: downloaded(for: script))
+                  registers: script.registers, voices: { DeviceVoices.castable() }, downloaded: downloaded(for: script))
     }
 
     /// The device's own voices.
@@ -399,7 +433,7 @@ nonisolated final class VoiceCast: Sendable {
     /// Every part's Default now: auto-cast over the defaults' pool (downloaded first), at the defaults' speed.
     private func auto() -> [PartID: VoiceCastEntry] {
         let d = defaultsNow()
-        return VoiceCasting.autoCast(parts, VoiceCasting.pool(downloadedNow() + voicesNow(), d), rate: d.rate)
+        return VoiceCasting.autoCast(parts, VoiceCasting.pool(downloadedNow() + voicesNow(), d), rate: d.rate, registers: registers)
     }
 
     func resolve(_ part: PartID) -> ResolvedVoice {
@@ -414,7 +448,7 @@ nonisolated final class VoiceCast: Sendable {
         guard r.read, let voice = r.voice, voice.engine == .kokoro else { return r }
         let v = voicesNow()
         let d = defaultsNow()
-        let a = VoiceCasting.autoCast(parts, VoiceCasting.pool(v, d), rate: d.rate)[part]
+        let a = VoiceCasting.autoCast(parts, VoiceCasting.pool(v, d), rate: d.rate, registers: registers)[part]
         guard let fb = v.first(where: { $0.id == a?.voice }) ?? v.first else { return .notRead(r.entry, none: true) }
         return ResolvedVoice(read: true, entry: r.entry, voice: fb, rate: r.rate, pitch: a?.pitch ?? 1, missing: nil, none: false,
                              isDefault: r.isDefault)

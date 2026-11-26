@@ -143,7 +143,9 @@ data class PlayScript(
     @Serializable data class Source(val name: String, val url: String)
     @Serializable data class Evidence(val claim: String? = null, val src: String? = null)
     @Serializable data class Rights(val bucket: String, val evidence: List<Evidence> = emptyList())
-    @Serializable data class Role(val name: String, val lines: Int, val words: Int)
+    /** [register]: "high" or "low", the register of the part's stand-in voice where the play's own print settles it
+     *  (catalog DECISIONS 049). Auto-cast reads it; nothing on screen shows it. */
+    @Serializable data class Role(val name: String, val lines: Int, val words: Int, val register: String? = null)
 
     override val authorLine: String get() = authors.mapNotNull { it.shown }.joinToString(", ")
 
@@ -200,6 +202,10 @@ data class PlayScript(
     }
 
     val speechLineIDs: List<String> get() = lines.filter { it.kind == ScriptLine.Kind.Speech }.map { it.id }
+
+    /** Each role's published stand-in register by part (catalog DECISIONS 049), only "high" or "low". */
+    val registers: Map<PartID, String> get() =
+        roles.mapNotNull { r -> r.register?.takeIf { it == VoiceCasting.HIGH || it == VoiceCasting.LOW }?.let { PartID.role(r.name) to it } }.toMap()
 
     /**
      * A part's face color (direction D): the first seven speaking parts, largest first, take the

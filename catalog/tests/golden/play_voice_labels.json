@@ -1,0 +1,2867 @@
+{
+"about": "Roles labeled by hand for catalog DECISIONS 049 (the register of a part's stand-in voice), each read in its play: the list of persons, the directions, the speeches, and what the play is. truth is high (a woman, a girl, a child), low (a man), or null when a reader of the play cannot settle it (a crowd, a pair, a messenger the print never describes). 'build' roles were read while the rules were written; 'check' roles were held out until the rules were set, and three of their labels were corrected after a reading of their cast rows (NUTT, CASE, RUFF in gut-70211: the list of persons calls each a man); 'fresh' roles (22 more plays, seed 77001) were labeled after that, then five labels corrected from the play's own list (gut-76792 heads its persons MEN and WOMEN) and two rules mended (an owner's name is not a sentence's subject; SANTA is not a given name); 'final' roles (12 more plays, seed 99173) were drawn and labeled once the rules were frozen and nothing was changed after. Up to five roles a play, at random, from the library of 2026-11-25.",
+"labels": [
+{
+"play": "gut-49507-1",
+"role": "BRÜNNHILDE",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-49507-1",
+"role": "THE WOOD-BIRD'S VOICE",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-49507-1",
+"role": "MIME",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-49507-1",
+"role": "ALBERICH",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-49507-1",
+"role": "FAFNER'S VOICE",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-27552-2",
+"role": "ICKEN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-27552-2",
+"role": "1ST VILLAGER",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-27552-2",
+"role": "HERMAN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-27552-2",
+"role": "GAUDERKIN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-27552-2",
+"role": "RORY",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-7844-2",
+"role": "SANNAES",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-7844-2",
+"role": "KNUDSEN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-7844-2",
+"role": "JAKOBSEN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-7844-2",
+"role": "MRS. TJAELDE",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-7844-2",
+"role": "TJAELDE",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-22974",
+"role": "JUST. MER",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-22974",
+"role": "COMPASSE",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-22974",
+"role": "COUNS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-22974",
+"role": "PETTI",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-22974",
+"role": "BON",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-70705-1",
+"role": "THE CHAMBERLAIN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-70705-1",
+"role": "ERIK",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-70705-1",
+"role": "THE GENTLEMEN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-70705-1",
+"role": "THE COMPANY",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-70705-1",
+"role": "THE YOUNG LADIES",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-33907-112",
+"role": "PIERROT",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-33907-112",
+"role": "PIERRETTE",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-33907-112",
+"role": "MANUFACTURER",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-57999-5",
+"role": "PHAEDRA",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-57999-5",
+"role": "CHORUS",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-57999-5",
+"role": "NURSE",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-57999-5",
+"role": "MESSENGER",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-57999-5",
+"role": "THESEUS",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-37422",
+"role": "LEACH",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-37422",
+"role": "BAD AN",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-37422",
+"role": "FAUST",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-37422",
+"role": "BEN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-37422",
+"role": "BAD ANG",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-59685-6",
+"role": "DOR",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-59685-6",
+"role": "SER",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-59685-6",
+"role": "DAN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-59685-6",
+"role": "1ST SOL",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-59685-6",
+"role": "JAS",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-1240",
+"role": "JIMMY",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-1240",
+"role": "GIRLS",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-1240",
+"role": "VOICE",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-1240",
+"role": "MEN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-1240",
+"role": "MICHAEL",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-6447-2",
+"role": "TMOLUS",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-6447-2",
+"role": "APOLLO",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-6447-2",
+"role": "MIDAS",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-6447-2",
+"role": "SILENUS",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-6447-2",
+"role": "ASPHALION",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-36256",
+"role": "PROLOGUE",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-36256",
+"role": "REG",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-36256",
+"role": "HAM",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-36256",
+"role": "PUB",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-36256",
+"role": "PEOPLE",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-55154",
+"role": "REV. J. J",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-55154",
+"role": "BETTY",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-55154",
+"role": "BOBBY",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-2232",
+"role": "SECOND MADMAN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-2232",
+"role": "GRISOLAN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-2232",
+"role": "SILVIO",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-2232",
+"role": "MALATESTI",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-2232",
+"role": "SECOND OFFICER",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-16250",
+"role": "SAILORS",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-16250",
+"role": "BOTH",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-16250",
+"role": "THE YOUNG SAILOR",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-16250",
+"role": "BRANGAENA",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-16250",
+"role": "ALL THE MEN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-46311-4",
+"role": "PIP",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-46311-4",
+"role": "SIM",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46311-4",
+"role": "PED",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46311-4",
+"role": "QUA",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46311-4",
+"role": "PHI",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-11661",
+"role": "VERONIKA",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-11661",
+"role": "THE STROLLERS",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-11661",
+"role": "TRUDE",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-11661",
+"role": "AXEL",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-11661",
+"role": "JACOBUS",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-57650",
+"role": "ONE BOY",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-57650",
+"role": "A WOMAN",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-57650",
+"role": "GLAMOUR",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-57650",
+"role": "LABOR AND CAPITAL",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-57650",
+"role": "ANOTHER WOMAN",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-52348-2",
+"role": "PATTY",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-52348-2",
+"role": "MR. G",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-52348-2",
+"role": "RALPH",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-52348-2",
+"role": "BOUNCE",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-52348-2",
+"role": "ALICE",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-7366-1",
+"role": "AXEL",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-7366-1",
+"role": "MOTHER",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-7366-1",
+"role": "LAURA",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-7366-1",
+"role": "MATHILDE",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-7366-1",
+"role": "ALL",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-27764-116",
+"role": "SECOND BROTHER",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-27764-116",
+"role": "SPIRIT",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-27764-116",
+"role": "LADY ALICE",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-27764-116",
+"role": "ELDER BROTHER",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-27764-116",
+"role": "COMUS",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-14734-6",
+"role": "PERKINS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-14734-6",
+"role": "STRANGER",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-14734-6",
+"role": "PEMBURY",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-14734-6",
+"role": "LADY PEMBURY",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-52348-8",
+"role": "BOY",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-52348-8",
+"role": "BOB",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-52348-8",
+"role": "ALL",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-52348-8",
+"role": "YOUTH",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-52348-8",
+"role": "BOB CRATCHIT",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-55877",
+"role": "BLACKMORE",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-55877",
+"role": "HOLROYD",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-55877",
+"role": "FIRST BEARER",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-55877",
+"role": "MRS. HOLROYD AND BLACKMORE",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-55877",
+"role": "ALL",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-1311",
+"role": "SHEIK",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-1311",
+"role": "HAFIZ",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-1311",
+"role": "MIRALDA",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-1311",
+"role": "A NOTABLE",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-1311",
+"role": "CONJURER",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-46058-2",
+"role": "AGAMEMNON",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46058-2",
+"role": "PYRRHUS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46058-2",
+"role": "ULYSSES",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46058-2",
+"role": "CALCHAS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46058-2",
+"role": "TALTHYBIUS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-2914",
+"role": "A TALL YOUTH",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-2914",
+"role": "WACE",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-2914",
+"role": "THE THREE",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-2914",
+"role": "DOORKEEPER",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-2914",
+"role": "FOOTMAN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-38931",
+"role": "ARM",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-38931",
+"role": "LUC",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-38931",
+"role": "AUR",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-38931",
+"role": "MOUNT",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-38931",
+"role": "ALON",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-67583",
+"role": "CLARENCE",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-67583",
+"role": "MARY",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-67583",
+"role": "GENE",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-67583",
+"role": "LEVY",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-67583",
+"role": "LEE",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-1106",
+"role": "MARC",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-1106",
+"role": "PUB",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-1106",
+"role": "LUCI",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-1106",
+"role": "KING",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-1106",
+"role": "NURSE",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-3301-2",
+"role": "OCEANA",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-3301-2",
+"role": "MRS. MASTERSON",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-3301-2",
+"role": "REMSON",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-3301-2",
+"role": "DR. MASTERSON",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-3301-2",
+"role": "HENRY",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-39045-2",
+"role": "JOE",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-39045-2",
+"role": "ALL",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-39045-2",
+"role": "CHORUS",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-39045-2",
+"role": "SOLO",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-39045-2",
+"role": "DEMON",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-15007",
+"role": "SECOND NUN",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-15007",
+"role": "ALL",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-15007",
+"role": "SOPHOMORE",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-15007",
+"role": "EMILY",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-15007",
+"role": "FRESHMAN AND SOPHOMORE",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-5806",
+"role": "JESSIE",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-5806",
+"role": "POLICEMAN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-5806",
+"role": "WILL",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-5806",
+"role": "BOB",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-5806",
+"role": "BUTLER",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-2270-28",
+"role": "POET",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-2270-28",
+"role": "OCTA",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-2270-28",
+"role": "LEP",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-2270-28",
+"role": "BRU",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-2270-28",
+"role": "BRUTUS",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-70211",
+"role": "GRETCH",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-70211",
+"role": "NUTT",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-70211",
+"role": "CASE",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-70211",
+"role": "RUFF",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-70211",
+"role": "WEBER",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-64953",
+"role": "BOUNCE",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-64953",
+"role": "BASIL",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-64953",
+"role": "FIGARO",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-64953",
+"role": "D. GUZMAN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-64953",
+"role": "MARCELINA",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-31112",
+"role": "FIRST CITIZEN",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-31112",
+"role": "DIMSDELL",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-31112",
+"role": "WARD",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-31112",
+"role": "CITIZENS",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-31112",
+"role": "BRONSON",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-1530",
+"role": "MESSENGER",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-1530",
+"role": "JUSTICE",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-1530",
+"role": "MARIANA",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-1530",
+"role": "FRIAR PETER",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-1530",
+"role": "SECOND GENTLEMAN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-60167-1",
+"role": "RONNY",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-60167-1",
+"role": "JACK",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-60167-1",
+"role": "IRIS",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-60167-1",
+"role": "TENTERDEN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-60167-1",
+"role": "NORAH",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-11969-101",
+"role": "PADNA AND MICUS",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-11969-101",
+"role": "SERGEANT",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-11969-101",
+"role": "CONSTABLE",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-11969-101",
+"role": "HEAD",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-11969-101",
+"role": "MICUS",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-46312-1",
+"role": "SL",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46312-1",
+"role": "GO",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46312-1",
+"role": "SIR PE",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46312-1",
+"role": "SEC",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46312-1",
+"role": "SEA",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-43304-8",
+"role": "BOTH",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-43304-8",
+"role": "ATTENDANT",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-43304-8",
+"role": "CHORUS",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-43304-8",
+"role": "PRIEST",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-43304-8",
+"role": "TSUNEYO",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-54014",
+"role": "SCYTHE",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-54014",
+"role": "BLUEGRASS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-54014",
+"role": "IDEAL",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-54014",
+"role": "TOM",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-54014",
+"role": "MORAL",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-77979",
+"role": "BLOOM",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-77979",
+"role": "SALOME",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-77979",
+"role": "TAPP",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-77979",
+"role": "ARSCOTT",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-77979",
+"role": "REDVERS",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-63776-5",
+"role": "I",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-63776-5",
+"role": "CHORUS",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-63776-5",
+"role": "CAPT",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-63776-5",
+"role": "ISAB",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-63776-5",
+"role": "SERG",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-22695-6",
+"role": "PHOR",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-22695-6",
+"role": "CHREM",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-22695-6",
+"role": "PHAED",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-22695-6",
+"role": "HARPER",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-22695-6",
+"role": "GETA",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-70577-2",
+"role": "GREGERS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-70577-2",
+"role": "THE SHORT-SIGHTED GENTLEMAN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-70577-2",
+"role": "A WAITER",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-70577-2",
+"role": "HIALMAR",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-70577-2",
+"role": "JENSEN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-46138",
+"role": "SIR WILLIAM",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-46138",
+"role": "SIR W",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-46138",
+"role": "PLATO",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-46138",
+"role": "SERV",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-46138",
+"role": "BLEN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-65112-3",
+"role": "LITTLE NANCY",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-65112-3",
+"role": "MRS. LOVING AND RACHEL",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-65112-3",
+"role": "LITTLE LOUISE",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-65112-3",
+"role": "MRS. LOVING",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-65112-3",
+"role": "LITTLE MARY",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-36575",
+"role": "COUNT",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-36575",
+"role": "FAB",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-36575",
+"role": "2 OFFI",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-36575",
+"role": "COUNTESS",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-36575",
+"role": "OFFI",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-3403",
+"role": "MISS SPAULDING",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-3403",
+"role": "GRINNIDGE",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-3403",
+"role": "HE",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-3403",
+"role": "MISS HENRIETTA SPAULDING",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-3403",
+"role": "MISS ETHEL REED",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-49610-2",
+"role": "MAIRE BRUIN",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-49610-2",
+"role": "BRIDGET BRUIN",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-49610-2",
+"role": "THE CHILD",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-49610-2",
+"role": "FATHER HART",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-49610-2",
+"role": "SHAWN BRUIN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-3012",
+"role": "SLAVE OF LAMACHUS",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-3012",
+"role": "BRIDESMAID",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-3012",
+"role": "DICAEOPOLIS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-3012",
+"role": "INFORMER",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-3012",
+"role": "A MEGARIAN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-7991",
+"role": "ONE OF THE CROWD",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-7991",
+"role": "OLD LADY",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-7991",
+"role": "THE OLD LADY",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-7991",
+"role": "FEKLUSHA",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-7991",
+"role": "SEVERAL VOICES",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-8689-5",
+"role": "YOUNG GIRL",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-8689-5",
+"role": "BLEPYRUS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-8689-5",
+"role": "CHREMES",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-8689-5",
+"role": "FOURTH WOMAN",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-8689-5",
+"role": "SECOND OLD WOMAN",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-63776-6",
+"role": "HERN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-63776-6",
+"role": "JUAN",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-63776-6",
+"role": "OTAÑ",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-63776-6",
+"role": "VOICES",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-63776-6",
+"role": "MARI",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-41653-6",
+"role": "CHILD",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-41653-6",
+"role": "TRAVELLING MAN",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-41653-6",
+"role": "MOTHER",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-41311-1",
+"role": "FIRST BEGGAR",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-41311-1",
+"role": "OTHERS",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-41311-1",
+"role": "ALL",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-41311-1",
+"role": "FIRST CITIZEN",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-41311-1",
+"role": "OOGNO",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-49481",
+"role": "MRS. F",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-49481",
+"role": "FANNY",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-49481",
+"role": "MRS. FACILE",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-49481",
+"role": "HOLD",
+"truth": null,
+"half": "check"
+},
+{
+"play": "gut-49481",
+"role": "JULIA",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-46207-2",
+"role": "VENUS",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-46207-2",
+"role": "ALL",
+"truth": null,
+"half": "build"
+},
+{
+"play": "gut-46207-2",
+"role": "SECOND R",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-46207-2",
+"role": "HAND",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-46207-2",
+"role": "JANE",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-50954-157",
+"role": "SAB",
+"truth": "high",
+"half": "check"
+},
+{
+"play": "gut-50954-157",
+"role": "GAU",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-50954-157",
+"role": "GUI",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-50954-157",
+"role": "BERTH",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-50954-157",
+"role": "THE CHANCELLOR",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-37431",
+"role": "DENNY",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-37431",
+"role": "CHARLOTTE",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-37431",
+"role": "HILL",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-37431",
+"role": "MAID",
+"truth": "high",
+"half": "build"
+},
+{
+"play": "gut-37431",
+"role": "DARCY",
+"truth": "low",
+"half": "build"
+},
+{
+"play": "gut-8688-1",
+"role": "SAUSAGE-SELLER",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-8688-1",
+"role": "NICIAS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-8688-1",
+"role": "DEMOSTHENES",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-8688-1",
+"role": "DEMOSTHENES AND NICIAS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-8688-1",
+"role": "AGORACRITUS",
+"truth": "low",
+"half": "check"
+},
+{
+"play": "gut-47609-103",
+"role": "E",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-47609-103",
+"role": "W",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-28511",
+"role": "WILLYS",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-28511",
+"role": "VOICE",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-28511",
+"role": "ANNOUNCER",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-28511",
+"role": "SEXTON",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-28511",
+"role": "TREAT",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-66775-102",
+"role": "DALTON",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-66775-102",
+"role": "ABNER",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-66775-102",
+"role": "MARY",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-66775-102",
+"role": "DICK",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-34360-101",
+"role": "JULIA",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-34360-101",
+"role": "PIERRE",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-34360-101",
+"role": "WITTICH",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-44302-3",
+"role": "WIFE",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-44302-3",
+"role": "ROSE",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-44302-3",
+"role": "MAID",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-44302-3",
+"role": "BARONESS",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-44302-3",
+"role": "HUSBAND",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-27074",
+"role": "CAT",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-27074",
+"role": "GOR",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-27074",
+"role": "VILL",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-27074",
+"role": "VAL",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-27074",
+"role": "LA VAL",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-70315",
+"role": "MR. TORRANCE",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-70315",
+"role": "MAJOR",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-70315",
+"role": "EMMA",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-70315",
+"role": "ROGERS",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-70315",
+"role": "MR. DON",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-77892",
+"role": "GUARDS",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-77892",
+"role": "GOVERNOR",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-77892",
+"role": "GOSAIN",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-77892",
+"role": "DEPUTY GOVERNOR",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-77892",
+"role": "DOCTOR",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-39060",
+"role": "WAITER",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-39060",
+"role": "SIR GEO",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-39060",
+"role": "BANKS",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-39060",
+"role": "GAM",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-39060",
+"role": "ZACH",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-76792",
+"role": "DEATH",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-76792",
+"role": "SER",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-76792",
+"role": "DARO",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-76792",
+"role": "LOM",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-76792",
+"role": "PRIMO",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-62173-1",
+"role": "ALL",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-62173-1",
+"role": "MESS",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-62173-1",
+"role": "2ND GENT",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-62173-1",
+"role": "A SQUIRE",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-62173-1",
+"role": "GWAINE",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-3618",
+"role": "SERGIUS",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-3618",
+"role": "MAN",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-3618",
+"role": "RAINA",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-3618",
+"role": "PETKOFF",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-3618",
+"role": "THE OFFICER",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-37962-2",
+"role": "BUTLER",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-37962-2",
+"role": "DOCTOR",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-37962-2",
+"role": "GEORGE",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-37962-2",
+"role": "MRS. CROWLEY",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-37962-2",
+"role": "BOULGER",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-70209",
+"role": "ELFRIDA",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-70209",
+"role": "DOCTOR",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-70209",
+"role": "BIRD-IN-HAND",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-70209",
+"role": "MISS TUCKEY",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-70209",
+"role": "PROFESSOR BRAINTREE",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-65920-4",
+"role": "MOTHER SHIPTON",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-65920-4",
+"role": "SANTA",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-65920-4",
+"role": "ALL",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-65920-4",
+"role": "JACK",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-65920-4",
+"role": "RIP VAN WINKLE",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-64178",
+"role": "1ST KING",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-64178",
+"role": "SHEPHERDS",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-64178",
+"role": "2ND KING",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-64178",
+"role": "OMNES",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-64178",
+"role": "SEMI-CHORUS",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-49296",
+"role": "THWAITES",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-49296",
+"role": "WHITE",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-49296",
+"role": "AGATHA",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-49296",
+"role": "PAWKINS",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-49296",
+"role": "FERGUS",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-18163-113",
+"role": "DEBORAH",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-18163-113",
+"role": "ROGER",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-18163-113",
+"role": "GEORGE WASHINGTON'S FORTUNE",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-18163-113",
+"role": "WILLIAM",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-18163-113",
+"role": "ELIZABETH",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-6786",
+"role": "QUESTENBERG",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-6786",
+"role": "MASTER OF THE CELLAR",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-6786",
+"role": "THEKLA",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-6786",
+"role": "ILLO",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-6786",
+"role": "FIRST SERVANT",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-4497",
+"role": "WINIFRED",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-4497",
+"role": "ASTRAEA",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-4497",
+"role": "OSIER",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-4497",
+"role": "VIRGINIA",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-4497",
+"role": "DAME DRESDEN",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-75451",
+"role": "TURAI",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-75451",
+"role": "TURAI'S VOICE",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-75451",
+"role": "ADAM",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-75451",
+"role": "DWORNITSCHEK",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-75451",
+"role": "ALMADY'S VOICE",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-16198",
+"role": "STEVE",
+"truth": "low",
+"half": "fresh"
+},
+{
+"play": "gut-16198",
+"role": "LOUISE",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-16198",
+"role": "MRS. CARLEY",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-16198",
+"role": "EVERYBODY",
+"truth": null,
+"half": "fresh"
+},
+{
+"play": "gut-16198",
+"role": "GEORGY",
+"truth": "high",
+"half": "fresh"
+},
+{
+"play": "gut-36636",
+"role": "SANCIA",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-36636",
+"role": "LAURA",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-36636",
+"role": "FILIPPA",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-36636",
+"role": "ALL",
+"truth": null,
+"half": "final"
+},
+{
+"play": "gut-36636",
+"role": "ORSO",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-37967-1",
+"role": "OBAA-SAN",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-37967-1",
+"role": "THE GAKI",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-37967-1",
+"role": "RIKI",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-37967-1",
+"role": "O-KATSU-SAN AND O-SODE-SAN",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-37967-1",
+"role": "O-SODE-SAN",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-26662",
+"role": "THE DANDY IMP",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-26662",
+"role": "THE CHIEF",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-26662",
+"role": "NEIGHBOUR",
+"truth": null,
+"half": "final"
+},
+{
+"play": "gut-26662",
+"role": "THIRD ELDER",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-26662",
+"role": "IMP",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-47561",
+"role": "MISS GOWER",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-47561",
+"role": "ABLETT",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-47561",
+"role": "TOM",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-47561",
+"role": "THE LADY",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-47561",
+"role": "TELFER",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-49882",
+"role": "COT",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-49882",
+"role": "WAITER",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-49882",
+"role": "BOY",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-49882",
+"role": "COACH",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-49882",
+"role": "MIZ",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-27201-1",
+"role": "FELIAT",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-27201-1",
+"role": "MOTHER BOUGNE",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-27201-1",
+"role": "BOY",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-27201-1",
+"role": "VINCENT",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-27201-1",
+"role": "ANTOINETTE",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-76960",
+"role": "YUSSUF",
+"truth": null,
+"half": "final"
+},
+{
+"play": "gut-76960",
+"role": "GUL",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-76960",
+"role": "SUB",
+"truth": null,
+"half": "final"
+},
+{
+"play": "gut-76960",
+"role": "1ST CORS",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-76960",
+"role": "ALL",
+"truth": null,
+"half": "final"
+},
+{
+"play": "gut-9070",
+"role": "THIRD DOCTOR",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-9070",
+"role": "ANG",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-9070",
+"role": "T. DIA",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-9070",
+"role": "EIGHTH DOCTOR",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-9070",
+"role": "MR. DE BON",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-27880",
+"role": "MRS. WILLIS CAMPBELL",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-27880",
+"role": "BELLA",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-27880",
+"role": "ROBERTS",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-27880",
+"role": "MRS. ROBERTS",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-27880",
+"role": "CAMPBELL",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-36257",
+"role": "GUILD",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-36257",
+"role": "RIV",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-36257",
+"role": "ORLANDO",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-36257",
+"role": "EM",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-36257",
+"role": "BER",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-1522",
+"role": "CLAUDIUS",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-1522",
+"role": "SECOND CITIZEN",
+"truth": null,
+"half": "final"
+},
+{
+"play": "gut-1522",
+"role": "SECOND SOLDIER",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-1522",
+"role": "VARRO",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-1522",
+"role": "OCTAVIUS",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-78266",
+"role": "SHE-ANGLE",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-78266",
+"role": "AUTHOR",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-78266",
+"role": "ACTRESS",
+"truth": "high",
+"half": "final"
+},
+{
+"play": "gut-78266",
+"role": "HE-ANGLE",
+"truth": "low",
+"half": "final"
+},
+{
+"play": "gut-78266",
+"role": "HUSBAND-ANGLE",
+"truth": "low",
+"half": "final"
+}
+]
+}
