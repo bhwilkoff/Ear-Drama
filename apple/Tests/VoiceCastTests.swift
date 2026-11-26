@@ -469,3 +469,83 @@ struct VoiceDefaultsTests {
                 "offered only while Kokoro could run and is not here")
     }
 }
+
+// Register hints from the catalog (catalog DECISIONS 049): the golden every stack runs
+// (catalog/tests/golden/voice_register_cast.json), the roles' `register` decoded, and a person's choice winning.
+// Seen to fail, 2026-11-26, against mutated copies of VoiceCast.swift: autoCast ignoring `registers` (four cases),
+// the bias orders swapped (the web case), the no-kind fallback skipped (a woman's part on a man's voice), a matched
+// reuse pitched in the old order (two parts at 0.86); and PlayScript.registers returning nothing (the decode test).
+struct VoiceRegisterCastTests {
+    private static let golden: [String: Any] = {
+        var dir = URL(fileURLWithPath: #filePath).resolvingSymlinksInPath().deletingLastPathComponent()
+        for _ in 0..<8 {
+            let f = dir.appendingPathComponent("catalog/tests/golden/voice_register_cast.json")
+            if let data = try? Data(contentsOf: f), let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] { return json }
+            dir = dir.deletingLastPathComponent()
+        }
+        return [:]
+    }()
+
+    /// What is wrong with one case, one line a part; empty when the cast is the case's.
+    private func run(_ c: [String: Any]) -> [String] {
+        let voices = (c["voices"] as? [[String: Any]] ?? []).map { v in
+            var cv = CastVoice(id: v["id"] as? String ?? "", name: v["id"] as? String ?? "", language: "en-US", tier: 0,
+                               gender: (v["gender"] as? String).flatMap(VoiceGender.init(rawValue:)),
+                               engine: VoiceEngine(rawValue: v["engine"] as? String ?? "system") ?? .system)
+            cv.register = v["register"] as? String
+            return cv
+        }
+        let parts = (c["parts"] as? [[String: Any]] ?? []).map { PartID(rawValue: $0["id"] as? String ?? "") }
+        var registers: [PartID: String] = [:]
+        for p in c["parts"] as? [[String: Any]] ?? [] {
+            if let r = p["register"] as? String { registers[PartID(rawValue: p["id"] as? String ?? "")] = r }
+        }
+        let got = VoiceCasting.autoCast(parts, voices, registers: registers)
+        var bad: [String] = []
+        for (part, want) in c["cast"] as? [String: [Any]] ?? [:] {
+            let e = got[PartID(rawValue: part)]
+            let voice = want.first as? String
+            let pitch = (want.last as? NSNumber)?.doubleValue ?? .nan
+            if e?.voice != voice || abs((e?.pitch ?? .nan) - pitch) > 1e-9 {
+                bad.append("\(part): want \(voice ?? "-") \(pitch), got \(e?.voice ?? "-") \(e?.pitch ?? .nan)")
+            }
+        }
+        return bad.sorted()
+    }
+
+    @Test func theGoldenOfEveryStackAndItsControl() {
+        let cases = Self.golden["cases"] as? [[String: Any]] ?? []
+        #expect(cases.count >= 5, "the golden file is found")
+        for c in cases { #expect(run(c) == [], "\(c["name"] ?? "")") }
+        #expect(!run(Self.golden["control"] as? [String: Any] ?? [:]).isEmpty, "the control is wrong on purpose and is found wrong")
+    }
+
+    @Test func aScriptsRolesCarryTheirPublishedRegisterOnlyHighOrLow() throws {
+        let json = """
+        {"id":"gut-1","revision":"r","kind":"stage","title":"T","authors":[],"source":{"name":"s","url":"u"},
+         "rights":{"bucket":"b","evidence":[]},"lines":[],
+         "roles":[{"name":"NORA","lines":3,"words":9,"register":"high"},{"name":"HELMER","lines":2,"words":5,"register":"low"},
+                  {"name":"ALL","lines":1,"words":1},{"name":"ODD","lines":1,"words":1,"register":"loud"}]}
+        """
+        let script = try JSONDecoder().decode(PlayScript.self, from: Data(json.utf8))
+        #expect(script.registers == [.role("NORA"): "high", .role("HELMER"): "low"], "high and low only; none for ALL or a bad value")
+        let old = try JSONDecoder().decode(PlayScript.self, from: Data(json.replacingOccurrences(of: #","register":"high""#, with: "").utf8))
+        #expect(old.registers[.role("NORA")] == nil, "a script from before the field decodes, with no register")
+    }
+
+    @Test func aRegisterReachesTheDefaultAndAPersonsChoiceWins() {
+        let michael = CastVoice(id: "am_michael", name: "Michael (Kokoro)", language: "en-US", tier: 0, gender: .male, engine: .kokoro)
+        let heart = CastVoice(id: "af_heart", name: "Heart (Kokoro)", language: "en-US", tier: 0, gender: .female, engine: .kokoro)
+        let storage = CastStorage.memory()
+        let parts: [PartID] = [.role("MOLLY"), .role("FIBBER")]
+        let cast = VoiceCast(key: "p:REG", parts: parts, registers: [.role("MOLLY"): "high", .role("FIBBER"): "low"],
+                             voices: { [michael, heart] }, defaults: { .empty }, storage: storage)
+        #expect(cast.entry(.role("MOLLY"))?.voice == "af_heart" && cast.entry(.role("FIBBER"))?.voice == "am_michael",
+                "the woman's part on the woman's voice, though it is listed second")
+        #expect(VoiceCastBook.load("p:REG", storage) == nil, "the Default is never written")
+        cast.set(.role("MOLLY")) { $0 = VoiceCastEntry(engine: .kokoro, voice: "am_michael", name: "Michael (Kokoro)") }
+        #expect(cast.entry(.role("MOLLY"))?.voice == "am_michael", "the person's choice for the part wins over its register")
+        let plain = VoiceCast(key: "p:REG2", parts: parts, voices: { [michael, heart] }, defaults: { .empty }, storage: storage)
+        #expect(plain.entry(.role("MOLLY"))?.voice == "am_michael", "without a register the largest part takes the best voice, as before")
+    }
+}

@@ -1763,3 +1763,44 @@ word left out, so the rest wait: 2,792 short uncertain spans in 477 plays. Thirt
 **How to apply**: a new kind of evidence is a branch of `why` with a play's own sentence in `tests/test_play_emphasis.py` and a
 mutant; read a hundred of what it newly speaks before it is kept. Proof for a change here: every changed speech's letters, in
 print order, are the ones it had, and what is said is the old words and those directions (nothing dropped, no id moved).
+
+## 049 — A stand-in voice takes the register the play's own print gives the part, or none (B30)
+
+*Date: 2026-11-26*
+
+**Rule**: `play_voices.annotate` runs last in `build_play_library.refined` and gives a role `register` (`high` or `low`) only
+from the play's own print: a title or word in its name (`MRS.`, `LADY`, `KING`, `FIRST WITCH`, `THE KING'S DAUGHTER`; a child
+is high); the list of persons (the first word of the row's first clause that names a person, never one after a preposition:
+"his wife", "Helmer's wife", "son to Montague", not "servant to the Countess"; a brace beside names, "ILSE ) Children"; a heading
+over names only in a list that heads both `MEN` and `WOMEN`; the row's own title, "MR. DARCY" for `DARCY`); the stage directions,
+weighed (inside the part's own speech, "to herself" 3 and an opening "She"/"He" 1, never when the direction names anyone or holds
+the other sex's pronoun; in a direction the part's name opens, "himself"/"herself" 3, "he"/"she" 2, "his"/"her" before a word 1,
+up to the next person; a side at least 2 and six times the other); and the play calling the name with a title ("Mr. Darcy", at
+least twice and six times the other kind, never a name a family shares; a mixed count is no evidence). Only when none of these speaks: an actor's title in a first-night cast, unless the
+play casts a woman as a man anywhere, and the role's given name in `plays/given-name-registers.json` (the 1990 US Census name
+files, public domain; 97% one sex; less English words and `NOT_GIVEN`). Two kinds that disagree leave the part unmarked; a crowd,
+a pair or a voice alone (`ALL`, `BOTH`, `A VOICE`, `PAUL AND LUCY`) is never marked. The index carries `registers`, one letter a
+role in the order of `cast`. Clients cast a part with a register on a voice of its kind (PLAYS-DESIGN §2.8 rule 4, golden
+`tests/golden/voice_register_cast.json` on JS, Swift and Kotlin); a person's choice always wins, and nothing shows a register.
+
+**Why**: the owner, 2026-11-26: "While I'm not interested in making it so that only men can play men's parts and women can play
+women's, but I think for the play along, the voices that are chosen for a given role should match the gender of the character
+(i.e, higher voices for the female roles and lower voices for the male roles)." Auto-cast alternated the voices' genders without
+knowing the character, so Nora could be read by a man's voice beside her husband in a woman's. A woman's part in a man's voice is
+worse than a part cast as before, so precision comes first: 477 roles from 98 plays were labeled by hand, each read in its play
+(`tests/golden/play_voice_labels.json`). The rules were written on 158 (80 marked, all right) and held to 155 more (first reading
+72 of 74 right; the two faults, a dot-leader row and a subject named after another, mended; then 65 of 65), 104 more (first
+reading 50 of 56: four were my labels, the play's own list heads them MEN; two faults mended, "Mary's photograph. He" and SANTA
+read as a woman's name; then 56 of 56), and 60 drawn after the rules were frozen: 30 marked, 30 right. Reading two known plays afterwards found Lady Bracknell unmarked
+(her absent "Lord Bracknell" made the title count mixed, which then vetoed her name); a mixed count now says nothing, and the 477
+labels read again give no wrong register. About 55% of the roles a
+reader can settle are marked (the library of 2026-11-26: 4,182 high, 5,526 low, 12,018 unmarked of 21,726 roles; every play's
+revision unchanged); the rest have no evidence in the print (a Greek name, a cut label with no list) and keep the old
+alternation. Weak signals were measured and refused: a reply's "sir"/"madam" (wrong on two of thirteen) and a possessive alone.
+
+**How to apply**: a new kind of evidence is a function in `play_voices` with a play's own row or sentence in
+`tests/test_play_voices.py` and a line in `tests/mutate_play_voices.py`; then label fresh roles (at random, from plays not yet
+labeled) and read what changed before it is kept, and keep the held-out precision at 98% or more (the test reads the labels
+again where a library and the harvest are on the machine). A register is not part of `revision`, so phonemes and takes are
+untouched; the bundled `castable-scripts.json` carries none until it is rebuilt. Never a register in an own script (a person's
+own words), never one shown on screen.

@@ -149,6 +149,9 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
         let name: String
         let lines: Int
         let words: Int
+        /// "high" or "low": the register of the part's stand-in voice, where the play's own print settles it
+        /// (catalog DECISIONS 049). Auto-cast reads it; nothing on screen shows it.
+        var register: String? = nil
     }
 
     let id: String
@@ -246,6 +249,13 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
     }
 
     var speechLineIDs: [String] { lines.filter { $0.kind == .speech }.map(\.id) }
+
+    /// Each role's published stand-in register by part (catalog DECISIONS 049), only "high" or "low".
+    var registers: [PartID: String] {
+        var out: [PartID: String] = [:]
+        for r in roles { if let g = r.register, g == "high" || g == "low" { out[.role(r.name)] = g } }
+        return out
+    }
 }
 
 /// A play stands on the drama board and its parts take the part marks
