@@ -461,6 +461,46 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
      fact about the voice, never a guess about a character.
 
 
+13. **Better voices are offered once at first launch and once more at first use; the store
+   download stays small** (Decision 090; owner, 2026-11-26: *"Can we also ensure that the app
+   download remains small, but that we start working on a onboarding for the app that allows for
+   people to download the better quality voices for their chosen device?"*).
+   - **No voice model ships in a store download.** The model is fetched only by the person's tap
+     with rule 10's machinery (size first, resume, SHA-256, Delete). `tools/test_no_model_in_bundle.py`
+     fails when a model file (`.onnx`, `.mlmodelc`, `.mlpackage`, or a `.bin` over 5 MB) is in an
+     app's sources, its resources, or Android's base module, and `tools/bundle_report.py` prints the
+     AAB's size per module in the Play workflow's summary. (The App Store workflows are never edited,
+     so the IPA's size is not printed in CI: App Store Connect shows it per build.)
+   - **What is offered is what this device can run.** The step appears only where rule 10's download
+     is offered now: the voices could run here, are not here, and are not downloading (the same
+     predicate as Better voices, rule 11). Apple TV never shows it (no Kokoro, §6e); a browser
+     without a WebGPU adapter, or whose self-test refused the voices, never shows it. Nothing to
+     offer means no step and no "unavailable" screen.
+   - **One step, skippable, never forced.** A platform sheet over the app (never a page, a flow, or
+     slides) headed **Better voices**, one fact line, "Downloaded voices read the parts nobody has
+     cast.", then the very control Library > Voices draws for the download (Download with its size;
+     progress, "34 MB of 532 MB" and Cancel; "The download failed." and Try again), and **Not now**.
+     A finished download turns Not now into **Done**. The sheet never starts a download for the
+     person, never stops what is playing, and closing it any way (Not now, a swipe, Escape) is a skip;
+     a download it started keeps going after it closes, shown in Library > Voices.
+   - **Low storage is said.** When the device's free space is under the download's size plus 20%,
+     Download is disabled and one warning reads "Not enough space: 310 MB free." (web: the storage
+     estimate's quota less its usage).
+   - **System voices, where the platform can open their settings.** On Android and macOS, when no
+     enhanced system voice is installed (Android: no installed English voice of quality 400 or more;
+     macOS: no `.enhanced` or `.premium` voice), one line "Better system voices are added in
+     Settings." with **Open Settings** (Android's `com.android.settings.TTS_SETTINGS`; macOS's
+     Accessibility pane, macOS-DESIGN §4.5c). iOS opens only the app's own settings page and the web
+     none, so neither draws the line (Library > Voices keeps its footer with the path).
+   - **When.** (a) At first launch, once, over the first screen once it is drawn. (b) If it was skipped,
+     or the app could not offer it at launch, once more the first time the person opens a script to
+     read, a cast, or the recorder. (c) Never after that, and never once a download has begun (from the
+     step or from Library). The record is one number on the device, never synced: 0 never offered,
+     1 offered at launch, 2 done (offered at first use, or a download begun).
+   - **Doors.** `APP_SKIP_ONBOARD=1` (web `?onboard=0`) keeps the step away for UI tests and harness
+     frames; `APP_VOICES_STEP=1` (web `?voices_step=1`; Android extra `appname_voices_step`), DEBUG
+     only, shows it at launch without reading or writing the record, and never erases anything.
+
 ### §2.9 The studio inside the reader (Decision 076, phase S3; binding on every platform that records)
 
 The owner, 2026-11-14: *"The recording experience should allow you to read the script as you

@@ -168,6 +168,14 @@ only here:
   iOS-DESIGN §4.1r; the Mac differs only in being a `WidePage` (§4.0a): the hero spans the page's
   first column at tier L with the dial of genre stations under it, and rails keep the show tile's
   one window size at every window width (more tiles, never bigger ones). Built in Round 3 V6.
+- **§4.1b Better voices at first launch** (Decision 090; owner, 2026-11-26: *"Can we also ensure that the app download remains small, but that we start working on a onboarding for the app that allows for people to download the better quality voices for their chosen device?"*; PLAYS-DESIGN §2.8 rule 13 is
+  binding and quoted: *"One step, skippable, never forced. A platform sheet over the app (never a page,
+  a flow, or slides) headed Better voices"*). iOS-DESIGN §4.6b in the Mac's idiom: a window-modal
+  `.sheet` on the main window (never an app-modal alert or a separate window), a `Form` 420 pt wide
+  with the fact line, `KokoroControls`, and **Not Now** as the cancel action (Escape) and **Done** as
+  the default action once ready. The Mac adds the system-voices line when no `.enhanced` or
+  `.premium` English voice is installed: "Better system voices are added in Settings." with **Open
+  Settings**, which opens the Accessibility pane (§4.5c's URL). Same `VoicesOffer` record and doors.
 - **§4.2 Downloads** are the same background `URLSession`, the same
   series Download menu (in the toolbar), and the same Downloads place
   pushed from Library's row as iOS (`docs/iOS-DESIGN.md` §4.3, §4.6,
