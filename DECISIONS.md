@@ -983,3 +983,18 @@ for the room. New client states or words for a take are changed in §12.11 first
 **How to apply**: never add a button on Home that only opens a tab. `tools/web_fit_home.py` fails when the doors return. The Record a play **row** (Today's scene, open parts) stays. Replaces the doors in 075, 079 and 081 rule 3.
 
 **Who was in the room, who gains, who pays:** the owner, looking at the app; listeners gain a first screen with one lead; a newcomer who read the buttons as the app's two verbs now finds them in the tab bar.
+
+---
+
+## 090: The store download carries no voice model; better voices are offered once at first launch and once at first use (owner 2026-11-26)
+
+**Rule**: no voice model enters any app bundle or Android's base module (`tools/test_no_model_in_bundle.py`, with a negative control). Better voices are offered in one skippable sheet at first launch, and, if skipped, once more the first time a script is opened to read, cast or record; never after that and never once a download began. The sheet is Library > Voices' own download control, shown only where that download is offered now (PLAYS-DESIGN §2.8 rule 13).
+
+**Why**: the owner, 2026-11-26: *"Can we also ensure that the app download remains small, but that we start working on a onboarding for the app that allows for people to download the better quality voices for their chosen device?"* The research (`docs/research/design/B33-voices-download-research.md`) found no model in any build today, so the risk is an accidental bundle (532 MB on Apple), which only a check catches. The robotic voice is felt at the first read, cast or record; a person who skipped at launch was not yet there, so the second offer waits for that moment, and a third would be nagging.
+
+**How to apply**:
+- Reuse the platform's Voices control and download machinery; never a second download path or wording.
+- One record per device (0, 1, 2), never synced; a door that forces the sheet reads and writes nothing.
+- CI prints the AAB's size per module (`tools/bundle_report.py` from `play-release.yml`). The App Store workflows are never edited (held as malicious, 2026-11-09), so the IPA's size is not printed in CI: App Store Connect shows it per build (a known gap).
+
+**Who was in the room, who gains, who pays:** the owner asked; a new person learns at once that better voices exist, what they cost in space, and that the choice is theirs; the cost is one sheet at first launch for everyone whose device can run them.

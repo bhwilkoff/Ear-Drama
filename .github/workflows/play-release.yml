@@ -162,6 +162,11 @@ jobs:
             || { echo "::error::the bundle is not signed — the keystore step did not take"; exit 1; }
           echo "signed bundle: $(du -h "$AAB" | cut -f1)"
 
+      # The size per module in the run's summary, and a refusal if a voice model got in (Decision 090).
+      - name: App size
+        if: ${{ inputs.promote == '' }}
+        run: python3 tools/bundle_report.py android/app/build/outputs/bundle/release/app-release.aab
+
       # Inputs arrive as ENVIRONMENT, never pasted into the script: release notes
       # containing a double quote would close the shell string, and free text
       # pasted into a shell line is an injection route. Optional flags are

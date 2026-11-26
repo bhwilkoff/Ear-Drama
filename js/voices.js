@@ -54,8 +54,10 @@ const Voices = (() => {
                     cachesImpl = (typeof caches !== 'undefined' ? caches : null),
                     fetchImpl = (typeof fetch !== 'undefined' ? fetch.bind(globalThis) : null),
                     loadScript = addScript, kokoro = () => (typeof KokoroVoice !== 'undefined' ? KokoroVoice : null),
-                    manifestURL = undefined, muted = false } = {}) {
+                    manifestURL = undefined, muted = false,
+                    storageEstimate = () => (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.estimate ? navigator.storage.estimate() : null) } = {}) {
     let gpuOK = null;
+    let started = null;
     let lab = null;
     let booting = null;
     let phase = null;
@@ -117,7 +119,10 @@ const Voices = (() => {
        * Page start: loads the engine only when a download finished here (its self-test result is kept)
        * and its cache is still there. A stopped download leaves parts but no result: Download resumes it.
        */
-      async start() {
+      start() { started = started || this.startNow(); return started; },
+      /** Settles once page start has looked for a finished download (PLAYS-DESIGN §2.8 rule 13 waits on it). */
+      whenStarted: () => started || Promise.resolve(false),
+      async startNow() {
         if (!possible() || !cachesImpl || !checked()) return false;
         let have = false;
         try { have = await cachesImpl.has(CACHE); } catch { have = false; }
@@ -137,6 +142,13 @@ const Voices = (() => {
           total = (m.files || []).reduce((n, f) => n + (Number(f.bytes) || 0), 0) || null;
         } catch { total = null; }
         return total;
+      },
+      /** The bytes this origin may still store (quota less usage), or null where the browser will not say. */
+      async free() {
+        try {
+          const e = await storageEstimate();
+          return e && Number.isFinite(e.quota) && Number.isFinite(e.usage) ? Math.max(0, e.quota - e.usage) : null;
+        } catch { return null; }
       },
       /** The person's explicit download: loads the engine, fetches and checks every part, then the self-test. */
       async download() {

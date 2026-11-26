@@ -35,6 +35,8 @@ on:
       - 'AppVersion.xcconfig'
       - 'tools/test_version_contract.py'
       - 'tools/set_app_identity.py'
+      - 'tools/test_no_model_in_bundle.py'
+      - 'tools/bundle_report.py'
       - '.github/workflows/android-build.yml'
   push:
     branches: [main]
@@ -47,6 +49,8 @@ on:
       - 'AppVersion.xcconfig'
       - 'tools/test_version_contract.py'
       - 'tools/set_app_identity.py'
+      - 'tools/test_no_model_in_bundle.py'
+      - 'tools/bundle_report.py'
       - '.github/workflows/android-build.yml'
   workflow_dispatch:
 
@@ -101,6 +105,12 @@ jobs:
       - name: Lint the release build (warnings are errors; app/lint.xml holds the reasons)
         if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
         run: ./gradlew :app:lintRelease --no-daemon
+
+      - name: No voice model in the app, and the APK's size (Decision 090)
+        if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
+        run: |
+          python3 ../tools/test_no_model_in_bundle.py
+          python3 ../tools/bundle_report.py app/build/outputs/apk/debug/app-debug.apk
 
       - name: Keep the debug APK with this run
         if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')

@@ -454,6 +454,21 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   The four states: loading and the retry message are `LoadableContent`'s; offline is the app-wide "You are offline."
   line; empty is the absent section above. `LibraryModelTest` pins the side default, the Up next merge and the
   grouping.
+- **§4.6b Better voices at first launch** (Decision 090; owner, 2026-11-26: *"Can we also ensure that the app download remains small, but that we start working on a onboarding for the app that allows for people to download the better quality voices for their chosen device?"*; PLAYS-DESIGN §2.8 rule 13 is
+  binding and quoted: *"One step, skippable, never forced. A platform sheet over the app (never a page,
+  a flow, or slides) headed Better voices"*). A Material 3 `ModalBottomSheet` over the root: "Better
+  voices" in the title type, the fact line, the same Kokoro control Library's Voices section draws
+  (its Download with the size it states, progress and Cancel, Play's own
+  confirmation when it asks, The download failed. and Try again), then **Not now** (`TextButton`;
+  **Done** once ready). A swipe down or Back is a skip. Offered only while `BetterVoicesOffered`
+  holds and nothing is downloading (`VoicesOffer`, the record `ed.voicesStep` in the app's
+  preferences): at launch once the first destination is drawn, and once more when the reader, a cast
+  sheet or the recorder first opens. Free space is `StatFs(filesDir).availableBytes`; under the size
+  plus 20% Download is disabled with "Not enough space: N MB free." When no installed English voice
+  reports quality 400 or more, one line "Better system voices are added in Settings." with **Open
+  Settings** (`com.android.settings.TTS_SETTINGS`, falling back to the system Settings when no
+  activity answers). Never on a TV. The `appname_skip_onboard` extra keeps it away;
+  `appname_voices_step` (DEBUG) shows it without reading or writing the record.
 - **§4.7 The transcript is a route** (`ui/screens/TranscriptScreen.kt`):
   the episode title, then plain selectable text in `bodyMedium`, a
   sentence a line, at most 680 dp wide, fetched from archive.org when

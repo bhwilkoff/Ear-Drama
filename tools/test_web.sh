@@ -31,6 +31,7 @@ DEFAULT_SUITES="js/api.test.js
   js/studio.test.js
   js/voice-cast.test.js
   js/kokoro.test.js
+  js/voices-step.test.js
   js/plays-share.test.js
   js/age-gate.test.js
   js/account.test.js

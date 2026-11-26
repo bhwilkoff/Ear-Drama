@@ -92,6 +92,13 @@ test('nothing of the engine loads at page start when the voices are not download
   eq(loaded, [], 'still no engine after reading the size');
 });
 
+test('the space left is the quota less the usage, or null where the browser will not say', async () => {
+  const at = (estimate) => Voices.create({ env: { gpu: true, ok: true, adapter: async () => true, online: () => true }, storageEstimate: estimate });
+  eq(await at(async () => ({ quota: 500e6, usage: 120e6 })).free(), 380e6, 'quota less usage');
+  eq(await at(() => null).free(), null, 'no estimate: null');
+  eq(await at(async () => { throw new Error('denied'); }).free(), null, 'a refusal: null');
+});
+
 test('a finished download loads the engine at page start, and its voices cast; a stopped one does not', async () => {
   const { g, loaded, fakeKokoro } = gateWith({ cached: true });
   eq(await g.start(), true, 'start: here');

@@ -383,3 +383,5 @@ GRW request sent or not.
 - 2026-11-26 (Mountain, morning): round 3 started. B29 (page flips, Opus), B30 (gendered stand-in voices, Opus) and B31 research (Sonnet) running; B32 sound board and B33 voices onboarding research next.
 - 2026-11-26 12:00: research done for B31, B32, B33 (docs in docs/research/design); B31 design merged, frames sent. B29, B30 running.
 - 2026-11-26 12:45: 1.1.4 (176) with B29 dispatched (Play internal done). B32 designed and merged. B30 and B31 C1/C3/C4 running.
+- 2026-11-26 13:00: B30 merged (4,182 high, 5,526 low, 12,018 unmarked roles; 230/230 held-out right; 30/30 my sample); live with the next library publish, after B31 C1/C3/C4. Catalog publish red (evenings sort tie) fixed and re-run. B33a onboarding running.
+- 2026-11-26 13:40: B33a merged (voices step at first launch, web/Apple/Android; seen on the iPhone 12, the glass sheet fixed). Left for B33: B33b a smaller Apple Kokoro conversion (532 MB). B31 C1/C3/C4 running.

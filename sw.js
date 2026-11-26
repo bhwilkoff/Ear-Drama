@@ -48,6 +48,7 @@ const SHELL = [
   'js/voices.js',
   'js/cast-ui.js',
   'js/voice-settings.js',
+  'js/voices-step.js',
   'js/plays-ui.js',
   'js/plays-worklet.js',
   'js/reader-core.js',
