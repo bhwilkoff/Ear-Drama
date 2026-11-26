@@ -138,6 +138,42 @@ in the daytime (back about 21:00, so device work on it goes first).
 - [ ] **B24 Design review of what shipped.** Home, Record, reader on every device, against the owner's words.
 - [x] **B25 Records** (2026-11-25): SCRATCHPAD answered items; six old worktrees read (all superseded on main) and removed; their work kept on their branches.
 
+## Round 3 batches (2026-11-26; owner's five asks)
+
+Owner, 2026-11-26: "There are a few big issues with the playback of a play, especially on the first few pages. I've
+noticed on my duo that when I attempt a play through, the first few pages go back and forth between the opening page
+and the second page as the different characters read their lines." / "I'm not interested in making it so that only
+men can play men's parts and women can play women's, but ... the voices that are chosen for a given role should
+match the gender of the character (higher voices for the female roles and lower voices for the male roles)." / "a FAR
+BETTER way of searching for and finding a play ... themes and collections ... research taxonomy for plays and radio
+dramas ... no visuals for each play ... search for both images and design a way to designate the different elements of
+a play" like the recorded shows. / "record both stage direction (as a character) and foley sounds within a
+well-designed foley (or sound effects) soundboard ... duck the sound effects and foley work under the voices and/or
+add your own custom sounds ... background music and use public domain audio clips and music." / "ensure that the app
+download remains small, but ... an onboarding ... to download the better quality voices for their chosen device."
+
+- [ ] **B29 Play-through flips pages back and forth** (bug; every platform; seen on the Duo). Observe first: what
+  page the reader shows per line vs the line spoken, on the Duo and the web; find the layer; fix; prove on the Duo
+  with frames over the first five pages, and on iPhone, web, Android.
+- [ ] **B30 Stand-in voices match the character's gender** (casting only; anyone may still read any part). Catalog:
+  each role's gender from evidence (dramatis personae "his wife", titles Mrs/Lord, pronouns in directions, names
+  lists), unknown when unsure, published per role; casting on JS/Swift/Kotlin prefers a voice of that register
+  (reported gender or pitch), golden test on three stacks.
+- [ ] **B31 Finding a play (research, then design, then build).** Taxonomy for plays and radio drama (genre, form,
+  length, cast size and balance, period, themes, audiences, occasions, classroom use; library standards: LCGFT,
+  LCSH drama headings, Gutenberg bookshelves, Wikidata, Doollee/Concord-style casting facets); collections and
+  themes from data or a human editor only (no AI-written lists); images for plays (first-edition plates, Wikimedia
+  Commons productions, author portraits, all under the 2026-11-21 image rule) and a data-drawn mark like the shows'
+  for plays with no picture. Design doc with frames, owner sees it, then build.
+- [ ] **B32 Sound: a foley and music board for recording.** Research (public-domain and CC0 sound effects and music:
+  archive.org, Musopen, Freesound CC0, Library of Congress, NASA; no attribution-required or non-commercial sets
+  unless recorded as such), then design (learning-orientation-design): stage directions read by a person cast as
+  Narrator/Directions, a board of cues placed on lines, ducking under voices, your own sounds, background music;
+  the mix in Listen Through and the export. Then web, Apple, Android.
+- [ ] **B33 Small download, better voices on demand.** Measure today's app sizes and what ships inside (Kokoro model,
+  phonemes); keep the stores' download small; an onboarding step (and Library Voices) that offers the better voices
+  for this device with size and a choice, never forced. Design, then build.
+
 ## Waiting on the owner (never blocks the loop)
 
 **B19**: the Workshop's answer (request drafted to Larry Groebe, owner sends). Kokoro re-export for Android and web word marks; a read-only Cloudflare analytics token for a usage
