@@ -61,8 +61,10 @@ struct VoicesStepSheet: View {
             }
         }
         #else
+        .contentMargins(.top, Spacing.s3, for: .scrollContent)
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
+        .presentationBackground(Color(uiColor: .systemGroupedBackground))  // the glass default let the page show through the rows
         #endif
         .task { free = VoicesSpace.free() }
     }
