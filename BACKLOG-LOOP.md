@@ -385,3 +385,4 @@ GRW request sent or not.
 - 2026-11-26 12:45: 1.1.4 (176) with B29 dispatched (Play internal done). B32 designed and merged. B30 and B31 C1/C3/C4 running.
 - 2026-11-26 13:00: B30 merged (4,182 high, 5,526 low, 12,018 unmarked roles; 230/230 held-out right; 30/30 my sample); live with the next library publish, after B31 C1/C3/C4. Catalog publish red (evenings sort tie) fixed and re-run. B33a onboarding running.
 - 2026-11-26 13:40: B33a merged (voices step at first launch, web/Apple/Android; seen on the iPhone 12, the glass sheet fixed). Left for B33: B33b a smaller Apple Kokoro conversion (532 MB). B31 C1/C3/C4 running.
+- 2026-11-26 15:15: library live (plays-library-2026-11-26: 786 pictures by kind, registers per role, facets, collections, search shards; 8 non-plays held). Kokoro v4 published and switched (iPhone 12 RTF 0.28, 459 MB; Duo unavailable). 1.1.5 (177) dispatched. B31 W running.
