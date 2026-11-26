@@ -170,9 +170,16 @@ download remains small, but ... an onboarding ... to download the better quality
   unless recorded as such), then design (learning-orientation-design): stage directions read by a person cast as
   Narrator/Directions, a board of cues placed on lines, ducking under voices, your own sounds, background music;
   the mix in Listen Through and the export. Then web, Apple, Android.
+  Researched 2026-11-26 (`B32-sound-board-research.md`). Decided: place on lines first, live pads later; own sounds stay
+  private (not published); Kenney + OpenGameArt CC0 + PD music until the owner rules on the USC libraries' uploader CC0;
+  Android needs a mix renderer first.
 - [ ] **B33 Small download, better voices on demand.** Measure today's app sizes and what ships inside (Kokoro model,
   phonemes); keep the stores' download small; an onboarding step (and Library Voices) that offers the better voices
   for this device with size and a choice, never forced. Design, then build.
+  Researched 2026-11-26 (`B33-voices-download-research.md`): no model is bundled; Apple's Kokoro is 532 MB fp32. Decided:
+  keep GitHub Releases; try a smaller Apple conversion (palettized/int8, passing the PyTorch check) before the sheet;
+  onboarding at first launch (the owner's word), skippable, plus at first Read/Cast/Record if skipped; guard test against
+  bundled models; CI prints IPA/AAB sizes.
 
 ## Waiting on the owner (never blocks the loop)
 
