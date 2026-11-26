@@ -63,6 +63,7 @@ struct ContentView_macOS: View {
             return .handled
         }
         .modifier(OwnDoors())
+        .voicesStepAtLaunch()
         .task(id: store.playDoor) {
             guard let id = store.playDoor else { return }
             store.playDoor = nil

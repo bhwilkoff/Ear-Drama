@@ -628,6 +628,7 @@ struct ScriptReaderView: View {
             }
         }
         .background(Color.brandBackground)
+        .voicesStepAtFirstUse(room == nil)
         .task(id: scriptID) { await load() }
         // The loader, not the reader, ends what plays: the reader is rebuilt when the studio moves between the dock and
         // the pane (a fold, a rotation, a resize), and a take or a cast reading goes on through that (Decision 080).
