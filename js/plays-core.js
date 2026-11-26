@@ -215,7 +215,9 @@ const PlaysCore = (() => {
     const speaking = [...counts.keys()].filter(isSpeaking)
       .sort((a, b) => (counts.get(b) - counts.get(a)) || (first.get(a) - first.get(b)));
     const others = [SOUND, DIRECTIONS].filter(p => counts.has(p));
-    return [...speaking, ...others].map(id => ({ id, lineCount: counts.get(id), title: partTitle(id) }));
+    // The register the catalog publishes for a role's stand-in voice (catalog DECISIONS 049): auto-cast only, never shown.
+    const reg = new Map((script.roles || []).filter(r => r && (r.register === 'high' || r.register === 'low')).map(r => [role(r.name), r.register]));
+    return [...speaking, ...others].map(id => ({ id, lineCount: counts.get(id), title: partTitle(id), ...(reg.has(id) ? { register: reg.get(id) } : {}) }));
   }
 
   /* ---- The production record ---- */

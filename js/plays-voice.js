@@ -67,7 +67,7 @@ const StandInVoice = (() => {
     function systemFallback(part) {
       const sysOnly = list.filter(v => v.engine === 'system');
       if (!sysOnly.length) return null;
-      const parts = cast ? cast.parts : [part];
+      const parts = cast ? (cast.castParts || cast.parts) : [part];
       const auto = VoiceCast.autoCast(parts, VoiceCast.poolOf(sysOnly, cast ? cast.defaults() : VoiceCast.loadDefaults()))[part];
       return (auto && sysOnly.find(v => v.id === auto.voice)) || sysOnly[0];
     }

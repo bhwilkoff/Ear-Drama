@@ -146,6 +146,7 @@ fun rememberCast(source: DeviceVoiceSource, script: PlayScript?, productionId: S
                 seed = productionId?.let { _ -> VoiceCasting.scriptKey(it.id) },
                 downloaded = { kokoro?.voices().orEmpty() },
                 defaults = { VoiceDefaultsStore.load(defaultsStore) },
+                registers = it.registers,
             )
             CastHandle(source, cast, CastSpeaker(source, cast, kokoro?.let(::KokoroLive), it.id), kokoro, it.id)
         }

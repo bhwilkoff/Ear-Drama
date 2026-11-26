@@ -14,6 +14,10 @@
  *   StandInVoice reading every part's entry but ignoring rate and pitch: the per-part speed test fails.
  * The shared-cast test carries its own control: two players without a cast still disagree.
  *
+ * catalog DECISIONS 049 (register hints), seen to fail 2026-11-26: the golden against the shipped
+ *   autoCast before it read `register`; with the bias orders swapped (high pitched down) the web case
+ *   fails; castParts without the roles' registers fails its test and the caster's.
+ *
  * Decision 086 (the defaults in Settings > Voices), seen to fail 2026-11-22:
  *   ordered() without the engine rank (downloaded voices sorted among the device's by quality only):
  *     "the Default pool: downloaded first, then the person's order" fails ("Heart first").
@@ -108,7 +112,7 @@ test('auto-cast is deterministic, gives distinct voices in cast order, and the l
   eq([a.sound.engine, a.directions.engine], ['none', 'none'], 'sound and directions are Not read');
 });
 
-test('auto-cast never reads a part\'s name: renaming every part changes nothing', () => {
+test('auto-cast never reads a part\'s name: renaming every part changes nothing (only a published register moves a part)', () => {
   const voices = VoiceCast.systemVoices(RAW, 'en-US');
   const plain = VoiceCast.autoCast(C.castParts(fixtureScript()), voices);
   const named = VoiceCast.autoCast(C.castParts(fixtureScript(['LADY MACBETH', 'MRS. GIBBS', 'FATHER BROWN'])), voices);
@@ -134,6 +138,49 @@ test('auto-cast with fewer voices than parts starts the list again at the next p
   const a = VoiceCast.autoCast(C.castParts(fixtureScript()), voices);
   eq(['role:MOLLY', 'role:FIBBER', 'role:DOC'].map(p => [a[p].voice, a[p].pitch]),
      [[voices[0].id, 1], [voices[1].id, 1], [voices[0].id, 0.86]], 'the third part repeats the best voice, pitched');
+});
+
+/* ---- Register hints from the catalog (catalog DECISIONS 049; golden on every stack) ---- */
+
+const REG_GOLDEN = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'catalog', 'tests', 'golden', 'voice_register_cast.json'), 'utf8'));
+function runRegisterCase(c) {
+  const got = VoiceCast.autoCast(c.parts, c.voices.map(v => ({ name: v.id, gender: null, register: null, ...v })));
+  const bad = [];
+  for (const [part, [voice, pitch]] of Object.entries(c.cast)) {
+    const e = got[part];
+    if (!e || e.voice !== voice || Math.abs(e.pitch - pitch) > 1e-9) bad.push(`${part}: want ${voice} ${pitch}, got ${e ? `${e.voice} ${e.pitch}` : 'nothing'}`);
+  }
+  return bad;
+}
+
+test('golden: voice_register_cast (every stack), and its control is found wrong', () => {
+  for (const c of REG_GOLDEN.cases) eq(runRegisterCase(c), [], c.name);
+  ok(runRegisterCase(REG_GOLDEN.control).length > 0, 'the control is wrong on purpose and is found wrong');
+});
+
+test('castParts carries the register the catalog publishes, and only a published one', () => {
+  const script = fixtureScript();
+  script.roles = [{ name: 'MOLLY', lines: 6, words: 6, register: 'high' }, { name: 'FIBBER', lines: 3, words: 3, register: 'low' },
+                  { name: 'DOC', lines: 1, words: 2, register: 'loud' }];
+  eq(C.castParts(script).map(p => p.register || null), ['high', 'low', null, null, null], 'MOLLY high, FIBBER low, a bad value and no role none');
+  eq(C.castParts(fixtureScript()).some(p => 'register' in p), false, 'a script without registers adds no key');
+});
+
+test('a part\'s register reaches its Default; a person\'s own choice always wins and nothing is written', () => {
+  const voices = () => [
+    { engine: 'kokoro', id: 'am_michael', name: 'Michael (Kokoro)', gender: 'male' },
+    { engine: 'kokoro', id: 'af_heart', name: 'Heart (Kokoro)', gender: 'female' },
+  ];
+  const script = fixtureScript();
+  script.roles = [{ name: 'MOLLY', lines: 6, words: 6, register: 'high' }, { name: 'FIBBER', lines: 3, words: 3, register: 'low' }];
+  const storage = memoryStorage();
+  const cast = VoiceCast.caster({ key: 'p:REG', parts: C.castParts(script), voices, storage, defaults: () => ({ order: [], off: {}, rate: 1 }) });
+  eq([cast.entry('role:MOLLY').voice, cast.entry('role:FIBBER').voice], ['af_heart', 'am_michael'], 'the woman\'s part on the woman\'s voice, though it is listed second');
+  eq(storage.m.size, 0, 'the Default is never written');
+  cast.set('role:MOLLY', { engine: 'kokoro', voice: 'am_michael', name: 'Michael (Kokoro)' });
+  eq(cast.entry('role:MOLLY').voice, 'am_michael', 'the person\'s choice for the part wins over its register');
+  const plain = VoiceCast.caster({ key: 'p:REG2', parts: C.castParts(fixtureScript()), voices, storage, defaults: () => ({ order: [], off: {}, rate: 1 }) });
+  eq(plain.entry('role:MOLLY').voice, 'am_michael', 'without a published register the largest part takes the best voice, as before');
 });
 
 /* ---- One cast everywhere (§2.8 rule 2) ---- */

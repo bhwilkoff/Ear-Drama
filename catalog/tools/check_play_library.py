@@ -61,6 +61,14 @@ def check_library(root, min_plays=1, min_phoneme_share=0.0, min_picture_share=0.
         assert s["id"] == p["id"] and s["revision"] == p["revision"] and s["title"] == p["title"]
         assert len(s["roles"]) == p["roles"] and s["rights"] == p["rights"]
         assert p["voices"] == sum(1 for r in s["roles"] if r["lines"] >= 1), (p["id"], "voices is the parts with a spoken line")
+        # A role's stand-in register (catalog DECISIONS 049): "high" or "low" or absent, and the index's letters say the same
+        # in the order of `cast` (largest first). A library built before 2026-11-26 has neither, and still deploys.
+        assert all(r.get("register", "high") in ("high", "low") for r in s["roles"]), (p["id"], "a register is high or low")
+        assert p["cast"] == sorted((r["lines"] for r in s["roles"]), reverse=True), (p["id"], "cast is each role's speeches")
+        if "registers" in p or any("register" in r for r in s["roles"]):
+            order = sorted(s["roles"], key=lambda r: -r["lines"])
+            assert p.get("registers") == "".join({"high": "h", "low": "l"}.get(r.get("register"), "-") for r in order), \
+                (p["id"], "registers is each role's register, in the order of cast")
         speech = [l for l in s["lines"] if l["kind"] == "speech"]
         assert len(speech) == p["lines"]
         assert all(l["role"] and l["parts"] for l in speech)

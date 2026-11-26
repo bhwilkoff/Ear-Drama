@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B32 mock: the sound board</title>
+<!-- B32 design mock, not product code. ?s=page|board|cast|states|ios|ipad|mac|android|mix &theme=light|dark &w=.
+     The play's words are Caesar Rodney's Ride (Henry Fisk Carlton, Project Gutenberg 28051) lines L0172-L0191 and the
+     cast of Toinette and the Elves (Gutenberg 58546), both through data.js (make_data.py over the real play library).
+     Cue titles are the starter pack's proposed ids (B32-sound-board.md section 5); the only other words are the
+     controls' labels. Fonts are the repo's, served from the repo root. -->
+<script src="data.js"></script>
+<style>
+@font-face { font-family: "Big Shoulders"; src: url("../../../../fonts/big-shoulders.woff2") format("woff2"); font-weight: 700; }
+@font-face { font-family: "Public Sans"; src: url("../../../../fonts/public-sans.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Public Sans"; src: url("../../../../fonts/public-sans-italic.woff2") format("woff2"); font-weight: 100 900; font-style: italic; }
+:root { --bg:#FFFFFF; --surface:#F4F4F5; --alt:#E8E8EB; --text:#131316; --muted:#5C5C66; --border:#D8D8DD; --secondary:#0B6E99; --onsec:#fff;
+  --primary:#131316; --onprimary:#fff; --record:#B0152F; --onrecord:#fff; --warning:#8A5300; --error:#C2410C;
+  --mystery:#2459A5; --scifi:#007C88; --western:#864E37; --serial:#5A3983; --documentary:#2F6100;
+  --display:"Big Shoulders", "Arial Narrow", sans-serif; --body:"Public Sans", system-ui, sans-serif; }
+:root[data-theme="dark"] { --bg:#0F0F11; --surface:#19191C; --alt:#232327; --text:#F2F2F4; --muted:#C4C4CC; --border:#34343A; --secondary:#6CC0E0; --onsec:#06141B;
+  --primary:#F2F2F4; --onprimary:#0F0F11; --record:#E3384B; --onrecord:#120708; --warning:#E8B04B; --error:#FF9466;
+  --mystery:#8EBBFF; --scifi:#44D5D7; --western:#C99580; --serial:#AA87DE; --documentary:#7CB45A; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 var(--body); -webkit-font-smoothing: antialiased; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+svg.i.f { fill: currentColor; stroke: none; }
+.lbl { font: 600 12px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.l5 { font-size: 13px; color: var(--muted); }
+.tab { font-variant-numeric: tabular-nums; }
+/* ---- The reader page (css/styles.css .rd-* rules, condensed) ---- */
+.rd { padding: 16px 16px 0 30px; position: relative; font-size: 17px; line-height: 1.5; }
+.rd-top { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.rd-top .t { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-top .play { font-size: 13px; color: var(--muted); }
+.sp { margin: 0 0 .7em; position: relative; }
+.name { color: var(--hue); font-weight: 600; letter-spacing: .02em; display: block; }
+.sfx { display: flex; align-items: flex-start; gap: 6px; margin: .3em 0; }
+.sfx .txt { font-size: 13.5px; text-transform: uppercase; letter-spacing: .06em; background: var(--alt); padding: .15em .45em; border-radius: 4px; line-height: 1.45; }
+.sfx .glyph { color: var(--muted); margin-top: 2px; }
+.aside { font-style: italic; color: var(--muted); }
+/* The Sound studio: a cue's state ring, and its chosen sounds as a line under the cue. */
+.ring { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); flex: none; margin-top: 1px; display: grid; place-items: center; }
+.ring.full { background: var(--text); border-color: var(--text); color: var(--bg); font: 700 11px var(--body); }
+.slot { position: relative; }
+.slot.cur { outline: 2px solid var(--text); outline-offset: 3px; border-radius: 4px; }
+.chosen { margin: 2px 0 0 28px; font-size: 13px; color: var(--text); display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.chosen span { display: inline-flex; align-items: center; gap: 4px; }
+.chosen .at { color: var(--muted); }
+.bed { position: absolute; left: 10px; width: 3px; background: var(--text); border-radius: 2px; opacity: .55; }
+.bedlab { position: absolute; left: 4px; writing-mode: vertical-rl; transform: rotate(180deg); font: 600 10px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.dim { opacity: .55; }
+/* ---- The dock (WEB-DESIGN 4.16 item 14) ---- */
+.dock { border-top: 1px solid var(--border); background: var(--bg); padding: 8px 12px 10px; }
+.status { display: flex; align-items: center; gap: 8px; font-size: 14px; min-height: 28px; }
+.status b { font-weight: 600; }
+.trans { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+.ib { width: 44px; height: 44px; border-radius: 22px; display: grid; place-items: center; color: var(--text); border: 0; background: none; }
+.rec { width: 56px; height: 56px; border-radius: 28px; background: var(--record); color: var(--onrecord); display: grid; place-items: center; }
+.rec i { width: 20px; height: 20px; border-radius: 50%; background: var(--onrecord); display: block; }
+/* ---- The board (a <dialog> sheet on a phone, the studio panel when wide) ---- */
+.sheet { background: var(--bg); border-radius: 14px 14px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.18); border-top: 1px solid var(--border); }
+.grab { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 8px auto 0; }
+.bhead { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px 0; }
+.bhead .done { color: var(--secondary); font-weight: 600; font-size: 15px; }
+.cueq { padding: 6px 16px 10px; display: flex; gap: 8px; align-items: flex-start; }
+.cueq .txt { font-size: 13.5px; text-transform: uppercase; letter-spacing: .06em; background: var(--alt); padding: .15em .45em; border-radius: 4px; }
+.sec { padding: 4px 16px 8px; }
+.chosenrow { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; min-height: 52px; }
+.pb { width: 36px; height: 36px; border-radius: 18px; border: 1px solid var(--border); display: grid; place-items: center; color: var(--text); }
+.pb.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.ttl { font-weight: 600; font-size: 15px; } .facts { font-size: 13px; color: var(--muted); }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 36px; margin: 8px 0; }
+.seg span { display: grid; place-items: center; font-size: 14px; font-weight: 600; border-left: 1px solid var(--border); }
+.seg span:first-child { border-left: 0; }
+.seg span.on { background: var(--text); color: var(--bg); }
+.kv { display: flex; justify-content: space-between; align-items: center; min-height: 44px; border-top: 1px solid var(--border); font-size: 15px; }
+.kv .v { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.step { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; height: 32px; }
+.step span { width: 40px; display: grid; place-items: center; color: var(--text); }
+.step span + span { border-left: 1px solid var(--border); }
+.search { margin: 4px 16px 8px; display: flex; align-items: center; gap: 8px; height: 40px; border-radius: 10px; background: var(--surface); padding: 0 12px; border: 1px solid var(--border); color: var(--muted); }
+.search b { color: var(--text); font-weight: 400; flex: 1; }
+.chips { display: flex; gap: 8px; overflow: hidden; padding: 0 16px 8px; }
+.chip { flex: none; height: 32px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 16px; border: 1px solid var(--border); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.chip.on { background: var(--secondary); color: var(--onsec); border-color: var(--secondary); }
+.res { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; min-height: 56px; padding: 0 16px; border-top: 1px solid var(--border); }
+.res:last-child { border-bottom: 1px solid var(--border); }
+.add { height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--border); font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 4px; }
+.add.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.grp { padding: 14px 16px 6px; display: flex; justify-content: space-between; align-items: center; }
+.dl { display: inline-flex; align-items: center; gap: 6px; color: var(--secondary); font-weight: 600; font-size: 14px; }
+.btn { height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: 600 14px var(--body); display: inline-flex; align-items: center; gap: 6px; }
+.btn.recline { border-color: var(--record); color: var(--record); }
+details summary { list-style: none; }
+/* phone frame */
+.phone { height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.phone .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.32); }
+.phone .sheetwrap { position: absolute; left: 0; right: 0; bottom: 0; top: 64px; }
+.phone .sheetwrap .sheet { height: 100%; overflow: hidden; }
+/* cast sheet */
+.cast { padding: 8px 16px; }
+.crow { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; min-height: 56px; border-bottom: 1px solid var(--border); }
+.crow .n { font-weight: 600; } .crow .c { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.vchip { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
+.dash { width: 16px; height: 16px; border-radius: 50%; border: 1.5px dashed var(--hue, var(--muted)); display: inline-block; }
+/* states */
+.st { border: 1px solid var(--border); border-radius: 12px; margin: 12px 16px; overflow: hidden; }
+.st .cap { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.skel { height: 12px; border-radius: 6px; background: var(--alt); }
+.empty { padding: 18px 16px; display: grid; gap: 10px; justify-items: start; }
+/* iOS */
+.ios { font-family: -apple-system, "SF Pro Text", system-ui, sans-serif; --gbg:#F2F2F7; --cell:#FFFFFF; --sep:rgba(60,60,67,.29); --tint:#0B6E99; --sec2:rgba(60,60,67,.6); }
+:root[data-theme="dark"] .ios { --gbg:#000000; --cell:#1C1C1E; --sep:rgba(84,84,88,.6); --tint:#6CC0E0; --sec2:rgba(235,235,245,.6); }
+.ios .isheet { background: var(--gbg); border-radius: 12px 12px 0 0; height: 100%; overflow: hidden; }
+.ios .nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 14px 16px 6px; }
+.ios .nav .c { font-weight: 600; font-size: 17px; text-align: center; }
+.ios .nav .r { justify-self: end; color: var(--tint); font-weight: 600; font-size: 17px; }
+.ios .gh { font-size: 13px; color: var(--sec2); text-transform: uppercase; padding: 14px 32px 6px; }
+.ios .grp2 { background: var(--cell); border-radius: 10px; margin: 0 16px; overflow: hidden; }
+.ios .cell { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 16px; position: relative; font-size: 17px; }
+.ios .cell + .cell::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; border-top: .5px solid var(--sep); }
+.ios .cell .sub { font-size: 15px; color: var(--sec2); }
+.ios .cell .val { margin-left: auto; color: var(--sec2); display: flex; align-items: center; gap: 6px; }
+.ios .iseg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: rgba(118,118,128,.12); border-radius: 9px; padding: 2px; height: 32px; width: 100%; }
+.ios .iseg span { display: grid; place-items: center; font-size: 13px; font-weight: 500; border-radius: 7px; }
+.ios .iseg span.on { background: var(--cell); box-shadow: 0 3px 8px rgba(0,0,0,.12); font-weight: 600; }
+:root[data-theme="dark"] .ios .iseg span.on { background: #636366; }
+.ios .isearch { margin: 6px 16px 8px; height: 36px; border-radius: 10px; background: rgba(118,118,128,.12); display: flex; align-items: center; gap: 6px; padding: 0 8px; color: var(--sec2); font-size: 17px; }
+.ios .isearch b { color: var(--text); font-weight: 400; }
+.ios .tokens { display: flex; gap: 8px; padding: 2px 16px 4px; overflow: hidden; }
+.ios .tok { flex: none; font-size: 15px; padding: 6px 12px; border-radius: 16px; background: var(--cell); }
+.ios .tok.on { background: var(--tint); color: #fff; }
+:root[data-theme="dark"] .ios .tok.on { color: #000; }
+.ios .chk { color: var(--tint); margin-left: auto; }
+.ios .pl { color: var(--tint); }
+/* Android M3 */
+.and { font-family: Roboto, "Google Sans", system-ui, sans-serif; --s:#FEF7FF; --sc:#F3EDF7; --sch:#ECE6F0; --on:#1D1B20; --onv:#49454F; --ol:#79747E; --olv:#CAC4D0; --pri:#0B6E99; --onpri:#fff; --sel:#CFE6F2; }
+:root[data-theme="dark"] .and { --s:#141218; --sc:#211F26; --sch:#2B2930; --on:#E6E0E9; --onv:#CAC4D0; --ol:#938F99; --olv:#49454F; --pri:#6CC0E0; --onpri:#06141B; --sel:#1F4556; }
+.and .asheet { background: var(--sc); border-radius: 28px 28px 0 0; height: 100%; overflow: hidden; color: var(--on); }
+.and .handle { width: 32px; height: 4px; border-radius: 2px; background: var(--onv); opacity: .4; margin: 16px auto 8px; }
+.and .ttl2 { font-size: 22px; padding: 4px 24px 2px; }
+.and .aseg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--ol); border-radius: 20px; height: 40px; overflow: hidden; margin: 8px 24px; }
+.and .aseg span { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; font-weight: 500; border-left: 1px solid var(--ol); }
+.and .aseg span:first-child { border-left: 0; }
+.and .aseg span.on { background: var(--sel); }
+.and .asearch { margin: 8px 16px; height: 56px; border-radius: 28px; background: var(--sch); display: flex; align-items: center; gap: 12px; padding: 0 16px; color: var(--onv); }
+.and .asearch b { color: var(--on); font-weight: 400; }
+.and .fchips { display: flex; gap: 8px; padding: 0 16px 8px; overflow: hidden; }
+.and .fc { flex: none; height: 32px; border: 1px solid var(--ol); border-radius: 8px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; }
+.and .fc.on { background: var(--sel); border-color: var(--sel); padding-left: 8px; }
+.and .li { display: grid; grid-template-columns: 40px 1fr auto; gap: 16px; align-items: center; min-height: 72px; padding: 0 16px 0 16px; }
+.and .li .h { font-size: 16px; } .and .li .s2 { font-size: 14px; color: var(--onv); }
+.and .ic { width: 40px; height: 40px; border-radius: 20px; display: grid; place-items: center; background: var(--sch); }
+.and .ic.on { background: var(--pri); color: var(--onpri); }
+.and .tb { color: var(--pri); font-weight: 500; font-size: 14px; }
+.and .tonal { height: 40px; border-radius: 20px; padding: 0 16px; background: var(--sel); display: inline-flex; align-items: center; gap: 6px; font-weight: 500; font-size: 14px; }
+.and .div { border-top: 1px solid var(--olv); margin: 0 16px; }
+.and .sub3 { font-size: 14px; color: var(--pri); font-weight: 500; padding: 16px 24px 4px; }
+/* wide */
+.wide { display: grid; grid-template-columns: 1fr 360px; height: 100vh; }
+.wide .pane { border-left: 1px solid var(--border); overflow: hidden; }
+.mac .titlebar { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.mac .titlebar i { width: 12px; height: 12px; border-radius: 6px; display: block; background: #FF5F57; }
+.mac .titlebar i:nth-child(2) { background: #FEBC2E; } .mac .titlebar i:nth-child(3) { background: #28C840; }
+/* mix diagram */
+.mix { padding: 28px 32px; }
+.lane { display: grid; grid-template-columns: 110px 1fr; align-items: center; height: 70px; border-bottom: 1px solid var(--border); }
+.lane .ln { font-weight: 600; font-size: 14px; }
+.ax { position: relative; height: 100%; }
+.blk { position: absolute; top: 18px; height: 34px; border-radius: 4px; font-size: 12px; font-weight: 600; padding: 2px 6px; color: #fff; overflow: hidden; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const P = new URLSearchParams(location.search);
+const S = P.get('s') || 'board';
+document.documentElement.dataset.theme = P.get('theme') || 'light';
+const I = {
+  speaker: '<svg class="i" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
+  note: '<svg class="i" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  play: '<svg class="i f" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>',
+  stop: '<svg class="i f" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></svg>',
+  prev: '<svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>',
+  next: '<svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+  search: '<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>',
+  board: '<svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>',
+  cloud: '<svg class="i" viewBox="0 0 24 24"><path d="M12 11v7m-3-3 3 3 3-3"/><path d="M7 17.5A4.5 4.5 0 0 1 7.5 8.5a5.5 5.5 0 0 1 10.6 1.6A3.8 3.8 0 0 1 17.5 17.5"/></svg>',
+  check: '<svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  mic: '<svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>',
+  file: '<svg class="i" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>',
+  warn: '<svg class="i" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4.5M12 17.2v.1"/></svg>',
+  wave: '<svg class="i" viewBox="0 0 24 24"><path d="M4 12h2M8 8v8M12 5v14M16 9v6M20 12h0"/></svg>',
+  chev: '<svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+  down: '<svg class="i" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>',
+};
+const HUE = { URIAH: 'mystery', RODNEY: 'scifi', MCKEEN: 'western', FRANKLIN: 'serial', PRUDENCE: 'documentary' };
+const R = DATA.rodney;
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+// Cue state for the frames: what the person chose (by the proposed pack ids, section 5 of the doc).
+const CHOSEN = {
+  'L0172:1': [{ t: 'Take 1, performed', at: 'Under', take: true }, { t: 'Thunder, distant', at: 'After' }],
+  'L0180:1': [{ t: 'Thunder, close', at: 'After' }],
+  'L0180:2': [{ t: 'Rain, steady', at: 'Bed to line 191', bed: true }],
+};
+const CUR = 'L0180:1';
+const cueNo = { 'L0171:1': 11, 'L0172:1': 12, 'L0180:1': 13, 'L0180:2': 14, 'L0190:1': 15, 'L0191:1': 16 };
+
+function page({ studio = true, from = 0, to = 20, size = 17, cur = CUR } = {}) {
+  let h = `<div class="rd" style="font-size:${size}px">`;
+  for (const ln of R.lines.slice(from, to)) {
+    const hue = HUE[ln.role] ? `var(--${HUE[ln.role]})` : 'var(--text)';
+    h += `<div class="sp" data-line="${ln.id}" style="--hue:${hue}"><span class="name">${esc(ln.role)}</span>`;
+    ln.parts.forEach((p, i) => {
+      const k = Object.keys(p)[0];
+      if (k === 'say') h += `<span>${esc(p.say)} </span>`;
+      else if (k === 'direction') h += `<span class="aside">(${esc(p.direction)}) </span>`;
+      else {
+        const key = `${ln.id}:${i}`;
+        const ch = CHOSEN[key];
+        const ring = !studio ? '' : ch ? `<span class="ring full">${ch.length}</span>` : '<span class="ring"></span>';
+        h += `<div class="slot${studio && key === cur ? ' cur' : ''}"><div class="sfx"><span class="glyph">${I.speaker}</span><span class="txt">${esc(p.sound)}</span>${ring}</div>`;
+        if (studio && ch) h += `<div class="chosen">${ch.map(c => `<span>${c.bed ? I.note : c.take ? I.mic : I.speaker}${esc(c.t)} <span class="at">· ${c.at}</span></span>`).join('')}</div>`;
+        h += '</div>';
+      }
+    });
+    h += '</div>';
+  }
+  return h + '</div>';
+}
+function bedRule(root) {
+  for (const rd of root.querySelectorAll('.rd')) {
+    const sps = [...rd.querySelectorAll('.sp')].filter(e => e.dataset.line >= 'L0180' && e.dataset.line <= 'L0191');
+    if (!sps.length) continue;
+    const r0 = rd.getBoundingClientRect();
+    const first = sps[0].dataset.line === 'L0180' ? sps[0].querySelectorAll('.slot')[1] : sps[0];
+    const top = first.getBoundingClientRect().top - r0.top + 2;
+    const bottom = Math.min(sps[sps.length - 1].getBoundingClientRect().bottom, rd.parentElement.getBoundingClientRect().bottom) - r0.top - 6;
+    rd.insertAdjacentHTML('beforeend', `<div class="bed" style="top:${top}px;height:${bottom - top}px"></div>`);
+  }
+}
+function dock() {
+  return `<div class="dock"><div class="status"><span class="tab">Cue 13 of 34</span><span class="l5">·</span><b>Thunder, close</b><span class="l5">After</span></div>
+  <div class="trans"><span class="ib" title="Sounds">${I.board}</span><span class="ib">${I.prev}</span><span class="rec"><i></i></span><span class="ib">${I.next}</span><span class="ib">${I.play}</span></div></div>`;
+}
+function boardBody({ compact = false } = {}) {
+  const res = (t, f, on, playing) => `<div class="res"><span class="pb${playing ? ' on' : ''}">${playing ? I.stop : I.play}</span><div><div class="ttl">${t}</div><div class="facts tab">${f}</div></div><span class="add${on ? ' on' : ''}">${on ? I.check + 'In cue' : I.plus + 'Add'}</span></div>`;
+  return `
+  <div class="cueq"><span class="glyph" style="color:var(--muted)">${I.speaker}</span><span class="txt">another peal of thunder closer</span></div>
+  <div class="sec" style="padding-top:0">
+    <div class="lbl">In this cue</div>
+    <div class="chosenrow"><span class="pb">${I.play}</span><div><div class="ttl">Thunder, close</div><div class="facts tab">0:06 · after the line · +0.0 s</div></div><span class="l5">Remove</span></div>
+    <div class="seg"><span>Before</span><span>Under</span><span class="on">After</span><span>Bed</span></div>
+    <div class="kv"><span>Start</span><span class="v tab">+0.0 s <span class="step"><span>−</span><span>+</span></span></span></div>
+    <div class="kv"><span>Level and fades</span><span class="v">Under voices −6 dB ${I.chev}</span></div>
+    <div style="display:flex;gap:8px;margin-top:8px"><span class="btn">${I.play}Hear it in place</span></div>
+  </div>
+  <div class="search">${I.search}<b>thunder</b><span class="l5">✕</span></div>
+  <div class="chips"><span class="chip">Doors</span><span class="chip">Steps</span><span class="chip">Bells</span><span class="chip on">Weather</span><span class="chip">Rooms</span><span class="chip">Travel</span><span class="chip">Music</span><span class="chip">Mine</span></div>
+  ${res('Thunder, close', '0:06 · OpenGameArt · CC0', true, false)}
+  ${res('Thunder, distant', '0:09 · OpenGameArt · CC0', false, true)}
+  ${res('Rain, long thunder', '0:45 · OpenGameArt · CC0', false, false)}
+  ${compact ? '' : res('Rain, steady', '0:38 loop · OpenGameArt · CC0', false, false)}
+  `;
+}
+function phoneBoard() {
+  return `<div class="phone"><div class="rd-top"><span class="t">${esc(R.title)}</span><span class="play">Sound · You</span></div>${page({ to: 10 })}${dock()}
+  <div class="scrim"></div><div class="sheetwrap"><div class="sheet"><div class="grab"></div>
+  <div class="bhead"><span class="lbl">Cue 13 of 34 · Uriah</span><span class="done">Done</span></div>${boardBody()}</div></div></div>`;
+}
+function phonePage() {
+  return `<div class="phone"><div class="rd-top"><span class="t">${esc(R.title)}</span><span class="play">Sound · You</span></div><div style="flex:1;overflow:hidden">${page({ from: 6, to: 20, size: 16 })}</div>${dock()}</div>`;
+}
+function castSheet() {
+  const T = DATA.toinette;
+  const hues = ['mystery', 'scifi', 'western', 'serial', 'documentary'];
+  const voices = ['Ava', 'Daniel', 'Zoe', 'Ava', 'Fred'];
+  let h = `<div class="rd-top"><span class="t">${esc(T.title)}</span><span class="play">Cast</span></div><div class="cast">`;
+  T.cast.parts.slice(0, 5).forEach(([n, c], i) => {
+    h += `<div class="crow" style="--hue:var(--${hues[i]})"><div><div class="n" style="color:var(--hue)">${esc(n)}</div><div class="c tab">${c} lines · <span class="vchip"><span class="dash"></span>${voices[i]}</span></div></div><span class="btn">Take part</span></div>`;
+  });
+  h += `<div class="crow"><div class="l5" style="padding:6px 0">7 more parts</div><span class="l5">${I.down}</span></div>`;
+  h += `<div class="crow"><div><div class="n">Stage directions</div><div class="c tab">${T.cast.directions} lines · <span class="vchip"><span class="dash"></span>Not read</span></div></div><span class="btn">Take part</span></div>`;
+  h += `<div class="crow"><div><div class="n">Sound</div><div class="c tab">${T.cast.cues} cues · none chosen</div></div><span class="btn">Take part</span></div>`;
+  h += `</div><div class="sec" style="padding-top:18px"><div class="lbl">Later, both taken</div></div>`;
+  h += `<div class="cast"><div class="crow"><div><div class="n">Stage directions · You</div><div class="c tab">6 of 22 recorded · the rest silent</div></div><span class="btn">Open part</span></div>
+  <div class="crow"><div><div class="n">Sound · You</div><div class="c tab">9 of 12 cues · 2 beds</div></div><span class="btn">Open part</span></div></div>`;
+  return h;
+}
+function directionsPage() {
+  const T = DATA.toinette;
+  const takes = { L0001: 1, L0002: 2, L0003a: 0 };
+  let h = `<div class="phone"><div class="rd-top"><span class="t">${esc(T.title)}</span><span class="play">Stage directions · You</span></div><div class="rd" style="font-size:16px;flex:1;overflow:hidden">`;
+  for (const ln of T.lines) {
+    if (ln.kind === 'direction') {
+      const n = takes[ln.id];
+      const txt = esc(ln.source.replace(/_/g, '').replace(/^\s*\[|\]\s*$/g, '').replace(/\s*\n\s*/g, ' '));
+      h += `<div class="sp${ln.id === 'L0002' ? ' slot cur' : ''}" style="display:flex;gap:8px;align-items:flex-start;margin-left:0"><span style="font-style:italic;color:var(--muted);flex:1">${txt}</span>${n ? `<span class="ring full">${n}</span>` : '<span class="ring"></span>'}</div>`;
+    } else {
+      h += `<div class="sp" style="--hue:var(--${ln.role === 'TOINETTE' ? 'mystery' : 'scifi'})"><span class="name">${esc(ln.role)}</span>${ln.parts.map(p => p.say ? esc(p.say) + ' ' : `<span class="aside">(${esc(p.direction.replace(/_/g, ''))})</span> `).join('')}</div>`;
+    }
+  }
+  h += `</div><div class="dock"><div class="seg" style="margin:0 0 6px;height:32px"><span class="on">Run through</span><span>Line by line</span><span>Step</span></div>
+  <div class="status"><span class="tab">Line 2 of 22</span><span class="l5">·</span><b>Take 2 of 2</b></div>
+  <div class="trans"><span class="ib">${I.board}</span><span class="ib">${I.prev}</span><span class="rec"><i></i></span><span class="ib">${I.next}</span><span class="ib">${I.play}</span></div></div></div>`;
+  return h;
+}
+function states() {
+  const head = (t) => `<div class="cap lbl">${t}</div>`;
+  return `<div class="rd-top"><span class="t">The board's states</span><span class="play">375</span></div>
+  <div class="st">${head('Loading the list')}<div class="search" style="margin:10px 12px">${I.search}<span>Search sounds</span></div>
+    ${[0, 1, 2].map(() => `<div class="res" style="padding:0 12px"><span class="pb" style="border-color:transparent;background:var(--alt)"></span><div style="display:grid;gap:6px"><div class="skel" style="width:60%"></div><div class="skel" style="width:35%;height:9px"></div></div><span></span></div>`).join('')}</div>
+  <div class="st">${head('No match')}<div class="search" style="margin:10px 12px">${I.search}<b>zeppelin</b></div><div class="empty"><div>No sound called “zeppelin”.</div><span class="btn recline">${I.mic}Record it</span></div></div>
+  <div class="st">${head('Not downloaded · offline')}<div class="grp"><span class="ttl">Weather</span><span class="l5 tab">1.3 MB · Offline</span></div>
+    <div class="res" style="opacity:.5"><span class="pb">${I.cloud}</span><div><div class="ttl">Thunder, close</div><div class="facts tab">0:06</div></div><span></span></div></div>
+  <div class="st">${head('Could not reach the sounds')}<div class="empty"><div>The sounds could not be reached.</div><span class="btn">Try again</span></div></div>
+  <div class="st">${head('Export, a sound missing')}<div class="empty"><div style="display:flex;gap:8px;align-items:flex-start;color:var(--warning)">${I.warn}<span style="color:var(--text)">2 sounds are on another device: Owl at night, Gate creak.</span></div><div style="display:flex;gap:8px"><span class="btn">Export without them</span><span class="btn">Cancel</span></div></div></div>
+  <div class="st">${head('Mine, empty')}<div class="empty"><div>No sounds of your own yet.</div><div style="display:flex;gap:8px"><span class="btn recline">${I.mic}Record a sound</span><span class="btn">${I.file}Bring a file</span></div></div></div>`;
+}
+function ios() {
+  const cell = (l, r) => `<div class="cell">${l}${r ? `<span class="val">${r}</span>` : ''}</div>`;
+  const resc = (t, f, on, playing) => `<div class="cell"><span class="pl">${playing ? I.stop : I.play}</span><div><div>${t}</div><div class="sub tab">${f}</div></div>${on ? `<span class="chk">${I.check}</span>` : ''}</div>`;
+  return `<div class="ios phone"><div class="rd-top"><span class="t">${esc(R.title)}</span><span class="play">Sound · You</span></div>${page({ to: 8 })}
+  <div class="scrim"></div><div class="sheetwrap" style="top:54px"><div class="isheet">
+  <div class="nav"><span></span><span class="c">Cue 13 of 34</span><span class="r">Done</span></div>
+  <div class="cueq" style="padding:4px 16px 4px"><span style="color:var(--sec2)">${I.speaker}</span><span class="txt" style="font-family:var(--body)">another peal of thunder closer</span></div>
+  <div class="gh">In This Cue</div><div class="grp2">
+    ${resc('Thunder, close', '0:06 · After the line · +0.0 s', false, false)}
+    <div class="cell"><div class="iseg"><span>Before</span><span>Under</span><span class="on">After</span><span>Bed</span></div></div>
+    ${cell('Start', '+0.0 s <span style="color:var(--text);border:.5px solid var(--sep);border-radius:8px;padding:2px 10px">−&nbsp;&nbsp;|&nbsp;&nbsp;+</span>')}
+    ${cell('Level and Fades', 'Under voices −6 dB ' + I.chev)}
+    <div class="cell" style="color:var(--tint)">${I.play}Hear It in Place</div></div>
+  <div class="isearch">${I.search}<b>thunder</b></div>
+  <div class="tokens"><span class="tok">Doors</span><span class="tok">Steps</span><span class="tok on">Weather</span><span class="tok">Rooms</span><span class="tok">Music</span><span class="tok">Mine</span></div>
+  <div class="grp2" style="margin-top:6px">${resc('Thunder, close', '0:06 · OpenGameArt · CC0', true, false)}${resc('Thunder, distant', '0:09 · OpenGameArt · CC0', false, true)}${resc('Rain, long thunder', '0:45 · OpenGameArt · CC0', false, false)}</div>
+  </div></div></div>`;
+}
+function android() {
+  const li = (t, f, on, playing) => `<div class="li"><span class="ic${playing ? ' on' : ''}">${playing ? I.stop : I.play}</span><div><div class="h">${t}</div><div class="s2 tab">${f}</div></div>${on ? `<span class="tb" style="display:flex;align-items:center;gap:4px">${I.check}In cue</span>` : '<span class="tb">Add</span>'}</div>`;
+  return `<div class="and phone" style="background:var(--s);color:var(--on)"><div class="rd-top" style="border-color:var(--olv)"><span class="t">${esc(R.title)}</span><span class="play">Sound · You</span></div>${page({ to: 8 })}
+  <div class="scrim"></div><div class="sheetwrap" style="top:56px"><div class="asheet"><div class="handle"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:0 24px"><span class="ttl2" style="padding:0">Cue 13 of 34</span><span class="tb">Done</span></div>
+  <div class="cueq" style="padding:6px 24px 4px"><span style="color:var(--onv)">${I.speaker}</span><span class="txt" style="font-family:var(--body);background:var(--sch)">another peal of thunder closer</span></div>
+  <div class="sub3">In this cue</div>
+  ${li('Thunder, close', '0:06 · After the line · +0.0 s', false, false).replace('<span class="tb">Add</span>', '<span class="tb">Remove</span>')}
+  <div class="aseg"><span>Before</span><span>Under</span><span class="on">${I.check}After</span><span>Bed</span></div>
+  <div style="display:flex;gap:8px;padding:4px 24px 8px"><span class="tonal">${I.play}Hear it in place</span><span class="tonal">Level and fades</span></div>
+  <div class="div"></div>
+  <div class="asearch">${I.search}<b>thunder</b></div>
+  <div class="fchips"><span class="fc">Doors</span><span class="fc">Steps</span><span class="fc on">${I.check}Weather</span><span class="fc">Rooms</span><span class="fc">Music</span><span class="fc">Mine</span></div>
+  ${li('Thunder, close', '0:06 · OpenGameArt · CC0', true, false)}${li('Thunder, distant', '0:09 · OpenGameArt · CC0', false, true)}${li('Rain, long thunder', '0:45 · OpenGameArt · CC0', false, false)}
+  </div></div></div>`;
+}
+function wide(mac) {
+  const music = (t, f, on) => `<div class="res"><span class="pb">${I.play}</span><div><div class="ttl">${t}</div><div class="facts tab">${f}</div></div><span class="add${on ? ' on' : ''}">${on ? I.check + 'In cue' : I.plus + 'Add'}</span></div>`;
+  const panel = `<div class="pane"><div class="bhead" style="padding-top:14px"><span class="lbl">Sound · You · cue 14 of 34</span></div>
+    <div class="cueq"><span style="color:var(--muted)">${I.speaker}</span><span class="txt">sound of rain and wind</span></div>
+    <div class="sec" style="padding-top:0"><div class="lbl">In this cue</div>
+      <div class="chosenrow"><span class="pb">${I.play}</span><div><div class="ttl">Rain, steady</div><div class="facts tab">loop · lines 180 to 191</div></div><span class="l5">Remove</span></div>
+      <div class="seg"><span>Before</span><span>Under</span><span>After</span><span class="on">Bed</span></div>
+      <div class="kv"><span>Until</span><span class="v tab">Line 191 · Rodney ${I.chev}</span></div>
+      <div class="kv"><span>Fade in · out</span><span class="v tab">1.5 s · 2 s</span></div>
+      <div class="kv"><span>Under voices</span><span class="v tab">−12 dB</span></div>
+      <div style="margin-top:8px"><span class="btn">${I.play}Hear it in place</span></div></div>
+    <div class="search">${I.search}<span>Search sounds</span></div>
+    <div class="chips"><span class="chip">Weather</span><span class="chip">Rooms</span><span class="chip on">Music</span><span class="chip">Mine</span></div>
+    <div class="grp"><span class="lbl">Music · 7.9 MB</span><span class="dl">${I.check}Downloaded</span></div>
+    ${music('Prelude, Op. 28 No. 24', '1:30 · Musopen · CC0', false)}
+    ${music('Prelude, Op. 28 No. 14', '0:32 · Musopen · CC0', false)}
+    ${music('Nocturne, Op. 15 No. 1', '1:30 loop · Musopen · CC0', false)}
+    </div>`;
+  return `<div class="${mac ? 'mac' : ''}">${mac ? '<div class="titlebar"><i></i><i></i><i></i><span class="l5" style="margin-left:10px">Caesar Rodney\'s Ride — Sound</span></div>' : ''}
+  <div class="wide" style="height:${mac ? 'calc(100vh - 38px)' : '100vh'}"><div style="display:flex;flex-direction:column;overflow:hidden"><div class="rd-top"><span class="t">${esc(R.title)}</span><span class="play">Page 41 of 96</span></div>
+  <div style="flex:1;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;gap:24px">${page({ from: 4, to: 13, size: 16, cur: 'L0180:2' })}${page({ from: 13, to: 20, size: 16, cur: 'L0180:2' })}</div>
+  <div class="dock" style="display:flex;justify-content:center;gap:24px"><span class="ib">${I.prev}</span><span class="rec"><i></i></span><span class="ib">${I.next}</span><span class="ib">${I.play}</span></div></div>${panel}</div></div>`;
+}
+function mixDiagram() {
+  // An illustration of the computed duck (section 3): seconds 0-40 across 1200 px.
+  const W = 1180, px = (s) => (s / 40) * W;
+  const voice = [[0, 9.5, 'ANNOUNCER', 'var(--muted)'], [13.4, 14.6, 'RODNEY', 'var(--scifi)'], [15, 16.4, 'URIAH', 'var(--mystery)'], [16.8, 18, 'RODNEY', 'var(--scifi)'], [18.4, 20, 'URIAH', 'var(--mystery)'],
+    [20.4, 22.6, 'RODNEY', 'var(--scifi)'], [23, 27, 'URIAH', 'var(--mystery)'], [27.4, 28.4, 'RODNEY', 'var(--scifi)'], [28.8, 29.6, 'URIAH', 'var(--mystery)'], [34.9, 36.2, 'RODNEY', 'var(--scifi)'], [36.6, 38, 'URIAH', 'var(--mystery)']];
+  const blocks = (arr) => arr.map(([a, b, t, c]) => `<div class="blk" style="left:${px(a)}px;width:${px(b - a) - 1}px;background:${c}">${t}</div>`).join('');
+  const fx = [[0, 9.5, 'Take 1, performed (under 172)', '#555'], [9.9, 13, 'Thunder, distant (after)', '#777'], [30, 34.5, 'Thunder, close (after 180)', '#777']];
+  const bed = [[30, 40, 'Rain, steady (bed 180 to 191, fade in 1.5 s)', '#444']];
+  const ivs = []; for (const [a, b] of voice) { if (ivs.length && a - ivs[ivs.length - 1][1] < 1) ivs[ivs.length - 1][1] = b; else ivs.push([a, b]); }
+  const duckAt = (t, duck) => { let g = 0; for (const [a, b] of ivs) { let d = 0; if (t >= a && t <= b) d = 1; else if (t < a && t >= a - .12) d = (t - (a - .12)) / .12; else if (t > b && t <= b + .6) d = 1 - (t - b) / .6; g = Math.min(g, d * duck); } return g; };
+  const env = (duck, segs, fadeIn = 0) => segs.map(([x0, x1]) => { const pts = []; for (let t = x0; t <= x1 + 1e-9; t += .02) { let g = duckAt(t, duck); if (fadeIn && t - x0 < fadeIn) g += -24 * (1 - (t - x0) / fadeIn); pts.push(`${px(t)},${18 + (-Math.max(g, -24) / 24) * 44}`); } return pts.join(' '); });
+  const lane = (name, inner, svg) => `<div class="lane"><span class="ln">${name}</span><div class="ax">${inner}${svg ? `<svg width="${W}" height="70" style="position:absolute;left:0;top:0;overflow:visible">${svg.map(p => `<polyline points="${p}" fill="none" stroke="var(--record)" stroke-width="2"/>`).join('')}</svg>` : ''}</div></div>`;
+  let ticks = ''; for (let s = 0; s <= 40; s += 5) ticks += `<span class="l5 tab" style="position:absolute;left:${px(s)}px">${s} s</span>`;
+  return `<div class="mix"><div class="lbl" style="margin-bottom:8px">${esc(R.title)} · lines 172 to 182 · the duck is computed from where the takes sit, never heard from the audio</div>
+  ${lane('Voices', blocks(voice))}
+  ${lane('Effects', blocks(fx), env(-6, fx))}
+  ${lane('Music and beds', blocks(bed), env(-12, bed, 1.5))}
+  <div style="display:grid;grid-template-columns:110px 1fr"><span></span><div style="position:relative;height:24px;margin-top:6px">${ticks}</div></div>
+  <div style="display:grid;grid-template-columns:110px 1fr;margin-top:18px;gap:0"><span></span><div style="display:flex;gap:32px;flex-wrap:wrap" class="l5">
+    <span><b style="color:var(--record)">—</b> the cue's gain: top of the block is its own level, the block's foot −24 dB</span><span>effects −6 dB under a voice</span><span>music −12 dB under a voice</span><span>down 120 ms before a take starts</span><span>up over 600 ms after it ends</span><span>held down across gaps under 1 s</span><span>“After” and “Before” cues add their length to the gap; “Under” and beds add nothing</span></div></div></div>`;
+}
+const root = document.getElementById('root');
+const V = { directions: directionsPage, board: phoneBoard, page: phonePage, cast: castSheet, states, ios, android, ipad: () => wide(false), mac: () => wide(true), mix: mixDiagram };
+root.innerHTML = (V[S] || phoneBoard)();
+if (S === 'page' || S === 'ipad' || S === 'mac') document.fonts.ready.then(() => bedRule(root));
+</script>
+</body>
+</html>

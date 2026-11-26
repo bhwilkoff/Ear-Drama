@@ -348,11 +348,22 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    then the system default, then the name), so the largest part gets the best voice;
    where the platform reports a voice's own gender (Apple `gender`; the web and Android
    report none), each next part takes the best remaining voice of the other reported
-   gender. It **never reads a character's name, a cast list's words, or the script** to
-   guess a character's gender (Q7 (a)). When voices run out the list starts again at the
-   next pitch (1.0, 0.86, 1.14, 0.93, 1.07), so two parts on one voice can be told apart.
-   "Recast all" returns every part to its Default. Golden-tested on every stack: the same
-   voice list gives the same cast, and renaming every part changes nothing.
+   gender. The device **never reads a character's name, a cast list's words, or the script**.
+   *Replaced* 2026-11-26, the owner: *"While I'm not interested in making it so that only men
+   can play men's parts and women can play women's, but I think for the play along, the voices
+   that are chosen for a given role should match the gender of the character (i.e, higher voices
+   for the female roles and lower voices for the male roles)."* (Q7 (a) said auto-cast never
+   guesses a character's gender.) The catalog publishes, per role, the register of its stand-in
+   voice, `high` or `low`, only where the play's own print settles it (catalog DECISIONS 049;
+   contract §4.1), and a part with one takes the least-used voice of that register (a reported
+   gender, else a measured register, rule 12), else a voice of neither pitched its way (up for
+   high, down for low), else any voice pitched its way; when a register's voices are all used,
+   one is used again at its next pitch. A part without one is cast as before. A person's own
+   choice always wins; a register is never written into a cast and never shown: people read any
+   part. When voices run out the list starts again at the next pitch (1.0, 0.86, 1.14, 0.93,
+   1.07), so two parts on one voice can be told apart. "Recast all" returns every part to its
+   Default. Golden-tested on every stack (`catalog/tests/golden/voice_register_cast.json`): the
+   same voice list and registers give the same cast, and renaming every part changes nothing.
 5. **Every choice is overridable**: a part's voice, speed and pitch, at any time, from the
    cast sheet (and the reader's Voices sheet), each change kept at once. The picker's first
    row is **Default** (naming the voice it reads now); choosing it drops the choice, and a

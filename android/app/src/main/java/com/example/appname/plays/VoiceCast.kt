@@ -18,9 +18,9 @@ import kotlinx.serialization.json.Json
  * Default, worked out at each read (never written) by auto-cast over the device's voice defaults (Settings > Voices,
  * Decision 086): downloaded Kokoro voices first, then the device's own, best first.
  * Auto-cast reads only the voices (quality, the person's language, a gender only where the
- * platform reports one for the VOICE, which Android never does, else the voice's measured register); it never reads a part's name or
- * the script (§2.8 rule 4). No speech API here: plays/DeviceVoices.kt is the only file that
- * touches TextToSpeech for casting.
+ * platform reports one for the VOICE, which Android never does, else the voice's measured register) and the register the
+ * catalog publishes for a part (catalog DECISIONS 049); it never reads a part's name or the script's words (§2.8 rule 4).
+ * No speech API here: plays/DeviceVoices.kt is the only file that touches TextToSpeech for casting.
  */
 @Serializable
 data class VoiceCastEntry(
@@ -219,34 +219,70 @@ object VoiceCasting {
         return d.copy(order = keys + d.order.filter { it !in keys })
     }
 
+    /** A voice's kind: high for a reported female gender or a measured "higher" register, low for male or "lower". */
+    fun kindOf(v: CastVoice): String? = when (v.gender) {
+        "female" -> HIGH
+        "male" -> LOW
+        null -> when (v.register) { VoiceLabels.HIGHER -> HIGH; VoiceLabels.LOWER -> LOW; else -> null }
+        else -> null
+    }
+
+    const val HIGH = "high"
+    const val LOW = "low"
+
+    /** Pitch orders (catalog/tests/golden/voice_register_cast.json): a part of a register on a voice of its kind, on one not. */
+    private val MATCHED = mapOf(HIGH to listOf(1.0, 1.14, 1.07, 0.93, 0.86), LOW to listOf(1.0, 0.86, 0.93, 1.07, 1.14))
+    private val BIASED = mapOf(HIGH to listOf(1.14, 1.07, 1.0, 0.93, 0.86), LOW to listOf(0.86, 0.93, 1.0, 1.07, 1.14))
+
     /**
-     * Auto-cast (§2.8 rule 4). [parts] in cast order (largest first), [voices] best first. Speaking
-     * parts take distinct voices, the best first; where voices report a gender (else a measured register,
-     * §2.8 rule 12), each next part takes the best remaining voice of the other one. When voices run out the list starts again at the
-     * next pitch. Directions and sound are Not read. Reads nothing of a part but its place in the list.
+     * Auto-cast (§2.8 rule 4). [parts] in cast order (largest first), [voices] best first. Speaking parts take distinct
+     * voices, the best first, until every voice is used once. A part [registers] names ("high" or "low", published by the
+     * catalog from the play's own print: catalog DECISIONS 049) takes the least-used voice of that kind, else of no kind
+     * pitched its way, else any pitched its way; a part without one takes the least-used voice, where voices report a
+     * gender (else a measured register, §2.8 rule 12) the next of the other kind. A voice used again takes the next pitch
+     * not yet used on it. Directions and sound are Not read. Reads nothing of a part but its place and its register.
      */
-    fun autoCast(parts: List<PartID>, voices: List<CastVoice>, rate: Double = 1.0): Map<PartID, VoiceCastEntry> {
+    fun autoCast(
+        parts: List<PartID>,
+        voices: List<CastVoice>,
+        rate: Double = 1.0,
+        registers: Map<PartID, String> = emptyMap(),
+    ): Map<PartID, VoiceCastEntry> {
         val out = LinkedHashMap<PartID, VoiceCastEntry>()
-        val pool = ArrayList<CastVoice>()
-        var round = -1
+        val uses = IntArray(voices.size)
+        val pitched = List(voices.size) { ArrayList<Double>() }
+        val kinds = voices.map(::kindOf)
+        val all = voices.indices.toList()
         var last: String? = null
+        fun least(idx: List<Int>): Int = idx.drop(1).fold(idx[0]) { m, i -> if (uses[i] < uses[m]) i else m }
         for (id in parts) {
             if (!id.isSpeaking) { out[id] = VoiceCastEntry.NOT_READ; continue }
             if (voices.isEmpty()) continue
-            if (pool.isEmpty()) { pool.addAll(voices); round += 1 }
-            var k = 0
-            if (last != null) {
-                val j = pool.indexOfFirst { it.kind() != null && it.kind() != last }
-                if (j >= 0) k = j
+            val want = registers[id]?.takeIf { it == HIGH || it == LOW }
+            val k = if (want != null) {
+                val mine = all.filter { kinds[it] == want }
+                val none = all.filter { kinds[it] == null }
+                least(mine.ifEmpty { none.ifEmpty { all } })
+            } else {
+                val low = uses.min()
+                val pool = all.filter { uses[it] == low }
+                val prev = last
+                (if (prev != null) pool.firstOrNull { kinds[it] != null && kinds[it] != prev } else null) ?: pool[0]
             }
-            val v = pool.removeAt(k)
-            if (v.kind() != null) last = v.kind()
-            out[id] = entryOf(v, PITCHES[round % PITCHES.size], clamp(rate, RATE, 1.0))
+            val order = when {
+                want == null -> PITCHES.toList()
+                kinds[k] == want -> MATCHED.getValue(want)
+                else -> BIASED.getValue(want)
+            }
+            val pitch = order.firstOrNull { it !in pitched[k] } ?: PITCHES[pitched[k].size % PITCHES.size]
+            pitched[k].add(pitch)
+            uses[k] += 1
+            kinds[k]?.let { last = it }
+            out[id] = entryOf(voices[k], pitch, clamp(rate, RATE, 1.0))
         }
         return out
     }
 
-    private fun CastVoice.kind(): String? = gender ?: register
 
     private fun clamp(x: Double, r: ClosedFloatingPointRange<Double>, d: Double): Double =
         if (x.isNaN() || x.isInfinite()) d else Math.round(x.coerceIn(r.start, r.endInclusive) * 100) / 100.0
@@ -335,6 +371,8 @@ class VoiceCast(
     private val clock: () -> Long = System::currentTimeMillis,
     private val downloaded: () -> List<CastVoice> = { emptyList() },
     private val defaults: () -> VoiceDefaults = { VoiceDefaults() },
+    /** Each part's stand-in register where the catalog publishes one (catalog DECISIONS 049): auto-cast only, never shown. */
+    val registers: Map<PartID, String> = emptyMap(),
 ) {
     fun voices(): List<CastVoice> = voices.invoke()
 
@@ -351,7 +389,7 @@ class VoiceCast(
     /** Every part's Default now: auto-cast over the defaults' pool (downloaded first), at the defaults' speed. */
     private fun auto(): Map<PartID, VoiceCastEntry> {
         val d = defaults()
-        return VoiceCasting.autoCast(parts, VoiceCasting.pool(downloadedVoices() + voices(), d), d.rate)
+        return VoiceCasting.autoCast(parts, VoiceCasting.pool(downloadedVoices() + voices(), d), d.rate, registers)
     }
 
     /** How [part] is read now. */
@@ -368,7 +406,7 @@ class VoiceCast(
         if (voice.engine == VoiceCastEntry.SYSTEM) return r
         val v = voices()
         val d = defaults()
-        val a = VoiceCasting.autoCast(parts, VoiceCasting.pool(v, d), d.rate)[part]
+        val a = VoiceCasting.autoCast(parts, VoiceCasting.pool(v, d), d.rate, registers)[part]
         val fb = v.firstOrNull { it.id == a?.voice } ?: v.firstOrNull() ?: return null
         return Resolved(true, r.entry, fb, r.rate, a?.pitch ?: 1.0, isDefault = r.isDefault)
     }

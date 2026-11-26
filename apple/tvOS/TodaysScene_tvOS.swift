@@ -45,7 +45,7 @@ struct TodaysScene_tvOS: View {
         if reading.isRunning { reading.stop(); return }
         guard let script else { return }
         let cast = VoiceCast(key: VoiceCastBook.scriptKey(script.id), parts: script.castParts.map(\.id),
-                             voices: { DeviceVoices.castable() }, storage: .memory())
+                             registers: script.registers, voices: { DeviceVoices.castable() }, storage: .memory())
         reading.start(opening, cast: cast, player: player)
     }
 

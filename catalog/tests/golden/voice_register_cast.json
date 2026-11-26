@@ -1,0 +1,104 @@
+{
+ "about": "Auto-cast with the catalog's register hints (catalog DECISIONS 049, PLAYS-DESIGN §2.8 rule 4). Run by js/voice-cast.test.js, apple/Tests/VoiceCastTests.swift and android VoiceCastTest.kt: one algorithm per language, the same answers. A voice's kind is high for a reported female gender or a measured 'higher' register, low for male or 'lower', else none. A part with a register takes the least-used voice of its kind (best first), else of no kind, else any; a part without one takes the least-used voice, the next of the other kind, as before. Pitch: the first not yet used on that voice, in the order the case names (matched high 1, 1.14, 1.07, 0.93, 0.86; matched low 1, 0.86, 0.93, 1.07, 1.14; a voice not of the part's kind, high 1.14, 1.07, 1, 0.93, 0.86 or low 0.86, 0.93, 1, 1.07, 1.14; no register 1, 0.86, 1.14, 0.93, 1.07). `control` is wrong on purpose: a test that does not find it wrong is not comparing.",
+ "cases": [
+  {
+   "name": "reported genders: each part of a register takes that kind, the rest alternate",
+   "voices": [
+    {"engine": "kokoro", "id": "F1", "gender": "female"},
+    {"engine": "kokoro", "id": "M1", "gender": "male"},
+    {"engine": "system", "id": "F2", "gender": "female"},
+    {"engine": "system", "id": "M2", "gender": "male"},
+    {"engine": "system", "id": "N1"}
+   ],
+   "parts": [
+    {"id": "role:P1", "register": "high"},
+    {"id": "role:P2", "register": "low"},
+    {"id": "role:P3"},
+    {"id": "role:P4", "register": "high"},
+    {"id": "role:P5", "register": "low"},
+    {"id": "role:P6", "register": "high"},
+    {"id": "directions"}
+   ],
+   "cast": {"role:P1": ["F1", 1], "role:P2": ["M1", 1], "role:P3": ["F2", 1], "role:P4": ["F1", 1.14], "role:P5": ["M2", 1], "role:P6": ["F2", 1.14], "directions": [null, 1]}
+  },
+  {
+   "name": "no voice reports a gender (the web): pitch up for high, down for low",
+   "voices": [
+    {"engine": "system", "id": "A"},
+    {"engine": "system", "id": "B"},
+    {"engine": "system", "id": "C"}
+   ],
+   "parts": [
+    {"id": "role:P1", "register": "low"},
+    {"id": "role:P2", "register": "high"},
+    {"id": "role:P3"},
+    {"id": "role:P4", "register": "high"},
+    {"id": "role:P5", "register": "low"}
+   ],
+   "cast": {"role:P1": ["A", 0.86], "role:P2": ["B", 1.14], "role:P3": ["C", 1], "role:P4": ["A", 1.14], "role:P5": ["B", 0.86]}
+  },
+  {
+   "name": "measured registers (Android): a register that runs out reuses its voice, pitched its way",
+   "voices": [
+    {"engine": "system", "id": "L1", "register": "lower"},
+    {"engine": "system", "id": "H1", "register": "higher"},
+    {"engine": "system", "id": "X"}
+   ],
+   "parts": [
+    {"id": "role:P1", "register": "high"},
+    {"id": "role:P2", "register": "high"},
+    {"id": "role:P3", "register": "low"},
+    {"id": "role:P4"}
+   ],
+   "cast": {"role:P1": ["H1", 1], "role:P2": ["H1", 1.14], "role:P3": ["L1", 1], "role:P4": ["X", 1]}
+  },
+  {
+   "name": "only men's voices: a woman's part takes one pitched up",
+   "voices": [
+    {"engine": "system", "id": "M1", "gender": "male"},
+    {"engine": "system", "id": "M2", "gender": "male"}
+   ],
+   "parts": [
+    {"id": "role:P1", "register": "high"},
+    {"id": "role:P2"},
+    {"id": "role:P3", "register": "high"}
+   ],
+   "cast": {"role:P1": ["M1", 1.14], "role:P2": ["M2", 1], "role:P3": ["M1", 1.07]}
+  },
+  {
+   "name": "a woman's part takes a voice of no kind before a man's",
+   "voices": [
+    {"engine": "system", "id": "M1", "gender": "male"},
+    {"engine": "system", "id": "N1"}
+   ],
+   "parts": [
+    {"id": "role:P1", "register": "high"},
+    {"id": "role:P2", "register": "low"}
+   ],
+   "cast": {"role:P1": ["N1", 1.14], "role:P2": ["M1", 1]}
+  },
+  {
+   "name": "no part has a register: the cast is today's",
+   "voices": [
+    {"engine": "system", "id": "a", "gender": "female"},
+    {"engine": "system", "id": "b", "gender": "female"},
+    {"engine": "system", "id": "c", "gender": "male"},
+    {"engine": "system", "id": "d"},
+    {"engine": "system", "id": "e", "gender": "male"}
+   ],
+   "parts": [
+    {"id": "role:P1"}, {"id": "role:P2"}, {"id": "role:P3"}, {"id": "role:P4"}, {"id": "role:P5"}, {"id": "role:P6"}, {"id": "sound"}
+   ],
+   "cast": {"role:P1": ["a", 1], "role:P2": ["c", 1], "role:P3": ["b", 1], "role:P4": ["e", 1], "role:P5": ["d", 1], "role:P6": ["a", 0.86], "sound": [null, 1]}
+  }
+ ],
+ "control": {
+  "name": "wrong on purpose: a woman's part on a man's voice at its own pitch",
+  "voices": [
+   {"engine": "system", "id": "M1", "gender": "male"},
+   {"engine": "system", "id": "M2", "gender": "male"}
+  ],
+  "parts": [{"id": "role:P1", "register": "high"}],
+  "cast": {"role:P1": ["M1", 1]}
+ }
+}

@@ -866,6 +866,9 @@ offline floor.
   checked against the script by `check_play_library`),
   `roles` (all named speakers), `cast` (each named speaker's speeches, largest first, one number per
   role: what a list draws as the cast window and fingerprint without the script; Decision 076),
+  `registers` (since 2026-11-26, catalog DECISIONS 049: one letter per entry of `cast`, in its order, `h` for a
+  role whose stand-in voice is high, `l` low, `-` unknown; the roles' `register` below said again for a list;
+  a library built before has none, and `check_play_library` accepts that),
   `lines` (speeches),
   `words` (spoken words), `minutes` (`ceil(words / wordsPerMinute)`, approximate, at least 1),
   `opening` (the first two speeches with said words, each `{role, text}`: the role as printed and
@@ -897,7 +900,15 @@ offline floor.
   own takes that line's id plus a letter (`L0009`, `L0009a`, `L0009b`, `L0010`; `L0000a` before the
   first line). The first such change was the run-in speech fix of 2026-11-14 (R2-play-typography §4).
 - `scripts/<id>.json`: `{format: 1, scripts: [<one entry>]}`, the shape of
-  `castable-scripts.json`, so one decoder reads both. An entry carries `roles` and `lines`
+  `castable-scripts.json`, so one decoder reads both. Each of its `roles` is `{name, lines, words}` and, since
+  2026-11-26, `register`: `"high"` or `"low"`, the register of the part's stand-in voice where the play's own print
+  settles it (a title or word in the role's name, the list of persons, the stage directions, the play calling the
+  name with a title; an actor's title or a census given name only when nothing else speaks), absent when it does
+  not or when the evidence disagrees, and always absent for a crowd or a pair (`ALL`, `BOTH`, `A VOICE`,
+  `PAUL AND LUCY`) (`catalog/tools/play_voices.py`, catalog DECISIONS 049). It casts device voices only: clients
+  give a part with one a voice of that register by default (PLAYS-DESIGN §2.8 rule 4) and never show it; a
+  person reads any part. It is not in `revision` (lines only). The bundled `castable-scripts.json` carries none.
+  An entry carries `roles` and `lines`
   (the parser's exact slices; stage directions and spoken parts kept apart; a speech may carry `em`,
   the indexes of its `say` parts printed in italics, the speaker's emphasis, said like any other; `mic`
   parts occur in radio scripts only), and, when the text

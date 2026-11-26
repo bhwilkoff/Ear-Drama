@@ -175,7 +175,9 @@ download remains small, but ... an onboarding ... to download the better quality
   the mix in Listen Through and the export. Then web, Apple, Android.
   Researched 2026-11-26 (`B32-sound-board-research.md`). Decided: place on lines first, live pads later; own sounds stay
   private (not published); Kenney + OpenGameArt CC0 + PD music until the owner rules on the USC libraries' uploader CC0;
-  Android needs a mix renderer first.
+  Android needs a mix renderer first. (Wrong: Android has MixRenderer; it lacks a cue decoder and the duck.)
+  Designed 2026-11-26 (`B32-sound-board.md`, batches K1 pack, K2 shared mix, W, A, D, P). Decided: a performed cue is a
+  take like any line. Owner: the pack's archive.org item under the project's account; the USC library for the gaps.
 - [ ] **B33 Small download, better voices on demand.** Measure today's app sizes and what ships inside (Kokoro model,
   phonemes); keep the stores' download small; an onboarding step (and Library Voices) that offers the better voices
   for this device with size and a choice, never forced. Design, then build.
@@ -380,3 +382,4 @@ GRW request sent or not.
 - 2026-11-25 11:00: B28 live (plays-library-2026-11-25-4, Worker f43df857): 5,936 italic words spoken again in 636 plays (45 of 45 sampled right; em kept), 5,339 verse line numbers gone, 27 corrections. 2,792 short italics left as they were, uncertain. One more Site deploy red on the way (the shape check, until the new library was up): order the library upload before the push next time.
 - 2026-11-26 (Mountain, morning): round 3 started. B29 (page flips, Opus), B30 (gendered stand-in voices, Opus) and B31 research (Sonnet) running; B32 sound board and B33 voices onboarding research next.
 - 2026-11-26 12:00: research done for B31, B32, B33 (docs in docs/research/design); B31 design merged, frames sent. B29, B30 running.
+- 2026-11-26 12:45: 1.1.4 (176) with B29 dispatched (Play internal done). B32 designed and merged. B30 and B31 C1/C3/C4 running.
