@@ -85,6 +85,23 @@ class SettingsRenderTest {
 
     @Test fun unsupported() = shoot("android-settings-unsupported") { LazyColumn { voicesItems(ui(KokoroUi.Unsupported, false), VoiceSettingsActions()) } }
 
+    // The Better voices step (§4.6b): the sheet's content as the ModalBottomSheet draws it.
+    @Test fun voicesStep() = shoot("android-voices-step") {
+        VoicesStepContent(KokoroUi.Absent(126_000_000), VoiceSettingsActions(), freeBytes = 20_000_000_000, systemVoicesLine = true, onOpenSettings = {}, onClose = {})
+    }
+
+    @Test fun voicesStepLowSpace() = shoot("android-voices-step-low") {
+        VoicesStepContent(KokoroUi.Absent(126_000_000), VoiceSettingsActions(), freeBytes = 98_000_000, systemVoicesLine = false, onOpenSettings = {}, onClose = {})
+    }
+
+    @Test fun voicesStepDownloading() = shoot("android-voices-step-downloading") {
+        VoicesStepContent(KokoroUi.Progress(34_000_000, 126_000_000), VoiceSettingsActions(), freeBytes = 20_000_000_000, systemVoicesLine = false, onOpenSettings = {}, onClose = {})
+    }
+
+    @Test fun voicesStepReady() = shoot("android-voices-step-ready") {
+        VoicesStepContent(KokoroUi.Ready(107_000_000), VoiceSettingsActions(), freeBytes = 20_000_000_000, systemVoicesLine = false, onOpenSettings = {}, onClose = {})
+    }
+
     @Test fun pickerDefaultRow() = shoot("android-picker-default") {
         Column(Modifier.padding(top = 16.dp)) {
             Text("LUCY", Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.headlineSmall)

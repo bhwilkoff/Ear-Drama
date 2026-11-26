@@ -253,8 +253,9 @@ private fun GroupTitle(text: String) {
     )
 }
 
+/** The download's control in each state; Library's Voices and the Better voices step (§4.6b) draw this one. */
 @Composable
-private fun KokoroSection(state: KokoroUi, a: VoiceSettingsActions) {
+internal fun KokoroSection(state: KokoroUi, a: VoiceSettingsActions, canDownload: Boolean = true) {
     Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp)) {
         when (state) {
             KokoroUi.Unsupported -> Text(
@@ -266,7 +267,7 @@ private fun KokoroSection(state: KokoroUi, a: VoiceSettingsActions) {
                 if (state.failed) {
                     Text("The download failed.", style = MaterialTheme.typography.bodyMedium, color = AppSemantics.colors.error)
                 }
-                OutlinedButton(onClick = a.onDownload) {
+                OutlinedButton(onClick = a.onDownload, enabled = canDownload) {
                     Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.padding(end = 0.dp).heightIn(max = 18.dp))
                     Text(
                         "${if (state.failed) "Try again" else "Download voices"} (${KokoroModelStore.megabytes(state.bytes)})",
