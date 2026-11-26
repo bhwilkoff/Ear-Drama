@@ -1441,7 +1441,7 @@ web app follows today.
 - **§4.11b Better voices at first launch** (Decision 090; owner, 2026-11-26: *"Can we also ensure that the app download remains small, but that we start working on a onboarding for the app that allows for people to download the better quality voices for their chosen device?"*; PLAYS-DESIGN §2.8 rule 13 is
   binding and quoted: *"One step, skippable, never forced. A platform sheet over the app (never a page,
   a flow, or slides) headed Better voices"*). A `<dialog id="voices-step">` opened with `showModal()`
-  (a bottom sheet at 375 px, a 440 px sheet from 768 px, as Now Playing, §5.1): the heading "Better
+  (a bottom sheet on a phone, the reader's card from 600 px, `.rd-sheet`): the heading "Better
   voices", the one fact line, then the Kokoro control of §4.11a item 1 itself (`VoiceSettings.hifi`,
   the same function Library draws, so the size, progress, Cancel, failure and Try again are one code
   path), then **Not now** (ghost), **Done** once the voices are ready. Escape and the backdrop are a
