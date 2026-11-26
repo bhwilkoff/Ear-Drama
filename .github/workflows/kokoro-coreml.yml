@@ -33,7 +33,7 @@ on:
         description: 'Compute precision: fp32 (the only one that passes, 2026-11-22) | mixed | fp16'
         default: 'fp32'
       weights:
-        description: 'Weight storage: none | w16 (fp16 stored, fp32 math) | w16/int8 (duration fp16, decoder int8) | int8 | int8b | pal8; see the converter's docstring for measured results'
+        description: 'Weight storage: none | w16 (fp16 stored, fp32 math) | w16/int8 (duration fp16, decoder int8) | int8 | int8b | pal8; see the converter docstring for measured results'
         default: 'none'
       publish:
         description: 'Upload to the kokoro-model Release after the check passes'
