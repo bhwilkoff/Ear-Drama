@@ -601,6 +601,7 @@
     ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode, person: renderPerson,
        radio: renderRadio, surprise: renderSurprise, record: renderRecord, own: (r) => (r.p.get('cast') ? EarUI : OwnUI).render(r, playsHelpers), plays: renderPlays, reader: renderReader, readroom: (r) => ReadUI.render(r, playsHelpers), class: (r) => ClassUI.render(r, playsHelpers), invite: renderInvite, drama: renderDrama, search: renderSearch,
        library: renderLibrary })[r.view](r);
+    if (r.view === 'reader' || r.view === 'plays' || (r.view === 'own' && r.p.get('cast'))) VoicesStep.shared().firstUse();
     if (!firstRoute) {
       $('main-content').scrollTop = 0;
       const h = $(`view-${r.view}`).querySelector('h1');
@@ -3020,6 +3021,9 @@
      browser for testing, ?kokoro=1 back on; ?kokoro_manifest= points it at another model manifest. */
   Voices.shared({ manifestURL: params.get('kokoro_manifest') || undefined, muted: params.get('mute') === '1' })
     .start().catch(e => console.error('kokoro voices', e));
+  /* Better voices at first launch (WEB-DESIGN §4.11b, PLAYS-DESIGN §2.8 rule 13): once at page start, once more at the
+     first read, cast or record; never on a TV, never after a download began. */
+  VoicesStep.shared({ voices: Voices.shared(), tv: document.documentElement.classList.contains('tv') });
   VoiceSettings.configure({
     muted: params.get('mute') === '1',
     go: () => navigate('?view=library&section=voices'),
@@ -3055,6 +3059,7 @@
     }
   }
   route();
+  VoicesStep.shared().launch();
   // Relay across time (PLAYS-DESIGN §12.11): a device with takes waiting to pass through keeps trying while the app is open.
   if (RelayWatch.flagged()) {
     PlaysUI.openStore().then((store) => RelayWatch.shared({ api: API, store, me: () => (API.account.state() || {}).user_id || null }).start()).catch((err) => console.error('relay', err));

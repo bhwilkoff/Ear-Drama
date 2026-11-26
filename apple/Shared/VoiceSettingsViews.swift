@@ -174,8 +174,8 @@ struct VoicesSection: View {
         let progress: (Int64, Int64) = { if case let .downloading(d, t) = kokoro.state { return (d, t) } else { return (0, 0) } }()
         Section {
             KokoroControls(state: state, done: progress.0, total: progress.1, bytes: kokoro.downloadBytes,
-                           download: { kokoro.download() }, cancel: { kokoro.cancel() },
-                           retry: { kokoro.clearFailure(); kokoro.download() },
+                           download: { VoicesOffer.current.downloadBegan(); kokoro.download() }, cancel: { kokoro.cancel() },
+                           retry: { kokoro.clearFailure(); VoicesOffer.current.downloadBegan(); kokoro.download() },
                            delete: {
                                Task {
                                    preview.stop()

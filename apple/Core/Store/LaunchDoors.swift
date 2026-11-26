@@ -68,6 +68,9 @@ import Foundation
 /// - APP_START_CAST=<episode id> (iOS and macOS, §4.22): casting that episode by ear; APP_CAST_STEPS drives it for a
 ///   frame (EarDoorSteps). Use with APP_MUTE=1
 ///
+/// - APP_SKIP_ONBOARD=1: no Better Voices step at launch or at first use (every UI test sets it; PLAYS-DESIGN §2.8
+///   rule 13). APP_VOICES_STEP=1 shows the step at launch without reading or writing its record (iOS and macOS)
+///
 /// - APP_DOOR_FILE (Mac): commands read from a file while the app runs (DoorFile_macOS)
 ///
 /// DEBUG-only: in a Release build `current` is always empty, so every door is a
@@ -106,6 +109,8 @@ struct LaunchDoors: Sendable, Equatable {
     var ownSheet = false
     var cast: String?
     var castSteps: String?
+    var skipOnboard = false
+    var voicesStep = false
 
     var isEmpty: Bool { self == LaunchDoors() }
 
@@ -160,7 +165,9 @@ struct LaunchDoors: Sendable, Equatable {
             ownLine: environment["APP_OWN_LINE"].flatMap { Int($0) },
             ownSheet: environment["APP_OWN_SHEET"] == "1",
             cast: environment["APP_START_CAST"].flatMap { $0.isEmpty ? nil : $0 },
-            castSteps: environment["APP_CAST_STEPS"]
+            castSteps: environment["APP_CAST_STEPS"],
+            skipOnboard: environment["APP_SKIP_ONBOARD"] == "1",
+            voicesStep: environment["APP_VOICES_STEP"] == "1"
         )
     }
 

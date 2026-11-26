@@ -54,6 +54,7 @@ struct ContentView_iOS: View {
             #endif
         }
         .modifier(OwnDoors())
+        .voicesStepAtLaunch()
         .fullScreenCover(item: $store.reading) { target in
             NavigationStack { ScriptReaderView(scriptID: target.scriptID, startLine: target.line, studio: target.studio) }
         }

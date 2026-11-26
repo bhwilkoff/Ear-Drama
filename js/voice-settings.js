@@ -53,6 +53,53 @@ const VoiceSettings = (() => {
     return `${lead && lead.engine === 'kokoro' ? 'Kokoro' : 'Device'} · ${speedText(d.rate)}`;
   }
 
+  /**
+   * The Kokoro download's control in each state (§4.11a item 1) painted into `node`: Library's Voices and the
+   * first-launch step (§4.11b, PLAYS-DESIGN §2.8 rule 13) draw this one function, so their words never part.
+   * `repaint` runs when the probe settles. Low storage disables Download with the space left.
+   */
+  async function paintKokoro(node, h, repaint = () => {}) {
+    const st = h.status();
+    const kids = [];
+    const name = el('span', { class: 'body' }, 'Kokoro voices');
+    if (st === 'unsupported') {
+      kids.push(el('p', { class: 'caption refusal' }, 'This browser can’t run Kokoro voices.'));
+    } else if (st === 'probing') {
+      h.probe().then(repaint);
+    } else if (st === 'absent' || st === 'failed') {
+      const [size, free] = await Promise.all([h.size(), h.free ? h.free() : null]);
+      const offline = !h.online();
+      const full = !!(size && free !== null && free < size * 1.2);
+      kids.push(el('div', { class: 'vs-hifi-row' }, name,
+        el('button', { type: 'button', class: 'btn btn-primary vs-get', disabled: offline || !size || full, onclick: () => h.download() },
+          st === 'failed' ? 'Try again' : size ? `Download (${mb(size)})` : 'Download')));
+      if (st === 'failed') kids.push(el('p', { class: 'caption vs-error', role: 'alert' }, 'The download failed.'));
+      else if (offline) kids.push(el('p', { class: 'caption' }, 'Offline'));
+      else if (full) kids.push(el('p', { class: 'caption vs-error', role: 'alert' }, `Not enough space: ${mb(free)} free.`));
+      else if (!size) kids.push(el('p', { class: 'caption refusal' }, 'Not available yet'));
+    } else if (st === 'downloading') {
+      const p = h.progress();
+      kids.push(el('div', { class: 'vs-hifi-row' }, name,
+        el('button', { type: 'button', class: 'btn', onclick: () => h.cancel() }, 'Cancel')),
+      el('progress', { class: 'vs-progress', max: String(p.total || 1), value: String(p.done), 'aria-label': 'Downloading Kokoro voices' }),
+      el('p', { class: 'caption tabular' }, p.total ? `${mb(p.done)} of ${mb(p.total)}` : mb(p.done)));
+    } else if (st === 'checking') {
+      kids.push(el('div', { class: 'vs-hifi-row' }, name, el('span', { class: 'caption' }, 'Checking this browser')));
+    } else if (st === 'refused') {
+      kids.push(el('div', { class: 'vs-hifi-row' }, name,
+        el('button', { type: 'button', class: 'btn', onclick: () => h.recheck() }, 'Try again')),
+      el('p', { class: 'caption refusal' }, 'This browser can’t run Kokoro voices.'),
+      el('button', { type: 'button', class: 'btn btn-ghost vs-delete', onclick: () => h.remove() }, 'Delete'));
+    } else if (st === 'ready') {
+      const size = await h.size();
+      kids.push(el('div', { class: 'vs-hifi-row' }, name,
+        el('button', { type: 'button', class: 'btn btn-ghost vs-delete', onclick: () => h.remove() }, size ? `Delete (${mb(size)})` : 'Delete')),
+      el('p', { class: 'caption vs-credit' }, ATTRIBUTION));
+    }
+    node.replaceChildren(...kids);
+    node.dataset.state = st;
+  }
+
   let mounted = null;
   /** Library at the Voices section. */
   function open() { config.go(); }
@@ -78,45 +125,7 @@ const VoiceSettings = (() => {
     steps.append(speed);
     const lists = el('div', { class: 'vs-lists' });
 
-    async function paintHifi() {
-      const st = h.status();
-      const kids = [];
-      const name = el('span', { class: 'body' }, 'Kokoro voices');
-      if (st === 'unsupported') {
-        kids.push(el('p', { class: 'caption refusal' }, 'This browser can’t run Kokoro voices.'));
-      } else if (st === 'probing') {
-        h.probe().then(paint);
-      } else if (st === 'absent' || st === 'failed') {
-        const size = await h.size();
-        const offline = !h.online();
-        kids.push(el('div', { class: 'vs-hifi-row' }, name,
-          el('button', { type: 'button', class: 'btn btn-primary vs-get', disabled: offline || !size, onclick: () => h.download() },
-            st === 'failed' ? 'Try again' : size ? `Download (${mb(size)})` : 'Download')));
-        if (st === 'failed') kids.push(el('p', { class: 'caption vs-error', role: 'alert' }, 'The download failed.'));
-        else if (offline) kids.push(el('p', { class: 'caption' }, 'Offline'));
-        else if (!size) kids.push(el('p', { class: 'caption refusal' }, 'Not available yet'));
-      } else if (st === 'downloading') {
-        const p = h.progress();
-        kids.push(el('div', { class: 'vs-hifi-row' }, name,
-          el('button', { type: 'button', class: 'btn', onclick: () => h.cancel() }, 'Cancel')),
-        el('progress', { class: 'vs-progress', max: String(p.total || 1), value: String(p.done), 'aria-label': 'Downloading Kokoro voices' }),
-        el('p', { class: 'caption tabular' }, p.total ? `${mb(p.done)} of ${mb(p.total)}` : mb(p.done)));
-      } else if (st === 'checking') {
-        kids.push(el('div', { class: 'vs-hifi-row' }, name, el('span', { class: 'caption' }, 'Checking this browser')));
-      } else if (st === 'refused') {
-        kids.push(el('div', { class: 'vs-hifi-row' }, name,
-          el('button', { type: 'button', class: 'btn', onclick: () => h.recheck() }, 'Try again')),
-        el('p', { class: 'caption refusal' }, 'This browser can’t run Kokoro voices.'),
-        el('button', { type: 'button', class: 'btn btn-ghost vs-delete', onclick: () => h.remove() }, 'Delete'));
-      } else if (st === 'ready') {
-        const size = await h.size();
-        kids.push(el('div', { class: 'vs-hifi-row' }, name,
-          el('button', { type: 'button', class: 'btn btn-ghost vs-delete', onclick: () => h.remove() }, size ? `Delete (${mb(size)})` : 'Delete')),
-        el('p', { class: 'caption vs-credit' }, ATTRIBUTION));
-      }
-      hifi.replaceChildren(...kids);
-      hifi.dataset.state = st;
-    }
+    const paintHifi = () => paintKokoro(hifi, h, paint);
 
     function hear(btn, v) {
       if (hearing === btn) { voice.cancel(); stopHearing(); return; }
@@ -208,5 +217,5 @@ const VoiceSettings = (() => {
     return host;
   }
 
-  return { configure, open, mount, leave, summary, quality, ATTRIBUTION };
+  return { configure, open, mount, leave, summary, quality, paintKokoro, ATTRIBUTION };
 })();

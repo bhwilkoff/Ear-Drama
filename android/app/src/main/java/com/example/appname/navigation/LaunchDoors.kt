@@ -92,6 +92,10 @@ data class LaunchDoors(
     val startReadPair: Boolean = false,
     /** `appname_empty_library`: Library drawn as a new listener's; draws only, never writes or deletes stored data. */
     val emptyLibrary: Boolean = false,
+    /** APP_SKIP_ONBOARD (`appname_skip_onboard`): the Better voices step stays away (UI tests, harness frames). */
+    val skipOnboard: Boolean = false,
+    /** `appname_voices_step`: the Better voices step at launch, without reading or writing its record (§4.6b). */
+    val voicesStep: Boolean = false,
 ) {
     fun requests(): List<InboxRequest> =
         listOfNotNull(
@@ -135,6 +139,8 @@ data class LaunchDoors(
         const val EXTRA_START_READ_RECORD = "appname_start_read_record"
         const val EXTRA_START_READ_PAIR = "appname_start_read_pair"
         const val EXTRA_EMPTY_LIBRARY = "appname_empty_library"
+        const val EXTRA_SKIP_ONBOARD = "appname_skip_onboard"
+        const val EXTRA_VOICES_STEP = "appname_voices_step"
         const val EXTRA_READ_DIAG = "appname_read_diag"
         const val EXTRA_WORKER_URL = "appname_worker_url"
         private val BENCH_HOST = Regex("""^http://(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|localhost|127\.0\.0\.1):\d+$""")
@@ -173,6 +179,8 @@ data class LaunchDoors(
                 startReadRecord = extras[EXTRA_START_READ_RECORD].let { it == true || it == "1" || it == "true" },
                 startReadPair = extras[EXTRA_START_READ_PAIR].let { it == true || it == "1" || it == "true" },
                 emptyLibrary = extras[EXTRA_EMPTY_LIBRARY].let { it == true || it == "1" || it == "true" },
+                skipOnboard = extras[EXTRA_SKIP_ONBOARD].let { it == true || it == "1" || it == "true" },
+                voicesStep = extras[EXTRA_VOICES_STEP].let { it == true || it == "1" || it == "true" },
             )
         }
     }
@@ -201,4 +209,10 @@ object AlongDoor {
 /** DEBUG door `appname_empty_library`, set once by MainActivity; Library only reads it to draw. Never set in release. */
 object LibraryDoor {
     @Volatile var empty = false
+}
+
+/** DEBUG doors `appname_skip_onboard` and `appname_voices_step`, set once by MainActivity; the root reads them. Never set in release. */
+object VoicesStepDoor {
+    @Volatile var skip = false
+    @Volatile var force = false
 }

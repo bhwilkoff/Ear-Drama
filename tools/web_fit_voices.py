@@ -8,7 +8,7 @@ stub; in the downloading state the model's bytes are a stream that stops partway
 answers for the model and the self-test result is preset. The state comes from the URL's #fit= so one injected script
 serves them all.
 
-Frames (with --shots DIR): Library, scrolled to its Voices section, not downloaded, downloading, downloaded, and unsupported; the cast sheet
+Frames (with --shots DIR): the first-launch step (WEB-DESIGN 4.11b) and the step on a full disk; Library, scrolled to its Voices section, not downloaded, downloading, downloaded, and unsupported; the cast sheet
 with its Default chips and the "Better voices" offer (not downloaded), and with the Kokoro Defaults (downloaded).
 
 Fails on a sideways scroll, a sheet wider than the screen, a Download button without the manifest's size, no progress
@@ -63,6 +63,7 @@ STUB = r"""(() => {
   };
   Object.defineProperty(window, 'speechSynthesis', { value: synth, configurable: true });
   window.SpeechSynthesisUtterance = function (text) { this.text = text; };
+  if (mode === 'full' && navigator.storage) navigator.storage.estimate = async () => ({ quota: 400e6, usage: 90e6 });
   Object.defineProperty(Navigator.prototype, 'gpu', { configurable: true,
     get: () => (mode === 'unsupported' ? undefined : { requestAdapter: async () => ({}) }) });
   const manifest = { format: 1, files: [
@@ -167,7 +168,7 @@ def main():
             sheet = "document.querySelector('#view-library:not([hidden]) #voices')"
             fits = ("(() => { const d = document.querySelector('#voices'); const r = d.getBoundingClientRect();"
                     " return r.right <= innerWidth + 1 && d.scrollWidth <= d.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth; })()")
-            lib = f'{base}?view=library&section=voices&mute=1'
+            lib = f'{base}?view=library&section=voices&mute=1&onboard=0'
             no_settings = "!document.querySelector('#settings-row') && ![...document.querySelectorAll('#view-library button, #view-library a, dialog')].some(b => /^Settings$/.test(b.textContent.trim()))"
             engine = "window.__scripts.some(s => /kokoro-(model|voice)\\.js/.test(s))"
 
@@ -228,7 +229,7 @@ def main():
             shot('ready')
 
             # 4. The cast sheet with the Kokoro Defaults.
-            go(f'{base}?play={script["id"]}&mute=1#fit=ready')
+            go(f'{base}?play={script["id"]}&mute=1&onboard=0#fit=ready')
             if not wait("[...document.querySelectorAll('button')].some(b => /Record this/.test(b.textContent))", 'Record this'): return
             ev("[...document.querySelectorAll('button')].find(b => /Record this/.test(b.textContent)).click()")
             if not wait("document.querySelectorAll('.vc-chip').length > 0 && /Kokoro/.test(document.querySelector('.vc-chip').textContent)", 'Kokoro Default chips'): return
@@ -244,7 +245,7 @@ def main():
                 ev("document.querySelector('dialog.vc-sheet[open]').close()")
 
             # 5. The cast sheet before the download: device-voice Defaults and the one offer.
-            go(f'{base}?play={script["id"]}&mute=1#fit=absent')
+            go(f'{base}?play={script["id"]}&mute=1&onboard=0#fit=absent')
             if not wait("[...document.querySelectorAll('button')].some(b => /Record this/.test(b.textContent)) || document.querySelector('.vc-chip')", 'Record this'): return
             if not ev("document.querySelector('.vc-chip')"):
                 ev("[...document.querySelectorAll('button')].find(b => /Record this/.test(b.textContent)).click()")
@@ -263,6 +264,42 @@ def main():
             if ref != 'This browser can’t run Kokoro voices.': bad(f'the refusal reads {ref!r}')
             if ev(engine): bad('the engine scripts loaded without WebGPU')
             shot('unsupported')
+            # 7. Better voices at first launch (WEB-DESIGN 4.11b, PLAYS-DESIGN 2.8 rule 13): once at launch, Not now kept,
+            #    once more at the first cast or record, then never; low storage said; never where the browser cannot run them.
+            step = "document.querySelector('dialog#voices-step[open]')"
+            ev("localStorage.removeItem('ed.voicesStep')")
+            go(f'{base}?mute=1#fit=unsupported')
+            time.sleep(1.5)
+            if ev(step): bad('the step showed in a browser without WebGPU')
+            go(f'{base}?mute=1#fit=absent')
+            if not wait(f"{step} && document.querySelector('#voices-step .vs-get')", 'the first-launch step'): return
+            if ev("document.querySelector('#voices-step .vs-get').textContent") != 'Download (340 MB)': bad('the step does not name the size on Download')
+            if ev("document.querySelector('#voices-step h2').textContent") != 'Better voices': bad('the step is not headed Better voices')
+            if ev("document.activeElement && document.activeElement.textContent") != 'Not now': bad('the step does not focus Not now')
+            if ev("(() => { const r = document.querySelector('#voices-step').getBoundingClientRect(); return r.left < 0 || r.right > innerWidth + 1; })()"): bad('the step is wider than the screen')
+            if ev(engine): bad('the step loaded the engine scripts')
+            shot('step')
+            ev("document.querySelector('#voices-step .vstep-close').click()")
+            time.sleep(0.3)
+            if ev(step): bad('Not now did not close the step')
+            if ev("localStorage.getItem('ed.voicesStep')") != '1': bad('the launch offer was not recorded')
+            go(f'{base}?mute=1#fit=absent')
+            time.sleep(1.5)
+            if ev(step): bad('the step showed again at the next launch')
+            go(f'{base}?play={script["id"]}&mute=1#fit=absent')
+            if not wait(step, 'the step at the first cast'): return
+            ev("document.querySelector('#voices-step').close()")
+            if ev("localStorage.getItem('ed.voicesStep')") != '2': bad('the first-use offer was not recorded')
+            go(f'{base}?play={script["id"]}&mute=1#fit=absent')
+            time.sleep(1.5)
+            if ev(step): bad('the step showed a third time')
+            go(f'{base}?mute=1&voices_step=1#fit=full')
+            if not wait(f"{step} && document.querySelector('#voices-step .vs-get[disabled]')", 'the step on a full disk'): return
+            full = ev("(document.querySelector('#voices-step .vs-error') || {}).textContent")
+            if full != 'Not enough space: 310 MB free.': bad(f'the low-storage warning reads {full!r}')
+            if ev("localStorage.getItem('ed.voicesStep')") != '2': bad('the door wrote the record')
+            shot('step-full')
+
             errs = json.loads(ev("JSON.stringify(window.__errors)") or '[]')
             if errs: bad(f'page errors: {errs[:3]}')
         except Exception as e:  # a blind instrument says so
