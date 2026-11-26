@@ -1804,3 +1804,42 @@ labeled) and read what changed before it is kept, and keep the held-out precisio
 again where a library and the harvest are on the machine). A register is not part of `revision`, so phonemes and takes are
 untouched; the bundled `castable-scripts.json` carries none until it is rebuilt. Never a register in an own script (a person's
 own words), never one shown on screen.
+
+## 050 — A play is found by rules shown as rules: pictures attach or the build stops, facets from the record, titles that name plays (B31 C1, C3, C4)
+
+*Date: 2026-11-26*
+
+**Rule**: the play library's pictures are read from the catalog Release's harvest cache, which
+`tools/refresh_play_library.sh` restores first (`tools/restore_play_art_caches.sh`: `art_v2`, `people_wd`, `loc`,
+`commons`, `series_art`, adding only missing files to the shared `catalog/.cache`, never overwriting one), and
+`play_art.attach` raises `NoArtCache` when it finds none; `check_play_library` fails a library whose `pictures` summary
+is under 25%. Every row carries its finding facets from `play_facets.py` (form, era, life, one act, balance, subjects,
+LoCC, translated, attributed, scenes for 2 to 4 voices), the index its facet counts, and beside it `collections.json`
+(data rules, plus the editor's `catalog/plays/collections.json`, shipped empty), `characters.json` and
+`search/said/<p>.json`. A row whose title is a credit line, a periodical issue, or a book shelved only as essays is
+held (`play_titles.py`, `title_not_a_play`); a record with no author shows the catalog's Dubious author (marked
+`attributed`) or Librettist, for display only.
+
+**Why**: the published library had no picture on any of its 1,194 rows because `attach` returned the rows bare without
+a word on a Mac with no `art_v2` (B31 design 1.1): a silent no-op hid a whole feature. With the caches and a
+`--phase plays` harvest of the 235 books that had no record (869 of 869 now), 786 of 1,186 rows (66%) carry a picture:
+101 lead with the work's own image, 190 with a title page, 495 with an author's portrait; production 0 because the
+shared `loc/records.json.gz` is older than the Release's (12,664 vs 16,385 records) and was kept. Only the 101 are
+pictures of the play itself (design 1.4), so `picture.kind` is what a client reads before it puts one in a tile. Form
+from LCSH subjects or the title, never a bookshelf: a fresh random read of 30 formed rows (seed 1126031) found 29 right
+(Kotzebue's The Virgin of the Sun, "Tragedies (Drama)" by its record, is a romance). Two refusals came from the data:
+a play cut from a volume never takes the volume's title ("Plays: ...; Easter" made Pariah religious), and Gilbert's
+"Original Plays" is filed under "Operas -- Librettos" so its Engaged was a libretto: a volume gives its one subject
+form only when its title is not a collection's (form on 380 rows, 32%, down from the design's 38% for precision). A
+star part needs three parts or more: in a two-hander one part always has half (the design's 45 counted the 27
+two-handers). Titles key every finding surface, and eight rows were not plays by their titles (Otway's "Edited by
+Havelock Ellis", Dekker's "Thomas Dekker Edited", two issues of The Glebe, Wilde's Intentions, ...). Poor Jack showed no
+author because Gutenberg's RDF names Cabell only as `[Dubious author]`, as it does the eleven Shakespeare apocrypha;
+crediting them as plain authors would claim more than the record does, and judging rights on them again could move a
+rights bucket.
+
+**How to apply**: a new form, era or collection rule is a golden case in `tests/golden/play_facets.json` with a planted
+refusal in `tests/test_play_facets.py`; read 30 random rows it changes before keeping it. Never rank a collection by
+anything but A to Z or length. An editor collection is the owner's; no agent writes one. A held title is mended by an
+editor, never repaired by a guessed title. Play numbers in `characters.json` and `search/said/` are places in the same
+build's `index.plays`: ship them only in one archive with it.

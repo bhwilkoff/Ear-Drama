@@ -1,0 +1,13 @@
+{
+ "format": 1,
+ "shape": {
+  "id": "a short slug, never reused",
+  "title": "the collection's name as the editor writes it",
+  "by": "the editor's name, shown as the credit under the heading",
+  "note": "optional: a line in the editor's own words, never written by an agent",
+  "plays": ["gut-<id> of a play in the library, in the editor's order; at least three, or it is not published"],
+  "added": "YYYY-MM-DD",
+  "season": "optional: when it is shown, e.g. December"
+ },
+ "collections": []
+}

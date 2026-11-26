@@ -70,6 +70,8 @@ def volume_text(titles=("THE FIRST PLAY", "THE SECOND PLAY"), names=(("SHERIFF",
 
 
 check_library = C.check_library
+# The fixtures carry no pictures: an empty play_art context, never the caches on this machine (B31 C1).
+L.ART = {"plays": {}, "files": {}, "live": {}, "ftp": {}}
 
 
 @case

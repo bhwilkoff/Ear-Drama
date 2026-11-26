@@ -3,7 +3,8 @@
 #
 #     bash tools/refresh_play_library.sh [--no-upload] [--no-harvest]
 #
-# rsync harvest (every rights-cleared Gutenberg play's text, one rsync session) -> build
+# rsync harvest (every rights-cleared Gutenberg play's text, one rsync session) -> the picture caches from the newest
+# dated catalog Release (tools/restore_play_art_caches.sh: adds what is missing, never overwrites) -> build
 # (catalog/tools/build_play_library.py, which runs the phoneme step, build_play_phonemes.py, in
 # catalog/.venv-phonemes: bash catalog/tools/setup_phoneme_env.sh once) -> tests
 # (catalog/tests/test_play_library.py, test_play_phonemes.py with the phoneme env's python) -> pack ->
@@ -37,6 +38,8 @@ if [ "$harvest" = 1 ]; then
   python3 tools/harvest_gutenberg_plays.py --rsync-castable || die "harvest failed"
 fi
 [ -x .venv-phonemes/bin/python ] || die "no phoneme environment: run bash catalog/tools/setup_phoneme_env.sh"
+# The pictures (play_art) are read from the catalog Release's harvest cache: without it every row was published bare.
+bash "$HERE/restore_play_art_caches.sh" "$ROOT/catalog/.cache" || die "the picture caches are not restored"
 python3 tools/build_play_library.py || die "build failed"
 python3 tests/test_play_library.py || die "play library tests failed"
 .venv-phonemes/bin/python tests/test_play_phonemes.py || die "phoneme tests failed"

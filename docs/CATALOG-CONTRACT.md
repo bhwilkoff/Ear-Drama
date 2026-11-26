@@ -520,8 +520,9 @@ movies. We should be able to do that for this app too (from wikipedia or any oth
   the scanned title page of an edition, the author's portrait, and the one that leads (work image, then title
   page, then author: `art_policy.pick_play`). Absent means the script-page label.
 - **`play.production`** (catalog 040): a production photograph of the play (a Federal Theatre Project record
-  that names the play and its author), same object shape. Clients lead a play on `titlePage`, then
-  `production`, then `authorArt`.
+  that names the play and its author), same object shape. Where each may lead is section 4.1's "Finding a
+  play" (B31 1.4): a tile, row or TV window only with a picture of the play (`picture.kind` `work`,
+  `production`, `book`); a title page or an author's portrait only on the play's own page header.
 - **License classes added by catalog 040** (an image is used unless its own record marks a restriction):
   `no_known_restrictions` (a Library of Congress "no known restrictions" line, or an unevaluated status with
   no restriction), `pd_source_only` (a public-domain record whose source states no further rights), and
@@ -957,6 +958,59 @@ offline floor.
   fails when the two differ. For the Worker; no client reads it. MEASURED 2026-11-24: 803 rows, 332
   bytes each, 270 KB, 1.5 s.
 
+- **Finding a play** (BACKLOG-LOOP B31 C1, C3, C4; catalog DECISIONS 050; design
+  `docs/research/design/B31-finding-a-play.md`). Additive, every field absent when unknown, computed once by
+  `catalog/tools/play_facets.py` and never by a client:
+  - Row fields: `form` (`comedy`, `farce`, `tragedy`, `tragicomedy`, `history`, `fantasy`, `religious`, `melodrama`,
+    `libretto`: the first form heading in the book's LCSH subjects, else in the Gutenberg title; never a bookshelf;
+    a title naming two forms names none; a play cut from a volume never takes the volume's title, and a subject's
+    form only when the volume's subjects name that one form and its title is not a collection's), `formSource`
+    (`subject` | `title`), `hue` (the board key the form borrows, WEB-DESIGN 6.4r: comedy and farce `comedy`,
+    tragedy and tragicomedy `drama`, history `documentary`, fantasy `scifi`, religious `serial`, melodrama
+    `mystery`, libretto `news`), `era` (`Antiquity`, `Medieval`, `1500s`, `1600s`, `1700s`, `1800s`, `1900-1930`:
+    the playwright's working years, born + 25 to died, at most born + 70; LoCC `PA` is Antiquity when undated),
+    `life` (`{born, died}`, negative for BCE, of the first author with dates), `oneAct` (true when a subject,
+    bookshelf or the title says one act), `balance` (`ensemble`: no part over a quarter of the spoken lines;
+    `lead`: one part of three or more speaks at least half; else `mixed`), `subjects` (the topics of the record's
+    "X -- Drama" headings that five or more plays share), `locc` (the record's LoCC class), `translated` (true
+    when a subject says "Translations into English"), `attributed` (true when the author shown is the catalog's
+    "Dubious author": a client says "attributed to"), `scenes` (at most six, text order: `{line, heading, voices,
+    minutes, parts}`, a printed section with 2 to 4 speaking parts and 1 to 12 minutes; `heading` cut at its first
+    punctuation and cased like a title when printed in capitals; `parts` largest first; it opens the reader at
+    `line` and records only to the next section).
+  - `picture.kind` is `work`, `production`, `book` (C2, a plate from the book; not yet built), `titlePage` or
+    `author`. **A tile, row, rail or TV window leads only with `work`, `production` or `book`**
+    (`play_art.WINDOW_KINDS`); a title page or an author's portrait leads only on the play's own page header
+    (B31 1.4); otherwise the play's label.
+  - Index fields: `facets` (`voices` and `minutes`: `[{min, max, count}]` bins, `max` null for the open one;
+    `form`, `era`, `balance`: `[{value, count}]` with `value` null for "Not named" or undated, a form on fewer than
+    `foldUnder` (5) plays counted there; `subjects`, `locc`: `[{value, count}]` most first; `oneAct`, `translated`:
+    counts; `scenes`: plays with a scene for 2, 3, 4 voices) and `pictures` (`play_art.summary`: `plays`,
+    `picture`, `kinds`, `window`, `titlePage`, `authorArt`, `production`).
+  - `collections.json`: `{format: 1, editor: [...], data: [...]}`. `data`: `{id, title, rule, count, plays}` (plus
+    `kind: "author"` for an author with five or more plays), the rule shown as the heading, plays A to Z, or
+    shortest first for a length rule; never by popularity. `editor`: from `catalog/plays/collections.json` (shipped
+    `{"collections": []}`; the owner is the editor, no agent writes an entry): `{id, title, by, note?, plays,
+    added, season?, count}`, `by` shown as the credit, `note` only in the editor's words; one with fewer than three
+    plays is not published, and a play id that does not resolve stops the build.
+  - `characters.json`: `{format: 1, names: {NAME: [[play number, lines], ...]}}`, every speaking part's printed
+    name in capitals, whitespace folded. A play number is the play's place in this index's `plays`, so the file is
+    read only with the index it was built with (one archive, one deploy).
+  - `search/said/<p>.json`: `{word: delta-coded play numbers}` for every spoken word of three letters or more,
+    tokenized and filed as the web projection's `search/said/` (`build_web_projection.tokens`, `term_file`). No
+    text and no line ids: a client intersects the words, fetches the best (at most six) scripts and finds the line
+    there, the words in order before scattered ones.
+  - Title audit (C4, `play_titles.py`): a row whose title is a credit line ("Edited by ...", "Translated by ...",
+    "... Edited", "By the Same Writer"), an issue of a periodical ("Vol. 1, No. 3", "1913/12") or a book Gutenberg
+    shelves only as essays is held (`title_not_a_play` in `held.json`); a bundled play never is. A record whose RDF
+    names no author shows the catalog's "Dubious author" (with `attributed`) or "Librettist", display only: rights
+    are judged on the record as it was.
+  - Pictures attach for real (C1): `tools/refresh_play_library.sh` first runs `tools/restore_play_art_caches.sh`
+    (the newest dated catalog Release's `art_v2`, `people_wd`, `loc`, `commons`, `series_art`, merged into
+    `catalog/.cache` adding only what is missing, never overwriting), `play_art.attach` raises when it finds no
+    cache, and `check_play_library` fails a library whose `pictures` summary shows under 25%
+    (`MIN_PICTURE_SHARE`; an index without the summary predates the rule).
+
 A client may show a play from the index alone (title, voices, minutes) and fetches
 `scripts/<id>.json` only to cast it. The guard is `catalog/tests/test_play_library.py`: shape
 and cross-file consistency of the real artifact when built, a fixture build always, and
@@ -968,7 +1022,8 @@ packed (`catalog/tools/play_library_archive.py`, deterministic tar.xz of `plays-
 uploaded as `plays-library-YYYY-MM-DD.tar.xz` (`-2`, `-3` for a same-day rebuild; never
 overwritten) to the rolling `plays-library` Release by `tools/refresh_play_library.sh` (rsync harvest,
 build with phonemes, tests, pack, upload, read the Release's size and sha256 back). The archive holds
-`index.json`, `phonemes-report.json`, `scripts/<id>.json` and `phonemes/<id>.json`, nothing else. `tools/assemble_site.sh` uses
+`index.json`, `phonemes-report.json`, `scripts/<id>.json`, `phonemes/<id>.json` and, since B31 C3,
+`collections.json`, `characters.json` and `search/said/<p>.json`, nothing else. `tools/assemble_site.sh` uses
 `catalog/out/plays-library` when a run built it and otherwise runs `tools/fetch_play_library.py`, which
 downloads the newest asset, checks size and sha256 against the Release, unpacks it, and runs
 `catalog/tools/check_play_library.py` (shape, cross-file consistency, at least 100 plays). Any failure
