@@ -3,7 +3,7 @@
 
     python3.12 -m venv VENV && VENV/bin/pip install coremltools==9.0 torch==2.7.0 "numpy<2.3" huggingface_hub \
         loguru "transformers<4.50" && VENV/bin/pip install --no-deps kokoro==0.9.4
-    VENV/bin/python tools/convert_kokoro_coreml.py WORK_DIR [--precision mixed|fp32|fp16] [--weights int8|none]
+    VENV/bin/python tools/convert_kokoro_coreml.py WORK_DIR [--precision mixed|fp32|fp16] [--weights none|w16|int8[:ops]|int8b|pal8, or DURATION/DECODER]
 
 WORK_DIR needs `voices.bin`, the 28-voice table tools/publish_kokoro_model.py builds (for the check below).
 
@@ -40,11 +40,12 @@ publishes them. Refuses a model whose audio has a non-finite sample or that drif
 
 coremltools 9.0's MLModel segfaults loading the decoder (macOS 27, 2026-11-15/16; the macos-26 runner, 2026-11-22), so
 step 4 runs the converted models through Core ML itself (tools/kokoro_coreml_predict.swift, compiled with swiftc; Xcode
-needed). .github/workflows/kokoro-coreml.yml runs all of this on a released macOS and publishes the result. Known waste, not yet fixed: every
-`torch.zeros_like` / `full_like` / scalar on a select's other side is folded into a constant of the bucket's whole
-shape, one per function, and the int8 pass stores each: about 48 MB of the decoder's 112 MB weight.bin (2026-11-16).
-Deriving the filler from a runtime tensor (the mask) should remove it; untested, as the conversion needs a Mac where
-coremltools runs.
+needed). .github/workflows/kokoro-coreml.yml runs all of this on a released macOS and publishes the result.
+Size (2026-11-26, B33b): the filler on a select's other side is a runtime zero (`Ctx.zero`), not a constant of the
+bucket's whole shape, which removed 190 MB of fp32 decoder weight with no change in the audio (worst spectral SNR 40.2
+dB). `--weights w16` stores every large weight as fp16 (constexpr_cast) and computes in fp32: 170 MB, worst 28.2 dB.
+`--weights w16/int8` (duration fp16, decoder int8 per channel): 109 MB, worst 22.1 dB, log-spectral distance 2.3 dB.
+int8 on the duration model fails (11.6 dB: durations drift), and `--precision fp16|mixed` still fails.
 """
 import hashlib
 import json
@@ -132,8 +133,13 @@ def build(km):
         def mask(self, length):  # (1, 1, length) bool
             return index(length).view(1, 1, length) < self.valid(length).view(1, 1, 1)
 
+        def zero(self, dtype):  # (1, 1, 1): a zero the converter cannot fold into a constant of the bucket's whole shape
+            if self.n is None:
+                return torch.zeros(1, 1, 1, dtype=dtype)
+            return (self.n.to(dtype) * 0).view(1, 1, 1)
+
         def keep(self, x):  # x (1, C, L): zeros past the valid end (a select, so a non-finite value never leaks)
-            return torch.where(self.mask(x.shape[-1]), x, torch.zeros_like(x))
+            return torch.where(self.mask(x.shape[-1]), x, self.zero(x.dtype))
 
         def last(self, length, scale):  # indices 0..L-1 clamped at the last valid one (replicate padding)
             i = index(length)
@@ -154,7 +160,7 @@ def build(km):
         def forward(self, x):
             m = ctx.mask(x.shape[-1])
             cnt = ctx.valid(x.shape[-1]).view(1, 1, 1).to(x.dtype)
-            zero = torch.zeros_like(x)
+            zero = ctx.zero(x.dtype)
             mean = torch.where(m, x / cnt, zero).sum(-1, keepdim=True)  # divided first: no fp16 overflow in the sum
             d = torch.where(m, x - mean, zero)
             var = (d * (d / cnt)).sum(-1, keepdim=True)
@@ -287,7 +293,7 @@ def build(km):
             im = F.conv1d(wav, st.weight_forward_imag, stride=st.hop_length)
             mag = torch.sqrt(re * re + im * im + 1e-14)
             ph = torch.atan2(im, re)
-            ph = torch.where((im == 0) & (re < 0), torch.full_like(ph, math.pi), ph)
+            ph = torch.where((im == 0) & (re < 0), ctx.zero(ph.dtype) + math.pi, ph)
             hs = torch.cat([mag, ph], dim=1)
             taps["tap_hs"] = hs
             for i in range(g.num_upsamples):
@@ -339,6 +345,29 @@ def keep_fp32(op):
     return False
 
 
+def store_fp16(model):
+    """Every large fp32 weight stored as fp16 and cast to fp32 when read (constexpr_cast): half the bytes, fp32 math."""
+    import numpy as np
+    from coremltools.converters.mil import Builder as mb
+    from coremltools.converters.mil.mil.passes.graph_pass import AbstractGraphPass
+    from coremltools.models import utils
+
+    class Fp16Storage(AbstractGraphPass):
+        def apply(self, prog):
+            for f in prog.functions.values():
+                for op in list(f.operations):
+                    if op.op_type != "const" or not isinstance(op.val.val, np.ndarray):
+                        continue
+                    v = op.val.val
+                    if v.dtype != np.float32 or v.size < 2048:
+                        continue
+                    with f:
+                        new = mb.constexpr_cast(source_val=v.astype(np.float16), output_dtype="fp32", before_op=op)
+                    f.replace_uses_of_var_after_op(anchor_op=op, old_var=op.outputs[0], new_var=new)
+                    f.remove_ops([op])
+    return utils._apply_graph_pass(model, Fp16Storage())
+
+
 def pad_to(a, axis, size):
     w = [(0, 0)] * a.ndim
     w[axis] = (0, size - a.shape[axis])
@@ -371,6 +400,30 @@ def spec_snr_db(want, got):
         return np.abs(np.fft.rfft(frames, axis=-1))
     a, b = mag(want), mag(got)
     return 10 * math.log10(float(np.sum(a ** 2)) / max(float(np.sum((a - b) ** 2)), 1e-20))
+
+
+def lsd_db(want, got):
+    """Mean log-spectral distance in dB over frames that carry sound (within 60 dB of the loudest): 0 is identical."""
+    n = min(len(want), len(got))
+    if n < 1024:
+        return 0.0
+    win = np.hanning(1024).astype(np.float32)
+
+    def power(x):
+        frames = np.lib.stride_tricks.sliding_window_view(x[:n], 1024)[::256] * win
+        return np.abs(np.fft.rfft(frames, axis=-1)) ** 2 + 1e-10
+    a, b = power(want), power(got)
+    keep = a > a.max() * 1e-6
+    return float(np.mean(np.abs(10 * np.log10(a[keep]) - 10 * np.log10(b[keep]))))
+
+
+def write_wav(path, x, rate=24000):
+    import wave
+    with wave.open(path, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes((np.clip(x, -1, 1) * 32767).astype("<i2").tobytes())
 
 
 def tokens(vocab, ps):
@@ -471,14 +524,31 @@ def main():
         # 3. One converted function per bucket, merged into one package each (weights stored once).
         common = dict(convert_to="mlprogram", minimum_deployment_target=ct.target.iOS18, compute_precision=cp)
         from coremltools.optimize import coreml as cto
-        if wq == "int8":  # per output channel
-            qc = cto.OptimizationConfig(global_config=cto.OpLinearQuantizerConfig(
-                mode="linear_symmetric", dtype="int8", granularity="per_channel", weight_threshold=2048))
-        elif wq == "int8b":  # per block of 32 input weights (iOS 18): a scale per block, not per channel
-            qc = cto.OptimizationConfig(global_config=cto.OpLinearQuantizerConfig(
-                mode="linear_symmetric", dtype="int8", granularity="per_block", block_size=32, weight_threshold=2048))
-        elif wq == "pal8":  # a 256-entry k-means table per tensor
-            qc = cto.OptimizationConfig(global_config=cto.OpPalettizerConfig(mode="kmeans", nbits=8, weight_threshold=2048))
+
+        def compress(model, spec):
+            """spec: none | w16 | int8 | int8b | pal8, optionally `:op,op` to compress only those op types (the rest
+            of the large weights are stored fp16 and computed fp32; w16 alone stores every large weight so)."""
+            mode, _, types = spec.partition(":")
+            if mode in ("none", "w16"):
+                return store_fp16(model) if mode == "w16" else model
+            if mode == "int8":  # per output channel
+                cfg = cto.OpLinearQuantizerConfig(mode="linear_symmetric", dtype="int8", granularity="per_channel",
+                                                  weight_threshold=2048)
+            elif mode == "int8b":  # per block of 32 input weights (iOS 18): a scale per block, not per channel
+                cfg = cto.OpLinearQuantizerConfig(mode="linear_symmetric", dtype="int8", granularity="per_block",
+                                                  block_size=32, weight_threshold=2048)
+            elif mode == "pal8":  # a 256-entry k-means table per tensor
+                cfg = cto.OpPalettizerConfig(mode="kmeans", nbits=8, weight_threshold=2048)
+            else:
+                sys.exit(f"unknown weights mode {spec}")
+            if types:
+                oc = cto.OptimizationConfig(op_type_configs={t: cfg for t in types.split(",")})
+            else:
+                oc = cto.OptimizationConfig(global_config=cfg)
+            fn = cto.palettize_weights if mode == "pal8" else cto.linear_quantize_weights
+            model = fn(model, oc)
+            return store_fp16(model) if types else model
+
         meta = {"source": f"https://huggingface.co/{HF}/tree/{REV}", "license": "Apache-2.0",
                 "converter": "tools/convert_kokoro_coreml.py", "precision": precision, "weights": wq}
         parts = os.path.join(work, "parts")
@@ -509,10 +579,7 @@ def main():
                                ct.TensorType("length", shape=(1,), dtype=np.float32)]
                         outs = [ct.TensorType("audio")] + [ct.TensorType(t) for t in TAPS]
                 m = ct.convert(tr, inputs=ins, outputs=outs, **common)
-                if wq in ("int8", "int8b"):
-                    m = cto.linear_quantize_weights(m, qc)
-                elif wq == "pal8":
-                    m = cto.palettize_weights(m, qc)
+                m = compress(m, wq.split("/")[0 if key == "t" else -1])
                 p = os.path.join(parts, f"{name}-{key}{b}.mlpackage")
                 m.save(p)
                 desc.add_function(p, src_function_name="main", target_function_name=f"{key}{b}")
@@ -661,9 +728,15 @@ def verify(work, precision, wq, units):
                "finite": finite, "peak": round(float(np.abs(a).max()), 3) if finite else None,
                "max_abs_diff": round(float(np.abs(want[:len(a)] - a).max()), 4) if finite else None,
                "wave_snr_db": round(snr_db(want, a), 1) if finite else None, "spec_snr_db": round(snr, 1),
+               "lsd_db": round(lsd_db(want, a), 2),
                "mac_seconds": round(secs, 3), "rtf_mac": round(secs / (nf * 0.025), 3)}
         report["lines"].append(row)
         print(row, flush=True)
+        wav_dir = os.environ.get("KOKORO_WAV_DIR")  # listening files for the owner: the PyTorch line and the Core ML one
+        if wav_dir and finite:
+            os.makedirs(wav_dir, exist_ok=True)
+            write_wav(os.path.join(wav_dir, f"line{li}-voice{vi}-pytorch.wav"), want)
+            write_wav(os.path.join(wav_dir, f"line{li}-voice{vi}-coreml.wav"), a)
         if not finite:
             sys.exit("refused: the Core ML model rendered a non-finite sample")
         worst = min(worst, snr)
