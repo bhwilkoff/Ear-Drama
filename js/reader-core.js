@@ -373,6 +373,19 @@ const ReaderCore = (() => {
     };
   }
 
+  /**
+   * Where a re-layout lands (B29, the same rule as Apple's `ReaderLayout.landingPage` and Android's opening page):
+   * while the read-along follows a line heard, on the page of the word heard, else of the line's own first word
+   * (`text`); otherwise on the kept line's first page (`keep`). Landing on the kept line's first page while a word
+   * further on was heard sent the page back at every change of page height, and the next word forward again.
+   * `heard` is the line heard's index, -1 or null when nothing is followed; `word` and `text` are pages or null.
+   */
+  function landingPage({ keep, heard, word, text }) {
+    if (heard === null || heard === undefined || heard < 0) return keep;
+    if (word !== null && word !== undefined) return word;
+    return text !== null && text !== undefined ? text : keep;
+  }
+
 
   /**
    * A finished drama's listen plan (PLAYS-DESIGN §2.11 rule 11): the archive.org item holds one file per
@@ -562,6 +575,6 @@ const ReaderCore = (() => {
     return [script.lines[i - 1] || null, script.lines[i], script.lines[i + 1] || null];
   }
 
-  return { spoken, word, textWords, phonemeWordStarts, kokoroWords, phonemeWordCount, ALONG_SPEEDS, alongSpeed, speedLabel, savedSpeed, saveSpeed, alongLine, alongLineAt, dramaPlan, dramaListen, alongFollow, alongPanel, closeTo, myLineStep, SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageContaining, pageCount, lineAtPage,
+  return { spoken, word, textWords, phonemeWordStarts, kokoroWords, phonemeWordCount, ALONG_SPEEDS, alongSpeed, speedLabel, savedSpeed, saveSpeed, alongLine, alongLineAt, dramaPlan, dramaListen, alongFollow, landingPage, alongPanel, closeTo, myLineStep, SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageContaining, pageCount, lineAtPage,
            spreadStart, turn, swipeTurn, tapZone, keyTurn, pageLabel, remember, runsOf, spaceBetween, isVerse, layoutOf, verseRows, cueTail };
 })();
