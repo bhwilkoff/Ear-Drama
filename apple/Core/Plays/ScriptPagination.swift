@@ -149,6 +149,9 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
     let lineRanges: [NSRange]
     let starts: [Int]
     let ends: [Int]
+    /// The page each line's own words begin on: its range also holds the front (line 1) and the headings set before
+    /// it, which can stand on the page before. The read-along turns here (B29).
+    let textStarts: [Int]
     let hueOfLine: [Int]
     let hueByRole: [String: Int]
     let contd: [Int: ReaderContd]
@@ -175,8 +178,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
     var textSize: CGSize { CGSize(width: pageSize.width - 2 * Self.inset, height: pageSize.height) }
 
     private init(string: NSAttributedString, framesetter: CTFramesetter, pageSize: CGSize, style: ReaderStyle, pages: [NSRange],
-                 lineRanges: [NSRange], hueOfLine: [Int], hueByRole: [String: Int], contd: [Int: ReaderContd], gutter: Bool,
-                 keepRole: String?) {
+                 lineRanges: [NSRange], textLocations: [Int], hueOfLine: [Int], hueByRole: [String: Int], contd: [Int: ReaderContd],
+                 gutter: Bool, keepRole: String?) {
         self.string = string
         self.framesetter = framesetter
         self.pageSize = pageSize
@@ -205,6 +208,18 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         }
         starts = s
         ends = e
+        // The first printed word of the line (a speaker's name, a mark's room carry no offset), else where its own
+        // runs begin.
+        textStarts = zip(textLocations, lineRanges).enumerated().map { i, pair in
+            let (at, r) = pair
+            let end = r.location + r.length
+            guard at < end else { return e[i] }
+            var first: Int?
+            string.enumerateAttribute(.edOffset, in: NSRange(location: at, length: end - at)) { v, range, stop in
+                if let o = v as? Int, o >= 0 { first = range.location; stop.pointee = true }
+            }
+            return pageOf(first ?? at)
+        }
     }
 
     /// Cuts `script` into pages of `pageSize` at `style`. Throws when its task is cancelled (a newer layout is wanted).
@@ -227,6 +242,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         let out = NSMutableAttributedString()
         var ranges: [NSRange] = []
         ranges.reserveCapacity(script.lines.count)
+        var textLocations: [Int] = []
+        textLocations.reserveCapacity(script.lines.count)
         var paras: [ReaderPara] = []
         var pendingBreak = true
         var groupCount = 0
@@ -427,6 +444,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
             ctxLine = i
             ctxRole = nil
             for h in structure.setAside[i] ?? [] { heading(h.title, level: h.level) }
+            textLocations.append(out.length)
             if let head = structure.headLines[i] {
                 heading("", level: head.level, runs: ScriptReading.runsOf(line))
             } else if line.kind == .speech, line.parts != nil {
@@ -612,7 +630,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         }
         if pages.isEmpty { pages = [NSRange(location: 0, length: 0)] }
         return ReaderLayout(string: out, framesetter: framesetter, pageSize: pageSize, style: style, pages: pages,
-                            lineRanges: ranges, hueOfLine: structure.hueOfLine, hueByRole: hueByRole, contd: contd, gutter: gutterOn,
+                            lineRanges: ranges, textLocations: textLocations, hueOfLine: structure.hueOfLine, hueByRole: hueByRole, contd: contd, gutter: gutterOn,
                             keepRole: keepRole)
     }
 
@@ -627,6 +645,22 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
             if lineRanges[mid].location <= offset { lo = mid } else { hi = mid - 1 }
         }
         return lo
+    }
+
+    /// The page the read-along turns to for line `i`: where its own words begin, never the front or a heading set on
+    /// the page before (B29).
+    func followPage(_ i: Int) -> Int {
+        textStarts.indices.contains(i) ? textStarts[i] : 0
+    }
+
+    /// Where a re-layout lands: on the word heard (or, before one is marked, the line heard's own first page) while the
+    /// read-along follows a line, else on the kept line's first page. Never the kept line's range start while a word
+    /// further on is heard, or each change of page height sends the page back and the next word forward again (B29).
+    func landingPage(keep: Int, heard: Int?, word: ReadAlong.Word?) -> Int {
+        if let heard, textStarts.indices.contains(heard) {
+            return word.flatMap { page(ofWord: $0, line: heard) } ?? followPage(heard)
+        }
+        return starts.indices.contains(keep) ? starts[keep] : 0
     }
 
     /// The script lines that show on a page, first to last.

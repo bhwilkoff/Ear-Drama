@@ -231,7 +231,7 @@ final class ReaderModel {
     /// position is never recomputed from the new pages, so repeated size changes do not drift backward.
     func relayout(keep: Int? = nil, delay: Double = 0) {
         guard prefs.layout == .pages, area.width > 40 else { return }
-        let at = keep ?? position
+        let at = keep
         generation += 1
         let gen = generation
         build?.cancel()
@@ -258,15 +258,18 @@ final class ReaderModel {
         }
     }
 
-    private func apply(_ built: ReaderLayout, per: Int, keep: Int) {
-        let line = min(max(0, keep), max(0, script.lines.count - 1))
+    /// `keep` nil keeps the position as it is when the layout lands, not as it was when the layout was asked for: a line
+    /// gone to in between (the read-along moves on during the delay) is not undone.
+    private func apply(_ built: ReaderLayout, per: Int, keep: Int?) {
+        let heard = follow.following ? alongLine : nil
+        let line = min(max(0, heard ?? keep ?? position), max(0, script.lines.count - 1))
         layout = built
         self.per = per
         position = line
         peeked = []
         selection = nil
         selectionAnchor = nil
-        var target = built.starts.indices.contains(line) ? ReaderMath.spreadStart(built.starts[line], per: per) / per : 0
+        var target = ReaderMath.spreadStart(built.landingPage(keep: line, heard: heard, word: heard == nil ? nil : alongWord), per: per) / per
         if let page = doorPage {
             doorPage = nil
             target = min(max(0, page), built.pageCount - 1) / per
@@ -311,7 +314,7 @@ final class ReaderModel {
         alongLine = id.flatMap { structure.indexByID[$0] }
         alongWord = nil
         backToLine = step.back
-        if step.turn, let id { go(to: id) }
+        if step.turn, let id { followLine(id) }
     }
 
     /// The word heard moved (rule 3): draw it, and turn when it reaches a page not in view (a long speech; rule 4).
@@ -348,7 +351,7 @@ final class ReaderModel {
 
     func backToTheLine() {
         backToLine = false
-        if let id = follow.back() { go(to: id) }
+        if let id = follow.back() { followLine(id) }
     }
 
     func resumeFollowing() { _ = follow.back(); backToLine = false }
@@ -391,6 +394,17 @@ final class ReaderModel {
     }
 
     // MARK: Going to a line
+
+    /// The read-along's turn (PLAYS-DESIGN §2.11 rule 4): to the page the line's own words begin on, never the front or
+    /// a heading left on the page before, so the next word heard does not turn the page again (B29).
+    func followLine(_ lineID: String) {
+        guard let index = structure.indexByID[lineID] else { return }
+        guard prefs.layout == .pages, let layout else { go(toIndex: index); return }
+        position = index
+        peeked = []
+        move(toSpread: ReaderMath.spreadStart(layout.followPage(index), per: per) / per)
+        persist()
+    }
 
     func go(to lineID: String) {
         if let i = structure.indexByID[lineID] { go(toIndex: i) }
@@ -787,7 +801,9 @@ private struct ReaderScreen: View {
                 }
             }
             .clipped()
-            if let along = model.along, along.deviceVoice, let line = along.line { hearing(line) }
+            // Its row stays while the read-along runs, empty for a take: a row that came and went changed the page height
+            // and re-cut the pages at every change of reader (B29).
+            if let along = model.along, along.isActive { hearing(along.deviceVoice ? along.line : nil) }
             if model.backToLine { backToLineButton() }
             if let dock { dock }
             #if os(iOS)
@@ -831,7 +847,7 @@ private struct ReaderScreen: View {
         .onChange(of: model.along?.lineID) { _, id in model.alongHeard(id) }
         .onChange(of: model.along?.word) { _, w in model.alongWordHeard(w) }
         .onChange(of: studio?.studio.current) { _, id in if let id { model.go(to: id) } }
-        .onChange(of: studio?.listen.current?.lineID) { _, id in if let id { model.go(to: id) } }
+        .onChange(of: studio?.listen.current?.lineID) { _, id in if let id { model.followLine(id) } }
         .onChange(of: model.room?.snapshot, initial: true) { _, snap in model.roomChanged(snap) }
         .onChange(of: model.room?.hideMine) { model.roomChanged(model.room?.snapshot) }
         .task { await model.room?.begin() }
@@ -1028,12 +1044,15 @@ private struct ReaderScreen: View {
         .background(Color.brandSurface)
     }
 
-    /// One line while the cast reads: a device voice never passes as a person (§5 rule 3).
-    private func hearing(_ line: ScriptLine) -> some View {
-        Label("Device voice \u{00B7} \(line.role ?? line.part.title)", systemImage: "waveform")
+    /// One line while the cast reads: a device voice never passes as a person (§5 rule 3). Nil (a take) keeps the row's
+    /// height with nothing in it.
+    private func hearing(_ line: ScriptLine?) -> some View {
+        Label("Device voice \u{00B7} \(line.map { $0.role ?? $0.part.title } ?? "")", systemImage: "waveform")
             .font(TypeRamp.caption)
             .foregroundStyle(Color.brandSecondary)
             .lineLimit(1)
+            .opacity(line == nil ? 0 : 1)
+            .accessibilityHidden(line == nil)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Spacing.s4)
             .padding(.vertical, Spacing.s1)

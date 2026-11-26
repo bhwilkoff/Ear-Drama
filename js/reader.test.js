@@ -10,6 +10,7 @@
  * mutated copies: contentsOf without the same-act rule (the grouping case), lineAtPage returning
  * the last line that starts on the page (the carried-over case and the re-layout case), and runsOf
  * counting the joined pieces without the space between them (the runs case over real scripts).
+ * Seen to fail, 2026-11-26: landingPage returning the kept line's first page (the B29 case: "went back to page 1").
  */
 'use strict';
 const fs = require('node:fs');
@@ -361,6 +362,26 @@ test('read-along: the reader turns itself while following; scrolling away stops 
   eq(f.back(), null, 'nothing heard, nothing to return to');
   eq(f.away(), { turn: false, back: false }, 'away with nothing heard offers nothing');
   eq(f.line(null), { turn: false, back: false }, 'no return offered when nothing plays');
+});
+
+test('read-along (B29): a re-layout lands on the word heard and never goes back while lines advance', () => {
+  // A play-through over the front and four lines, each re-laid out twice (the page height changing as the dock and the
+  // transport come and go): line 0 sits on page 1 with the front, line 1 runs from page 1 onto 2, lines 2 and 3 are on 2.
+  // Each line: its words' pages in order, its first page (`keep`) and its first word's page (`text`).
+  const lines = [{ keep: 0, text: 0, words: [0, 0] }, { keep: 0, text: 0, words: [0, 1, 1] }, { keep: 1, text: 1, words: [1, 1] }, { keep: 1, text: 1, words: [1] }];
+  const shown = [];
+  lines.forEach((l, i) => {
+    shown.push(R.landingPage({ keep: l.keep, heard: i, word: null, text: l.text }));
+    for (const w of l.words) {
+      shown.push(w);
+      shown.push(R.landingPage({ keep: l.keep, heard: i, word: w, text: l.text }));
+    }
+  });
+  for (let k = 1; k < shown.length; k++) ok(shown[k] >= shown[k - 1], `went back to page ${shown[k] + 1} at step ${k}: ${shown.join(',')}`);
+  eq(R.landingPage({ keep: 3, heard: 4, word: null, text: 5 }), 5, 'before a word is marked (a take): the line heard\'s own words, not a heading on the page before');
+  eq(R.landingPage({ keep: 3, heard: -1, word: 9, text: 5 }), 3, 'nothing followed: the kept line\'s first page');
+  eq(R.landingPage({ keep: 3, heard: null, word: null, text: null }), 3, 'nothing heard');
+  eq(R.landingPage({ keep: 3, heard: 4, word: null, text: null }), 3, 'a line printing no word: its first page');
 });
 
 test('read-along: the TV panel shows the line heard and one on each side', () => {

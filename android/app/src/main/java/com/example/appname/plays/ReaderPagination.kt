@@ -17,6 +17,8 @@ object ReaderPagination {
      * recorded is whole on screen; a speech longer than a page still breaks.
      * A verse block's [rowStarts] are the visual lines its printed rows begin on: it splits only between rows,
      * keeping two rows at either side; any other block keeps two lines at either side.
+     * A [lead] block draws none of its line's words (the front, a heading set before the line, a speaker's name): the
+     * read-along turns to the line's first block that does (B29).
      */
     class Block(
         val owner: Int,
@@ -28,6 +30,7 @@ object ReaderPagination {
         val speechStart: Boolean = false,
         val rowStarts: IntArray? = null,
         val keepSpeech: Boolean = false,
+        val lead: Boolean = false,
     )
 
     /** Visual lines [from, to) of block [block], drawn from [top] to [bottom] on its page. */
@@ -39,11 +42,20 @@ object ReaderPagination {
     }
 
     /** [contd] is, per page, the block a page that opens inside a speech begins with (its speaker is named above the text), else -1. */
-    class Paged(val pages: List<Page>, val starts: IntArray, val ends: IntArray, val contd: IntArray) {
+    class Paged(val pages: List<Page>, val starts: IntArray, val ends: IntArray, val contd: IntArray, val textStarts: IntArray = starts) {
         val count: Int get() = pages.size
 
         /** The pages a script line is on, or an empty range for a line with no block. */
         fun spreadOf(line: Int, per: Int): Int = ReaderMath.spreadStart(starts[line.coerceIn(0, starts.size - 1)], per) / per
+
+        /**
+         * The page the read-along turns to for a line: where its own words begin. Line 1's blocks include the front, and
+         * a line owns the headings set before it, so [starts] can be the page before its words (B29: the open Duo flipped
+         * between the front and page 2 as the parts read).
+         */
+        fun followPage(line: Int): Int = textStarts[line.coerceIn(0, textStarts.size - 1)]
+
+        fun followSpreadOf(line: Int, per: Int): Int = ReaderMath.spreadStart(followPage(line), per) / per
     }
 
     /** Whether visual lines [j, s) of [b] may end a page with lines [s, end) carried on. */
@@ -71,6 +83,7 @@ object ReaderPagination {
         var y = 0f
         val starts = IntArray(lineCount) { -1 }
         val ends = IntArray(lineCount) { -1 }
+        val textStarts = IntArray(lineCount) { -1 }
         fun flush() {
             pages += Page(cur)
             cur = ArrayList()
@@ -120,6 +133,7 @@ object ReaderPagination {
                 val page = pages.size
                 if (starts[block.owner] < 0 || page < starts[block.owner]) starts[block.owner] = page
                 if (page > ends[block.owner]) ends[block.owner] = page
+                if (!block.lead && textStarts[block.owner] < 0) textStarts[block.owner] = page
                 cur += Seg(b, j, k, top, yy)
                 y = yy
                 j = k
@@ -134,13 +148,14 @@ object ReaderPagination {
                 starts[i] = p
                 ends[i] = p
             }
+            if (textStarts[i] < 0) textStarts[i] = ends[i]
         }
         val contd = IntArray(pages.size) { p ->
             val seg = pages[p].segs.firstOrNull()
             val blk = seg?.let { blocks[it.block] }
             if (seg != null && blk != null && blk.speech >= 0 && !(blk.speechStart && seg.from == 0)) seg.block else -1
         }
-        return Paged(pages, starts, ends, contd)
+        return Paged(pages, starts, ends, contd, textStarts)
     }
 
     private const val EPS = 0.5f

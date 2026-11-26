@@ -355,6 +355,8 @@ private class Blk(
     val map: List<MapSeg> = emptyList(),
     /** The room [text] holds for a mark's glyph (a breath, a pause, a beat, the end of a note). */
     val inserts: List<MarkInsert> = emptyList(),
+    /** A heading set before its line: it draws none of the line's words (B29). */
+    val lead: Boolean = false,
 ) {
     /** The line's words that block range [bs, be) covers, or null when it covers none (a name, a printed bracket, a glyph). */
     fun lineRange(bs: Int, be: Int): IntRange? {
@@ -519,12 +521,12 @@ private fun buildBlocks(
         }
         out += b
     }
-    fun heading(owner: Int, level: ScriptReading.Level, body: String) {
+    fun heading(owner: Int, level: ScriptReading.Level, body: String, lead: Boolean = false) {
         val opens = level != ScriptReading.Level.Scene
         add(
             Blk(
                 owner, AnnotatedString(body), emptyList(), style(if (opens) 1.75f else 1.25f, display = true),
-                if (opens) 0f else 1.2f, Kind.Heading, keepWithNext = true, breakBefore = opens, heading = true,
+                if (opens) 0f else 1.2f, Kind.Heading, keepWithNext = true, breakBefore = opens, heading = true, lead = lead,
             ),
         )
     }
@@ -587,7 +589,7 @@ private fun buildBlocks(
     var previous: Triple<String, Int, IntRange?>? = null
 
     script.lines.forEachIndexed { i, line ->
-        for (s in before[i].orEmpty()) heading(i, s.level, s.title)
+        for (s in before[i].orEmpty()) heading(i, s.level, s.title, lead = true)
         val head = heads[i]
         if (head != null) {
             heading(i, head.level, ScriptReading.runsOf(line).joinToString("") { it.text })
@@ -772,6 +774,7 @@ private suspend fun computeFlow(
         ReaderPagination.Block(
             b.owner, FloatArray(l.lineCount) { l.getLineBottom(it) - l.getLineTop(it) }, b.gapEm * bodyPx, b.keepWithNext,
             b.breakBefore, b.speech, b.speechStart, rows, keepSpeech = spec.studioRole != null && b.role == spec.studioRole,
+            lead = b.lead || b.kind == Kind.Front || b.kind == Kind.Name,
         )
     }
     val paged = ReaderPagination.paginate(measured, script.lines.size, spec.pageHeightPx.toFloat())
@@ -1634,6 +1637,8 @@ internal fun ReaderBody(
     var peeked by remember { mutableStateOf<Int?>(null) }
     var flash by remember { mutableStateOf<Int?>(null) }
     var jump by remember { mutableIntStateOf(0) }
+    // The last jump follows a line heard (the read-along, a room's cursor): it turns to the line's words, not its front.
+    var jumpFollows by remember { mutableStateOf(false) }
     var sheet by rememberSaveable { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
@@ -1738,14 +1743,15 @@ internal fun ReaderBody(
     val paneMode = studio != null && (windowWidth >= 860.dp || tabletop)
 
     /** Goes to a line: the position is that line wherever it falls, and the stage turns to it. */
-    fun goTo(index: Int, outline: Boolean) {
+    fun goTo(index: Int, outline: Boolean, follows: Boolean = false) {
         if (index !in script.lines.indices) return
         posId = script.lines[index].id
         peeked = null
         if (outline) flash = index
+        jumpFollows = follows
         jump++
     }
-    fun follow(id: String) = goTo(script.lines.indexOfFirst { it.id == id }, outline = false)
+    fun follow(id: String) = goTo(script.lines.indexOfFirst { it.id == id }, outline = false, follows = true)
     SideEffect { studio?.studio?.onFollow = { id -> follow(id) } }
     LaunchedEffect(roomSnap?.cursor) {
         val cursor = roomSnap?.cursor ?: return@LaunchedEffect
@@ -2159,7 +2165,7 @@ internal fun ReaderBody(
                 }
                 f.paged != null -> key(f) {
                     PagesStage(
-                        f, f.paged, posIndex = posIndex, jump = jump, mine = mine, hiding = if (room != null) roomHiding else hiding, peeked = if (roomHiding) peeked ?: roomIdx else peeked, flash = flash,
+                        f, f.paged, posIndex = posIndex, jump = jump, jumpFollows = jumpFollows, mine = mine, hiding = if (room != null) roomHiding else hiding, peeked = if (roomHiding) peeked ?: roomIdx else peeked, flash = flash,
                         heard = heard, following = alongFollowing, pal = pal, headPx = headPx, animationsOff = animationsOff, turner = turner, haptics = { haptics(Haptic.Selection) },
                         vertical = vertical, gap = gapPx, ui = ui,
                         onPos = { posId = script.lines[it].id },
@@ -2220,9 +2226,12 @@ internal fun ReaderBody(
             if (!paneMode) {
                 Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
                     Column(Modifier.navigationBarsPadding()) {
-                        hearing?.let { line ->
+                        // The row stays while a listen-through runs, empty for a take: a row that came and went changed the page
+                        // height and re-cut the pages at each change of reader (B29).
+                        if (hearing != null || (alongModel != null && alongLine != null)) {
+                            val line = hearing
                             Text(
-                                "Device voice · ${line.part.title}",
+                                if (line != null) "Device voice · ${line.part.title}" else "",
                                 Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp)
                                     .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
                                 style = MaterialTheme.typography.labelMedium,
@@ -2351,6 +2360,7 @@ private fun PagesStage(
     paged: ReaderPagination.Paged,
     posIndex: Int,
     jump: Int,
+    jumpFollows: Boolean,
     mine: Mine,
     hiding: Boolean,
     peeked: Int?,
@@ -2376,11 +2386,18 @@ private fun PagesStage(
 ) {
     val per = flow.per
     val spreads = ((paged.count + per - 1) / per).coerceAtLeast(1)
-    val pager = rememberPagerState(initialPage = paged.spreadOf(posIndex, per).coerceIn(0, spreads - 1)) { spreads }
+    val measurer = rememberTextMeasurer()
+    // A new layout (the page height changed) opens on the word heard, or the line heard's own words, while the read-along
+    // follows; on the line kept otherwise. Opening on the kept line's first page sent the page back at each re-layout (B29).
+    val opening = remember(paged) {
+        val h = heard
+        if (following && h != null) spreadOfWord(flow, paged, h, measurer) ?: paged.followSpreadOf(h.line, per) else paged.spreadOf(posIndex, per)
+    }
+    val pager = rememberPagerState(initialPage = opening.coerceIn(0, spreads - 1)) { spreads }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val latestPos by rememberUpdatedState(posIndex)
-    val measurer = rememberTextMeasurer()
+    val latestFollows by rememberUpdatedState(jumpFollows)
 
     // Rule 4: within a long speech the word heard turns the page itself when it reaches one not in view (either page of a spread is in view).
     LaunchedEffect(heard?.line, heard?.word, following) {
@@ -2413,7 +2430,7 @@ private fun PagesStage(
     }
     LaunchedEffect(jump) {
         if (jump == 0) return@LaunchedEffect
-        val target = paged.spreadOf(latestPos, per).coerceIn(0, spreads - 1)
+        val target = (if (latestFollows) paged.followSpreadOf(latestPos, per) else paged.spreadOf(latestPos, per)).coerceIn(0, spreads - 1)
         if (animationsOff || Math.abs(target - pager.currentPage) > 3) pager.scrollToPage(target) else pager.animateScrollToPage(target)
     }
     val turn: (ReaderMath.Turn) -> Unit = { t ->

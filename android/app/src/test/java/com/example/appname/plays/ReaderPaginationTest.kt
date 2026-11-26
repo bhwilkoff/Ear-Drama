@@ -144,4 +144,52 @@ class ReaderPaginationTest {
         val long = speech(0, 1, 12, true)
         assertTrue("a speech longer than a page still breaks", ReaderPagination.paginate(long, 1, 100f).count > 1)
     }
+
+    /**
+     * B29 (owner 2026-11-26, the open Duo: "the first few pages go back and forth between the opening page and the second
+     * page as the different characters read their lines"). The screen's blocks: the front (title, author, Parts, the
+     * parts) owned by line 1, the first line opening a page after it; per line its headings set before it, a name kept
+     * with its words, the words. The read-along turns to `followPage` and then to each page its words reach: that page
+     * holds the line's first words, and it never goes back while lines advance.
+     * Seen to fail 2026-11-26 with `followPage` returning `starts` (line 1 turned to the front, its words on page 2).
+     */
+    @Test fun `the read-along turns to the page holding the words heard and never goes back`() {
+        var checked = 0
+        for (s in scripts()) for ((chars, perPage) in listOf(40 to 300f, 28 to 240f, 40 to 280f)) {
+            val blocks = ArrayList<ReaderPagination.Block>()
+            listOf(1, 1, 1, 3).forEachIndexed { k, n ->
+                blocks += ReaderPagination.Block(0, FloatArray(n) { 10f }, 6f, keepWithNext = k < 3, breakBefore = k == 0, lead = true)
+            }
+            var opens = true
+            s.lines.forEachIndexed { i, l ->
+                if (i > 0 && i % 37 == 0) blocks += ReaderPagination.Block(i, FloatArray(1) { 14f }, 12f, keepWithNext = true, lead = true)
+                val n = maxOf(1, (ScriptReading.lineText(l).length + chars - 1) / chars)
+                if (l.kind == ScriptLine.Kind.Speech) {
+                    blocks += ReaderPagination.Block(i, FloatArray(1) { 9f }, 6f, keepWithNext = true, breakBefore = opens, speech = i, speechStart = true, lead = true)
+                    blocks += ReaderPagination.Block(i, FloatArray(n) { 10f }, 0f, speech = i)
+                } else {
+                    blocks += ReaderPagination.Block(i, FloatArray(n) { 10f }, 6f, breakBefore = opens)
+                }
+                opens = false
+            }
+            val paged = ReaderPagination.paginate(blocks, s.lines.size, perPage)
+            fun wordPages(i: Int) = paged.pages.indices.filter { p -> paged.pages[p].segs.any { blocks[it.block].owner == i && !blocks[it.block].lead } }
+            var shown = -1
+            var from = -1
+            for (i in s.lines.indices.take(60)) {
+                val words = wordPages(i)
+                if (words.isEmpty()) continue
+                val turn = paged.followPage(i)
+                assertEquals("${s.id} $chars/$perPage line ${s.lines[i].id}: turns to page ${turn + 1}, its words begin on ${words.first() + 1}", words.first(), turn)
+                for (p in listOf(turn) + words) {
+                    assertTrue("${s.id} $chars/$perPage: line ${s.lines[i].id} went back to page ${p + 1} from ${shown + 1} (line $from)", p >= shown)
+                    shown = p
+                    from = i
+                }
+                checked++
+            }
+            assertEquals("${s.id}: the play opens on its front", 0, paged.spreadOf(0, 1))
+        }
+        assertTrue(checked > 300)
+    }
 }

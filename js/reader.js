@@ -230,8 +230,13 @@ const Reader = (() => {
       });
       st.starts = starts; st.ends = ends;
       st.count = ends.length ? ends[ends.length - 1] + 1 : 1;
-      // A re-layout keeps the line it was asked to keep, so repeated changes never drift backward.
-      setPage(st, at >= 0 && at < starts.length ? starts[at] : 0, false, at >= 0 && at < starts.length ? at : undefined);
+      // A re-layout keeps the line it was asked to keep, so repeated changes never drift backward; while the read-along
+      // follows a line it lands on the word heard (B29: it went back to the line's first page at each change of height).
+      const heard = followedLine(st);
+      const keepAt = heard >= 0 ? heard : at;
+      const keep = keepAt >= 0 && keepAt < starts.length ? starts[keepAt] : 0;
+      setPage(st, R.landingPage({ keep, heard, word: heard >= 0 ? wordPage(st, heard) : null, text: heard >= 0 ? textPage(st, heard) : null }),
+        false, keepAt >= 0 && keepAt < starts.length ? keepAt : undefined);
     } else {
       st.flow.style.columnCount = '';
       st.flow.style.columnGap = '';
@@ -615,10 +620,41 @@ const Reader = (() => {
     }
   }
 
-  /** Turns to line `index` when it starts on a page not in view (either page of a spread counts); Scroll brings it to the top. */
+  /** The line the read-along (or a room's cursor) lights and follows, or -1. */
+  function followedLine(st) {
+    if (!st.fol || !st.fol.following) return -1;
+    const lit = st.root.querySelector('.rd-now');
+    return lit ? st.lines.indexOf(lit) : -1;
+  }
+
+  /** The page a point `left` px across the viewport stands on (a word's rect: anywhere in its column). */
+  function pageOfLeft(st, left) { return R.pageContaining(left - st.flow.getBoundingClientRect().left, st.unit); }
+
+  /** The page line `index`'s first printed word is on (never its speaker's name), or null when it prints none. */
+  function textPage(st, index) {
+    const n = st.lines[index];
+    if (!n) return null;
+    for (const w of n.querySelectorAll('[data-at]')) {
+      if (w.closest('.rd-who') || !w.textContent.trim()) continue;
+      const r = w.getClientRects()[0];
+      if (r) return pageOfLeft(st, r.left);
+    }
+    return null;
+  }
+
+  /** The page the word heard is on, when it is a word of line `index`; else null. */
+  function wordPage(st, index) {
+    if (!st.word || !st.lines[index] || st.word.id !== st.script.lines[index].id) return null;
+    const r = wordRanges(st.lines[index], st.word.w)[0];
+    const rect = r && r.getClientRects()[0];
+    return rect ? pageOfLeft(st, rect.left) : null;
+  }
+
+  /** Turns to line `index` when its words start on a page not in view (either page of a spread counts); Scroll brings it to the top. */
   function followTo(st, index) {
     if (st.prefs.layout === 'pages') {
-      const p = st.starts[index];
+      const t = textPage(st, index);
+      const p = t !== null ? t : st.starts[index];
       if (p >= st.page && p < st.page + st.per) { st.pos = index; paintWhere(st); save(st); return; }
       setPage(st, p, true, index);
       return;
