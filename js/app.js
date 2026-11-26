@@ -87,6 +87,7 @@
     remove: 'M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19l5.6-5.6 5.6 5.6 1.4-1.4-5.6-5.6L19 6.4 17.6 5 12 10.6z',
     radio: 'M20 6H8.3l8.3-3.4L15.9 1 3.2 6.2C2.5 6.4 2 7.2 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm0 2v3h-2V9h-2v2H4V8zM7 19a3 3 0 1 1 0-6 3 3 0 0 1 0 6z',
     find: 'M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z',
+    search: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
     mic: 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1a7 7 0 0 0 6-6.9z',
     shuffle: 'M10.6 9.2 5.4 4 4 5.4l5.2 5.2zM14.5 4l2 2L4 18.6 5.4 20 18 7.5l2 2V4zm.3 9.4-1.4 1.4 3.1 3.1-2 2H20v-5.5l-2 2z',
   };
@@ -1035,15 +1036,15 @@
      RECORD (WEB-DESIGN §4.15, Decision 075): yours, today's play, the plays by facet, made here
   ================================================================ */
 
-  const VOICE_LABEL = { '1-2': '1 or 2 voices', '3-5': '3 to 5 voices', '6-10': '6 to 10 voices', '11+': '11 or more voices' };
-  const LEN_LABEL = { short: 'Under 30 min', mid: '30 to 60 min', long: 'Over an hour' };
-  const KIND_LABEL = { radio: 'Radio play', stage: 'Stage play' };
-  const PLAY_SORT = { voices: 'Fewest voices', short: 'Shortest', name: 'A to Z' };
 
-  /** A play's label without its opening (§6.4r): its cast drawn on the drama board, one bar per speaking part, largest first. */
-  const playArt = (script) => ({ kind: 'play', voices: PlaysCore.voicesOf(script), cast: PlaysCore.castOf(script), name: script.title, picture: null, genre: PlaysUI.BOARD });
-  function castWindow(script) {
-    const win = pictureWindow(playArt(script), 200);
+  /** A play's window (B31 §1.4, §2.1; WEB-DESIGN §6.4r): a picture of the play itself where the row has one (its
+      own page also takes a title page or the author's portrait), else the play's label, drawn from the row. */
+  const firstAuthor = (script) => { const a = (script.authors || [])[0]; return a ? PlaysCore.authorName(a) : ''; };
+  const playArt = (script, page = false) => ({ kind: 'play', name: script.title, author: firstAuthor(script), hue: script.hue, era: script.era,
+    life: script.life, voices: PlaysCore.voicesOf(script), cast: PlaysCore.castOf(script), genre: script.hue || '',
+    picture: page ? API.playLead(script) : API.playWindowPicture(script) });
+  function castWindow(script, slot = 200) {
+    const win = pictureWindow(playArt(script), slot);
     win.classList.add('pl-cast');
     return win;
   }
@@ -1051,26 +1052,16 @@
   const saidNode = (cls, l) => (l.verse
     ? el('span', { class: `${cls} pl-verse` }, ...l.verse.map(row => el('span', { class: 'pl-verse-row' }, row)))
     : el('span', { class: cls }, l.text));
-  /** A play tile's window: its opening speeches as a page (the row's `opening`), else its cast drawn. */
-  function openingWindow(script, hero = false) {
-    const lines = PlaysCore.openingOf(script, hero ? 4 : 2, ReaderCore);
-    if (!lines.length) return null;
-    const spec = LabelCore.labelSpec({ kind: 'play', voices: PlaysCore.voicesOf(script), opening: true }, 200);
-    return el('span', { class: `g-window pl-open${hero ? ' pl-open-hero' : ''}${spec.rules ? ' pl-open-foot' : ''}`, 'aria-hidden': 'true', dataset: { art: 'label' } },
-      ...lines.map(l => el('span', { class: 'pl-open-sp' }, el('b', {}, l.name), saidNode('pl-open-said', l))),
-      Label.svg(spec, { overlay: true }));
-  }
   function playTile(script) {
-    const win = openingWindow(script) || castWindow(script);
     const v = PlaysCore.voicesOf(script);
     return el('li', { class: 'g-tile-li pl-tile-li' },
-      el('a', { class: 'g-tile', href: `?play=${encodeURIComponent(script.id)}`, dataset: { genre: PlaysUI.BOARD },
+      el('a', { class: 'g-tile', href: `?play=${encodeURIComponent(script.id)}`, dataset: { genre: script.hue || '' },
                 'aria-label': [script.title, ...playFacts(script)].filter(Boolean).join(', ') },
-        win,
+        castWindow(script),
         el('span', { class: 'g-name', dataset: { step: String(API.nameStep(script.title)) } }, script.title),
         PlaysUI.fingerprint(script),
-        el('span', { class: 'g-facts caption' }, el('span', {}, `${num.format(v)} ${v === 1 ? 'voice' : 'voices'}`),
-          el('span', {}, `About ${num.format(PlaysCore.minutesOf(script))} min`))),
+        el('span', { class: 'g-facts caption' }, el('span', {}, `${num.format(v)} ${v === 1 ? 'voice' : 'voices'}`),
+          el('span', {}, `About ${num.format(PlaysCore.minutesOf(script))} min`))),
       PlaysUI.readLink(script.id, { icon: true }));
   }
 
@@ -1095,6 +1086,227 @@
     return ul;
   }
 
+  /* ---- Finding a play (B31 §3, WEB-DESIGN §4.15 item 3): search, facets, the ways in, the grid ---- */
+
+  /** The library's rows with its index (facets) and collections; a library built before B31 has neither. */
+  async function loadFinder() {
+    const [index, rows] = await Promise.all([API.playIndex().catch((e) => { console.error(e); return null; }), API.playLibrary()]);
+    const collections = index ? await API.playCollections().catch((e) => { console.error(e); return null; }) : null;
+    return { index, rows, collections };
+  }
+  const voicesWord = (n) => (n === 1 ? 'voice' : 'voices');
+  /** A block heading: the rule as the title, its count small beside it, and All at the right when there is more. */
+  function railHead(id, title, count, href) {
+    return el('div', { class: 'block-head' },
+      el('h2', { class: 'section-header', id }, title, count !== null && count !== undefined ? el('span', { class: 'pl-count caption tabular' }, num.format(count)) : null),
+      href ? el('a', { class: 'caption pl-all', href }, 'All') : null);
+  }
+  /** A scene for N voices (B31 §3.4): its heading as printed and its minutes, the play (not on its own page), its parts' names; it opens
+      the reader at the scene's first line. */
+  function sceneTile({ row, scene }, { inPlay = false } = {}) {
+    const parts = (scene.parts || []).map(p => titleCase(p));
+    const names = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts.join('');
+    return el('li', { class: 'pl-scard-li' },
+      el('a', { class: 'pl-scard', href: `?read=${encodeURIComponent(row.id)}&line=${encodeURIComponent(scene.line)}`,
+                'aria-label': [row.title, scene.heading, `${scene.minutes} min`, names].filter(Boolean).join(', ') },
+        el('span', { class: 'pl-scard-kick caption' }, [scene.heading, `${num.format(scene.minutes)} min`].filter(Boolean).join(' · ')),
+        inPlay ? null : el('span', { class: 'pl-scard-title' }, row.title),
+        names ? el('span', { class: 'pl-scard-parts caption' }, names) : null));
+  }
+  /** A role's printed name in capitals read as a name: "LADY BRACKNELL" is "Lady Bracknell". */
+  const titleCase = (name) => (String(name || '') === String(name || '').toUpperCase()
+    ? String(name).toLowerCase().replace(/(^|[\s\-'’(])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) : String(name || ''));
+  /** A play in a list (Search, Characters, Lines): the row, and Read beside it. `sub` and `said` replace the facts. */
+  function playListRow(script, { sub = null, said = null, href = null } = {}) {
+    const v = PlaysCore.voicesOf(script);
+    const line = sub || eventLine([firstAuthor(script), `${num.format(v)} ${voicesWord(v)}`, `About ${num.format(PlaysCore.minutesOf(script))} min`]);
+    return el('li', { class: 'series-row g-row pl-row ear-drama-only' },
+      el('a', { class: 'g-link', href: href || `?play=${encodeURIComponent(script.id)}` },
+        pictureWindow(playArt(script), 48),
+        el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, script.title),
+          line, said ? el('span', { class: 'pl-said caption' }, said) : null)),
+      PlaysUI.readLink(script.id, { icon: true }));
+  }
+
+  /** The bytes one press of a line search may read in scripts (about 2 MB over the wire with the shards). */
+  const LINE_BUDGET = 1600000;
+  let playSearchSeq = 0;
+  /** Plays searched by title and author, character, and spoken line (B31 §3.3), each its own section, in that
+      order, appended to `box`. Returns whether any section found something. */
+  async function playSearch(box, q, rows, { current = () => true, ids = 'fs' } = {}) {
+    const section = (id, title, count, list) => el('section', { class: 'block', 'aria-labelledby': `${ids}-${id}-h` },
+      el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: `${ids}-${id}-h` }, title),
+        count ? el('span', { class: 'caption' }, count) : null), list);
+    const titled = FindCore.titleHits(rows, q);
+    const [names, lined] = await Promise.all([API.playCharacters().catch((e) => { console.error(e); return null; }),
+      FindCore.lineCandidates(q, (f) => API.playLines(f)).catch((e) => { console.error(e); return null; })]);
+    if (!current()) return false;
+    const chars = FindCore.characterHits(rows, names && names.names, q);
+    if (titled.length) box.append(section('p', 'Plays', plural(titled.length, 'play', 'plays'), el('ul', { class: 'series-list' }, titled.slice(0, 30).map(s => playListRow(s)))));
+    if (chars.length) {
+      box.append(section('c', 'Characters', null, el('ul', { class: 'series-list' }, chars.map(({ row, role, lines }) =>
+        playListRow(row, { sub: eventLine([titleCase(role), plural(lines, 'line', 'lines'), firstAuthor(row)]) })))));
+    }
+    // The line shards (contract §4.1 search/lines) name the plays with one line holding every word, rarest word
+    // first; a library built before them falls back to the plays that say every word (search/said).
+    const said = lined ? null : await FindCore.saidPlays(q, (f) => API.playSaid(f)).catch((e) => { console.error(e); return { all: [], exact: [] }; });
+    if (!current()) return false;
+    const cands = lined ? lined.cands : (said.exact.length ? said.exact : said.all).map(play => ({ play, lines: null }));
+    const prefix = lined ? lined.prefix : new Set();
+    const ordered = FindCore.orderCandidates(cands, rows, q);
+    if (!ordered.length) return titled.length > 0 || chars.length > 0;
+    const list = el('ul', { class: 'series-list' });
+    const more = el('button', { type: 'button', class: 'btn btn-ghost pl-more-lines' });
+    const sec = section('l', 'Lines', null, list);
+    sec.append(el('div', { class: 'actions' }, more));
+    box.append(sec);
+    // Scripts are read once and not kept, a batch at a time within LINE_BUDGET bytes; More lines reads the next.
+    const hits = [];
+    let from = 0;
+    const paint = () => {
+      const shown = FindCore.shownHits(hits);
+      list.replaceChildren(...shown.map(h => playListRow(h.row, { sub: eventLine([h.role, firstAuthor(h.row)]), said: FindCore.snippet(h.text, q),
+        href: `?read=${encodeURIComponent(h.row.id)}&line=${encodeURIComponent(h.line)}` })));
+      const left = ordered.length - from;
+      more.hidden = left <= 0;
+      more.textContent = `More lines (${plural(left, 'play', 'plays')})`;
+    };
+    const read = async () => {
+      more.disabled = true;
+      list.append(el('li', { class: 'pl-lines-busy' }, stateBox('loading')));
+      const { to } = FindCore.nextBatch(ordered, from, LINE_BUDGET);
+      const got = await Promise.all(ordered.slice(from, to).map(c => API.playScriptOnce(c.row).then((script) => {
+        const hit = script && FindCore.lineHit(script, q, c.lines, PlaysCore.spokenText, (l) => titleCase(l.role || ''), prefix);
+        return hit ? { row: c.row, ...hit } : null;
+      }).catch((e) => { console.error(e); return null; })));
+      if (!current()) return;
+      from = to;
+      hits.push(...got.filter(Boolean));
+      more.disabled = false;
+      if (!hits.length && from >= ordered.length) { sec.remove(); if (!box.childElementCount) box.append(stateBox('empty', { text: `No plays match “${q.trim()}”.` })); return; }
+      paint();
+    };
+    more.addEventListener('click', read);
+    read();
+    return true;
+  }
+
+  /** The chips' facets: the four a performer asks first (B31 §3.1); the rest live in Filters. */
+  const CHIP_FACETS = ['voices', 'length', 'form', 'era'];
+  function renderFinder(c, { index, rows, collections }, r) {
+    const facets = FindCore.facetsOf(index);
+    const st = FindCore.stateFrom(r.p, facets);
+    const go = (over) => navigate(FindCore.urlOf(st, facets, over), true);
+    const counted = FindCore.counts(rows, facets, st.picks);
+    const optLabel = (f, x) => (f.key === 'voices' ? `${x.label} ${voicesWord(x.label === '1' ? 1 : 2)}` : x.label);
+    const chips = el('div', { class: 'pl-facets', role: 'group', 'aria-label': 'Facets' },
+      ...counted.filter(f => CHIP_FACETS.includes(f.key)).map(f => el('label', { class: `pl-facet${st.picks[f.key] ? ' on' : ''}` },
+        el('span', { class: 'sr-only' }, f.label),
+        el('select', { name: f.key, onchange: (e) => go({ picks: { [f.key]: e.target.value } }) },
+          el('option', { value: '' }, f.label),
+          ...f.values.map(x => el('option', { value: x.value, selected: st.picks[f.key] === x.value }, `${optLabel(f, x)} (${num.format(x.count)})`))))),
+      el('label', { class: `pl-facet${st.sort !== 'voices' ? ' on' : ''}` }, el('span', { class: 'sr-only' }, 'Sort'),
+        el('select', { name: 'sort', onchange: (e) => go({ sort: e.target.value }) },
+          ...Object.entries(FindCore.SORTS).map(([x, l]) => el('option', { value: x, selected: st.sort === x }, l)))));
+    const more = counted.filter(f => f.filter);
+    if (more.length) {
+      const n = more.filter(f => st.picks[f.key]).length;
+      chips.append(el('button', { type: 'button', class: `pl-facet pl-facet-btn${n ? ' on' : ''}`, onclick: () => openFilters(rows, facets, st) },
+        n ? `Filters · ${n}` : 'Filters'));
+    }
+
+    let timer = 0;
+    const results = el('div', { class: 'pl-results' });
+    const input = el('input', { type: 'search', class: 'field-input pl-search', name: 'q', value: st.q, autocomplete: 'off',
+      placeholder: 'Titles, authors, characters, lines', 'aria-label': 'Search plays' });
+    const run = (q) => {
+      st.q = q.trim();
+      history.replaceState(history.state, '', FindCore.urlOf(st, facets));
+      drawResults();
+    };
+    input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => run(input.value), 180); });
+    const form = el('form', { class: 'pl-search-form', role: 'search', onsubmit: (e) => { e.preventDefault(); clearTimeout(timer); run(input.value); } },
+      icon('search'), input);
+    c.append(el('h2', { class: 'section-header', id: 'plays-list-h' }, 'Plays'), form, chips, results);
+
+    const empty = () => stateBox('empty', { text: 'Nothing matches these filters.', action: { label: 'Clear filters', href: '?view=record' } });
+    const grid = (list, title) => el('section', { class: 'block', 'aria-labelledby': 'pl-grid-h' }, railHead('pl-grid-h', title, list.length, null),
+      list.length ? playGrid(list, title) : empty());
+    function drawResults() {
+      const my = ++playSearchSeq;
+      results.replaceChildren();
+      if (st.q.length >= 2) {
+        results.append(stateBox('loading'));
+        const box = el('div');
+        playSearch(box, st.q, rows, { current: () => my === playSearchSeq }).then((found) => {
+          if (my !== playSearchSeq) return;
+          results.replaceChildren(box);
+          if (!found) results.append(stateBox('empty', { text: `No plays match “${st.q}”.` }), el('div', { class: 'actions' }, OwnUI.addLink(playsHelpers, 'btn')));
+        }).catch((e) => { console.error(e); if (my === playSearchSeq) results.replaceChildren(stateBox(problem(e), { retry: drawResults })); });
+        return;
+      }
+      if (st.scenes) {
+        const all = FindCore.sceneRows(FindCore.filter(rows, facets, st.picks), st.scenes);
+        results.append(el('section', { class: 'block', 'aria-labelledby': 'pl-scenes-h' },
+          railHead('pl-scenes-h', `Scenes for ${['', '', 'two', 'three', 'four'][st.scenes]} voices`, all.length, null),
+          all.length ? el('ul', { class: 'pl-scard-grid' }, ...all.map(sceneTile)) : empty()));
+        return;
+      }
+      if (st.collection) {
+        const col = FindCore.collection(rows, collections, st.collection);
+        if (!col) { results.append(stateBox('missing')); return; }
+        const sec = grid(FindCore.filter(col.plays, facets, st.picks), col.title);
+        const head = sec.querySelector('.block-head');
+        if (col.note) head.after(el('p', { class: 'body pl-note' }, col.note));
+        if (col.by) head.after(el('p', { class: 'caption pl-by' }, col.by));
+        results.append(sec);
+        return;
+      }
+      const list = FindCore.sorted(FindCore.filter(rows, facets, st.picks), st.sort);
+      if (!FindCore.active(st)) {
+        const bare = { picks: {}, sort: 'voices' };
+        for (const rail of FindCore.rails(rows, collections)) {
+          const id = `pl-rail-${rail.id}`;
+          const href = FindCore.urlOf(bare, facets, rail.kind === 'scenes' ? { scenes: rail.voices } : { collection: rail.id });
+          const items = rail.kind === 'scenes' ? rail.scenes.map(sceneTile) : rail.plays.map(playTile);
+          results.append(el('section', { class: 'shelf', 'aria-labelledby': id }, railHead(id, rail.title, rail.count, href),
+            rail.by ? el('p', { class: 'caption pl-by' }, rail.by) : null,
+            el('ul', { class: `rail ${rail.kind === 'scenes' ? 'pl-scard-rail' : 'g-rail'}`, 'aria-labelledby': id }, ...items)));
+        }
+      }
+      results.append(grid(list, FindCore.SORTS[st.sort]));
+    }
+    drawResults();
+  }
+
+  /** Filters (B31 §3.1): every facet as chips, counted against the others, applied with "Show N plays". */
+  function openFilters(rows, facets, st) {
+    const pending = { ...st.picks };
+    const body = el('div', { class: 'pl-filter-groups' });
+    const apply = () => { d.close(); navigate(FindCore.urlOf(st, facets, { picks: Object.fromEntries(facets.map(f => [f.key, pending[f.key] || ''])) }), true); };
+    const show = el('button', { type: 'button', class: 'btn btn-primary', onclick: apply });
+    const paint = () => {
+      const counted = FindCore.counts(rows, facets, pending);
+      const n = FindCore.filter(rows, facets, pending).length;
+      show.textContent = `Show ${num.format(n)} ${n === 1 ? 'play' : 'plays'}`;
+      body.replaceChildren(...counted.filter(f => f.values.length).map(f => el('fieldset', { class: 'pl-filter-group' },
+        el('legend', { class: 'caption pl-filter-legend' }, f.key === 'era' ? 'Era of the playwright' : f.label),
+        el('div', { class: 'pl-chips' }, ...f.values.map(x => el('button', { type: 'button', class: 'pl-chip', 'aria-pressed': String(pending[f.key] === x.value),
+          onclick: () => { pending[f.key] = pending[f.key] === x.value ? '' : x.value; paint(); } },
+          el('span', {}, x.label), el('span', { class: 'pl-chip-n tabular' }, num.format(x.count))))))));
+    };
+    const d = el('dialog', { class: 'rd-sheet pl-filters', 'aria-labelledby': 'pl-filters-h' },
+      el('div', { class: 'rd-sheet-head' }, el('h2', { class: 'section-header', id: 'pl-filters-h' }, 'Filters'), show),
+      body,
+      el('div', { class: 'actions' },
+        el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => { for (const k in pending) pending[k] = ''; paint(); } }, 'Clear filters'),
+        el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => d.close() }, 'Close')));
+    d.addEventListener('close', () => d.remove());
+    paint();
+    document.body.append(d);
+    d.showModal();
+  }
+
   function renderRecord(r) {
     setTitle('Record');
     const body = $('record-body');
@@ -1111,53 +1323,14 @@
     PlaysUI.renderMine(yoursList, playsHelpers, { classes: false, onEmpty: () => yours.remove() });
     PlaysUI.classDoor(classBox, playsHelpers).catch(e => console.error('class door', e));
 
-    const f = { voices: r.p.get('voices') || '', length: r.p.get('length') || '', kind: r.p.get('kind') || '',
-                sort: PLAY_SORT[r.p.get('sort')] ? r.p.get('sort') : 'voices' };
     homeRow(todayBox, null, loadScene, (scene, c) => {
       if (!scene) return false;
       c.append(sceneCard(scene));
       return true;
     });
-    homeRow(playsBox, null, () => API.playLibrary(), (scripts, c) => {
-      if (!scripts.length) { c.append(stateBox('empty', { text: 'No plays yet.' })); return true; }
-      const facet = { voices: PlaysCore.voiceBand, length: PlaysCore.lengthBand, kind: (s) => (KIND_LABEL[s.kind] ? s.kind : null) };
-      const keep = (s, skip) => Object.keys(facet).every(k => k === skip || !f[k] || facet[k](s) === f[k]);
-      const here = (over) => {
-        const p = new URLSearchParams({ view: 'record' });
-        const v = { ...f, ...over };
-        for (const k of ['voices', 'length', 'kind']) if (v[k]) p.set(k, v[k]);
-        if (v.sort !== 'voices') p.set('sort', v.sort);
-        return `?${p}`;
-      };
-      const select = (k, label, labels, all) => {
-        const counts = new Map(Object.keys(labels).map(x => [x, scripts.filter(s => keep(s, k) && facet[k](s) === x).length]));
-        return el('label', { class: 'filter' }, el('span', { class: 'caption' }, label),
-          el('select', { name: k, onchange: (e) => navigate(here({ [k]: e.target.value }), true) },
-            el('option', { value: '' }, all),
-            ...Object.entries(labels).filter(([x]) => counts.get(x) || f[k] === x)
-              .map(([x, l]) => el('option', { value: x, selected: f[k] === x }, `${l} (${num.format(counts.get(x))})`))));
-      };
-      const sortSel = el('label', { class: 'filter' }, el('span', { class: 'caption' }, 'Sort'),
-        el('select', { name: 'sort', onchange: (e) => navigate(here({ sort: e.target.value }), true) },
-          ...Object.entries(PLAY_SORT).map(([x, l]) => el('option', { value: x, selected: f.sort === x }, l))));
-      const filters = el('div', { class: 'filters' }, select('voices', 'Voices', VOICE_LABEL, 'Any number'),
-        select('length', 'Length', LEN_LABEL, 'Any length'), select('kind', 'Kind', KIND_LABEL, 'Any kind'), sortSel);
-      const byName = (a, b) => (a.sort_name || a.title).localeCompare(b.sort_name || b.title, 'en', { sensitivity: 'base' });
-      const sorters = {
-        voices: (a, b) => PlaysCore.voicesOf(a) - PlaysCore.voicesOf(b) || PlaysCore.minutesOf(a) - PlaysCore.minutesOf(b) || byName(a, b),
-        short: (a, b) => PlaysCore.minutesOf(a) - PlaysCore.minutesOf(b) || byName(a, b),
-        name: byName,
-      };
-      const list = scripts.filter(s => keep(s, null)).sort(sorters[f.sort]);
-      const h = el('h2', { class: 'section-header', id: 'plays-list-h' }, 'Plays');
-      const count = el('p', { class: 'caption' }, el('span', { class: 'nw' }, plural(list.length, 'play', 'plays')), ' · ',
-        el('span', { class: 'nw' }, PLAY_SORT[f.sort]));
-      c.append(h, filters, count);
-      if (!list.length) {
-        c.append(stateBox('empty', { text: 'Nothing matches these filters.', action: { label: 'Clear filters', href: '?view=record' } }));
-        return true;
-      }
-      c.append(playGrid(list, PLAY_SORT[f.sort]));
+    homeRow(playsBox, null, loadFinder, (data, c) => {
+      if (!data.rows.length) { c.append(stateBox('empty', { text: 'No plays yet.' })); return true; }
+      renderFinder(c, data, r);
       return true;
     });
     PlaysUI.newDramas(playsHelpers).then((sec) => { if (sec) madeBox.replaceChildren(sec); }).catch((e) => console.error(e));
@@ -1567,15 +1740,6 @@
   function playMeta(script) {
     const parts = PlaysCore.partCountOf(script);
     return [PlaysCore.authorLine(script), plural(parts, 'part', 'parts')].filter(Boolean).join(' · ');
-  }
-  function playRow(script) {
-    const sub = eventLine([PlaysCore.authorLine(script),
-      plural(PlaysCore.partCountOf(script), 'part', 'parts')]);
-    return el('li', { class: 'series-row g-row ear-drama-only' },
-      el('a', { class: 'g-link', href: `?play=${encodeURIComponent(script.id)}` },
-        pictureWindow(playArt(script), 48),
-        el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, script.title),
-          sub ? el('span', { class: 'ep-sub' }, sub) : null)));
   }
   /** The plays, or none when the file does not load: Browse and Search still list the series. */
   const castable = () => API.playLibrary().catch((err) => { console.error(err); return []; });
@@ -2177,13 +2341,6 @@
   let searchTimer = null;
 
   /** Word-prefix, as everywhere (WEB-DESIGN §4.6): every query word begins a word of the title or author. */
-  function scriptsMatching(scripts, words) {
-    return scripts.filter(s => {
-      const have = API.tokens(`${s.title} ${PlaysCore.authorLine(s)}`);
-      return words.every(w => have.some(h => h.startsWith(w)));
-    });
-  }
-
   function renderSearch(r) {
     setTitle('Search');
     const q = r.p.get('q') || '';
@@ -2203,12 +2360,14 @@
         API.searchEpisodeNumbers(q), onTV() ? [] : castable(), API.searchPeople(q), API.searchAired(q),
         API.searchSaidNumbers(q), onTV() ? [] : OwnUI.matching(words).catch((e) => { console.error(e); return []; })]);
       if (seq !== searchSeq) return;
-      const plays = scriptsMatching(scripts, words);
+      const playBox = el('div');
+      const playsFound = !onTV() && scripts.length ? await playSearch(playBox, q, scripts, { current: () => seq === searchSeq, ids: 'rs' }) : false;
+      if (seq !== searchSeq) return;
       const titled = new Set(numbers);
       const said = saidAll.filter(n => !titled.has(n));
       body.replaceChildren();
-      const addOwn = !plays.length && !mine.length && !onTV() ? el('div', { class: 'actions' }, OwnUI.addLink(playsHelpers, 'btn')) : null;
-      if (!series.total && !people.total && !numbers.length && !plays.length && !(aired && aired.rows.length)
+      const addOwn = !playsFound && !mine.length && !onTV() ? el('div', { class: 'actions' }, OwnUI.addLink(playsHelpers, 'btn')) : null;
+      if (!series.total && !people.total && !numbers.length && !playsFound && !(aired && aired.rows.length)
           && !said.length && !mine.length) {
         body.append(stateBox('empty', { text: `No matches for “${q.trim()}”.` }), ...[addOwn].filter(Boolean));
         return;
@@ -2225,12 +2384,7 @@
             el('span', { class: 'caption' }, plural(people.total, 'person', 'people'))),
           el('ul', { class: 'series-list' }, people.rows.map(personRow))));
       }
-      if (plays.length) {
-        body.append(el('section', { class: 'block', 'aria-labelledby': 'rp-h' },
-          el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'rp-h' }, 'Plays'),
-            el('span', { class: 'caption' }, plural(plays.length, 'play', 'plays'))),
-          el('ul', { class: 'series-list' }, plays.map(playRow))));
-      }
+      if (playsFound) body.append(playBox);
       if (mine.length) {
         body.append(el('section', { class: 'block', 'aria-labelledby': 'ro-h' },
           el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'ro-h' }, 'Your scripts'),
@@ -2352,7 +2506,7 @@
      PLAYS (js/plays-ui.js draws them with these helpers)
   ================================================================ */
 
-  const playsHelpers = { inApp, playWindow: (s) => pictureWindow(playArt(s), 48), el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine, showTile, share, openingWindow, heroCredit, shownTitle };
+  const playsHelpers = { inApp, playWindow: (s) => pictureWindow(playArt(s), 48), playArt, playTile, sceneTile, railHead, loadFinder, el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine, showTile, share, heroCredit, shownTitle };
   function renderPlays(r) {
     PlaysUI.render(r, playsHelpers);
   }

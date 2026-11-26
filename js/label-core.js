@@ -13,6 +13,7 @@
  *   { kind: 'drama',   name, parts: [{ lines, hue }] (largest first), finished ('YYYY-MM[-DD]') }
  *   { kind: 'person',  name, genre?, first?, last? (credit years, drawn at L only) }
  *   { kind: 'play',    voices, opening? (true when the caller sets the opening's speeches as text), cast ([lines], largest first) }
+ *   { kind: 'play',    name, author?, hue?, era?, life? ({born, died}), cast } (the play's page label, B31 2.1)
  * Angles are degrees, 0 at three o'clock, counterclockwise positive (the dial runs clockwise, so an
  * arc's `from` is larger than its `to`). Colors are token references (board.mystery, brand.text).
  */
@@ -164,7 +165,80 @@ const LabelCore = (() => {
           "y": 94
         }
       },
-      "board": "drama"
+      "board": "drama",
+      "page": {
+        "x0": 9,
+        "span": 82,
+        "mono": {
+          "x": 8.4,
+          "cap": {
+            "S": 40,
+            "M": 34,
+            "L": 30
+          },
+          "y": {
+            "S": 47,
+            "M": 46,
+            "L": 50
+          }
+        },
+        "cols": {
+          "max": {
+            "S": 6,
+            "M": 10,
+            "L": 12
+          },
+          "gap": {
+            "S": 3,
+            "M": 2.2,
+            "L": 1.6
+          },
+          "base": {
+            "S": 88,
+            "M": 82,
+            "L": 82
+          },
+          "h": {
+            "S": 32,
+            "M": 26,
+            "L": 26
+          },
+          "maxW": {
+            "S": 16,
+            "M": 13,
+            "L": 13
+          },
+          "min": 0.08,
+          "restOpacity": 0.42
+        },
+        "ruler": {
+          "y": 92,
+          "h": {
+            "M": 3,
+            "L": 2.2
+          },
+          "tick": 1.6,
+          "width": 0.6,
+          "opacity": 0.38,
+          "inset": 0.8
+        },
+        "rim": {
+          "x": 9,
+          "y": 15,
+          "size": 3.6,
+          "tracking": 0.14,
+          "opacity": 0.85
+        },
+        "eras": [
+          "Antiquity",
+          "Medieval",
+          "1500s",
+          "1600s",
+          "1700s",
+          "1800s",
+          "1900-1930"
+        ]
+      }
     },
     "colors": {
       "groundNone": "brand.surfaceAlt",
@@ -383,14 +457,73 @@ const LabelCore = (() => {
              text: more > 0 ? [{ s: `+${more}`, face: 'body', size: C.more.size, x: C.more.x, y: C.more.y, anchor: 'end', fill: 'on' }] : [] };
   }
 
+  /** The surname the page's top line names: the display name's last word, a parenthesis and a Jr. or III dropped. */
+  function surnameOf(author) {
+    const words = String(author || '').replace(/\([^)]*\)/g, ' ').split(/[\s,]+/).filter(Boolean);
+    while (words.length > 1 && /^(jr|sr|ii|iii|iv)\.?$/i.test(words[words.length - 1])) words.pop();
+    return words.length ? words[words.length - 1].toUpperCase() : '';
+  }
+  /** Life years as the record has them: 1856-1950, 496-407 BCE (both before the era), 30 BCE-17 (across it). */
+  function lifeOf(life) {
+    if (!life || typeof life !== 'object') return '';
+    const b = Number.isFinite(life.born) ? life.born : null, d = Number.isFinite(life.died) ? life.died : null;
+    if (b === null || d === null) return '';
+    if (b < 0 && d < 0) return `${-b}-${-d} BCE`;
+    if (b < 0) return `${-b} BCE-${d}`;
+    return `${b}-${d}`;
+  }
+
+  /** The play's label (B31 2.1, WEB-DESIGN 6.4r): a printed page, not a disc. The board is the form's (`hue`, the
+      catalog's) or the neutral one; the monogram from the left in the top half; a column per speaking part,
+      largest first, its height its lines over the largest part's; the era ruler at the foot (M, L); at L the
+      line "SURNAME · LIFE YEARS". The top right corner stays clear for Read. */
+  function playPage(it, tier) {
+    const P = T.play.page, g = known(it.hue) ? it.hue : '';
+    const spec = { kind: 'play', shape: 'square', tier, viewBox: T.viewBox, ground: groundOf(g), on: onOf(g),
+                   disc: null, grooves: null, ticks: null, arc: null, evening: null, parts: null, ring: null, label: null,
+                   text: [], rim: null, rules: null, cast: null, cols: null, ruler: null };
+    const m = mono(it.name);
+    if (m) {
+      const size = Math.min(at(P.mono.cap, tier) / T.glyphs.display.cap, P.span / Math.max(em(m, 'display'), 0.01));
+      spec.text.push({ s: m, face: 'display', size: r2(size), x: P.mono.x, y: at(P.mono.y, tier), anchor: 'start', fill: 'on' });
+    }
+    if (tier !== 'S') {
+      const cell = P.span / P.eras.length;
+      spec.ruler = { y: P.ruler.y, x0: P.x0, span: P.span, cell: r2(cell), lit: P.eras.indexOf(it.era), h: at(P.ruler.h, tier),
+                     tick: P.ruler.tick, width: P.ruler.width, opacity: P.ruler.opacity, inset: P.ruler.inset };
+    }
+    const cast = (it.cast || []).map(Number).filter((n) => n > 0);
+    if (cast.length) {
+      const C = P.cols, max = at(C.max, tier), gap = at(C.gap, tier), base = at(C.base, tier), H = at(C.h, tier);
+      const more = cast.length > max;
+      const shown = more ? cast.slice(0, max - 1) : cast;
+      const n = shown.length + (more ? 1 : 0);
+      const w = Math.min(at(C.maxW, tier), (P.span - gap * (n - 1)) / n);
+      const col = (v, i, rest) => { const h = Math.max(C.min, v / cast[0]) * H;
+        return { x: r2(P.x0 + i * (w + gap)), y: r2(base - h), w: r2(w), h: r2(h), rest }; };
+      const bars = shown.map((v, i) => col(v, i, false));
+      if (more) bars.push(col(cast[max - 1], shown.length, true));
+      spec.cols = { restOpacity: C.restOpacity, bars };
+    }
+    if (tier === 'L') {
+      const line = [surnameOf(it.author), lifeOf(it.life)].filter(Boolean).join(' · ');
+      const fitted = r2(Math.min(P.rim.size, P.span / Math.max(em(line, 'body') + [...line].length * P.rim.tracking, 0.01)));
+      if (line) spec.text.unshift({ s: line, face: 'body', size: fitted, x: P.rim.x, y: P.rim.y, anchor: 'start', fill: 'on',
+                                    tracking: P.rim.tracking, opacity: P.rim.opacity });
+    }
+    return spec;
+  }
+
   function labelSpec(item, size) {
     const it = item || {};
     const tier = tierOf(Number(size) || 0);
     const kind = ['series', 'episode', 'station', 'drama', 'person', 'play'].includes(it.kind) ? it.kind : 'series';
     if (kind === 'person') return person(it, tier);
-    if (kind === 'play') return play(it, tier);
+    // A play row's label carries its name (B31); the nameless form is the R4-2c bars the shared golden `cases`
+    // still hold until Swift and Kotlin take the page (A1, D1).
+    if (kind === 'play') return !it.opening && it.name !== undefined ? playPage(it, tier) : play(it, tier);
     return disc(it, tier, kind);
   }
 
-  return { labelSpec, tierOf, yearDeg, SLOT, T, GENRES };
+  return { labelSpec, tierOf, yearDeg, surnameOf, lifeOf, SLOT, T, GENRES };
 })();

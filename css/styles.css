@@ -2232,3 +2232,48 @@ body.casting .player { display: none; }
 }
 .os-own p { margin: 0 0 2px; }
 .os-add-link svg { width: 20px; height: 20px; fill: currentColor; }
+
+/* ---- Finding a play (B31 §3, WEB-DESIGN §4.15 item 3): search, facet chips, the ways in, Filters ---- */
+.pl-search-form { position: relative; margin: var(--space-2) 0 var(--space-3); }
+.pl-search-form > svg { position: absolute; left: 12px; top: 50%; width: 20px; height: 20px; transform: translateY(-50%); fill: var(--color-text-muted); pointer-events: none; }
+.pl-search-form .pl-search { width: 100%; padding-left: 40px; }
+/* The facets are native selects drawn as chips, one row that scrolls sideways on a phone. */
+.pl-facets { display: flex; gap: var(--space-2); overflow-x: auto; margin: 0 calc(-1 * var(--space-4)) var(--space-4); padding: 2px var(--space-4) var(--space-2); scrollbar-width: none; }
+.pl-facets::-webkit-scrollbar { display: none; }
+@media (min-width: 768px) { .pl-facets { flex-wrap: wrap; overflow: visible; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; } }
+.pl-facet { flex: none; position: relative; display: inline-flex; }
+.pl-facet select, .pl-facet-btn { appearance: none; -webkit-appearance: none; min-height: 36px; padding: 0 30px 0 14px; border-radius: 999px;
+  border: 1px solid var(--color-border); background: var(--color-background); color: var(--color-text); font: inherit; font-size: var(--type-caption-size);
+  font-weight: var(--type-body-strong-weight); cursor: pointer; max-width: 70vw; text-overflow: ellipsis; field-sizing: content; }
+label.pl-facet::after { content: ""; position: absolute; right: 13px; top: 50%; width: 6px; height: 6px; margin-top: -5px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); pointer-events: none; }
+.pl-facet-btn { display: inline-flex; align-items: center; padding-right: 14px; }
+.pl-facet.on select, .pl-facet-btn.on { background: var(--color-text); color: var(--color-background); border-color: var(--color-text); }
+label.pl-facet.on::after { color: var(--color-background); }
+.pl-count { margin-left: 6px; font-family: var(--font-body); font-weight: 400; color: var(--color-text-muted); }
+.pl-all { color: var(--color-link); text-decoration: none; }
+.pl-by { margin: calc(-1 * var(--space-1)) 0 var(--space-2); color: var(--color-text-muted); }
+.pl-note { margin: 0 0 var(--space-3); max-width: 60ch; }
+.pl-said { font-style: italic; color: var(--color-text); overflow-wrap: anywhere; }
+.pl-row .g-tile-read { position: static; flex: none; }
+/* A scene for N voices: a card on the surface, its heading and minutes, the play's name, the parts. */
+.pl-scard-rail { grid-auto-columns: minmax(200px, 64%); }
+@media (min-width: 768px) { .pl-scard-rail { grid-auto-columns: 220px; } }
+.pl-scard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.pl-scard { display: flex; flex-direction: column; gap: 4px; height: 100%; box-sizing: border-box; padding: var(--space-3); border-radius: 8px;
+  background: var(--color-surface-alt); color: var(--color-text); text-decoration: none; box-shadow: inset 0 0 0 1px var(--color-border); }
+.pl-scard-kick { text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
+.pl-scard-title { font-family: var(--font-display); font-weight: 700; font-size: var(--type-body-size); text-transform: uppercase; line-height: 1.15;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+.pl-scard-parts { color: var(--color-text-muted); }
+.pl-scard:hover .pl-scard-title { text-decoration: underline; }
+/* Filters: every facet as chips, counted against the others. */
+.pl-filters .rd-sheet-head { position: sticky; top: calc(-1 * var(--space-4)); z-index: 1; background: var(--color-background); padding: var(--space-2) 0; }
+.pl-filter-group { border: 0; margin: 0 0 var(--space-4); padding: 0; min-width: 0; }
+.pl-filter-legend { padding: 0; margin-bottom: var(--space-2); text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
+.pl-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pl-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--color-border);
+  background: var(--color-background); color: var(--color-text); font: inherit; font-size: var(--type-caption-size); font-weight: var(--type-body-strong-weight); cursor: pointer; max-width: 100%; }
+.pl-chip > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-chip-n { font-weight: 400; color: var(--color-text-muted); }
+.pl-chip[aria-pressed="true"] { background: var(--color-text); color: var(--color-background); border-color: var(--color-text); }
+.pl-chip[aria-pressed="true"] .pl-chip-n { color: inherit; opacity: 0.8; }

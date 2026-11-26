@@ -112,6 +112,47 @@ test('a play\'s "+N" never stands on its bars, whatever the parts\' sizes, and t
   ok(L.labelSpec({ kind: 'play', voices: 3, cast: [30, 20, 10] }, 48).cast.bars[0].w === 76, 'a cast that fits draws full width');
 });
 
+const pageFailures = (core) => golden.playPage.cases.map(c => { const d = diff(core.labelSpec(c.item, c.size), c.want, golden.tolerance); return d ? `${c.name}${d}` : null; }).filter(Boolean);
+test('golden: the play\'s page label (B31 2.1), every tier, the twelve frame plays', () => {
+  ok(golden.playPage && golden.playPage.cases.length >= 20, 'the playPage cases are in the golden file');
+  const bad = pageFailures(L);
+  ok(!bad.length, bad.slice(0, 3).join('\n        '));
+  const tiers = new Set(golden.playPage.cases.map(c => c.want.tier));
+  ok(tiers.has('S') && tiers.has('M') && tiers.has('L'), 'every tier has a case');
+});
+
+test('the play\'s page: one column per part up to the cap, the rest as one dimmer column, no column off the page', () => {
+  for (const [size, max] of [[56, 6], [128, 10], [360, 12]]) {
+    for (const n of [1, 2, max, max + 1, 67]) {
+      const cast = Array.from({ length: n }, (_, i) => 100 - i);
+      const s = L.labelSpec({ kind: 'play', name: 'Peter Pan', cast }, size);
+      ok(s.cols.bars.length === Math.min(n, max), `${n} parts at ${size}: ${s.cols.bars.length} columns`);
+      ok(s.cols.bars.filter(b => b.rest).length === (n > max ? 1 : 0), `${n} parts at ${size}: the rest column`);
+      const last = s.cols.bars[s.cols.bars.length - 1];
+      ok(last.x + last.w <= L.T.play.page.x0 + L.T.play.page.span + 0.01, `${n} parts at ${size}: a column past the page`);
+    }
+  }
+  const two = L.labelSpec({ kind: 'play', name: 'Pariah', cast: [90, 88] }, 128).cols.bars;
+  ok(two[0].w === two[1].w && two[0].w === L.T.play.page.cols.maxW.M, 'a two-hander is two capped slabs');
+  ok(L.labelSpec({ kind: 'play', name: 'X', cast: [100, 1] }, 128).cols.bars[1].h >= 0.08 * 26 - 0.01, 'the smallest part keeps 8%');
+  const mutant = CORE_SRC.replace('const more = cast.length > max;', 'const more = false;');
+  ok(mutant !== CORE_SRC && pageFailures(load(mutant)).length > 0, 'a page with no rest column passed every golden');
+});
+
+test('the play\'s page: the era ruler lights the playwright\'s cell, none undated, none at S; the line only at L', () => {
+  const at = (it, size) => L.labelSpec({ kind: 'play', name: 'Lysistrata', cast: [3, 2], ...it }, size);
+  ok(at({ era: 'Antiquity' }, 128).ruler.lit === 0 && at({ era: '1900-1930' }, 128).ruler.lit === 6, 'the lit cell');
+  ok(at({}, 128).ruler.lit === -1, 'undated: the baseline alone');
+  ok(at({ era: '1800s' }, 56).ruler === null, 'no ruler at S');
+  const line = (it) => (at(it, 360).text.find(t => t.face === 'body') || {}).s;
+  ok(line({ author: 'Aristophanes', life: { born: -447, died: -386 } }) === 'ARISTOPHANES · 447-386 BCE', 'BCE life');
+  ok(line({ author: 'Bernard Shaw', life: { born: 1856, died: 1950 } }) === 'SHAW · 1856-1950', 'a life');
+  ok(line({ author: 'Caroline Verhoeff' }) === 'VERHOEFF', 'no dates: the surname alone');
+  ok(line({}) === undefined, 'no author, no dates: no line');
+  ok(!at({ author: 'Bernard Shaw', life: { born: 1856, died: 1950 } }, 128).text.some(t => t.face === 'body'), 'no line at M');
+  ok(at({ hue: 'comedy' }, 128).ground === 'board.comedy' && at({}, 128).ground === 'brand.surfaceAlt', 'the board is the form\'s, else neutral');
+});
+
 test('every disc kind with a name draws text inside its label', () => {
   for (const kind of ['series', 'episode', 'drama', 'person']) {
     for (const size of [32, 56, 128, 360, 1920]) {

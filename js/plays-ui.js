@@ -349,15 +349,18 @@ const PlaysUI = (() => {
     return f;
   }
 
-  /** The head board of a play or a production: the title block on the drama board, the fingerprint as its mark. */
+  /** The head board of a play or a production: the play's window (B31 §3.5: a picture of the play, else on its own
+      page its title page or author's portrait, else its label) on the form's board, the fingerprint as its mark;
+      a finished drama keeps its part-color disc. */
   function playBoard(script, name, kicker, facts, art = null, { hero = false, picture = null } = {}) {
-    // On a play's own page (WEB-DESIGN §6.4g) the head is the item page's: its title page or author's
-    // portrait at its own shape, else its opening as a page; a finished drama keeps its part-color disc.
-    const win = hero && !picture && !(art && art.kind) && h.openingWindow ? h.openingWindow(script, true) : null;
-    return h.headBoard({ series: { kind: 'play', voices: C.voicesOf(script), cast: C.castOf(script), name, genre: BOARD, picture, ...(art || {}) }, kicker, name, facts,
-                         mark: fingerprint(script, 'g-head-strip pl-print-head'), ...(hero ? { hero: true, picture, ...(win ? { win } : {}) } : {}) });
+    const genre = art && art.kind ? BOARD : script.hue || '';
+    const series = art && art.kind ? { kind: 'play', name, genre, picture, ...art } : { ...h.playArt(script, hero), name, genre, picture };
+    return h.headBoard({ series, kicker, name, facts,
+                         mark: fingerprint(script, 'g-head-strip pl-print-head'), ...(hero ? { hero: true, picture } : {}) });
   }
   const kindOf = (script) => (script.kind === 'own' ? 'Your script' : script.kind === 'radio' ? 'Radio play' : 'Stage play');
+  /** A play's kicker (B31 §3.5): its kind, then its form and One act, each only when the record says it. */
+  const kickerOf = (script) => [kindOf(script), script.form && FindCore.FORM_LABEL[script.form], script.oneAct ? 'One act' : null].filter(Boolean).join(' · ');
   /** An own script or a production of one (PLAYS-DESIGN §13). */
   const isOwn = (script) => !!script && script.kind === 'own';
 
@@ -461,8 +464,11 @@ const PlaysUI = (() => {
     $('plays-h').textContent = script.title;
     const parts = speakingParts(script);
     const lead = API.playLead(script);
-    const board = playBoard(script, script.title, kindOf(script),
-      [C.authorFacts(script), script.year ? String(script.year) : null, `${num.format(parts.length)}\u00a0${parts.length === 1 ? 'part' : 'parts'}`, lines(script.lines.length).replace(' ', '\u00a0')],
+    const voices = C.voicesOf(script), minutes = C.minutesOf(script);
+    const author = C.authorFacts(script) || C.authorLine(script);
+    const board = playBoard(script, script.title, kickerOf(script),
+      [author ? `${script.attributed ? 'Attributed to ' : ''}${author}` : null, script.year ? String(script.year) : null,
+       `${num.format(voices)}\u00a0${voices === 1 ? 'voice' : 'voices'}`, `About\u00a0${num.format(minutes)}\u00a0min`],
       null, { hero: true, picture: lead });
     body.replaceChildren(...[board, h.heroCredit ? h.heroCredit(board, lead) : null].filter(Boolean),
       h.el('div', { class: 'actions actions-one actions-start ear-drama-only' }, startButton(script, h, { primary: true }), readLink(script.id),
@@ -473,6 +479,33 @@ const PlaysUI = (() => {
           C.castParts(script).map(part => partCard(script, part)))),
       isOwn(script) ? OwnUI.foot(script, h, { frozen }) : rightsLine(script));
     boardHeading(true);
+    if (!isOwn(script)) playNeighbors(body, my, script).catch((e) => console.error(e));
+  }
+
+  /** Under a library play's parts (B31 §3.5): its scenes for two voices, then Same voices and length (the rule as
+      the heading: within one voice and 15 minutes), then More by the author. A section with nothing is absent. */
+  async function playNeighbors(body, my, script) {
+    const { rows, collections } = await h.loadFinder();
+    if (my !== token) return;
+    const row = rows.find(r => r.id === script.id) || script;
+    const at = body.querySelector('.play-rights') || null;
+    const put = (sec) => (at ? at.before(sec) : body.append(sec));
+    const rail = (id, title, items, href = null, count = null) => h.el('section', { class: 'shelf', 'aria-labelledby': id },
+      h.railHead(id, title, count, href), h.el('ul', { class: 'rail g-rail', 'aria-labelledby': id }, ...items));
+    const scenes = (Array.isArray(row.scenes) ? row.scenes : []).filter(sc => sc.voices === 2 && sc.line);
+    if (scenes.length) {
+      put(h.el('section', { class: 'shelf', 'aria-labelledby': 'pp-scenes-h' }, h.railHead('pp-scenes-h', 'Scenes for two voices', null, null),
+        h.el('ul', { class: 'rail pl-scard-rail', 'aria-labelledby': 'pp-scenes-h' }, ...scenes.map(scene => h.sceneTile({ row, scene }, { inPlay: true })))));
+    }
+    const same = FindCore.sameShape(rows, row);
+    if (same.length) put(rail('pp-same-h', 'Same voices and length', same.map(h.playTile)));
+    const by = FindCore.byAuthor(rows, collections, row);
+    if (by.plays.length) {
+      const surname = LabelCore.surnameOf(C.authorLine({ authors: (row.authors || []).slice(0, 1) }));
+      const name = surname ? surname.charAt(0) + surname.slice(1).toLowerCase() : '';
+      put(rail('pp-by-h', name ? `More by ${name}` : 'More by the author', by.plays.map(h.playTile),
+        by.id && by.total > by.plays.length ? `?view=record&collection=${encodeURIComponent(by.id)}` : null));
+    }
   }
 
   /* ---- The cast sheet (§2.2-2.5) ---- */

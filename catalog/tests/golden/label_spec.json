@@ -2385,5 +2385,2769 @@
     "on": "onBoard.drama"
    }
   }
- ]
+ ],
+ "playPage": {
+  "about": "B31 2.1 (WEB-DESIGN 6.4r): the play's label as a printed page, from an index row's name, author, hue, era, life and cast. The web runs these now (js/label.test.js); Swift and Kotlin take them at A1 and D1 and then retire the two 'play without its opening' cases in `cases`. The twelve plays are the design frames' (b31-frames/labels-1440-*.png).",
+  "cases": [
+   {
+    "name": "play page: How He Lied to Her Husband at L",
+    "item": {
+     "kind": "play",
+     "name": "How He Lied to Her Husband",
+     "cast": [
+      96,
+      80,
+      34
+     ],
+     "author": "Bernard Shaw",
+     "hue": "comedy",
+     "era": "1900-1930",
+     "life": {
+      "born": 1856,
+      "died": 1950
+     }
+    },
+    "size": 360,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "L",
+     "viewBox": 100,
+     "ground": "board.comedy",
+     "on": "onBoard.comedy",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "SHAW · 1856-1950",
+       "face": "body",
+       "size": 3.6,
+       "x": 9,
+       "y": 15,
+       "anchor": "start",
+       "fill": "on",
+       "tracking": 0.14,
+       "opacity": 0.85
+      },
+      {
+       "s": "HH",
+       "face": "display",
+       "size": 37.5,
+       "x": 8.4,
+       "y": 50,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 13,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 23.6,
+        "y": 60.33,
+        "w": 13,
+        "h": 21.67,
+        "rest": false
+       },
+       {
+        "x": 38.2,
+        "y": 72.79,
+        "w": 13,
+        "h": 9.21,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 6,
+      "h": 2.2,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: How He Lied to Her Husband at M",
+    "item": {
+     "kind": "play",
+     "name": "How He Lied to Her Husband",
+     "cast": [
+      96,
+      80,
+      34
+     ],
+     "author": "Bernard Shaw",
+     "hue": "comedy",
+     "era": "1900-1930",
+     "life": {
+      "born": 1856,
+      "died": 1950
+     }
+    },
+    "size": 128,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "M",
+     "viewBox": 100,
+     "ground": "board.comedy",
+     "on": "onBoard.comedy",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "HH",
+       "face": "display",
+       "size": 42.5,
+       "x": 8.4,
+       "y": 46,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 13,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 24.2,
+        "y": 60.33,
+        "w": 13,
+        "h": 21.67,
+        "rest": false
+       },
+       {
+        "x": 39.4,
+        "y": 72.79,
+        "w": 13,
+        "h": 9.21,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 6,
+      "h": 3,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: How He Lied to Her Husband at S",
+    "item": {
+     "kind": "play",
+     "name": "How He Lied to Her Husband",
+     "cast": [
+      96,
+      80,
+      34
+     ],
+     "author": "Bernard Shaw",
+     "hue": "comedy",
+     "era": "1900-1930",
+     "life": {
+      "born": 1856,
+      "died": 1950
+     }
+    },
+    "size": 56,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "S",
+     "viewBox": 100,
+     "ground": "board.comedy",
+     "on": "onBoard.comedy",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "HH",
+       "face": "display",
+       "size": 50,
+       "x": 8.4,
+       "y": 47,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 16,
+        "h": 32,
+        "rest": false
+       },
+       {
+        "x": 28,
+        "y": 61.33,
+        "w": 16,
+        "h": 26.67,
+        "rest": false
+       },
+       {
+        "x": 47,
+        "y": 76.67,
+        "w": 16,
+        "h": 11.33,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": null
+    }
+   },
+   {
+    "name": "play page: Candida at L",
+    "item": {
+     "kind": "play",
+     "name": "Candida",
+     "cast": [
+      206,
+      168,
+      141,
+      86,
+      73,
+      38,
+      4,
+      1
+     ],
+     "author": "Bernard Shaw",
+     "era": "1900-1930",
+     "life": {
+      "born": 1856,
+      "died": 1950
+     }
+    },
+    "size": 360,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "L",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "SHAW · 1856-1950",
+       "face": "body",
+       "size": 3.6,
+       "x": 9,
+       "y": 15,
+       "anchor": "start",
+       "fill": "on",
+       "tracking": 0.14,
+       "opacity": 0.85
+      },
+      {
+       "s": "C",
+       "face": "display",
+       "size": 37.5,
+       "x": 8.4,
+       "y": 50,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 8.85,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 19.45,
+        "y": 60.8,
+        "w": 8.85,
+        "h": 21.2,
+        "rest": false
+       },
+       {
+        "x": 29.9,
+        "y": 64.2,
+        "w": 8.85,
+        "h": 17.8,
+        "rest": false
+       },
+       {
+        "x": 40.35,
+        "y": 71.15,
+        "w": 8.85,
+        "h": 10.85,
+        "rest": false
+       },
+       {
+        "x": 50.8,
+        "y": 72.79,
+        "w": 8.85,
+        "h": 9.21,
+        "rest": false
+       },
+       {
+        "x": 61.25,
+        "y": 77.2,
+        "w": 8.85,
+        "h": 4.8,
+        "rest": false
+       },
+       {
+        "x": 71.7,
+        "y": 79.92,
+        "w": 8.85,
+        "h": 2.08,
+        "rest": false
+       },
+       {
+        "x": 82.15,
+        "y": 79.92,
+        "w": 8.85,
+        "h": 2.08,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 6,
+      "h": 2.2,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: Candida at M",
+    "item": {
+     "kind": "play",
+     "name": "Candida",
+     "cast": [
+      206,
+      168,
+      141,
+      86,
+      73,
+      38,
+      4,
+      1
+     ],
+     "author": "Bernard Shaw",
+     "era": "1900-1930",
+     "life": {
+      "born": 1856,
+      "died": 1950
+     }
+    },
+    "size": 128,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "M",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "C",
+       "face": "display",
+       "size": 42.5,
+       "x": 8.4,
+       "y": 46,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 8.32,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 19.52,
+        "y": 60.8,
+        "w": 8.32,
+        "h": 21.2,
+        "rest": false
+       },
+       {
+        "x": 30.05,
+        "y": 64.2,
+        "w": 8.32,
+        "h": 17.8,
+        "rest": false
+       },
+       {
+        "x": 40.57,
+        "y": 71.15,
+        "w": 8.32,
+        "h": 10.85,
+        "rest": false
+       },
+       {
+        "x": 51.1,
+        "y": 72.79,
+        "w": 8.32,
+        "h": 9.21,
+        "rest": false
+       },
+       {
+        "x": 61.62,
+        "y": 77.2,
+        "w": 8.32,
+        "h": 4.8,
+        "rest": false
+       },
+       {
+        "x": 72.15,
+        "y": 79.92,
+        "w": 8.32,
+        "h": 2.08,
+        "rest": false
+       },
+       {
+        "x": 82.67,
+        "y": 79.92,
+        "w": 8.32,
+        "h": 2.08,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 6,
+      "h": 3,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: Candida at S",
+    "item": {
+     "kind": "play",
+     "name": "Candida",
+     "cast": [
+      206,
+      168,
+      141,
+      86,
+      73,
+      38,
+      4,
+      1
+     ],
+     "author": "Bernard Shaw",
+     "era": "1900-1930",
+     "life": {
+      "born": 1856,
+      "died": 1950
+     }
+    },
+    "size": 56,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "S",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "C",
+       "face": "display",
+       "size": 50,
+       "x": 8.4,
+       "y": 47,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 11.17,
+        "h": 32,
+        "rest": false
+       },
+       {
+        "x": 23.17,
+        "y": 61.9,
+        "w": 11.17,
+        "h": 26.1,
+        "rest": false
+       },
+       {
+        "x": 37.33,
+        "y": 66.1,
+        "w": 11.17,
+        "h": 21.9,
+        "rest": false
+       },
+       {
+        "x": 51.5,
+        "y": 74.64,
+        "w": 11.17,
+        "h": 13.36,
+        "rest": false
+       },
+       {
+        "x": 65.67,
+        "y": 76.66,
+        "w": 11.17,
+        "h": 11.34,
+        "rest": false
+       },
+       {
+        "x": 79.83,
+        "y": 82.1,
+        "w": 11.17,
+        "h": 5.9,
+        "rest": true
+       }
+      ]
+     },
+     "ruler": null
+    }
+   },
+   {
+    "name": "play page: Major Barbara at L",
+    "item": {
+     "kind": "play",
+     "name": "Major Barbara",
+     "cast": [
+      241,
+      182,
+      166,
+      163,
+      89,
+      82,
+      68,
+      43,
+      37,
+      25,
+      24,
+      21,
+      20,
+      8,
+      7,
+      5,
+      5,
+      1
+     ],
+     "author": "Bernard Shaw",
+     "era": "1900-1930",
+     "life": {
+      "born": 1856,
+      "died": 1950
+     }
+    },
+    "size": 360,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "L",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "SHAW · 1856-1950",
+       "face": "body",
+       "size": 3.6,
+       "x": 9,
+       "y": 15,
+       "anchor": "start",
+       "fill": "on",
+       "tracking": 0.14,
+       "opacity": 0.85
+      },
+      {
+       "s": "MB",
+       "face": "display",
+       "size": 37.5,
+       "x": 8.4,
+       "y": 50,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 5.37,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 15.97,
+        "y": 62.37,
+        "w": 5.37,
+        "h": 19.63,
+        "rest": false
+       },
+       {
+        "x": 22.93,
+        "y": 64.09,
+        "w": 5.37,
+        "h": 17.91,
+        "rest": false
+       },
+       {
+        "x": 29.9,
+        "y": 64.41,
+        "w": 5.37,
+        "h": 17.59,
+        "rest": false
+       },
+       {
+        "x": 36.87,
+        "y": 72.4,
+        "w": 5.37,
+        "h": 9.6,
+        "rest": false
+       },
+       {
+        "x": 43.83,
+        "y": 73.15,
+        "w": 5.37,
+        "h": 8.85,
+        "rest": false
+       },
+       {
+        "x": 50.8,
+        "y": 74.66,
+        "w": 5.37,
+        "h": 7.34,
+        "rest": false
+       },
+       {
+        "x": 57.77,
+        "y": 77.36,
+        "w": 5.37,
+        "h": 4.64,
+        "rest": false
+       },
+       {
+        "x": 64.73,
+        "y": 78.01,
+        "w": 5.37,
+        "h": 3.99,
+        "rest": false
+       },
+       {
+        "x": 71.7,
+        "y": 79.3,
+        "w": 5.37,
+        "h": 2.7,
+        "rest": false
+       },
+       {
+        "x": 78.67,
+        "y": 79.41,
+        "w": 5.37,
+        "h": 2.59,
+        "rest": false
+       },
+       {
+        "x": 85.63,
+        "y": 79.73,
+        "w": 5.37,
+        "h": 2.27,
+        "rest": true
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 6,
+      "h": 2.2,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: Major Barbara at M",
+    "item": {
+     "kind": "play",
+     "name": "Major Barbara",
+     "cast": [
+      241,
+      182,
+      166,
+      163,
+      89,
+      82,
+      68,
+      43,
+      37,
+      25,
+      24,
+      21,
+      20,
+      8,
+      7,
+      5,
+      5,
+      1
+     ],
+     "author": "Bernard Shaw",
+     "era": "1900-1930",
+     "life": {
+      "born": 1856,
+      "died": 1950
+     }
+    },
+    "size": 128,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "M",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "MB",
+       "face": "display",
+       "size": 42.5,
+       "x": 8.4,
+       "y": 46,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 6.22,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 17.42,
+        "y": 62.37,
+        "w": 6.22,
+        "h": 19.63,
+        "rest": false
+       },
+       {
+        "x": 25.84,
+        "y": 64.09,
+        "w": 6.22,
+        "h": 17.91,
+        "rest": false
+       },
+       {
+        "x": 34.26,
+        "y": 64.41,
+        "w": 6.22,
+        "h": 17.59,
+        "rest": false
+       },
+       {
+        "x": 42.68,
+        "y": 72.4,
+        "w": 6.22,
+        "h": 9.6,
+        "rest": false
+       },
+       {
+        "x": 51.1,
+        "y": 73.15,
+        "w": 6.22,
+        "h": 8.85,
+        "rest": false
+       },
+       {
+        "x": 59.52,
+        "y": 74.66,
+        "w": 6.22,
+        "h": 7.34,
+        "rest": false
+       },
+       {
+        "x": 67.94,
+        "y": 77.36,
+        "w": 6.22,
+        "h": 4.64,
+        "rest": false
+       },
+       {
+        "x": 76.36,
+        "y": 78.01,
+        "w": 6.22,
+        "h": 3.99,
+        "rest": false
+       },
+       {
+        "x": 84.78,
+        "y": 79.3,
+        "w": 6.22,
+        "h": 2.7,
+        "rest": true
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 6,
+      "h": 3,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: Major Barbara at S",
+    "item": {
+     "kind": "play",
+     "name": "Major Barbara",
+     "cast": [
+      241,
+      182,
+      166,
+      163,
+      89,
+      82,
+      68,
+      43,
+      37,
+      25,
+      24,
+      21,
+      20,
+      8,
+      7,
+      5,
+      5,
+      1
+     ],
+     "author": "Bernard Shaw",
+     "era": "1900-1930",
+     "life": {
+      "born": 1856,
+      "died": 1950
+     }
+    },
+    "size": 56,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "S",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "MB",
+       "face": "display",
+       "size": 50,
+       "x": 8.4,
+       "y": 47,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 11.17,
+        "h": 32,
+        "rest": false
+       },
+       {
+        "x": 23.17,
+        "y": 63.83,
+        "w": 11.17,
+        "h": 24.17,
+        "rest": false
+       },
+       {
+        "x": 37.33,
+        "y": 65.96,
+        "w": 11.17,
+        "h": 22.04,
+        "rest": false
+       },
+       {
+        "x": 51.5,
+        "y": 66.36,
+        "w": 11.17,
+        "h": 21.64,
+        "rest": false
+       },
+       {
+        "x": 65.67,
+        "y": 76.18,
+        "w": 11.17,
+        "h": 11.82,
+        "rest": false
+       },
+       {
+        "x": 79.83,
+        "y": 77.11,
+        "w": 11.17,
+        "h": 10.89,
+        "rest": true
+       }
+      ]
+     },
+     "ruler": null
+    }
+   },
+   {
+    "name": "play page: Trifles at L",
+    "item": {
+     "kind": "play",
+     "name": "Trifles",
+     "cast": [
+      50,
+      46,
+      33,
+      10,
+      10
+     ],
+     "author": "Susan Glaspell",
+     "era": "1900-1930",
+     "life": {
+      "born": 1882,
+      "died": 1948
+     }
+    },
+    "size": 360,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "L",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "GLASPELL · 1882-1948",
+       "face": "body",
+       "size": 3.6,
+       "x": 9,
+       "y": 15,
+       "anchor": "start",
+       "fill": "on",
+       "tracking": 0.14,
+       "opacity": 0.85
+      },
+      {
+       "s": "T",
+       "face": "display",
+       "size": 37.5,
+       "x": 8.4,
+       "y": 50,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 13,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 23.6,
+        "y": 58.08,
+        "w": 13,
+        "h": 23.92,
+        "rest": false
+       },
+       {
+        "x": 38.2,
+        "y": 64.84,
+        "w": 13,
+        "h": 17.16,
+        "rest": false
+       },
+       {
+        "x": 52.8,
+        "y": 76.8,
+        "w": 13,
+        "h": 5.2,
+        "rest": false
+       },
+       {
+        "x": 67.4,
+        "y": 76.8,
+        "w": 13,
+        "h": 5.2,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 6,
+      "h": 2.2,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: Trifles at M",
+    "item": {
+     "kind": "play",
+     "name": "Trifles",
+     "cast": [
+      50,
+      46,
+      33,
+      10,
+      10
+     ],
+     "author": "Susan Glaspell",
+     "era": "1900-1930",
+     "life": {
+      "born": 1882,
+      "died": 1948
+     }
+    },
+    "size": 128,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "M",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "T",
+       "face": "display",
+       "size": 42.5,
+       "x": 8.4,
+       "y": 46,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 13,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 24.2,
+        "y": 58.08,
+        "w": 13,
+        "h": 23.92,
+        "rest": false
+       },
+       {
+        "x": 39.4,
+        "y": 64.84,
+        "w": 13,
+        "h": 17.16,
+        "rest": false
+       },
+       {
+        "x": 54.6,
+        "y": 76.8,
+        "w": 13,
+        "h": 5.2,
+        "rest": false
+       },
+       {
+        "x": 69.8,
+        "y": 76.8,
+        "w": 13,
+        "h": 5.2,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 6,
+      "h": 3,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: Trifles at S",
+    "item": {
+     "kind": "play",
+     "name": "Trifles",
+     "cast": [
+      50,
+      46,
+      33,
+      10,
+      10
+     ],
+     "author": "Susan Glaspell",
+     "era": "1900-1930",
+     "life": {
+      "born": 1882,
+      "died": 1948
+     }
+    },
+    "size": 56,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "S",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "T",
+       "face": "display",
+       "size": 50,
+       "x": 8.4,
+       "y": 47,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 14,
+        "h": 32,
+        "rest": false
+       },
+       {
+        "x": 26,
+        "y": 58.56,
+        "w": 14,
+        "h": 29.44,
+        "rest": false
+       },
+       {
+        "x": 43,
+        "y": 66.88,
+        "w": 14,
+        "h": 21.12,
+        "rest": false
+       },
+       {
+        "x": 60,
+        "y": 81.6,
+        "w": 14,
+        "h": 6.4,
+        "rest": false
+       },
+       {
+        "x": 77,
+        "y": 81.6,
+        "w": 14,
+        "h": 6.4,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": null
+    }
+   },
+   {
+    "name": "play page: Pariah, or the Outcast at M",
+    "item": {
+     "kind": "play",
+     "name": "Pariah, or the Outcast",
+     "cast": [
+      79,
+      74
+     ],
+     "author": "August Strindberg",
+     "era": "1800s",
+     "life": {
+      "born": 1849,
+      "died": 1912
+     }
+    },
+    "size": 128,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "M",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "PO",
+       "face": "display",
+       "size": 42.5,
+       "x": 8.4,
+       "y": 46,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 13,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 24.2,
+        "y": 57.65,
+        "w": 13,
+        "h": 24.35,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 5,
+      "h": 3,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: Lysistrata at S",
+    "item": {
+     "kind": "play",
+     "name": "Lysistrata",
+     "cast": [
+      150,
+      53,
+      52,
+      49,
+      46,
+      40,
+      32,
+      19,
+      18,
+      17,
+      11,
+      10,
+      8,
+      6,
+      4,
+      3,
+      3,
+      2,
+      2,
+      2,
+      1,
+      1,
+      1
+     ],
+     "author": "Aristophanes",
+     "hue": "comedy",
+     "era": "Antiquity",
+     "life": {
+      "born": -447,
+      "died": -386
+     }
+    },
+    "size": 56,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "S",
+     "viewBox": 100,
+     "ground": "board.comedy",
+     "on": "onBoard.comedy",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "L",
+       "face": "display",
+       "size": 50,
+       "x": 8.4,
+       "y": 47,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 11.17,
+        "h": 32,
+        "rest": false
+       },
+       {
+        "x": 23.17,
+        "y": 76.69,
+        "w": 11.17,
+        "h": 11.31,
+        "rest": false
+       },
+       {
+        "x": 37.33,
+        "y": 76.91,
+        "w": 11.17,
+        "h": 11.09,
+        "rest": false
+       },
+       {
+        "x": 51.5,
+        "y": 77.55,
+        "w": 11.17,
+        "h": 10.45,
+        "rest": false
+       },
+       {
+        "x": 65.67,
+        "y": 78.19,
+        "w": 11.17,
+        "h": 9.81,
+        "rest": false
+       },
+       {
+        "x": 79.83,
+        "y": 79.47,
+        "w": 11.17,
+        "h": 8.53,
+        "rest": true
+       }
+      ]
+     },
+     "ruler": null
+    }
+   },
+   {
+    "name": "play page: King Henry V at L",
+    "item": {
+     "kind": "play",
+     "name": "King Henry V",
+     "cast": [
+      146,
+      68,
+      62,
+      40,
+      33,
+      31,
+      29,
+      28,
+      27,
+      22,
+      22,
+      20,
+      19,
+      18,
+      16,
+      16,
+      12,
+      11,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      4,
+      4,
+      4,
+      4,
+      2,
+      2,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "author": "William Shakespeare",
+     "hue": "documentary",
+     "era": "1600s",
+     "life": {
+      "born": 1564,
+      "died": 1616
+     }
+    },
+    "size": 360,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "L",
+     "viewBox": 100,
+     "ground": "board.documentary",
+     "on": "onBoard.documentary",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "SHAKESPEARE · 1564-1616",
+       "face": "body",
+       "size": 3.6,
+       "x": 9,
+       "y": 15,
+       "anchor": "start",
+       "fill": "on",
+       "tracking": 0.14,
+       "opacity": 0.85
+      },
+      {
+       "s": "KH",
+       "face": "display",
+       "size": 37.5,
+       "x": 8.4,
+       "y": 50,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 5.37,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 15.97,
+        "y": 69.89,
+        "w": 5.37,
+        "h": 12.11,
+        "rest": false
+       },
+       {
+        "x": 22.93,
+        "y": 70.96,
+        "w": 5.37,
+        "h": 11.04,
+        "rest": false
+       },
+       {
+        "x": 29.9,
+        "y": 74.88,
+        "w": 5.37,
+        "h": 7.12,
+        "rest": false
+       },
+       {
+        "x": 36.87,
+        "y": 76.12,
+        "w": 5.37,
+        "h": 5.88,
+        "rest": false
+       },
+       {
+        "x": 43.83,
+        "y": 76.48,
+        "w": 5.37,
+        "h": 5.52,
+        "rest": false
+       },
+       {
+        "x": 50.8,
+        "y": 76.84,
+        "w": 5.37,
+        "h": 5.16,
+        "rest": false
+       },
+       {
+        "x": 57.77,
+        "y": 77.01,
+        "w": 5.37,
+        "h": 4.99,
+        "rest": false
+       },
+       {
+        "x": 64.73,
+        "y": 77.19,
+        "w": 5.37,
+        "h": 4.81,
+        "rest": false
+       },
+       {
+        "x": 71.7,
+        "y": 78.08,
+        "w": 5.37,
+        "h": 3.92,
+        "rest": false
+       },
+       {
+        "x": 78.67,
+        "y": 78.08,
+        "w": 5.37,
+        "h": 3.92,
+        "rest": false
+       },
+       {
+        "x": 85.63,
+        "y": 78.44,
+        "w": 5.37,
+        "h": 3.56,
+        "rest": true
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 3,
+      "h": 2.2,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: Peter Pan at M",
+    "item": {
+     "kind": "play",
+     "name": "Peter Pan",
+     "cast": [
+      180,
+      177,
+      78,
+      55,
+      51,
+      49,
+      40,
+      32,
+      29,
+      26,
+      21,
+      18,
+      14,
+      12,
+      9,
+      7,
+      6,
+      6,
+      4,
+      3,
+      3,
+      3,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "author": "James Matthew Barrie",
+     "hue": "scifi",
+     "era": "1900-1930",
+     "life": {
+      "born": 1860,
+      "died": 1937
+     }
+    },
+    "size": 128,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "M",
+     "viewBox": 100,
+     "ground": "board.scifi",
+     "on": "onBoard.scifi",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "PP",
+       "face": "display",
+       "size": 42.5,
+       "x": 8.4,
+       "y": 46,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 6.22,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 17.42,
+        "y": 56.43,
+        "w": 6.22,
+        "h": 25.57,
+        "rest": false
+       },
+       {
+        "x": 25.84,
+        "y": 70.73,
+        "w": 6.22,
+        "h": 11.27,
+        "rest": false
+       },
+       {
+        "x": 34.26,
+        "y": 74.06,
+        "w": 6.22,
+        "h": 7.94,
+        "rest": false
+       },
+       {
+        "x": 42.68,
+        "y": 74.63,
+        "w": 6.22,
+        "h": 7.37,
+        "rest": false
+       },
+       {
+        "x": 51.1,
+        "y": 74.92,
+        "w": 6.22,
+        "h": 7.08,
+        "rest": false
+       },
+       {
+        "x": 59.52,
+        "y": 76.22,
+        "w": 6.22,
+        "h": 5.78,
+        "rest": false
+       },
+       {
+        "x": 67.94,
+        "y": 77.38,
+        "w": 6.22,
+        "h": 4.62,
+        "rest": false
+       },
+       {
+        "x": 76.36,
+        "y": 77.81,
+        "w": 6.22,
+        "h": 4.19,
+        "rest": false
+       },
+       {
+        "x": 84.78,
+        "y": 78.24,
+        "w": 6.22,
+        "h": 3.76,
+        "rest": true
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 6,
+      "h": 3,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: Chushingura at S",
+    "item": {
+     "kind": "play",
+     "name": "Chushingura",
+     "cast": [
+      98,
+      57,
+      47,
+      38,
+      32,
+      28,
+      27,
+      26,
+      25,
+      24,
+      22,
+      22,
+      21,
+      19,
+      18,
+      16,
+      15,
+      15,
+      15,
+      12,
+      12,
+      12,
+      11,
+      10,
+      7,
+      7,
+      7,
+      6,
+      6,
+      5,
+      4,
+      4,
+      4,
+      4,
+      4,
+      3,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "author": "Izumo Takeda",
+     "era": "1700s",
+     "life": {
+      "born": 1691,
+      "died": 1756
+     }
+    },
+    "size": 56,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "S",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "C",
+       "face": "display",
+       "size": 50,
+       "x": 8.4,
+       "y": 47,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 11.17,
+        "h": 32,
+        "rest": false
+       },
+       {
+        "x": 23.17,
+        "y": 69.39,
+        "w": 11.17,
+        "h": 18.61,
+        "rest": false
+       },
+       {
+        "x": 37.33,
+        "y": 72.65,
+        "w": 11.17,
+        "h": 15.35,
+        "rest": false
+       },
+       {
+        "x": 51.5,
+        "y": 75.59,
+        "w": 11.17,
+        "h": 12.41,
+        "rest": false
+       },
+       {
+        "x": 65.67,
+        "y": 77.55,
+        "w": 11.17,
+        "h": 10.45,
+        "rest": false
+       },
+       {
+        "x": 79.83,
+        "y": 78.86,
+        "w": 11.17,
+        "h": 9.14,
+        "rest": true
+       }
+      ]
+     },
+     "ruler": null
+    }
+   },
+   {
+    "name": "play page: Poor Jack at L",
+    "item": {
+     "kind": "play",
+     "name": "Poor Jack",
+     "cast": [
+      38,
+      24,
+      6,
+      4
+     ],
+     "author": "James Branch Cabell",
+     "era": "1900-1930",
+     "life": {
+      "born": 1879,
+      "died": 1958
+     }
+    },
+    "size": 360,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "L",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "CABELL · 1879-1958",
+       "face": "body",
+       "size": 3.6,
+       "x": 9,
+       "y": 15,
+       "anchor": "start",
+       "fill": "on",
+       "tracking": 0.14,
+       "opacity": 0.85
+      },
+      {
+       "s": "PJ",
+       "face": "display",
+       "size": 37.5,
+       "x": 8.4,
+       "y": 50,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 13,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 23.6,
+        "y": 65.58,
+        "w": 13,
+        "h": 16.42,
+        "rest": false
+       },
+       {
+        "x": 38.2,
+        "y": 77.89,
+        "w": 13,
+        "h": 4.11,
+        "rest": false
+       },
+       {
+        "x": 52.8,
+        "y": 79.26,
+        "w": 13,
+        "h": 2.74,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 6,
+      "h": 2.2,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: The Sleeping Beauty at M",
+    "item": {
+     "kind": "play",
+     "name": "The Sleeping Beauty",
+     "cast": [
+      13,
+      7,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      2,
+      1,
+      1,
+      1
+     ],
+     "author": "Caroline Verhoeff"
+    },
+    "size": 128,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "M",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "SB",
+       "face": "display",
+       "size": 42.5,
+       "x": 8.4,
+       "y": 46,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 6.22,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 17.42,
+        "y": 68,
+        "w": 6.22,
+        "h": 14,
+        "rest": false
+       },
+       {
+        "x": 25.84,
+        "y": 68,
+        "w": 6.22,
+        "h": 14,
+        "rest": false
+       },
+       {
+        "x": 34.26,
+        "y": 70,
+        "w": 6.22,
+        "h": 12,
+        "rest": false
+       },
+       {
+        "x": 42.68,
+        "y": 72,
+        "w": 6.22,
+        "h": 10,
+        "rest": false
+       },
+       {
+        "x": 51.1,
+        "y": 74,
+        "w": 6.22,
+        "h": 8,
+        "rest": false
+       },
+       {
+        "x": 59.52,
+        "y": 76,
+        "w": 6.22,
+        "h": 6,
+        "rest": false
+       },
+       {
+        "x": 67.94,
+        "y": 78,
+        "w": 6.22,
+        "h": 4,
+        "rest": false
+       },
+       {
+        "x": 76.36,
+        "y": 78,
+        "w": 6.22,
+        "h": 4,
+        "rest": false
+       },
+       {
+        "x": 84.78,
+        "y": 79.92,
+        "w": 6.22,
+        "h": 2.08,
+        "rest": true
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": -1,
+      "h": 3,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: Oedipus the King at S",
+    "item": {
+     "kind": "play",
+     "name": "Oedipus the King",
+     "cast": [
+      192,
+      59,
+      57,
+      44,
+      39,
+      27,
+      25,
+      4,
+      4
+     ],
+     "author": "Sophocles",
+     "hue": "drama",
+     "era": "Antiquity",
+     "life": {
+      "born": -496,
+      "died": -407
+     }
+    },
+    "size": 56,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "S",
+     "viewBox": 100,
+     "ground": "board.drama",
+     "on": "onBoard.drama",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "OK",
+       "face": "display",
+       "size": 50,
+       "x": 8.4,
+       "y": 47,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 11.17,
+        "h": 32,
+        "rest": false
+       },
+       {
+        "x": 23.17,
+        "y": 78.17,
+        "w": 11.17,
+        "h": 9.83,
+        "rest": false
+       },
+       {
+        "x": 37.33,
+        "y": 78.5,
+        "w": 11.17,
+        "h": 9.5,
+        "rest": false
+       },
+       {
+        "x": 51.5,
+        "y": 80.67,
+        "w": 11.17,
+        "h": 7.33,
+        "rest": false
+       },
+       {
+        "x": 65.67,
+        "y": 81.5,
+        "w": 11.17,
+        "h": 6.5,
+        "rest": false
+       },
+       {
+        "x": 79.83,
+        "y": 83.5,
+        "w": 11.17,
+        "h": 4.5,
+        "rest": true
+       }
+      ]
+     },
+     "ruler": null
+    }
+   },
+   {
+    "name": "play page: undated, no form, no author: the bare ruler, the neutral board",
+    "item": {
+     "kind": "play",
+     "name": "The Bear",
+     "cast": [
+      60,
+      40,
+      5
+     ]
+    },
+    "size": 360,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "L",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "B",
+       "face": "display",
+       "size": 37.5,
+       "x": 8.4,
+       "y": 50,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 13,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 23.6,
+        "y": 64.67,
+        "w": 13,
+        "h": 17.33,
+        "rest": false
+       },
+       {
+        "x": 38.2,
+        "y": 79.83,
+        "w": 13,
+        "h": 2.17,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": -1,
+      "h": 2.2,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: life across the era, a Jr. dropped",
+    "item": {
+     "kind": "play",
+     "name": "Medea",
+     "author": "Lucius Annaeus Seneca Jr.",
+     "life": {
+      "born": -4,
+      "died": 65
+     },
+     "era": "Antiquity",
+     "hue": "drama",
+     "cast": [
+      10,
+      8
+     ]
+    },
+    "size": 400,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "L",
+     "viewBox": 100,
+     "ground": "board.drama",
+     "on": "onBoard.drama",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "SENECA · 4 BCE-65",
+       "face": "body",
+       "size": 3.6,
+       "x": 9,
+       "y": 15,
+       "anchor": "start",
+       "fill": "on",
+       "tracking": 0.14,
+       "opacity": 0.85
+      },
+      {
+       "s": "M",
+       "face": "display",
+       "size": 37.5,
+       "x": 8.4,
+       "y": 50,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 13,
+        "h": 26,
+        "rest": false
+       },
+       {
+        "x": 23.6,
+        "y": 61.2,
+        "w": 13,
+        "h": 20.8,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 0,
+      "h": 2.2,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: cast not known: the monogram and the ruler only",
+    "item": {
+     "kind": "play",
+     "name": "A Duologue",
+     "cast": [],
+     "era": "1800s"
+    },
+    "size": 200,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "M",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "D",
+       "face": "display",
+       "size": 42.5,
+       "x": 8.4,
+       "y": 46,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": null,
+     "ruler": {
+      "y": 92,
+      "x0": 9,
+      "span": 82,
+      "cell": 11.71,
+      "lit": 5,
+      "h": 3,
+      "tick": 1.6,
+      "width": 0.6,
+      "opacity": 0.38,
+      "inset": 0.8
+     }
+    }
+   },
+   {
+    "name": "play page: a form the tokens do not know is neutral",
+    "item": {
+     "kind": "play",
+     "name": "Everyman",
+     "hue": "pageant",
+     "cast": [
+      3,
+      2,
+      1
+     ]
+    },
+    "size": 48,
+    "want": {
+     "kind": "play",
+     "shape": "square",
+     "tier": "S",
+     "viewBox": 100,
+     "ground": "brand.surfaceAlt",
+     "on": "brand.text",
+     "disc": null,
+     "grooves": null,
+     "ticks": null,
+     "arc": null,
+     "evening": null,
+     "parts": null,
+     "ring": null,
+     "label": null,
+     "text": [
+      {
+       "s": "E",
+       "face": "display",
+       "size": 50,
+       "x": 8.4,
+       "y": 47,
+       "anchor": "start",
+       "fill": "on"
+      }
+     ],
+     "rim": null,
+     "rules": null,
+     "cast": null,
+     "cols": {
+      "restOpacity": 0.42,
+      "bars": [
+       {
+        "x": 9,
+        "y": 56,
+        "w": 16,
+        "h": 32,
+        "rest": false
+       },
+       {
+        "x": 28,
+        "y": 66.67,
+        "w": 16,
+        "h": 21.33,
+        "rest": false
+       },
+       {
+        "x": 47,
+        "y": 77.33,
+        "w": 16,
+        "h": 10.67,
+        "rest": false
+       }
+      ]
+     },
+     "ruler": null
+    }
+   }
+  ]
+ }
 }

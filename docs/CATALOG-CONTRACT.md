@@ -998,8 +998,16 @@ offline floor.
     read only with the index it was built with (one archive, one deploy).
   - `search/said/<p>.json`: `{word: delta-coded play numbers}` for every spoken word of three letters or more,
     tokenized and filed as the web projection's `search/said/` (`build_web_projection.tokens`, `term_file`). No
-    text and no line ids: a client intersects the words, fetches the best (at most six) scripts and finds the line
-    there, the words in order before scattered ones.
+    text and no line ids: the plays that say a word (one word's search; a library without `search/lines/`).
+  - `search/lines/<p>.json` (B31 W2 follow-up, 2026-11-26; `play_facets.line_shards`): `{word: postings}`, filed as
+    `said/` is, each word's postings one flat list of integers: for each play saying it, in play order, the play
+    number minus the previous one's (the first from 0), the count of its speech lines that say it, then those lines'
+    places in the script's `lines` (the archive's `scripts/<id>.json`) each minus the one before (the first from 0).
+    No text. A client intersects the words at the line, rarest word first, so it fetches only the scripts with one
+    line holding every word, and checks those lines there (an exact phrase before the words anywhere in the line).
+    `check_play_library` fails a play out of order, a line place past its script, or a play number past the index.
+    MEASURED 2026-11-26 over the 1,186-play build: 9,388,890 postings, 38.9 MB as files, 14.4 MB gzipped; the
+    largest shard (`th`) 734 KB gzipped, `qu` 57 KB, `me` 119 KB.
   - Title audit (C4, `play_titles.py`): a row whose title is a credit line ("Edited by ...", "Translated by ...",
     "... Edited", "By the Same Writer"), an issue of a periodical ("Vol. 1, No. 3", "1913/12") or a book Gutenberg
     shelves only as essays is held (`title_not_a_play` in `held.json`); a bundled play never is. A record whose RDF
