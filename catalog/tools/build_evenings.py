@@ -416,7 +416,7 @@ def _labels(words, panel, y_head):
                 near = min(labels, key=lambda lab: abs(lab[0] - yc))
                 if abs(near[0] - yc) < 7 and near[2] is None:
                     near[2] = int(h)
-    labels.sort()
+    labels.sort(key=lambda lab: (lab[0], lab[1], -1 if lab[2] is None else lab[2]))  # a tie on place and minute with one hour unread
     rows = []
     for lab in labels:  # one row per band; a time printed on both sides of the grid is one row
         if rows and abs(lab[0] - rows[-1][0]) < 3.5 and (lab[1] == rows[-1][1] or lab[0] - rows[-1][0] < 1.5):
