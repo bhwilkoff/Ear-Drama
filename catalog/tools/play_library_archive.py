@@ -5,7 +5,7 @@
 
 The archive holds `plays-library/index.json`, `scripts/<id>.json`, `phonemes/<id>.json`,
 `phonemes-report.json` (Decision 078), and since B31 C3 `collections.json`, `characters.json` and
-`search/said/<p>.json` (catalog DECISIONS 050), nothing else, in sorted order with no owner or time, so the same
+`search/said/<p>.json` and `search/lines/<p>.json` (catalog DECISIONS 050), nothing else, in sorted order with no owner or time, so the same
 library packs to the same bytes. `unpack` refuses a member that is not one of those shapes (a path that climbs out, a link, a stray file), then runs the shape check
 over what it wrote; a bad archive raises, so a caller never ships it.
 """
@@ -21,7 +21,7 @@ import check_play_library as C
 
 TOP = "plays-library"
 MEMBER = re.compile(r"^plays-library/(index\.json|phonemes-report\.json|collections\.json|characters\.json|(scripts|phonemes)/gut-\d+(-\d+)?\.json|"
-                    r"search/said/(?:[a-z0-9]{2}|x[0-9a-f]+)\.json)$")
+                    r"search/(?:said|lines)/(?:[a-z0-9]{2}|x[0-9a-f]+)\.json)$")
 # Beside the index since B31 C3 (contract 4.1): packed when the build wrote them.
 FINDING = ("collections.json", "characters.json")
 
@@ -29,7 +29,7 @@ FINDING = ("collections.json", "characters.json")
 def pack(src, out):
     C.check_library(src, C.MIN_PLAYS, C.MIN_PHONEME_SHARE)
     names = ["index.json", "phonemes-report.json"] + [f for f in FINDING if os.path.exists(os.path.join(src, f))] + \
-        [f"{d}/{n}" for d in ("phonemes", "scripts", "search/said") if os.path.isdir(os.path.join(src, d))
+        [f"{d}/{n}" for d in ("phonemes", "scripts", "search/said", "search/lines") if os.path.isdir(os.path.join(src, d))
          for n in sorted(os.listdir(os.path.join(src, d)))]
     with tarfile.open(out, "w:xz", preset=9) as tar:
         for name in names:
