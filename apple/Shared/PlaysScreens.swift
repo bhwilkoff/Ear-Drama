@@ -480,6 +480,7 @@ struct CastSheet: View {
         }
         .listStyle(.plain)
         .repaintsOnVoiceChange(voices)
+        .voicesStepAtFirstUse()
         #if os(iOS)
         .onAppear { if let door = LaunchDoors.current.picker { pickerPart = PartID(rawValue: door) } }
         .navigationDestination(item: Binding(get: { sizeClass == .compact ? pickerPart : nil }, set: { pickerPart = $0 })) { part in
