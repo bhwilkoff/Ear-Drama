@@ -52,6 +52,12 @@ const Label = (() => {
     const s = spec, on = s.on, kids = [];
     if (!overlay) kids.push(node('rect', { width: 100, height: 100, ...fillOn(s.ground) }));
     if (s.cast) s.cast.bars.forEach((b) => kids.push(node('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: b.h / 2, ...fillOn(on) })));
+    if (s.ruler) {
+      const R = s.ruler, ticks = [];
+      for (let i = 0; i <= 7; i++) { const x = f2(R.x0 + i * R.cell); ticks.push(node('line', { x1: x, y1: f2(R.y - R.tick), x2: x, y2: f2(R.y + R.tick) })); }
+      kids.push(node('g', strokeOn(on, R.width, R.opacity), node('line', { x1: R.x0, y1: R.y, x2: f2(R.x0 + R.span), y2: R.y }), ...ticks));
+      if (R.lit >= 0) kids.push(node('rect', { x: f2(R.x0 + R.lit * R.cell + R.inset), y: f2(R.y - R.h / 2), width: f2(R.cell - 2 * R.inset), height: R.h, rx: R.h / 2, ...fillOn(on) }));
+    }
     if (s.disc) kids.push(node('circle', { cx: 50, cy: 50, r: s.disc.r, ...fillOn(on, s.disc.opacity) }));
     if (s.grooves) kids.push(node('g', strokeOn(on, s.grooves.width, s.grooves.opacity), ...s.grooves.radii.map((r) => node('circle', { cx: 50, cy: 50, r }))));
     if (s.ticks) {
@@ -76,8 +82,10 @@ const Label = (() => {
     if (s.label) kids.push(node('circle', { cx: 50, cy: 50, r: s.label.r, ...fillOn(on) }));
     for (const t of s.text) {
       kids.push(node('text', { x: t.x, y: t.y, 'text-anchor': t.anchor, 'font-size': t.size, class: `lb-${t.face}`,
-                               ...fillOn(t.fill === 'ground' ? s.ground : on) }, t.s));
+                               'letter-spacing': t.tracking ? f2(t.tracking * t.size) : null,
+                               ...fillOn(t.fill === 'ground' ? s.ground : on, t.opacity) }, t.s));
     }
+    if (s.cols) s.cols.bars.forEach((b) => kids.push(node('rect', { x: b.x, y: b.y, width: b.w, height: b.h, ...fillOn(on, b.rest ? s.cols.restOpacity : 1) })));
     if (s.rim) {
       const id = `lb-rim-${++seq}`, half = 180 - 30;
       kids.push(node('path', { id, d: arcPath(s.rim.r, s.rim.centerDeg + half, s.rim.centerDeg - half), fill: 'none' }));
@@ -109,6 +117,13 @@ const Label = (() => {
     const dot = (r, deg, rad, ref) => { const [x, y] = P(r, deg); ctx.beginPath(); ctx.arc(x, y, rad * k, 0, 2 * Math.PI); fill(ref); };
     ctx.fillStyle = c(s.ground); ctx.fillRect(0, 0, px, px);
     if (s.cast) s.cast.bars.forEach((b) => { ctx.beginPath(); ctx.rect(b.x * k, b.y * k, b.w * k, b.h * k); fill(s.on); });
+    if (s.ruler) {
+      const R = s.ruler;
+      ctx.beginPath(); ctx.moveTo(R.x0 * k, R.y * k); ctx.lineTo((R.x0 + R.span) * k, R.y * k);
+      for (let i = 0; i <= 7; i++) { const x = (R.x0 + i * R.cell) * k; ctx.moveTo(x, (R.y - R.tick) * k); ctx.lineTo(x, (R.y + R.tick) * k); }
+      stroke(s.on, R.width, R.opacity);
+      if (R.lit >= 0) { ctx.beginPath(); ctx.rect((R.x0 + R.lit * R.cell + R.inset) * k, (R.y - R.h / 2) * k, (R.cell - 2 * R.inset) * k, R.h * k); fill(s.on); }
+    }
     if (s.disc) { ring(s.disc.r, 0, -360); fill(s.on, s.disc.opacity); }
     if (s.grooves) s.grooves.radii.forEach((r) => { ring(r, 0, -360); stroke(s.on, s.grooves.width, s.grooves.opacity); });
     if (s.ticks) s.ticks.deg.forEach((d) => { const [x0, y0] = P(s.ticks.r0, d), [x1, y1] = P(s.ticks.r1, d); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); stroke(s.on, s.ticks.width, s.ticks.opacity); });
@@ -126,9 +141,13 @@ const Label = (() => {
     if (s.label) { ring(s.label.r, 0, -360); fill(s.on); }
     ctx.textBaseline = 'alphabetic';
     for (const t of s.text) {
-      ctx.textAlign = t.anchor === 'end' ? 'right' : 'center';
-      ctx.font = `700 ${t.size * k}px ${face(t.face)}`; ctx.fillStyle = c(t.fill === 'ground' ? s.ground : s.on); ctx.fillText(t.s, t.x * k, t.y * k);
+      ctx.textAlign = t.anchor === 'end' ? 'right' : t.anchor === 'start' ? 'left' : 'center';
+      ctx.font = `700 ${t.size * k}px ${face(t.face)}`; ctx.fillStyle = c(t.fill === 'ground' ? s.ground : s.on);
+      ctx.letterSpacing = t.tracking ? `${t.tracking * t.size * k}px` : '0px';
+      ctx.globalAlpha = t.opacity ?? 1; ctx.fillText(t.s, t.x * k, t.y * k); ctx.globalAlpha = 1;
     }
+    ctx.letterSpacing = '0px';
+    if (s.cols) s.cols.bars.forEach((b) => { ctx.beginPath(); ctx.rect(b.x * k, b.y * k, b.w * k, b.h * k); fill(s.on, b.rest ? s.cols.restOpacity : 1); });
     ctx.textAlign = 'center';
     if (s.rim) {
       ctx.font = `700 ${s.rim.size * k}px ${face('body')}`;

@@ -166,7 +166,14 @@ const API = (() => {
   /** The picture that leads a play's page: its title page, else a photograph of its production, else its author's portrait, else null (its page as the label). */
   function playLead(script) {
     const s = script || {};
-    return artRow(s.titlePage) || artRow(s.production) || artRow(s.authorArt) || null;
+    return artRow(s.picture) || artRow(s.titlePage) || artRow(s.production) || artRow(s.authorArt) || null;
+  }
+  /** What a play's window may lead with outside its own page (B31 §1.4, contract §4.1 `picture.kind`): a picture of
+      the play itself (`play_art.WINDOW_KINDS`), never its title page or its author's face; else null and the label. */
+  const PLAY_WINDOW_KINDS = ['work', 'production', 'book'];
+  function playWindowPicture(row) {
+    const p = row && row.picture;
+    return p && PLAY_WINDOW_KINDS.includes(p.kind) ? artRow(p) : null;
   }
   /** Commons' standard thumbnail steps; any other width is refused upstream. */
   const ART_STEPS = [120, 330, 500, 960];
@@ -1213,6 +1220,39 @@ const API = (() => {
     return Array.isArray(d.scripts) ? d.scripts : [];
   }
 
+  /** The library's index itself (its `facets` and `pictures` beside the rows), or null when only the bundle answers. */
+  async function playIndex(get = getJSON) {
+    try {
+      const d = await get('plays/library/index.json', 30000);
+      return Array.isArray(d.plays) && d.plays.length ? d : null;
+    } catch (e) {
+      if (e.kind === 'missing') return null;
+      throw e;
+    }
+  }
+  /** The library's files beside the index (contract §4.1 "Finding a play"): `collections.json`, `characters.json`
+      and the spoken-word shards, each absent (null) in a library built before them. */
+  async function playSide(file, get = getJSON) {
+    try { return await get(`plays/library/${file}`, 30000); } catch (e) { if (e.kind === 'missing') return null; throw e; }
+  }
+  const playCollections = (get = getJSON) => playSide('collections.json', get);
+  const playCharacters = (get = getJSON) => playSide('characters.json', get);
+  const playSaid = (shard, get = getJSON) => playSide(`search/said/${shard}.json`, get);
+  /** A library script read once and not kept (a line search reads many and opens few): the entry, or null. */
+  async function playScriptOnce(row, timeout = 30000) {
+    if (!row || !row.path) return null;
+    let resp;
+    try { resp = await fetch(new URL(`plays/library/${row.path}`, dataBase()), { signal: AbortSignal.timeout(timeout) }); } catch (e) {
+      throw new DataError(isOffline() ? 'offline' : 'error', `${e.message} ${row.path}`);
+    }
+    if (resp.status === 404) return null;
+    if (!resp.ok) throw new DataError('error', `${resp.status} ${row.path}`);
+    const d = await resp.json();
+    return (Array.isArray(d.scripts) ? d.scripts : []).find(x => x.id === row.id) || null;
+  }
+  // What a play's page reads from its index row beside the script (B31 §3.5).
+  const ROW_FIELDS = ['picture', 'form', 'hue', 'era', 'life', 'oneAct', 'balance', 'scenes', 'attributed', 'translated', 'minutes', 'voices'];
+
   /** One play's whole script: the library's `scripts/<id>.json` when the index lists it, else the bundle's; null when neither has it. */
   async function playScript(id, get = getJSON) {
     // A person's own script is this device's (PLAYS-DESIGN §13): the one seam the reader, the studio and the pages go through.
@@ -1225,7 +1265,11 @@ const API = (() => {
       try {
         const d = await get(`plays/library/${row.path}`, 30000);
         const s = Array.isArray(d.scripts) ? d.scripts.find(x => x.id === id) : null;
-        if (s) return { ...s, titlePage: s.titlePage || row.titlePage || null, production: s.production || row.production || null, authorArt: s.authorArt || row.authorArt || null };
+        if (s) {
+          const extra = {};
+          for (const k of ROW_FIELDS) if (row[k] !== undefined && s[k] === undefined) extra[k] = row[k];
+          return { ...s, ...extra, titlePage: s.titlePage || row.titlePage || null, production: s.production || row.production || null, authorArt: s.authorArt || row.authorArt || null };
+        }
       } catch (e) { failure = e; }
     }
     try {
@@ -1838,7 +1882,7 @@ const API = (() => {
     personPage, lifeYears, personGroups, searchPeople, voices,
     transcript, transcriptCues, cuesURL, transcriptLines, transcriptLabel, transcriptSnippet, saidWords, searchSaidNumbers,
     dateQuery, dateLabel, searchAired,
-    localDate, tonight, tonightFile, onAir, stations, onNow, ahead, castableScripts, playLibrary, playScript, account,
+    localDate, tonight, tonightFile, onAir, stations, onNow, ahead, castableScripts, playLibrary, playIndex, playCollections, playCharacters, playSaid, playScriptOnce, playScript, playWindowPicture, account,
   };
 })();
 

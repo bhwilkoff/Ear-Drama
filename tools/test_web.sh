@@ -40,6 +40,7 @@ DEFAULT_SUITES="js/api.test.js
   js/read.test.js
   js/relay.test.js
   js/label.test.js
+  js/find.test.js
   js/own-core.test.js
   js/own.test.js
   js/ear.test.js

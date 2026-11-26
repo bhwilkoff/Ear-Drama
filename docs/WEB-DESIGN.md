@@ -52,7 +52,7 @@ web app follows today.
 - **§3.1 Query routes, not hash routes.** `?view=home|browse|record|search|library`
   (Decision 075), and the two pages Home opens, `?view=stations` and
   `?view=surprise`; `?view=browse&genre=&decade=&network=&script=1&sort=`,
-  `?view=record&voices=&length=&kind=&sort=` (§4.15), `?view=record&add=1` and
+  `?view=record&voices=&length=&form=&era=&sort=` with `balance=`, `subject=`, `locc=`, `oneact=1`, `collection=`, `scenes=`, `q=` (§4.15), `?view=record&add=1` and
   `?script={own script id}&edit=parts` (§4.21, on this browser only: no path twin, no app link),
   `?cast={episode id}` (§4.22, the same),
   `?series={key}&season=`, `?item={episode id}`, `?person={person id}&order=newest`
@@ -336,7 +336,13 @@ web app follows today.
 - **§4.6 Search** is word-prefix over the projection's term files,
   debounced 180 ms, series first, then people (§4.14, from
   `search/people/`, most episodes first, eight shown with the total), then
-  plays (word-prefix on the title and author of `castable-scripts.json`),
+  plays (B31 §3.3: **Plays**, word prefix on the title and author; **Characters**, a role's printed name from
+  the library's `characters.json`, each row the play with "Role · N lines · author", most lines first; **Lines**,
+  the plays whose spoken words hold every word of three letters or more, from the library's `search/said/` shards
+  (exact words before prefixes), then the line found in the script itself, the words in order before scattered
+  words, at most six rows from at most 24 scripts read six at a time, each row the play, "Role · author" and the
+  matched line, italic, verbatim; it opens the reader at that line. The client never builds an index of its own;
+  not on a TV; *replaced* 2026-11-26: "word-prefix on the title and author of `castable-scripts.json`"),
   then **Your scripts** (own scripts on this browser whose title matches, as Record's rows; a search
   that finds no play and no own script offers **Add a script**, not on a TV),
   then "Aired {date}" when the query names an air date (contract §3.4,
@@ -453,14 +459,16 @@ web app follows today.
       Surprise (§4.13)".
     - *Replaced*: "**The list** (`?view=plays`): "Your plays" ... then
       "Plays you can cast"."
-  - **A play** (`?play=`; D3-6, §4.10b): the head board (the title block
-    on the drama board, kicker "Radio play" or "Stage play", the author
-    with the years the record carries, the record's year when it has one,
-    "N parts", "N lines"; never an age rating, Decision 067; the cast
-    fingerprint in the mark slot), "Record this" (ink; Decision 075, was
+  - **A play** (`?play=`; D3-6, §4.10b; B31 §3.5): the head board (the window by §6.4r's play window rule,
+    title page and author portrait allowed here; the board the form's, else neutral; kicker "Stage play ·
+    Comedy · One act", each word only when the record says it; the author with the years the record carries,
+    "Attributed to" when the record's author is the catalog's dubious one, the record's year when it has one,
+    "N voices", "About M min"; never an age rating, Decision 067; the cast fingerprint in the mark slot), "Record this" (ink; Decision 075, was
     "Start an ear drama") and "Read" beside it (§4.16, any person, no account), its parts
-    as part cards largest first (directions and sound are parts too), then
-    the rights line.
+    as part cards largest first (directions and sound are parts too), then for a library play **Scenes for two
+    voices** (its scene cards, when any), **Same voices and length** (the rule as the heading: within one voice
+    and 15 minutes, closest first), **More by** the author's surname (All when the catalog publishes the author's
+    collection), each absent when empty, then the rights line.
     Casting replaces this page in the history with the cast sheet, so the
     depth stays two.
   - **The cast sheet** (`?production=`; D3-6, §4.10b): the head board
@@ -756,58 +764,61 @@ web app follows today.
   2. **Today's scene**: the same card as Home's (§4.2 item 7), with
      **Try a line**, **Hear it** and **Read**. (*Replaced* 2026-11-15:
      Today's play's board with Record this, Read and Parts.)
-  3. **Plays**: the published play library (`API.playLibrary`: contract
-     §4.1's `plays/library/index.json`, 532 plays on 2026-11-14 and growing;
-     when it does not load, the bundled `castable-scripts.json`), with three
-     facets as native selects in one row, each counted against the other
-     two so no choice yields nothing (§10.5), and a sort. Facets, counts,
-     sort and tiles read the index rows only (`voices`, `minutes`, `cast`,
-     `kind`, `authors`); no script is fetched until a play opens. The grid
-     draws its first 60 tiles, then the next 60 each time its end nears
-     (an `IntersectionObserver` on a sentinel), so 1,500 plays draw as quickly
-     as 15. (Not `content-visibility`: the tiles share their rows through
-     subgrid, and size containment would break the shared name and fact lines.)
-     - **Voices**: the parts a person can cast (the index's `voices`: roles
-       with at least five speeches, `PlaysCore.voicesOf`), 1-2, 3-5, 6-10, 11+ (`voices=1-2|3-5|6-10|11+`).
-     - **Length**: minutes from the words its parts speak at 150 a
-       minute (`PlaysCore.minutesOf`), Under 30 min, 30-60 min, Over an
-       hour (`length=short|mid|long`).
-     - **Kind**: Radio play, Stage play, from the record's `kind`
-       (`kind=radio|stage`).
-     - **Sort**: Fewest voices (the default; ties shortest first, then A
-       to Z, so a 255-minute dialogue for two no longer sits among the
-       twelve-minute ones), Shortest, A to Z (no "first": the select is labeled Sort, and the longer words clipped at 375 px)
-       (`sort=voices|short|name`). The grid's heading is the sort's own
-       name, true of every row.
-     Each play is a **play tile** in the show tile's grammar (§6.4b). When
-     its index row carries `opening` (contract §4.1: the first two
-     speeches, each `{role, text}`, cut near 90 characters at a word), the
-     window is **a page**: on the print ground, each speech its role's name
-     (strong) then its words, caption type, at most three lines each, so a
-     list of plays reads as scripts you could speak (2026-11-15 review, F6).
-     A row without `opening` draws the cast in place of the monogram: the window holds one bar per
-     speaking part, largest first, up to seven, each as wide as its lines over the largest part's (at least 6%),
-     in the board's one color as the fingerprint is, "+N" for the rest ; the
-     name in the tile's type, at most four lines (a longer Gutenberg title
-     stops there; the play page carries the whole); the cast fingerprint in the strip slot; the
-     facts are "N voices" and "About M min". The author line uses each
-     author's `display` name, never the filed form ("George M. (George
-     Melville) Baker"). A tile opens the play's page (§4.10); a **Read**
-     button (a book icon, named Read for assistive tech) sits over the
-     window's corner, outside the link, as Play sits on an episode tile,
-     and opens the reader (§4.16).
-     The window's bars and the fingerprint come from the row's `cast`
-     (each named role's speeches, largest first).
+  3. **Plays** (B31 §3.1, owner 2026-11-26: *"We need to research a FAR BETTER way of searching for and finding a
+     play that you might like to perform/record. I'd love to see themes and collections for plays and different
+     ways of finding plays to read or record."*). The published play library (`API.playLibrary`, `API.playIndex`:
+     contract §4.1, 1,194 plays on 2026-11-26; when it does not load, the bundled `castable-scripts.json`). Code:
+     `js/find-core.js` (pure: facets, counts, rails, search; `js/find.test.js`), drawn by `renderFinder` in
+     `js/app.js`. Top to bottom:
+     - **A search field** ("Titles, authors, characters, lines"), debounced 180 ms, mirrored to `&q=` with
+       `history.replaceState` so the field keeps focus. With two letters or more it replaces everything below with
+       the search's sections (§4.6's plays rule: Plays, Characters, Lines).
+     - **The facets** as one row of native selects drawn as chips (sideways scroll at 375, wrapping from 768):
+       **Voices**, **Length**, **Form**, **Era**, **Sort**, then **Filters**. Each value carries its count against
+       the other picks, and a value with none is not offered unless it is the one chosen (§10.5). The bins and the
+       form and era values are the index's `facets` (computed by the catalog, never by the client): Voices 1-2,
+       3-4, 5-6, 7-10, 11+; Length Up to 10 min, 10-20, 20-40, 40-90, Longer; Form as the catalog names it with
+       **Not named** (a form on fewer than five plays counts there, as the index counts it); Era the seven cells and
+       **Undated**. **Filters** opens a `<dialog>` sheet of every facet as chips, adding **How the lines are shared**
+       (Ensemble, Mixed, A star part), **Subject** (the record's "-- Drama" topics on five or more plays), **Literature
+       of the original** (LoCC, by the Library of Congress's class names) and **One act**; its button says "Show N
+       plays", counted live. Gender is never a facet.
+       Address: `?view=record&voices=&length=&form=&era=&sort=` plus `balance=`, `subject=`, `locc=`, `oneact=1`,
+       `collection=`, `scenes=2|3|4`, `q=`. A value the library does not offer (an old link's `voices=3-5` or
+       `length=short`) is dropped. *Replaced* 2026-11-26: Voices 1-2 / 3-5 / 6-10 / 11+, Length Under 30 / 30-60 /
+       Over an hour, and Kind (Radio play, Stage play).
+     - **The ways in**, with no facet chosen: each a rail whose heading is the rule that fills it, its count small
+       beside it, and **All** (the whole collection as the grid, `&collection=`, or every scene, `&scenes=2`). In
+       order: the **editor's collections** (`collections.json` `editor`, the credit `by` under the heading, `note`
+       only in the editor's words; absent while the file is empty), **Scenes for two voices**, then the data
+       collections `ten-minutes`, `two-voices`, `star-part`, `one-act` under the catalog's own titles. A play appears
+       once on the screen: a rail drops a play a rail above it holds, and a rail left with none is absent. A **scene
+       card** (B31 §3.4) is its heading as printed and minutes ("Act II · 4 min"), the play's name, the parts' names;
+       it opens the reader at the scene's first line. Not on a TV.
+     - **The grid** under the sort's name with the count beside it ("Fewest voices 1,194"); with a facet chosen it is
+       the only thing below the facets, and with `&collection=` it is that collection, in its own order, under its
+       title and credit. Sorts: Fewest voices (ties shortest, then A to Z), Shortest, A to Z.
+     Each play is a **play tile** in the show tile's grammar (§6.4b): the window (a picture of the play, else its
+     label, §6.4r), the name in the tile's type at most four lines, the cast fingerprint in the strip slot (the
+     row's `cast`), the facts "N voices" and "About M min"; the tile stands on the form's board (`hue`), else the
+     neutral one. A tile opens the play's page (§4.10); a **Read** button (a book icon, named Read for assistive
+     tech) sits over the window's top right corner, outside the link, and opens the reader (§4.16). Facets,
+     counts, sort and tiles read the index rows only; no script is fetched until a play opens or a line is searched.
+     The grid draws its first 60 tiles, then the next 60 each time its end nears (an `IntersectionObserver` on a
+     sentinel). (Not `content-visibility`: the tiles share their rows through subgrid.)
+     *Replaced* 2026-11-26: the tile's window as the opening's page on the print ground (2026-11-15 review, F6);
+     the label carries the play now, and the opening stays Today's scene's.
   4. **Classes** (signed in only; Decision 087 moved it here from Library):
      the class door, an `h2` "Classes" (`#classes-h`), each class with its
      code, then Make a class (name, "Under 13") and Join a class (code,
      optional name), as §4.10a describes.
   5. **Made here**: finished ear dramas, as Home's row (§4.2 item 10).
 
-  **States**: the plays load once; loading is the spinner in the Plays
+  **States** (B31 §3.6): the plays load once; loading is the spinner in the Plays
   box; a failed read is "This did not load." with Try again; offline,
   "You are offline."; facets that match nothing keep "Nothing matches
-  these filters." and Clear filters. Yours reads this browser's storage
+  these filters." and Clear filters; a search with no hit says "No plays match “q”." and offers Add a script
+  (§4.21). A rail with nothing is absent, no header. Yours reads this browser's storage
   and has no loading of its own. `?play=` and `?production=` light the
   Record tab.
   - *Replaced* (2026-11-14): plays reached through Browse's "Has a
@@ -1666,8 +1677,8 @@ web app follows today.
   same disc with one rim segment per speaking part in its `partHue`, sized by its share of lines,
   the play's monogram, no arc, rim "Recorded · month year" at L; never an uploaded picture;
   **person without a portrait**: a round window, initials inside one groove ring, an arc of their
-  credit years at L; **stage play**: the script page as today plus 1-4 voice-band rules at its
-  foot; **network or sponsor**: a name in our type, never a logo. Tiers: S (below 96 px: disc,
+  credit years at L; **stage play**: the play's label, a printed page (B31 §2.1, below; *replaced*
+  2026-11-26: "the script page as today plus 1-4 voice-band rules at its foot"); **network or sponsor**: a name in our type, never a logo. Tiers: S (below 96 px: disc,
   label, arc), M (dial ticks, grooves), L (from 320 px: rim text). Geometry is the `art.label`
   tokens (`design-tokens.json`), and `LabelCore.labelSpec(item, size)` (`js/label-core.js`) is a
   pure function with golden cases shared with Swift and Kotlin
@@ -1695,11 +1706,34 @@ web app follows today.
     its share of the lines, the seven part hues in `PlaysCore.PART_HUES` order, the rest muted text.
   - **Person**: the round window's board (or surfaceAlt), one ring r 40 at 55%, initials fitted in
     r 25; at L an arc of their credit years at r 45.
-  - **Stage play**: with its opening, the page as today and 1 to 4 rules (2, 3-4, 5-8, 9+ voices)
-    at y 93 on a foot band from y 86 in the page's ground, the last speech held to one line; without
-    it (rows, the head board), the cast drawn on the drama board, a bar per speaking part up to
-    seven, "+N" past them at the last bar's end; where that bar would reach it every bar is drawn to
-    the same shorter scale (R4-2c, 2026-11-24: "+51" stood on seven even bars; the web first).
+  - **Stage play** (B31 §2.1, owner 2026-11-26: *"no visuals for each play that help them to distinguish themselves
+    from one another ... design a way to designate the different elements of a play in a similar way from what we
+    are doing from the pre-recorded performances"*): the play's label, a printed page and not a disc (a stage play
+    was never broadcast; the disc is what it becomes when it is recorded). On the page: the **board** is the play's
+    form where the record names one (the row's `hue`, computed by the catalog: comedy and farce `comedy`; tragedy
+    and tragicomedy `drama`; history `documentary`; fairy and fantasy `scifi`; religious `serial`; melodrama
+    `mystery`; libretto `news`), else the neutral board (`surfaceAlt`, the page's text color); the **monogram**
+    (`API.monogram`) in Big Shoulders Bold from x 8.4, its cap height 40 / 34 / 30 (S / M / L) and no wider than 82,
+    on a baseline at 47 / 46 / 50; **the cast**: a column per speaking part from x 9, largest first, its height
+    that part's lines over the largest part's (at least 8%) of 32 / 26 / 26 standing on 88 / 82 / 82, equal widths
+    up to 16 / 13 / 13 with gaps of 3 / 2.2 / 1.6; past 6 / 10 / 12 columns the last is one column at 42% for the
+    rest; **the era ruler** (M and L): seven equal cells over 82 units at y 92 (Antiquity, Medieval, 1500s, 1600s,
+    1700s, 1800s, 1900-1930), the baseline and ticks at 38%, the playwright's cell (`era`) lit as a pill 3 / 2.2
+    high, the baseline alone when undated; at L the line "SURNAME · LIFE YEARS" at (9, 15) in Public Sans Bold 3.6
+    tracked 0.14 at 85%, shrunk to fit 82 (the first author's display name's last word, a Jr. dropped; `life` as
+    "1856-1950", "496-407 BCE"; the surname alone when undated; none without an author). The top right corner stays
+    clear for Read. The geometry is `art.label.play.page`; the cases every stack runs are `playPage` in
+    `label_spec.json` (the web now; Swift and Kotlin at B31 A1 and D1, which then retire the two nameless cases in
+    `cases`). The tile keeps its horizontal cast fingerprint in the strip slot (§4.15), so the window's columns and
+    the strip never draw the same mark the same way. *Replaced* 2026-11-26: "with its opening, the page as today
+    and 1 to 4 rules ... without it (rows, the head board), the cast drawn on the drama board, a bar per speaking
+    part up to seven, "+N" past them". `LabelCore.labelSpec` still draws those for an item with no `name` (the
+    shared golden `cases`), and no surface asks for them.
+  - **A play's window** (B31 §1.4) holds a picture **of the play** (`picture.kind` `work`, `production`, or `book`,
+    a plate from the book it came from; `API.playWindowPicture`) wherever a window is drawn. A **title page** and
+    an **author portrait** lead only on the play's own page header, where they are read large (`API.playLead`); in
+    tiles, rows, rails and search rows the play's label stands in. The picture takes the window's grade and mount
+    (§6.4b); nothing is drawn over it but Read.
   - The window keeps the picture's hairline edge (`data-art="label"`). `tools/web_fit_label.py`
     fails on a title block left, an empty label, text outside its label, or a 64 px window above
     tier S.

@@ -148,7 +148,80 @@ object LabelTokens {
         "y": 94
       }
     },
-    "board": "drama"
+    "board": "drama",
+    "page": {
+      "x0": 9,
+      "span": 82,
+      "mono": {
+        "x": 8.4,
+        "cap": {
+          "S": 40,
+          "M": 34,
+          "L": 30
+        },
+        "y": {
+          "S": 47,
+          "M": 46,
+          "L": 50
+        }
+      },
+      "cols": {
+        "max": {
+          "S": 6,
+          "M": 10,
+          "L": 12
+        },
+        "gap": {
+          "S": 3,
+          "M": 2.2,
+          "L": 1.6
+        },
+        "base": {
+          "S": 88,
+          "M": 82,
+          "L": 82
+        },
+        "h": {
+          "S": 32,
+          "M": 26,
+          "L": 26
+        },
+        "maxW": {
+          "S": 16,
+          "M": 13,
+          "L": 13
+        },
+        "min": 0.08,
+        "restOpacity": 0.42
+      },
+      "ruler": {
+        "y": 92,
+        "h": {
+          "M": 3,
+          "L": 2.2
+        },
+        "tick": 1.6,
+        "width": 0.6,
+        "opacity": 0.38,
+        "inset": 0.8
+      },
+      "rim": {
+        "x": 9,
+        "y": 15,
+        "size": 3.6,
+        "tracking": 0.14,
+        "opacity": 0.85
+      },
+      "eras": [
+        "Antiquity",
+        "Medieval",
+        "1500s",
+        "1600s",
+        "1700s",
+        "1800s",
+        "1900-1930"
+      ]
+    }
   },
   "colors": {
     "groundNone": "brand.surfaceAlt",
