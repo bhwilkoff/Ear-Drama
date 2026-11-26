@@ -3,8 +3,9 @@
     python3 tools/play_library_archive.py pack   [DIR] OUT.tar.xz     # DIR default catalog/out/plays-library
     python3 tools/play_library_archive.py unpack ARCHIVE DIR          # refuses an unsafe or malformed archive
 
-The archive holds `plays-library/index.json`, `scripts/<id>.json`, `phonemes/<id>.json` and
-`phonemes-report.json` (Decision 078), nothing else, in sorted order with no owner or time, so the same
+The archive holds `plays-library/index.json`, `scripts/<id>.json`, `phonemes/<id>.json`,
+`phonemes-report.json` (Decision 078), and since B31 C3 `collections.json`, `characters.json` and
+`search/said/<p>.json` (catalog DECISIONS 049), nothing else, in sorted order with no owner or time, so the same
 library packs to the same bytes. `unpack` refuses a member that is not one of those shapes (a path that climbs out, a link, a stray file), then runs the shape check
 over what it wrote; a bad archive raises, so a caller never ships it.
 """
@@ -19,13 +20,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import check_play_library as C
 
 TOP = "plays-library"
-MEMBER = re.compile(r"^plays-library/(index\.json|phonemes-report\.json|(scripts|phonemes)/gut-\d+(-\d+)?\.json)$")
+MEMBER = re.compile(r"^plays-library/(index\.json|phonemes-report\.json|collections\.json|characters\.json|(scripts|phonemes)/gut-\d+(-\d+)?\.json|"
+                    r"search/said/(?:[a-z0-9]{2}|x[0-9a-f]+)\.json)$")
+# Beside the index since B31 C3 (contract 4.1): packed when the build wrote them.
+FINDING = ("collections.json", "characters.json")
 
 
 def pack(src, out):
     C.check_library(src, C.MIN_PLAYS, C.MIN_PHONEME_SHARE)
-    names = ["index.json", "phonemes-report.json"] + [f"{d}/{n}" for d in ("phonemes", "scripts")
-                                                       for n in sorted(os.listdir(os.path.join(src, d)))]
+    names = ["index.json", "phonemes-report.json"] + [f for f in FINDING if os.path.exists(os.path.join(src, f))] + \
+        [f"{d}/{n}" for d in ("phonemes", "scripts", "search/said") if os.path.isdir(os.path.join(src, d))
+         for n in sorted(os.listdir(os.path.join(src, d)))]
     with tarfile.open(out, "w:xz", preset=9) as tar:
         for name in names:
             info = tar.gettarinfo(os.path.join(src, name), arcname=f"{TOP}/{name}")

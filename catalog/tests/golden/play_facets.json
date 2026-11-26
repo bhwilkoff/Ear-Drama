@@ -1,0 +1,58 @@
+{
+ "about": "B31 C3 and C4 golden cases (catalog/tools/play_facets.py, play_titles.py; catalog DECISIONS 049). Each form case is the record as the build reads it; each expectation is the rule's answer, read by hand.",
+ "form": [
+  {"name": "a subject heading names the form", "subjects": ["Tragedies (Drama)", "Antigone (Mythological character) -- Drama"], "title": "Plays of Sophocles: Oedipus the King; Oedipus at Colonus; Antigone", "form": "tragedy", "source": "subject"},
+  {"name": "the Gutenberg title's subtitle names it when no subject does", "subjects": ["English drama"], "title": "The Schoolmistress: A Farce in Three Acts", "form": "farce", "source": "title"},
+  {"name": "tragicomedy is read before comedy and tragedy", "subjects": ["Tragicomedy"], "title": "The Tempest", "form": "tragicomedy", "source": "subject"},
+  {"name": "a libretto stays a play, with its own form", "subjects": ["Operas -- Librettos"], "title": "Trial by Jury", "form": "libretto", "source": "subject"},
+  {"name": "a title that names two forms names none", "subjects": [], "title": "Short Plays: Comprising Drama, Comedy, and Tragedy", "form": null, "source": null},
+  {"name": "a bookshelf is never a form (Opera shelf, Riders to the Sea)", "subjects": ["Ireland -- Drama"], "title": "Riders to the Sea", "shelves": ["Opera"], "form": null, "source": null},
+  {"name": "planted: a play cut from a volume never takes the volume's title", "subjects": [], "title": "Plays: Comrades; Facing Death; Pariah; Easter. A Religious Drama", "split": true, "play_title": "Pariah", "form": null, "source": null},
+  {"name": "planted: a volume of plays filed under one form does not give it to each play (Gilbert's Engaged)", "subjects": ["Operas -- Librettos", "English drama -- 19th century"], "title": "Original Plays, Second Series", "split": true, "play_title": "Engaged", "form": null, "source": null},
+  {"name": "a volume whose title is not a collection's gives its one subject form to its plays", "subjects": ["Operas -- Librettos"], "title": "The Rhinegold & The Valkyrie", "split": true, "play_title": "The Valkyrie", "form": "libretto", "source": "subject"},
+  {"name": "a volume naming two forms in its subjects gives neither", "subjects": ["Comedies", "Tragedies"], "title": "Two Plays", "split": true, "play_title": "The Lost Leader", "form": null, "source": null},
+  {"name": "a play cut from a volume reads its own printed title", "subjects": [], "title": "Three Plays", "split": true, "play_title": "The Mouse-Trap: A Farce", "form": "farce", "source": "title"}
+ ],
+ "era": [
+  {"born": 1856, "died": 1950, "era": "1900-1930"},
+  {"born": -496, "died": -406, "era": "Antiquity"},
+  {"born": 1564, "died": 1616, "era": "1600s"},
+  {"born": 1564, "died": 1593, "era": "1500s"},
+  {"born": 1606, "died": 1684, "era": "1600s"},
+  {"born": null, "died": 1890, "era": "1800s"},
+  {"born": null, "died": null, "era": null}
+ ],
+ "balance": [
+  {"cast": [10, 10], "balance": "mixed"},
+  {"cast": [60, 40], "balance": "mixed"},
+  {"cast": [70, 20, 10], "balance": "lead"},
+  {"cast": [50, 5, 5, 5, 5], "balance": "lead"},
+  {"cast": [5, 5, 5, 5, 5, 5], "balance": "ensemble"},
+  {"cast": [0, 0], "balance": null}
+ ],
+ "heading": [
+  {"source": "SCENE III.--_OUTSIDE THE CASTLE._", "heading": "Scene III"},
+  {"source": "ACT I", "heading": "Act I"},
+  {"source": "Scene 2. A room in the palace", "heading": "Scene 2"},
+  {"source": "PROLOGUE", "heading": "Prologue"}
+ ],
+ "title_audit": [
+  {"title": "Edited by Havelock Ellis", "held": true},
+  {"title": "Thomas Dekker Edited", "held": true},
+  {"title": "Translated by Mrs. Bernard Shaw", "held": true},
+  {"title": "By the Same Writer", "held": true},
+  {"title": "The Glebe 1913/12 (Vol. 1, No. 3)", "held": true},
+  {"title": "Intentions", "shelves": ["Contemporary Reviews", "Category: Essays, Letters & Speeches"], "held": true},
+  {"title": "The Electra of Euripides Translated into English rhyming verse", "held": false},
+  {"title": "Candida", "shelves": ["Category: Plays/Films/Dramas"], "held": false},
+  {"title": "Hedda Gabler", "shelves": ["Category: Humour", "Category: Plays/Films/Dramas"], "held": false},
+  {"title": "The Editor", "held": false},
+  {"title": "Arms and the Man", "shelves": [], "held": false}
+ ],
+ "credits": [
+  {"authors": "Cabell, James Branch, 1879-1958 [Dubious author]", "credits": [[{"name": "Cabell, James Branch", "born": 1879, "died": 1958}, true]]},
+  {"authors": "Seneca, Lucius Annaeus, 5? BCE-65 [Dubious author]; Hall, Elizabeth Twining [Translator]", "credits": [[{"name": "Seneca, Lucius Annaeus", "born": -5, "died": 65}, true]]},
+  {"authors": "Flotow, Friedrich von, 1812-1883 [Composer]; Friedrich, W., 1820?-1879 [Librettist]", "credits": [[{"name": "Friedrich, W.", "born": 1820, "died": 1879}, false]]},
+  {"authors": "Ayres, Harry Morgan, 1881-1948 [Translator]", "credits": []}
+ ]
+}

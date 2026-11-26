@@ -154,9 +154,26 @@ def pictures(play_id, ctx, title=None, authors=None):
     return out
 
 
+class NoArtCache(RuntimeError):
+    """The picture caches are not on this machine: a library built now would carry no picture (B31 C1)."""
+
+
+# What a play's window may lead with in a tile, a row, a rail or on a TV (B31 1.4, WEB-DESIGN 6.4r): a picture of the
+# play itself. A title page or an author's portrait leads only on the play's own page header; `picture.kind` says which.
+WINDOW_KINDS = ("work", "production", "book")
+
+
 def attach(rows, ctx=None):
-    """Add titlePage, authorArt and picture to each library index row that has one (absent otherwise)."""
-    ctx = ctx or load()
+    """Add titlePage, authorArt and picture to each library index row that has one (absent otherwise).
+
+    With no ctx the caches are read from disk, and finding none raises NoArtCache: until 2026-11-26 this returned the
+    rows bare without a word, and the published library carried no picture on any of its 1,194 rows (B31 1.1).
+    A ctx passed in is used as it is (the tests' fixtures)."""
+    if ctx is None:
+        ctx = load()
+        if not ctx["plays"]:
+            raise NoArtCache(f"no play picture cache at {os.path.join(DIR, 'plays.json.gz')}: run "
+                             "bash tools/restore_play_art_caches.sh (the newest dated catalog Release's harvest cache)")
     if not ctx["plays"]:
         return rows
     for r in rows:
@@ -195,4 +212,15 @@ def liveness_files(ctx=None):
         if rec.get("edition_v") == 2 and e.get("id"):
             out.add(page_url(e))
     return sorted(out)
+
+
+def summary(rows):
+    """index["pictures"]: how many rows carry each picture, and what kind leads (check_play_library reads it)."""
+    kinds = {}
+    for r in rows:
+        if r.get("picture"):
+            kinds[r["picture"]["kind"]] = kinds.get(r["picture"]["kind"], 0) + 1
+    return {"plays": len(rows), "picture": sum(kinds.values()), "kinds": dict(sorted(kinds.items())),
+            "window": sum(v for k, v in kinds.items() if k in WINDOW_KINDS),
+            **{k: sum(1 for r in rows if r.get(k)) for k in ("titlePage", "authorArt", "production")}}
 

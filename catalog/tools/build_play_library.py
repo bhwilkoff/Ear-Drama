@@ -29,6 +29,7 @@ among the listed titles, so it never takes a number split_volume gave. What is s
 text that is not a play, the evidence, in held.json beside the index (not in the index, which phones load).
 """
 import collections
+import csv
 import datetime
 import gzip
 import json
@@ -728,13 +729,23 @@ def speech_share(parsed):
     return said / max(1, parsed["words"])
 
 
-def index_doc(entries, report):
+# The play_art context the index is built with: None reads the caches and refuses a build without them (B31 C1).
+ART = None
+
+
+def index_doc(entries, report, records=None, catalog=None):
+    """The index: each row with its finding facets (play_facets, B31 C3) and its pictures (play_art)."""
     import play_art
+    import play_facets as PF
+    book = lambda pid: "-".join(pid.split("-")[:2])
+    rows = PF.keep_subjects([PF.facet_row(index_row(e), e, (records or {}).get(book(e["id"])), (catalog or {}).get(book(e["id"])))
+                             for e in entries])
+    rows = play_art.attach(rows, ART)
     return {"format": FORMAT, "count": len(entries), "wordsPerMinute": WORDS_PER_MINUTE,
-            "report": report, "plays": play_art.attach([index_row(e) for e in entries])}
+            "report": report, "facets": PF.facets_meta(rows), "pictures": play_art.summary(rows), "plays": rows}
 
 
-def write(entries, report, out=OUT):
+def write(entries, report, out=OUT, records=None, catalog=None):
     os.makedirs(os.path.join(out, "scripts"), exist_ok=True)
     keep = set()
     for e in entries:
@@ -755,9 +766,12 @@ def write(entries, report, out=OUT):
         with open(os.path.join(out, "held.json"), "w", encoding="utf-8") as f:
             json.dump({"format": FORMAT, **held}, f, ensure_ascii=False, indent=1)
             f.write("\n")
+    idx = index_doc(entries, report, records, catalog)
     with open(os.path.join(out, "index.json"), "w", encoding="utf-8") as f:
-        json.dump(index_doc(entries, report), f, ensure_ascii=False, separators=(",", ":"))
+        json.dump(idx, f, ensure_ascii=False, separators=(",", ":"))
         f.write("\n")
+    import play_facets as PF
+    PF.write_finding(out, idx["plays"], entries, records or {})
 
 
 def main():
@@ -777,6 +791,12 @@ def main():
             return f.read()
 
     entries, report = build(plays, ctx, read_text, bundled, read_as_published)
+    # B31 C4: a row whose title is not a play's name is held; a record with no author takes the catalog's credit.
+    import play_titles as PT
+    records = {p["id"]: p for p in plays}
+    with gzip.open(os.path.join(R.CACHE, "gutenberg", "pg_catalog.csv.gz"), "rt", encoding="utf-8") as f:
+        catalog = {"gut-" + row["Text#"]: row for row in csv.DictReader(f)}
+    entries = PT.credit_attributed(PT.hold_not_plays(entries, records, report, bundled), catalog)
     missing = sorted(bundled - {e["id"] for e in entries})
     report["bundled"] = len(bundled)
     report["bundled_missing_from_library"] = missing
@@ -784,7 +804,7 @@ def main():
     if missing:
         sys.exit("a bundled play is not in the library: " + ", ".join(missing))
     if "--check" not in sys.argv:
-        write(entries, report)
+        write(entries, report, records=records, catalog=catalog)
         size = sum(os.path.getsize(os.path.join(OUT, "scripts", n)) for n in os.listdir(os.path.join(OUT, "scripts")))
         print(f"wrote {len(entries)} scripts, {size} bytes, to {os.path.relpath(OUT)}", file=sys.stderr)
         if "--no-phonemes" not in sys.argv:
