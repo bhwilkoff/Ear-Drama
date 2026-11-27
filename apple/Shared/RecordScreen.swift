@@ -2,45 +2,71 @@
 import SwiftUI
 
 // Record (iOS-DESIGN §4.14, macOS-DESIGN §3.1, Decision 075): the section for making an ear drama. Yours,
-// Today's Scene (Decision 079), the plays by voices, length and kind, then Made here. Not compiled for the TV: it has no
-// microphone and records nothing (tvOS-DESIGN §2.1).
+// Today's Scene (Decision 079), finding a play (B31 §3: search, facets, the ways in, the grid), then Made here. Not
+// compiled for the TV: it has no microphone and records nothing (tvOS-DESIGN §2.1).
 
 struct RecordScreen: View {
     @Environment(PlaysLibrary.self) private var plays
+    @Environment(CatalogStore.self) private var catalog
     @Environment(AppStore.self) private var app
-    @State private var filter = PlayFilter()
+    // A launch door may open Record with words in the field or facets chosen (DEBUG; LaunchDoors).
+    @State private var find = FindCore.State(picks: LaunchDoors.current.playPicks)
+    @State private var query = LaunchDoors.current.playQuery ?? ""
+    @State private var playSearch = PlaySearchModel()
+    private var searching: Bool { query.trimmingCharacters(in: .whitespaces).count >= 2 }
 
     var body: some View {
         PageBody {
-            YoursSection()
-            YourScriptsSection()
+            if !searching {
+                YoursSection()
+                YourScriptsSection()
+            }
             switch plays.state {
             case .loading:
-                PageSection { ProgressView().frame(maxWidth: .infinity).gridRow() }
+                PageSection { ProgressView().frame(maxWidth: .infinity).gridRow() } header: { SectionHead(title: "Plays") { EmptyView() } }
             case .unavailable:
                 PageSection {
                     VStack(alignment: .leading, spacing: Spacing.s2) {
-                        Label("Plays could not load", systemImage: "exclamationmark.triangle")
+                        Label(catalog.isOnline ? "This did not load." : Connectivity.offlineLine,
+                              systemImage: catalog.isOnline ? "exclamationmark.triangle" : "wifi.slash")
                             .font(TypeRamp.body)
                             .foregroundStyle(Color.brandTextMuted)
                         Button("Try Again") { Task { await plays.load() } }.pageAction()
                     }
                     .gridRow(.words)
+                } header: {
+                    SectionHead(title: "Plays") { EmptyView() }
                 }
             case .ready:
-                if let row = PlayScript.todaysScene(plays.rows, dateKey: RadioClock.localDate()) {
+                if !searching, let row = PlayScript.todaysScene(plays.rows, dateKey: RadioClock.localDate()) {
                     PageSection { TodaysSceneCard(row: row).gridRow() }
                 }
-                PlaysLibrarySection(scripts: plays.rows, filter: $filter)
+                PlayFinderSection(query: query, search: playSearch, state: $find)
             }
-            MadeHereSection()
-            ClassDoorsSection()
+            if !searching {
+                MadeHereSection()
+                ClassDoorsSection()
+            }
         }
         .navigationTitle("Record")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
         #endif
+        #if os(iOS)
+        // Always drawn under the title: a field that hides until a pull is a search nobody finds.
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Titles, authors, characters, lines")
+        #else
+        .searchable(text: $query, prompt: "Titles, authors, characters, lines")
+        #endif
         .toolbar {
+            #if os(macOS)
+            // The Mac's facets are toolbar menus (macOS-DESIGN §3.1), so the page under them is the plays alone.
+            if plays.state == .ready, !plays.rows.isEmpty, !searching {
+                ToolbarItemGroup(placement: .automatic) {
+                    PlayFacetMenus(rows: plays.rows, facets: FindCore.facets(plays.facets), state: $find, chips: false)
+                }
+            }
+            #endif
             ToolbarItem(placement: .primaryAction) {
                 Button { app.push(PlayRoute.addScript) } label: { Label("Add a Script", systemImage: "plus") }
                     .help("Add a Script")
@@ -55,6 +81,23 @@ struct RecordScreen: View {
         }
         .task { await plays.load() }
         .task { await FinishedStore.shared.load() }
+        // A choice the library does not offer (a launch door's band, an index that changed under it) is dropped.
+        .onChange(of: plays.facets, initial: true) { dropUnoffered() }
+        .onChange(of: plays.state) { dropUnoffered() }
+        // The play search runs here, on the one page view, never on its sections (PlaySearchSections).
+        .task(id: query) {
+            let q = query.trimmingCharacters(in: .whitespaces)
+            guard q.count >= 2, (try? await Task.sleep(for: .milliseconds(180))) != nil else { return }
+            await plays.load()
+            await playSearch.run(q, plays: plays)
+        }
+    }
+}
+
+extension RecordScreen {
+    private func dropUnoffered() {
+        guard plays.state == .ready else { return }
+        find.picks = FindCore.offered(find.picks, FindCore.facets(plays.facets))
     }
 }
 
@@ -104,161 +147,24 @@ struct YoursSection: View {
     }
 }
 
-/// The castable library under its facets: three chips that count what each choice leaves, and the order.
-struct PlaysLibrarySection: View {
-    let scripts: [PlayRow]
-    @Binding var filter: PlayFilter
-    @State private var shown = Self.page
-    @State private var measured: CGFloat = 0
-    #if os(iOS)
-    @Environment(\.horizontalSizeClass) private var sizeClass
-    #endif
-
-    /// The Mac draws a page of plays at a time; a phone's list builds its rows as they scroll.
-    private static let page = 60
-
-    var body: some View {
-        let list = PlayBrowse.list(scripts, filter)
-        PageSection {
-            if scripts.isEmpty {
-                Text("No plays yet.")
-                    .font(TypeRamp.body)
-                    .foregroundStyle(Color.brandTextMuted)
-                    .gridRow(.words)
-            } else {
-                chips
-                    #if os(iOS)
-                    // The chips' row spans the card; the tiles' rows (the box line) are that, less 16 pt a side on
-                    // a phone (iOS-DESIGN §3.6b).
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
-                        measured = max(0, $0 - (sizeClass == .regular ? 0 : 2 * Spacing.s4))
-                    }
-                    #endif
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .pageBleed()
-                Text(verbatim: "\(countText(list.count, "play", "plays")) \u{00B7} \(filter.sort.title)")
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    #if os(macOS)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measured = $0 }
-                    #endif
-                    .gridRow(.words)
-                    .accessibilityIdentifier("plays-count")
-                if list.isEmpty {
-                    VStack(alignment: .leading, spacing: Spacing.s2) {
-                        Text("Nothing matches these filters.")
-                            .font(TypeRamp.body)
-                            .foregroundStyle(Color.brandTextMuted)
-                        Button("Clear Filters") { filter = filter.cleared }.pageAction()
-                    }
-                    .gridRow(.words)
-                } else {
-                    #if os(macOS)
-                    PlayGrid(rows: Array(list.prefix(shown)), width: measured)
-                    if list.count > shown {
-                        Button("Show more") { shown += Self.page }
-                            .buttonStyle(.borderless)
-                            .font(TypeRamp.caption)
-                    }
-                    #else
-                    PlayGrid(rows: list, width: measured)
-                    #endif
-                }
-            }
-        } header: {
-            SectionHead(title: "Plays") { EmptyView() }
-        }
-        .onChange(of: filter) { shown = Self.page }
-    }
-
-    private var chips: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: Spacing.s2) {
-                if filter.isFiltered {
-                    Button("Clear") { filter = filter.cleared }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Clear filters")
-                }
-                chip(filter.voices?.title ?? "Voices", on: filter.voices != nil) {
-                    Picker("Voices", selection: $filter.voices) {
-                        Text("Any number").tag(VoiceBand?.none)
-                        ForEach(VoiceBand.allCases, id: \.self) { band in
-                            let n = PlayBrowse.count(scripts, filter, facet: .voices) { $0.voiceBand == band }
-                            if n > 0 || filter.voices == band {
-                                Text(verbatim: "\(band.title) (\(n.formatted()))").tag(VoiceBand?.some(band))
-                            }
-                        }
-                    }
-                }
-                chip(filter.length?.title ?? "Length", on: filter.length != nil) {
-                    Picker("Length", selection: $filter.length) {
-                        Text("Any length").tag(LengthBand?.none)
-                        ForEach(LengthBand.allCases, id: \.self) { band in
-                            let n = PlayBrowse.count(scripts, filter, facet: .length) { $0.lengthBand == band }
-                            if n > 0 || filter.length == band {
-                                Text(verbatim: "\(band.title) (\(n.formatted()))").tag(LengthBand?.some(band))
-                            }
-                        }
-                    }
-                }
-                chip(filter.kind?.title ?? "Kind", on: filter.kind != nil) {
-                    Picker("Kind", selection: $filter.kind) {
-                        Text("Any kind").tag(PlayKindFacet?.none)
-                        ForEach(PlayKindFacet.allCases, id: \.self) { kind in
-                            let n = PlayBrowse.count(scripts, filter, facet: .kind) { $0.kindFacet == kind }
-                            if n > 0 || filter.kind == kind {
-                                Text(verbatim: "\(kind.title) (\(n.formatted()))").tag(PlayKindFacet?.some(kind))
-                            }
-                        }
-                    }
-                }
-                // An order, not a filter: never filled, never cleared.
-                chip("Sort: \(filter.sort.chipTitle)", on: false) {
-                    Picker("Sort", selection: $filter.sort) {
-                        ForEach(PlaySort.allCases, id: \.self) { Text($0.chipTitle).tag($0) }
-                    }
-                }
-            }
-            .railPadding()
-            .padding(.vertical, Spacing.s2)
-        }
-        .scrollIndicators(.hidden)
-    }
-
-    private func chip<Content: View>(_ title: String, on: Bool, @ViewBuilder content: () -> Content) -> some View {
-        Menu {
-            content()
-        } label: {
-            Text(verbatim: title)
-                .font(TypeRamp.caption)
-                .padding(.horizontal, Spacing.s3)
-                .padding(.vertical, Spacing.s1)
-                .foregroundStyle(on ? Color.brandOnSecondary : Color.brandText)
-                .background(on ? Color.brandSecondary : Color.brandSurfaceAlt, in: Capsule())
-        }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .fixedSize()
-    }
-}
-
-/// A play as the show tile: the cast drawn in the window, the name, the cast fingerprint where a show's
-/// run strip stands, and "N voices" with "About M min".
+/// A play as the show tile (B31 §1.4, §2.1; iOS-DESIGN §4.14): the window holds a picture of the play, else its label;
+/// the name; the cast fingerprint where a show's run strip stands; "N voices" with "About M min"; on the form's board,
+/// else the neutral one.
 struct PlayTile: View {
     let script: PlayRow
     var width: CGFloat = ShowTile.defaultWidth
 
     var body: some View {
         TileLink(value: PlayRoute.script(script.id), series: Self.row(script), width: width,
-                 facts: [script.voicesText, script.minutesText], cast: script.cast)
+                 facts: [script.voicesText, script.minutesText], cast: script.cast, playLabel: script.labelItem)
             .overlay(alignment: .topTrailing) { ReadTileButton(scriptID: script.id, title: script.title) }
             .accessibilityIdentifier("play-tile")
     }
 
-    /// A play carries no genre, picture or run: it stands on the drama board and its cast is its mark.
+    /// A play has no run: its board is its form's (`hue`), else neutral, and only a picture of the play leads its window.
+    static func row(_ script: PlayRow) -> SeriesRow { script.tileRow }
+
+    /// A play known only as a listing (a bundled script): the drama board, as before B31.
     static func row(_ script: some PlayListing) -> SeriesRow {
         SeriesRow(key: script.id, name: script.title, genre: PlayScript.boardGenre, firstDate: nil, lastDate: nil,
                   networks: [], episodeCount: 0)

@@ -18,6 +18,8 @@ struct LabelSpecTests {
     }()
 
     private static var cases: [[String: Any]] { golden["cases"] as? [[String: Any]] ?? [] }
+    /// B31 2.1's play page label, every tier, the twelve frame plays (js/label.test.js runs the same).
+    private static var pageCases: [[String: Any]] { (golden["playPage"] as? [String: Any])?["cases"] as? [[String: Any]] ?? [] }
     private static var tolerance: Double { (golden["tolerance"] as? NSNumber)?.doubleValue ?? 0.01 }
 
     private static func string(_ v: Any?) -> String? {
@@ -45,6 +47,12 @@ struct LabelSpecTests {
         it.cast = (o["cast"] as? [NSNumber])?.map(\.intValue) ?? []
         it.parts = (o["parts"] as? [[String: Any]] ?? []).map {
             LabelItem.Part(lines: ($0["lines"] as? NSNumber)?.intValue ?? 0, hue: $0["hue"] as? String)
+        }
+        it.author = o["author"] as? String
+        it.hue = o["hue"] as? String
+        it.era = o["era"] as? String
+        if let life = o["life"] as? [String: Any] {
+            it.life = LabelItem.Life(born: (life["born"] as? NSNumber)?.intValue, died: (life["died"] as? NSNumber)?.intValue)
         }
         return it
     }
@@ -87,6 +95,53 @@ struct LabelSpecTests {
             let miss = Self.difference(try Self.json(spec), c["want"], tolerance: Self.tolerance)
             #expect(miss == nil, "\(name): \(miss ?? "")")
         }
+    }
+
+    private static func pageMisses(_ make: (LabelItem, Double) -> LabelSpec = { LabelSpec.make($0, size: $1) }) throws -> [String] {
+        try pageCases.compactMap { c in
+            let spec = make(item(c["item"] as? [String: Any] ?? [:]), (c["size"] as? NSNumber)?.doubleValue ?? 0)
+            return difference(try json(spec), c["want"], tolerance: tolerance).map { "\(c["name"] as? String ?? "?"): \($0)" }
+        }
+    }
+
+    @Test func everyPlayPageCaseMatches() throws {
+        #expect(Self.pageCases.count >= 20, "the playPage cases were not read")
+        let misses = try Self.pageMisses()
+        #expect(misses.isEmpty, "\(misses.prefix(3).joined(separator: "\n"))")
+        let tiers = Set(Self.pageCases.compactMap { ($0["want"] as? [String: Any])?["tier"] as? String })
+        #expect(tiers == ["S", "M", "L"])
+    }
+
+    /// Negative controls: a page with no rest column, and one whose ruler forgets the era, fail the goldens.
+    @Test func thePlayPageGoldensSeeAMutant() throws {
+        let noRest = try Self.pageMisses { item, size in
+            var spec = LabelSpec.make(item, size: size)
+            if let cols = spec.cols { spec.cols?.bars = cols.bars.map { var b = $0; b.rest = false; return b } }
+            return spec
+        }
+        #expect(!noRest.isEmpty, "a page with no rest column passed every golden")
+        let unlit = try Self.pageMisses { item, size in
+            var spec = LabelSpec.make(item, size: size)
+            spec.ruler?.lit = -1
+            return spec
+        }
+        #expect(!unlit.isEmpty, "a ruler with no lit cell passed every golden")
+    }
+
+    @Test func thePlayPageKeepsItsColumnsOnThePage() {
+        for (size, most) in [(56.0, 6), (128.0, 10), (360.0, 12)] {
+            for n in [1, 2, most, most + 1, 67] {
+                let cast = (0..<n).map { 100 - $0 }
+                let bars = LabelSpec.make(LabelItem(kind: .play, name: "Peter Pan", cast: cast), size: size).cols?.bars ?? []
+                #expect(bars.count == min(n, most), "\(n) parts at \(size)")
+                #expect(bars.filter(\.rest).count == (n > most ? 1 : 0), "\(n) parts at \(size): the rest column")
+                #expect((bars.last.map { $0.x + $0.w } ?? 0) <= 91.01, "\(n) parts at \(size): a column past the page")
+            }
+        }
+        #expect(LabelSpec.surnameOf("Lucius Annaeus Seneca Jr.") == "SENECA")
+        #expect(LabelSpec.lifeOf(.init(born: -447, died: -386)) == "447-386 BCE")
+        #expect(LabelSpec.make(LabelItem(kind: .play, name: "X", hue: "comedy"), size: 128).ground == "board.comedy")
+        #expect(LabelSpec.make(LabelItem(kind: .play, name: "X"), size: 128).ground == "brand.surfaceAlt")
     }
 
     @Test func theComparatorSeesADifference() throws {

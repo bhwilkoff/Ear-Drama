@@ -73,4 +73,59 @@ nonisolated final class LabelRenderTests: XCTestCase {
         try png.write(to: out.appending(path: "lock-screen-apple.png"))
         XCTAssertEqual(lock.width, 512)
     }
+
+    /// B31 2.1: the play's label for the twelve frame plays (label_spec.json `playPage`), at L, M and S, light and dark,
+    /// to set beside docs/research/design/b31-frames/labels-1440-*.png.
+    @MainActor func testPlayLabelSheet() throws {
+        guard let path = ProcessInfo.processInfo.environment["GRAMMAR_RENDER_DIR"], !path.isEmpty else {
+            throw XCTSkip("GRAMMAR_RENDER_DIR is not set")
+        }
+        let out = URL(fileURLWithPath: path, isDirectory: true)
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let repo = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        CTFontManagerRegisterFontsForURL(repo.appending(path: "apple/Resources/Fonts/BigShoulders-Bold.ttf") as CFURL, .process, nil)
+        let data = try Data(contentsOf: repo.appending(path: "catalog/tests/golden/label_spec.json"))
+        let golden = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let cases = ((golden["playPage"] as? [String: Any])?["cases"] as? [[String: Any]]) ?? []
+        var seen = Set<String>(), items: [LabelItem] = []
+        for c in cases {
+            guard let o = c["item"] as? [String: Any], let name = o["name"] as? String, seen.insert(name).inserted else { continue }
+            var it = LabelItem(kind: .play, name: name)
+            it.cast = (o["cast"] as? [NSNumber])?.map(\.intValue) ?? []
+            it.author = o["author"] as? String
+            it.hue = o["hue"] as? String
+            it.era = o["era"] as? String
+            if let l = o["life"] as? [String: Any] {
+                it.life = .init(born: (l["born"] as? NSNumber)?.intValue, died: (l["died"] as? NSNumber)?.intValue)
+            }
+            items.append(it)
+        }
+        XCTAssertGreaterThanOrEqual(items.count, 12)
+        func tile(_ item: LabelItem, _ side: CGFloat) -> some View {
+            LabelView(item: item, side: side).frame(width: side, height: side).clipShape(RoundedRectangle(cornerRadius: 4))
+        }
+        func sheet(dark: Bool) -> some View {
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach([CGFloat(360), 128, 56], id: \.self) { side in
+                    let per = side > 300 ? 4 : 12
+                    ForEach(Array(stride(from: 0, to: items.count, by: per)), id: \.self) { i in
+                        HStack(alignment: .top, spacing: 16) {
+                            ForEach(Array(items[i..<min(i + per, items.count)].enumerated()), id: \.offset) { _, it in tile(it, side) }
+                        }
+                    }
+                }
+            }
+            .padding(24)
+            .background(Color.brandBackground)
+            .environment(\.colorScheme, dark ? .dark : .light)
+        }
+        for dark in [false, true] {
+            let renderer = ImageRenderer(content: sheet(dark: dark))
+            renderer.scale = 1
+            let image = try XCTUnwrap(renderer.cgImage, "the play label sheet did not render")
+            let png = try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
+            try png.write(to: out.appending(path: "play-labels-apple\(dark ? "-dark" : "").png"))
+        }
+    }
 }

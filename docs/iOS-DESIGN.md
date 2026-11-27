@@ -519,8 +519,14 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   file (§4.8).
 - **§4.5 Search** is `.searchable` with the prompt "Titles, series,
   people", debounced, series first, then People (§4.13, word-prefix on
-  the name, most episodes first, eight), then plays (title and author,
-  word-prefix), then "Aired {date}" when the query names an air date
+  the name, most episodes first, eight), then plays (B31 §3.3, WEB-DESIGN §4.6's plays rule, `PlaySearchSections`:
+  **Plays**, word prefix on the title and author; **Characters**, a role's printed name from the library's
+  `characters.json`, each row the play with "Role · N lines · author", most lines first; **Lines**, the plays with one
+  speech line holding every word of three letters or more from the `search/lines/` shards intersected at the line,
+  rarest word first (`search/said/` when a library has no line shards), those lines then checked in the script, only
+  the exact phrase's lines when any holds it; scripts read once and not kept, a batch within about 1.6 MB a press,
+  **More lines (N plays)** for the next; each row the play's window, "Role · author" and the line in italic, verbatim,
+  opening the reader at that line; *replaced* 2026-11-26: "plays (title and author, word-prefix)"), then "Aired {date}" when the query names an air date
   (`DateQuery`, contract §3.4), then episodes, then **Automatic transcript**
   (`Transcript.label`): episodes whose shown transcript says every query
   word of three letters or more, less those above, each row
@@ -661,13 +667,31 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   deleted when the studio closes without one and whenever the store loads,
   PLAYS-DESIGN §2.3 rule 3a; absent when empty), **Today's Scene** (§4.1's
   card; *replaced* 2026-11-15: "Today's Play (the board with Record This
-  and Parts)"), **Plays** (the castable library under a
-  chip bar like Browse's: Voices 1-2 / 3-5 / 6-10 / 11+, Length Under 30
-  min / 30-60 min / Over an hour from `PlayScript.minutes` at 150 words a
-  minute, Kind Radio play / Stage play, and "Sort: Fewest voices", a
-  `Menu` of Fewest voices, Shortest, A to Z), each play a tile whose window
-  draws its cast (one bar per speaking part, largest first, up to seven,
-  in the board's one color, "+N" for the rest; the Today's play board wears the same window) with "N voices · About M min";
+  and Parts)"), **Plays** (B31 §3.1, owner 2026-11-26: *"We need to research a FAR BETTER way of searching for and finding a play that you might like to perform/record. I'd love to see themes and collections for plays and different ways of finding plays to read or record."*; WEB-DESIGN §4.15 item 3 is the shared rule; `apple/Shared/PlayFind.swift`
+  over `apple/Core/Plays/FindCore.swift`, held by `FindCoreTests` to js/find.test.js's fixture): Record carries
+  `.searchable` with the prompt "Titles, authors, characters, lines"; two letters or more replace the page under it with
+  the search's play sections (§4.5) and hide Yours, Today's Scene and Made Here. Otherwise: **the facets** as one
+  sideways row of chips, each a `Menu` of an inline `Picker` whose values carry their counts against the other picks
+  (a value with none is not offered unless chosen): **Voices**, **Length**, **Form**, **Era** (the index's `facets`,
+  never computed here: 1-2, 3-4, 5-6, 7-10, 11+; Up to 10 min, 10-20, 20-40, 40-90, Longer; the forms with Not named;
+  the seven eras with Undated), "Sort: Fewest voices" (Fewest voices, Shortest, A to Z), then **Filters**, a sheet
+  (`Form`, a section per facet adding How the lines are shared, Subject, Literature of the original and One act, each
+  value a row with its count and a checkmark; Clear Filters, and "Show N plays" counted live); Clear leads the row when
+  anything is chosen. With nothing chosen, **the ways in**: each a section whose heading is the rule that fills it, the
+  count and **All** at its right (pushing `PlayRoute.collection` or `PlayRoute.scenes`), the editor's collections
+  first (its credit under the heading; absent while the file is empty), **Scenes for two voices** (scene cards: the
+  heading as printed and minutes, the play, the parts' names, on the play's board; a card opens the reader at its
+  line), then `ten-minutes`, `two-voices`, `star-part`, `one-act` under the catalog's titles; a play appears once on
+  the screen. Then **the grid** under the sort's name with its count. Each play a tile in the show tile's grammar on
+  the form's board (else neutral): the window holds a picture of the play, else its label (§6.r); the cast fingerprint
+  in the strip slot; "N voices · About M min"; Read on the window's corner. The four states: loading is the spinner
+  under the Plays heading; a failed read "This did not load." with Try Again (offline: "You are offline."); filters
+  that match nothing "Nothing matches these filters." with Clear Filters; a search with no hit "No plays match "q"."
+  with Add a Script. A library built before B31 has no facets or collections: Voices and Length only, no rails but
+  the scenes'. iPad and the open Duo take the same page at regular width with more columns; the sidebar is the app's.
+  *Replaced* 2026-11-26: "the castable library under a chip bar like Browse's: Voices 1-2 / 3-5 / 6-10 / 11+, Length
+  Under 30 min / 30-60 min / Over an hour ..., Kind Radio play / Stage play ... each play a tile whose window draws its
+  cast (one bar per speaking part, largest first, up to seven ...)");
   then **Made Here**. The author line is each author's `display` name.
   Pushes `PlayRoute.script` and the cast sheet as before.
   **Added 2026-11-24 (Decision 088.3, R4-6)**: a `+` toolbar button, **Add a Script**, pushes
@@ -889,11 +913,15 @@ device. Audit frames: `build/qa/duo-audit/` (local).
 
 - **§4.12 An ear drama** (`apple/Shared/PlaysScreens.swift`,
   `RecordingScreen.swift`; PLAYS-DESIGN §2, Decision 067). The play's
-  page is a `List`: its title, the author with their years when the
-  record has them, the record's year when present, its length as
-  "N parts · N lines" (speaking parts, every line), the rights
-  line, and "Record This" (Decision 075, was "Start an ear drama");
-  nothing else marks it. The cast sheet
+  page (B31 §3.5, WEB-DESIGN §4.10's play rule): the head board on the form's board (else neutral) with the play's
+  window (a picture of the play, else its title page or author's portrait, else its label), the kicker "Stage play ·
+  Comedy · One act" (each word only when the record says it), the author with their years ("Attributed to" when the
+  record's author is the catalog's dubious one), the record's year when present, "N voices", "About M min"; Record
+  This and Read; the parts; then for a library play **Scenes for two voices** (its scene cards), **Same voices and
+  length** (within one voice and 15 minutes, closest first) and **More by** the author's surname (All when the catalog
+  publishes the author's collection), each a sideways shelf, absent when empty; the rights line. Never an age rating.
+  An own script keeps its opening drawn as a page and "N parts · N lines". *Replaced* 2026-11-26: "its length as "N
+  parts · N lines" (speaking parts, every line), the rights line, and "Record This" ...; nothing else marks it". The cast sheet
   lists the parts largest first; every open part has Take Part, in any
   order, and the suggested one (`Relay.next`) is `.borderedProminent`,
   the rest `.bordered`, with no caption saying why. One part records at
@@ -1281,7 +1309,13 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   natively (SwiftUI `Canvas`) from the same `labelSpec` goldens as the web (`cross-platform-determinism`):
   genre board, a run arc on the 1930-1962 dial, the monogram or the episode's date on the label,
   network · decade on the rim at tier L from `series.network`; a finished ear drama's part-hue rim;
-  a person's groove ring; a play's script page with voice-band rules. A picture that passes the
+  a person's groove ring; a stage play's **label, a printed page** (B31 2.1, WEB-DESIGN 6.4r: the form's board
+  from the row's `hue` else neutral, the monogram from the left, a column per speaking part with one dimmer column
+  for the rest, the era ruler at M and L, "SURNAME · LIFE YEARS" at L; `LabelSpec.make` with the shared `playPage`
+  goldens, `LabelSpecTests`; *replaced* 2026-11-26: "a play's script page with voice-band rules"). **A play's
+  window** leads with a picture of the play only (`picture.kind` work, production or book; `PlayRow.windowPicture`)
+  in tiles, rows and rails; a title page or an author's portrait leads only the play's own page head
+  (`PlayRow.pageLead`). A picture that passes the
   size floor always wins, and the two never share an object's slot. Networks and sponsors are names
   in our type, never logos; user-made ear dramas never take an uploaded picture. Now Playing and the lock screen show each episode's own label. Built in
   Round 3 V4.

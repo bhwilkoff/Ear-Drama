@@ -379,6 +379,8 @@ struct ShowTile: View {
     var castScript: PlayScript? = nil
     /// The same, for a play known only by its library row.
     var cast: CastSummary? = nil
+    /// A play's label (B31 2.1): the window holds the row's picture of the play, else this, never the cast bars.
+    var playLabel: LabelItem? = nil
     @Environment(\.sharedNameHeight) private var sharedNameHeight
     #if !os(tvOS)
     @Environment(\.tileFillsRow) private var fillsRow
@@ -407,7 +409,9 @@ struct ShowTile: View {
     var body: some View {
         let ink = Color.onBoard(series.genre)
         VStack(alignment: .leading, spacing: 6) {
-            if let cast = cast ?? castScript.map(CastSummary.init(script:)) {
+            if let playLabel {
+                PictureWindow(art: series.windowArt, name: series.name, genre: series.genre, side: width - 12, label: playLabel)
+            } else if let cast = cast ?? castScript.map(CastSummary.init(script:)) {
                 CastWindow(cast: cast, genre: series.genre, side: width - 12)
             } else {
                 PictureWindow(art: series.windowArt, name: series.name, genre: series.genre, side: width - 12, label: series.labelItem)

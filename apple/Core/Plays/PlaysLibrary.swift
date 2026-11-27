@@ -25,6 +25,10 @@ final class PlaysLibrary {
     private(set) var rows: [PlayRow] = []
     /// True when `rows` are the published library's.
     private(set) var fromLibrary = false
+    /// The index's facets and the library's collections (contract §4.1, B31): nil in a library built before them or
+    /// while only the bundle answers.
+    private(set) var facets: PlayFacets?
+    private(set) var collections: PlayCollections?
     let store: ProductionStore
     /// The person's own scripts on this device (PLAYS-DESIGN §13).
     let own: OwnScripts
@@ -66,7 +70,8 @@ final class PlaysLibrary {
         }.value
         scripts = library?.scripts ?? []
         if let cached {
-            rows = cached
+            rows = cached.plays
+            facets = cached.facets
             fromLibrary = true
             state = .ready
             Task { await refreshIndex() }
@@ -80,11 +85,55 @@ final class PlaysLibrary {
     /// Asks the site for the index; a failure or an empty index leaves the rows as they are.
     private func refreshIndex() async {
         guard let data = try? await fetch("library/index.json"),
-              let index = try? JSONDecoder().decode(PlayRowIndex.self, from: data), !index.plays.isEmpty else { return }
+              let index = try? JSONDecoder().decode(PlayRowIndex.self, from: data), !index.plays.isEmpty else {
+            if fromLibrary, collections == nil { await loadCollections() }
+            return
+        }
         rows = index.plays
+        facets = index.facets
         fromLibrary = true
         let cache = cache
         Task.detached(priority: .utility) { Self.write(data, to: cache.appending(path: "index.json"), in: cache) }
+        await loadCollections()
+    }
+
+    /// The library's collections, read beside the index it was built with; absent in an older library.
+    private func loadCollections() async {
+        guard let data = try? await fetch("library/collections.json"),
+              let c = try? JSONDecoder().decode(PlayCollections.self, from: data) else { return }
+        collections = c
+    }
+
+    // MARK: Search (B31 §3.3): the library's own files, never an index built here
+
+    @ObservationIgnored private var characters: PlayCharacters?
+    @ObservationIgnored private var shards: [String: FindCore.Shard?] = [:]
+
+    /// `characters.json`, read once a run; nil in an older library or the bundle.
+    func characterNames() async throws -> [String: [[Int]]]? {
+        guard fromLibrary else { return nil }
+        if let characters { return characters.names }
+        guard let data = try await fetch("library/characters.json") else { return nil }
+        let c = try JSONDecoder().decode(PlayCharacters.self, from: data)
+        characters = c
+        return c.names
+    }
+
+    /// One shard of `search/lines/` or `search/said/`, kept for the run: nil when the library has no such directory
+    /// (a 404 for the shard), [:] for a shard with no words.
+    func shard(_ dir: String, _ file: String) async throws -> FindCore.Shard? {
+        let key = "\(dir)/\(file)"
+        if let kept = shards[key] { return kept }
+        let got: FindCore.Shard? = try await fetch("library/search/\(key).json").map { try JSONDecoder().decode(FindCore.Shard.self, from: $0) }
+        shards[key] = .some(got)
+        return got
+    }
+
+    /// A library script read for a line search and not kept (a line search reads many and opens few), decoded off the
+    /// main actor.
+    nonisolated func scriptOnce(_ row: PlayRow) async throws -> PlayScript? {
+        guard let path = row.path, let data = try await fetch("library/\(path)") else { return nil }
+        return Self.pick(row.id, from: data)
     }
 
     /// True when the library's index or the bundle lists the play.
@@ -156,10 +205,10 @@ final class PlaysLibrary {
         (try? JSONDecoder().decode(CastableLibrary.self, from: data))?.scripts.first { $0.id == id }
     }
 
-    nonisolated private static func readIndex(_ cache: URL) -> [PlayRow]? {
+    nonisolated private static func readIndex(_ cache: URL) -> PlayRowIndex? {
         guard let data = try? Data(contentsOf: cache.appending(path: "index.json")),
               let index = try? JSONDecoder().decode(PlayRowIndex.self, from: data), !index.plays.isEmpty else { return nil }
-        return index.plays
+        return index
     }
 
     nonisolated private static func write(_ data: Data, to file: URL, in root: URL) {

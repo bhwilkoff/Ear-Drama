@@ -112,9 +112,10 @@ struct TileLink<Value: Hashable>: View {
     var facts: [String]? = nil
     var castScript: PlayScript? = nil
     var cast: CastSummary? = nil
+    var playLabel: LabelItem? = nil
 
     var body: some View {
-        PushLink(value: value) { ShowTile(series: series, width: width, facts: facts, castScript: castScript, cast: cast) }
+        PushLink(value: value) { ShowTile(series: series, width: width, facts: facts, castScript: castScript, cast: cast, playLabel: playLabel) }
             #if os(tvOS)
             .buttonStyle(.card)
             #else
