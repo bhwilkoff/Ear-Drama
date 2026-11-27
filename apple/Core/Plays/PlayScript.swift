@@ -207,16 +207,24 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
     var authorLineWithYears: String {
         authors.compactMap { author in
             Self.authorName(author).map { name in
-                let years = switch (author.born, author.died) {
-                case let (born?, died?): " (\(born)–\(died))"
-                case let (born?, nil): " (b. \(born))"
-                case let (nil, died?): " (d. \(died))"
-                case (nil, nil): ""
-                }
-                return name + years
+                let years = Self.lifeYears(born: author.born, died: author.died)
+                return years.isEmpty ? name : "\(name) (\(years))"
             }
         }
         .joined(separator: ", ")
+    }
+
+    /// An author's years as the record has them, a year before the era as BCE (the label's rule, LabelSpec.lifeOf):
+    /// "1856–1950", "450–388 BCE", "4 BCE–65", "b. 1901", "d. 388 BCE"; "" with neither. js/plays-core.js `lifeYears`.
+    static func lifeYears(born: Int?, died: Int?) -> String {
+        func year(_ y: Int) -> String { y < 0 ? "\(-y) BCE" : "\(y)" }
+        switch (born, died) {
+        case let (b?, d?) where b < 0 && d < 0: return "\(-b)–\(-d) BCE"
+        case let (b?, d?): return "\(year(b))–\(year(d))"
+        case let (b?, nil): return "b. \(year(b))"
+        case let (nil, d?): return "d. \(year(d))"
+        case (nil, nil): return ""
+        }
     }
 
     /// "12 parts · 840 lines": the speaking parts and every line of the script.

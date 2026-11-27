@@ -37,6 +37,10 @@ INTRO_TRACK = re.compile(r"^(?:old[- ]time radio researchers(?: group)? (?:intro
 HARD_NAME = {"IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED"}
 LONG_NAME = 60
 GENERIC_TITLE = re.compile(r"^(?:(?:xx\s+)*no\s+title|(?:episode|ep|deel|program|file|track|nr|no|side|disc|show|production|tape|reel|recording)\.?\s*[\d.\-]*)$", re.I)
+# A log's or an uploader's stand-in for a title it did not have ("?? Title Unknown ??", "No Title Given", "Untitled"):
+# never a title, so the episode's title is composed from its date or number, or withheld (owner 2026-11-27).
+PLACEHOLDER_TITLE = re.compile(r"^[?*\s\-\u2013.]*(?:title\s+(?:unknown|not\s+known)|unknown\s+title|no\s+title(?:\s+given)?|"
+                               r"untitled(?:\s+episode)?|unknown|n/a|tba|tbd)[?*\s\-\u2013.]*$", re.I)
 AIRED_FRAGMENT = re.compile(r"\b(?:aired|air\s?date)\s+[\d/ ,-]*$", re.I)
 
 SCOPE_REASONS = {"concert": "out_of_scope_concert", "lecture": "out_of_scope_lecture", "music": "out_of_scope_music_set",
@@ -68,9 +72,18 @@ def series_withheld(shown_name, key, own_key):
     return None
 
 
+def placeholder_title(t, series_name=None):
+    """True for a stand-in where a title should be, alone or after the series' own name ("Ceiling Unlimited Title Unknown")."""
+    t = (t or "").strip()
+    if PLACEHOLDER_TITLE.match(t):
+        return True
+    name = (series_name or "").strip()
+    return bool(name) and t.casefold().startswith(name.casefold()) and bool(PLACEHOLDER_TITLE.match(t[len(name):].lstrip(" -\u2013:,")))
+
+
 def readable_title(t):
     t = (t or "").strip()
-    if not t or GENERIC_TITLE.match(t) or not re.search(r"[^\W\d_]{3}", re.sub(r"[\[{][^\]}]*[\]}]", " ", t)):
+    if not t or GENERIC_TITLE.match(t) or PLACEHOLDER_TITLE.match(t) or not re.search(r"[^\W\d_]{3}", re.sub(r"[\[{][^\]}]*[\]}]", " ", t)):
         return False
     bad = set(TD.title_defects(t)) & {"T_EMPTY", "T_RUNTOGETHER"}
     if bad:
@@ -699,7 +712,8 @@ def decide_episode(shown, series_name, air_date, num, tags=(), run=None):
     restates = bool(shown) and bool(series_name) and _norm(shown) == _norm(series_name)
     if lead_code(shown) and _norm(series_name).startswith(shown[:2].casefold()):
         shown = LEAD_CODE_WORD.sub("", shown)   # "Rc Super Two" in "Rcsupptwo": the series' own code
-    if readable_title(shown) and not cut_off(shown) and not (restates and compose(series_name, when, num)):
+    if readable_title(shown) and not cut_off(shown) and not placeholder_title(shown, series_name) \
+            and not (restates and compose(series_name, when, num)):
         return shown, "source", ["episodes.title"], None
     got = compose(series_name, when, num)
     if got:

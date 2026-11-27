@@ -559,7 +559,7 @@
   },
   {
    "play": "gut-22146",
-   "revision": "2e4f5e625261",
+   "revision": "bdb088837bb1",
    "line": "L0010",
    "op": "direction",
    "evidence": "boy who is the hawk is squatting center stage",
@@ -576,7 +576,7 @@
   },
   {
    "play": "gut-2914",
-   "revision": "6871e8885e7d",
+   "revision": "309b4ccae8c6",
    "line": "L0767",
    "op": "split",
    "pieces": [
@@ -594,7 +594,7 @@
   },
   {
    "play": "gut-2914",
-   "revision": "6871e8885e7d",
+   "revision": "309b4ccae8c6",
    "line": "L0768",
    "op": "split",
    "pieces": [
@@ -612,7 +612,7 @@
   },
   {
    "play": "gut-2920-3",
-   "revision": "7fe82ed8cd14",
+   "revision": "7d353cf60057",
    "line": "L0096",
    "op": "drop",
    "evidence": "A Little Comedy",
@@ -620,7 +620,7 @@
   },
   {
    "play": "gut-2920-3",
-   "revision": "7fe82ed8cd14",
+   "revision": "7d353cf60057",
    "line": "L0097",
    "op": "drop",
    "evidence": "FRUST..............The Boss",
@@ -628,7 +628,7 @@
   },
   {
    "play": "gut-3023",
-   "revision": "0884ba7dfef5",
+   "revision": "1873e24d6971",
    "line": "L0032",
    "op": "drop",
    "evidence": "MEPHISTOPHELES. WAGNER, a Student. MARGARET.",
@@ -636,7 +636,7 @@
   },
   {
    "play": "gut-3023",
-   "revision": "0884ba7dfef5",
+   "revision": "1873e24d6971",
    "line": "L0032a",
    "op": "drop",
    "evidence": "A STUDENT. ELIZABETH, an Acquaintance of Margaret",
@@ -644,7 +644,7 @@
   },
   {
    "play": "gut-3023",
-   "revision": "0884ba7dfef5",
+   "revision": "1873e24d6971",
    "line": "L0033",
    "op": "drop",
    "evidence": "TITANIA. ARIEL. PUCK, &C, &C.",
@@ -652,7 +652,7 @@
   },
   {
    "play": "gut-3023",
-   "revision": "0884ba7dfef5",
+   "revision": "1873e24d6971",
    "line": "L0034",
    "op": "direction",
    "evidence": "A high vaulted narrow Gothic chamber.",
@@ -814,7 +814,7 @@
   },
   {
    "play": "gut-41589",
-   "revision": "7a0453bbf894",
+   "revision": "43de645b7f9b",
    "line": "L0360",
    "op": "direction",
    "evidence": "The Amber Boudoir at Wyvern immediately after",
@@ -1670,7 +1670,7 @@
   },
   {
    "play": "gut-56286",
-   "revision": "6fa69670f4f3",
+   "revision": "6dc14e171008",
    "line": "L0001",
    "op": "direction",
    "evidence": "The first dialogue treats of getting up",
@@ -1678,7 +1678,7 @@
   },
   {
    "play": "gut-56286",
-   "revision": "6fa69670f4f3",
+   "revision": "6dc14e171008",
    "line": "L0024",
    "op": "direction",
    "evidence": "Erasmus in his Ciceronianus thus describes the style",
@@ -1686,7 +1686,7 @@
   },
   {
    "play": "gut-56286",
-   "revision": "6fa69670f4f3",
+   "revision": "6dc14e171008",
    "line": "L0025",
    "op": "direction",
    "evidence": "The treatises on education in Tudor times",
@@ -1694,7 +1694,7 @@
   },
   {
    "play": "gut-56286",
-   "revision": "6fa69670f4f3",
+   "revision": "6dc14e171008",
    "line": "L0026",
    "op": "direction",
    "evidence": "It has already been mentioned that Vives supplies",
@@ -1702,7 +1702,7 @@
   },
   {
    "play": "gut-57371",
-   "revision": "2dcd228fa2db",
+   "revision": "fcae359ff88c",
    "line": "L0007",
    "op": "direction",
    "evidence": "Foreground—a frozen crater",
@@ -1863,7 +1863,7 @@
   },
   {
    "play": "gut-62173-1",
-   "revision": "91f2d4ec809f",
+   "revision": "b3ee06251e61",
    "line": "L0966",
    "op": "split",
    "pieces": [
@@ -2046,7 +2046,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0011",
    "op": "drop",
    "evidence": "A dark, nervous, lively man of Jewish type.",
@@ -2054,7 +2054,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0012",
    "op": "drop",
    "evidence": "MARYA VASILYEVNA TOLBOUHINA. A very distinguished, rich",
@@ -2062,7 +2062,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0013",
    "op": "drop",
    "evidence": "About 50, an ex-Assistant Minister of State.",
@@ -2070,7 +2070,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0014",
    "op": "drop",
    "evidence": "Personal attendant on Zvezdintsef, aged about 60.",
@@ -2078,7 +2078,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0015",
    "op": "drop",
    "evidence": "A footman, about 28, handsome, profligate",
@@ -2086,7 +2086,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0016",
    "op": "drop",
    "evidence": "Butler, about 40, a bustling, kindly man",
@@ -2094,7 +2094,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0017",
    "op": "drop",
    "evidence": "The butler's assistant, about 20",
@@ -2102,7 +2102,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0018",
    "op": "drop",
    "evidence": "A man of about 35, a dandy.",
@@ -2110,7 +2110,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0019",
    "op": "drop",
    "evidence": "About 45, dishevelled, unshaved, bloated",
@@ -2118,7 +2118,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0020",
    "op": "drop",
    "evidence": "A talkative, dissatisfied woman of 30.",
@@ -2126,7 +2126,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0021",
    "op": "drop",
    "evidence": "A retired soldier.",
@@ -2134,7 +2134,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0021a",
    "op": "drop",
    "evidence": "LADY's-maid, 19, energetic, strong, merry",
@@ -2142,7 +2142,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0022",
    "op": "drop",
    "evidence": "About 60. Has served as village Elder.",
@@ -2150,7 +2150,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0023",
    "op": "drop",
    "evidence": "About 45, head of a family. A man of few words.",
@@ -2158,7 +2158,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0024",
    "op": "drop",
    "evidence": "About 70. Wears shoes of plaited bast.",
@@ -2166,7 +2166,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0024a",
    "op": "drop",
    "evidence": "in attendance on the Countess An old man",
@@ -2174,7 +2174,7 @@
   },
   {
    "play": "gut-9792-3",
-   "revision": "a087f79e33b2",
+   "revision": "43cd9752460b",
    "line": "L0025",
    "op": "drop",
    "evidence": "Of enormous size, strong, and rude.",

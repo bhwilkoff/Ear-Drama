@@ -194,13 +194,8 @@ data class PlayScript(
     override val authorWithYears: String
         get() = authors.mapNotNull { a ->
             val name = a.shown ?: return@mapNotNull null
-            val years = when {
-                a.born != null && a.died != null -> " (${a.born}\u2013${a.died})"
-                a.born != null -> " (b. ${a.born})"
-                a.died != null -> " (d. ${a.died})"
-                else -> ""
-            }
-            name + years
+            val years = lifeYears(a.born, a.died)
+            if (years.isEmpty()) name else "$name ($years)"
         }.joinToString(", ")
 
     /** "N parts · N lines", counted from the record. */
@@ -397,5 +392,20 @@ data class CastableLibrary(val format: Int, val scripts: List<PlayScript>) {
         const val ASSET = "castable-scripts.json"
         val json = Json { ignoreUnknownKeys = true }
         fun decode(text: String): CastableLibrary = json.decodeFromString(serializer(), text)
+    }
+}
+
+/**
+ * An author's years as the record has them, a year before the era as BCE (the label's rule, LabelSpec.lifeOf):
+ * "1856–1950", "450–388 BCE", "4 BCE–65", "b. 1901", "d. 388 BCE"; "" with neither. js/plays-core.js `lifeYears`.
+ */
+fun lifeYears(born: Int?, died: Int?): String {
+    fun year(y: Int) = if (y < 0) "${-y} BCE" else "$y"
+    return when {
+        born != null && died != null && born < 0 && died < 0 -> "${-born}–${-died} BCE"
+        born != null && died != null -> "${year(born)}–${year(died)}"
+        born != null -> "b. ${year(born)}"
+        died != null -> "d. ${year(died)}"
+        else -> ""
     }
 }

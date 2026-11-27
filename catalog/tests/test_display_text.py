@@ -84,6 +84,19 @@ check("nothing to compose from: withheld", DT.decide_episode("jbintro", "Radio",
 check("control: a bad date is not composed", DT.decide_episode("xxx", "Radio", "1950-13-40", None)[3],
       "no_readable_title_and_no_date_or_number")
 
+# A placeholder where a title should be is never a title (owner 2026-11-27: "Title Unknown" on Home's On the air).
+check("a log's placeholder composes from the date", DT.decide_episode("Title Unknown", "A Man Named Jordan", "1945-04-11", None),
+      ("A Man Named Jordan, April 11, 1945", "composed", ["series.name", "episodes.air_date"], None))
+check("a placeholder after the series' name composes", DT.decide_episode("Ceiling Unlimited Title Unknown", "Ceiling Unlimited", "1946-12-25", None)[0],
+      "Ceiling Unlimited, December 25, 1946")
+check("'No Title Given' composes from the number", DT.decide_episode("No Title Given", "Wild Bill Hickok", None, 24)[0], "Wild Bill Hickok, episode 24")
+check("a bracketed placeholder with nothing to compose from: withheld", DT.decide_episode("?? Title Unknown ??", "S", None, None)[3],
+      "no_readable_title_and_no_date_or_number")
+for t in ("Unknown Title", "Untitled", "Unknown", "untitled episode"):
+    check(f"placeholder: {t}", DT.placeholder_title(t), True)
+for t in ("Murderer Unknown", "The Unknown Voice", "Mission to the Unknown", "The Case of the Unknown Source", "Untitled Love"):
+    check(f"control: {t} is a title", (DT.placeholder_title(t, "S"), DT.decide_episode(t, "S", None, None)[0]), (False, t))
+
 # Recovering a despaced name from evidence.
 KN = {"annsothern": "Ann Sothern", "mynameisnero": "My Name Is Nero"}
 check("a person's name", DT.recover_name("annsothern", KN), "Ann Sothern")

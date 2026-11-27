@@ -298,6 +298,15 @@ test('uploadTagged: an upload\'s catalog number or an identifier is raw text; a 
   }
 });
 
+test('placeholderTitle: a stand-in for a missing title is raw text, alone or after the series\' name; a story title is not', () => {
+  for (const t of ['Title Unknown', '?? Title Unknown ??', 'Ceiling Unlimited Title Unknown', 'Unknown Title', 'No Title Given', 'Untitled', 'Unknown']) {
+    assert(API.placeholderTitle(t) && API.uploadTagged(t), `${t} is a placeholder`);
+  }
+  for (const t of ['Murderer Unknown', 'The Unknown Voice', 'Mission to the Unknown', 'The Case of the Unknown Source', 'Untitled Love', '']) {
+    assert(!API.placeholderTitle(t), `${t} is a title`);
+  }
+});
+
 // --- Listen shelves (contract §5.1) ---
 
 test('onThisDay returns catalog/tests/golden/on_this_day.json (Feb 29, partial dates, recommendAnd)', () => {

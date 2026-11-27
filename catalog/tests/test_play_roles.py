@@ -380,6 +380,24 @@ def what_a_part_wears_is_the_cast_list():
 
 
 @case
+def a_part_printed_with_an_article_and_without_is_one_part():
+    """gut-3012: The Acharnians listed "A MEGARIAN" and "MEGARIAN", "AN INFORMER" and "INFORMER", so it claimed 34 voices."""
+    middle = ("A MEGARIAN. Greeting, market of Athens, beloved of Megarians.\n\nMEGARIAN. Come up, my little daughters, find some bread.\n\n"
+              "AN INFORMER. Who are you, and whence come you, my man?\n\nINFORMER. I denounce this sack and all it holds.\n\n"
+              "FIRST WOMAN. I tell you the gate is shut against us.\n\nSECOND WOMAN. Then we must wait here until the morning.\n\n"
+              "AN OLD SLAVE. I carried the lamp the whole way here.\n\nSLAVE. And I carried the bread, which is heavier.\n\n"
+              "MEGARIAN. Here are my pigs, as fine as any.\n\nINFORMER. And here is my denunciation, as fine as any.")
+    was, now = reads(play(middle))
+    assert {"A MEGARIAN", "AN INFORMER"} <= roles(was), sorted(roles(was))
+    assert not {"A MEGARIAN", "AN INFORMER"} & roles(now), sorted(roles(now))
+    assert find(now, "Greeting, market of Athens")["role"] == "MEGARIAN" and find(now, "Who are you, and whence")["role"] == "INFORMER"
+    assert {"FIRST WOMAN", "SECOND WOMAN", "AN OLD SLAVE", "SLAVE"} <= roles(now), "control: different parts stay apart"
+    parsed = P.parse(play(middle), "stage", "The Fixture", refine=True)
+    assert [r["name"] for r in parsed["roles"]].count("MEGARIAN") == 1 and not any(r["name"] == "A MEGARIAN" for r in parsed["roles"])
+    assert next(r for r in parsed["roles"] if r["name"] == "MEGARIAN")["lines"] == 3, "the part has all its lines"
+
+
+@case
 def a_play_with_no_fault_is_the_same_entry():
     raw = play("HALE. I have done.")
     record = {"id": "gut-1", "kind": "stage", "title": "The Fixture", "authors": [], "source": {"name": "Project Gutenberg", "url": "https://example.org/1"}}

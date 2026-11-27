@@ -39,10 +39,25 @@ fun homeChips(shelves: List<HomeShelf>, above: Set<String>): HomeChips {
 
 private val UPLOAD_TAG = Regex("""(^|\s)#\s?\d+\b""")
 
-/** A title that still carries an upload's catalog number ("AbyM #026 ...") or an identifier: raw upload text, which never shows. */
+/** A title that still carries an upload's catalog number ("AbyM #026 ...") or an identifier, or is a placeholder: raw upload text, which never shows. */
 fun uploadTagged(title: String?): Boolean {
     if (title.isNullOrEmpty()) return false
-    return UPLOAD_TAG.containsMatchIn(title) || RecordingLabel.looksLikeIdentifier(title)
+    return UPLOAD_TAG.containsMatchIn(title) || RecordingLabel.looksLikeIdentifier(title) || placeholderTitle(title)
+}
+
+private val PLACEHOLDER_TITLE = Regex(
+    """(?:.*\s)?[?*\s.\-–]*(?:title\s+(?:unknown|not\s+known)|unknown\s+title|no\s+title(?:\s+given)?)[?*\s.\-–]*""" +
+        """|[?*\s.\-–]*(?:untitled(?:\s+episode)?|unknown|n/a|tba|tbd)[?*\s.\-–]*""",
+    RegexOption.IGNORE_CASE,
+)
+
+/**
+ * A log's or an uploader's stand-in for a title it did not have ("?? Title Unknown ??", "Ceiling Unlimited Title Unknown",
+ * "No Title Given", "Untitled"): never a title (owner 2026-11-27). The same rule as js/api.js and display_text.py.
+ */
+fun placeholderTitle(title: String?): Boolean {
+    val t = title?.trim().orEmpty()
+    return t.isNotEmpty() && PLACEHOLDER_TITLE.matches(t)
 }
 
 /** The On the air hero's line under the show's name: the title, or the broadcast's date when the title is raw. */

@@ -29,11 +29,21 @@ nonisolated enum HomeShows {
         return (out, seenAfter)
     }
 
-    /// A title that still carries an upload's catalog number ("AbyM #026 ...") or an identifier: raw upload
-    /// text, which never shows (AGENTS.md; owner 2026-10-31).
+    /// A title that still carries an upload's catalog number ("AbyM #026 ...") or an identifier, or is a placeholder:
+    /// raw upload text, which never shows (AGENTS.md; owner 2026-10-31).
     static func uploadTagged(_ title: String?) -> Bool {
         guard let title, !title.isEmpty else { return false }
-        return title.contains(/(^|\s)#\s?\d+\b/) || RecordingLabel.looksLikeIdentifier(title)
+        return title.contains(/(^|\s)#\s?\d+\b/) || RecordingLabel.looksLikeIdentifier(title) || placeholderTitle(title)
+    }
+
+    /// A log's or an uploader's stand-in for a title it did not have ("?? Title Unknown ??", "Ceiling Unlimited Title
+    /// Unknown", "No Title Given", "Untitled"): never a title (owner 2026-11-27). The same rule as js/api.js and display_text.py.
+    static func placeholderTitle(_ title: String?) -> Bool {
+        let t = (title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return false }
+        let afterWords = /(?:.*\s)?[?*\s.\-–]*(?:title\s+(?:unknown|not\s+known)|unknown\s+title|no\s+title(?:\s+given)?)[?*\s.\-–]*/
+        let alone = /[?*\s.\-–]*(?:untitled(?:\s+episode)?|unknown|n\/a|tba|tbd)[?*\s.\-–]*/
+        return t.wholeMatch(of: afterWords.ignoresCase()) != nil || t.wholeMatch(of: alone.ignoresCase()) != nil
     }
 
     /// The On the air hero's line under the show's name: the title, or the broadcast's date when the title is raw.
