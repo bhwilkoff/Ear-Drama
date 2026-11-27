@@ -27,7 +27,8 @@
 import { json, limited, problem, readJson } from "./http.js";
 import { randomToken, sha256Hex } from "./jwt.js";
 import { castHash } from "./plays-manifest.js";
-import { nameRefusal, cleanName } from "./plays-names.js";
+import { MAX_HEADING, cutRange, rangeOf } from "./plays-relay.js";
+import { nameRefusal, cleanName, wordsRefusal } from "./plays-names.js";
 import { drain, takeStream } from "./plays-audio.js";
 import { pickup, receiving, relay } from "./take-relay.js";
 import {
@@ -226,6 +227,8 @@ async function recordFor(env, p, userId, now) {
     publishable: isPublishable(madeFrom(p)),
     server_time: now,
   };
+  const range = rangeOf(p);
+  if (range) out.range = range;
   const own = await ownScriptOut(env, p);
   if (own) out.own_script = own;
   if (p.class_id) out.assignments = await assignmentRows(env, p.id);
@@ -257,16 +260,31 @@ export async function createProduction(auth, request, env, now, classId = null) 
   if (!cast) return problem(400, "bad_request", "cast is [{ id, part }] in script order");
   const refusal = nameRefusal(body.display_name);
   if (refusal) return problem(422, refusal);
+  const asked = body.range !== undefined && body.range !== null;
+  if (asked && body.own === true) return problem(400, "bad_range");
   const made = body.own === true ? await newOwnScript(env, body, cast, auth.userId, now) : await fromCatalog(env, body, cast);
   if (made.refusal) return made.refusal;
+  let kept = cast;
+  let range = null;
+  if (asked) {
+    const cut = cutRange(body.range, cast);
+    if (!cut) return problem(400, "bad_range");
+    kept = cut.slice;
+    range = cut.range;
+    if (body.heading !== undefined && body.heading !== null) {
+      const heading = typeof body.heading === "string" ? body.heading.trim() : "";
+      if (!heading || wordsRefusal(heading, MAX_HEADING)) return problem(422, "bad_name", "heading");
+      made.title = `${made.title}, ${heading}`;
+    }
+  }
   const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM play_productions WHERE user_id = ?1").bind(auth.userId).first();
   if (count.n >= MAX_PRODUCTIONS) return problem(409, "too_many_productions");
 
   const id = crypto.randomUUID().toUpperCase();
   await env.DB.batch([
     env.DB.prepare(
-      "INSERT INTO play_productions (id, user_id, script_id, script_revision, title, cast_sheet, created_at, updated_at, class_id, script_row) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?8, ?9)",
-    ).bind(id, auth.userId, body.script_id, made.revision, made.title, JSON.stringify(cast), now, classId, made.row ? JSON.stringify(made.row) : null),
+      "INSERT INTO play_productions (id, user_id, script_id, script_revision, title, cast_sheet, created_at, updated_at, class_id, script_row, scene_range) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?8, ?9, ?10)",
+    ).bind(id, auth.userId, body.script_id, made.revision, made.title, JSON.stringify(kept), now, classId, made.row ? JSON.stringify(made.row) : null, range ? JSON.stringify(range) : null),
     env.DB.prepare("INSERT INTO play_members (production_id, user_id, display_name, joined_at) VALUES (?1, ?2, ?3, ?4)").bind(
       id,
       auth.userId,
@@ -409,6 +427,7 @@ async function viewInvite(auth, request, env, now) {
     scriptID: p.script_id,
     scriptRevision: p.script_revision,
     title: p.title,
+    ...(p.scene_range ? { range: JSON.parse(p.scene_range) } : {}),
     parts: castParts(p.cast).map(({ id, lineCount }) => ({ id, lineCount, status: statusOf(rows, id, now) })),
     next: next(p.cast, rows, now),
     member: !!(await member(env, p.id, auth.userId)),

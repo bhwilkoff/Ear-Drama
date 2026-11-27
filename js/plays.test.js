@@ -1161,6 +1161,33 @@ test('the store mixes a performed cue from its own takes, and names a pack cue i
 
 /* ---- A scene's range (B31 §3.4, PLAYS-DESIGN §2.12): catalog/tests/golden/production_range.json, shared with Swift and Kotlin ---- */
 
+test('the store keeps a scene\'s production: the scene read back, a drifted range dropped once, older and newer records', async () => {
+  const backend = PlayStore.memoryBackend();
+  const store = PlayStore.open(backend);
+  await store.load();
+  const script = fixtureScript();
+  const range = { from: 'L0006', to: 'L0009' };
+  const p0 = await store.create(script, { range, heading: 'Scene II' });
+  const p = C.addTake(p0, take('t-scene', 'L0006', 'role:MOLLY', 4800));
+  await store.save(p);
+  eq([(await store.script(p)).lines.length, (await store.wholeScript(p)).lines.length], [4, script.lines.length], 'the scene, and the whole kept');
+  eq(store.takeDropped(p.id), false, 'nothing dropped');
+  // A revision of the kept script that loses the scene's last line (rule 4).
+  await backend.put(`${p.id}/script.json`, JSON.stringify({ ...script, revision: 'r2', lines: script.lines.filter(l => l.id !== 'L0009') }));
+  const fresh = PlayStore.open(backend);
+  await fresh.load();
+  const back = await fresh.script(fresh.production(p.id));
+  eq(back.lines.length, script.lines.length - 1, 'the whole play now');
+  eq([('range' in fresh.production(p.id)), fresh.production(p.id).title, fresh.takeDropped(p.id), fresh.takeDropped(p.id)],
+    [false, script.title, true, false], 'the range is dropped, the title is the play\'s, and it is said once');
+  await backend.put('OLD/production.json', JSON.stringify({ ...C.newProduction(script, { id: 'OLD' }), format: undefined, takes: [take('t', 'L0002', 'role:FIBBER', 4800)], chosen: { L0002: 't' } }));
+  await backend.put('NEW/production.json', JSON.stringify({ ...C.newProduction(script, { id: 'NEW' }), format: 3, takes: [take('t', 'L0002', 'role:FIBBER', 4800)] }));
+  const third = PlayStore.open(backend);
+  await third.load();
+  eq([third.production('OLD') && third.production('OLD').format, third.production('NEW')], [2, null], 'an old record is read as format 2; a newer one is not listed');
+  ok((await backend.get('NEW/production.json')) !== null, 'and the newer one is kept on disk');
+});
+
 const RANGE = JSON.parse(fs.readFileSync(path.join(ROOT, 'catalog/tests/golden/production_range.json'), 'utf8'));
 const pairs = (cast) => cast.map(x => [x.id, x.lineCount]);
 function rangeProduction(core, chosen, { sound = null } = {}) {

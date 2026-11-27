@@ -114,6 +114,7 @@ async function viewOpenInvite(request, env, now) {
       scriptRevision: p.script_revision,
       title: p.title,
       source: madeFrom(p)?.source ?? null,
+      ...(p.scene_range ? { range: JSON.parse(p.scene_range) } : {}),
       ...(own ? { own_script: { state: own.state, episode_id: own.episode_id } } : {}),
       parts: castParts(p.cast).map(({ id, lineCount }) => {
         const status = statusOf(rows, id, now);

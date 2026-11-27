@@ -2266,6 +2266,13 @@ label.pl-facet.on::after { color: var(--color-background); }
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
 .pl-scard-parts { color: var(--color-text-muted); }
 .pl-scard:hover .pl-scard-title { text-decoration: underline; }
+/* A scene that records (PLAYS-DESIGN §2.12): the card is the door, Read sits on its corner outside it. */
+.pl-scard-li { position: relative; }
+button.pl-scard { width: 100%; font: inherit; text-align: left; border: 0; cursor: pointer; padding-right: 56px; }
+button.pl-scard:disabled { opacity: 0.6; cursor: progress; }
+.pl-scard-mic { display: inline-flex; vertical-align: -3px; margin-right: 4px; }
+.pl-scard-mic svg { width: 18px; height: 18px; fill: currentColor; }
+.pl-scard-li .g-tile-read { top: 8px; right: 8px; }
 /* Filters: every facet as chips, counted against the others. */
 .pl-filters .rd-sheet-head { position: sticky; top: calc(-1 * var(--space-4)); z-index: 1; background: var(--color-background); padding: var(--space-2) 0; }
 .pl-filter-group { border: 0; margin: 0 0 var(--space-4); padding: 0; min-width: 0; }

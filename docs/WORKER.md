@@ -52,6 +52,7 @@ Cloudflare, Apple, or Google is the owner's.
 | `worker/src/plays-archive.js` | the archive.org uploader (Decision 073): the cron lays items out, removes lines, rewrites credits; `sendFile` streams each line's file from a device |
 | `worker/src/plays-castable.js` | which script a production, class production or read room is made from (the bundle's rows, then the published library's), and which may be published |
 | `worker/src/plays-own.js` | own scripts (Decision 088.4): made, sent once, read by the production's people, held, removed |
+| `worker/migrations/0014_production_range.sql` | `play_productions.scene_range`: the scene a production records, as JSON `{from, to}`; null for the whole play |
 | `worker/migrations/0013_own_scripts.sql` | `play_scripts`, the one-row total its triggers keep, what the owner removed, and `play_reports.script` |
 | `worker/src/plays-manifest.js` | a manifest row: how it is built and how it is checked when read back; shared with the site build |
 | `worker/src/castable-manifest.json` | the bundle's rows: each play's revisions, newest first |
@@ -336,9 +337,17 @@ the `seat` message, only with that seat's key (`seat_key`, from
 `/v1/plays/seat/claim`); otherwise `403 seat_key_required`. Seats added after
 the room opened join the next room.
 
+A room may be of one scene. The create body's `range: { from, to }` is checked over the full `cast` after the cast hash
+(`400 bad_range` for a malformed range, an id outside the cast, `from` after `to`, or an own script), and the room's
+cast becomes the slice from `from` through `to`. When `production_id` names a production with a range, the room takes
+that range: a request range that differs is `409 range_mismatch`, and a request with none gets the production's. The
+snapshot carries `range: { from, to }` when the room has one (absent otherwise), kept in the room object on both the
+Durable Object and the D1 fallback, so joining clients cut their script to it and the cursor starts at `from`. No
+column is needed.
+
 | Method and path | Who | Body | Answer |
 |---|---|---|---|
-| `POST /v1/read` | anyone; a class room needs its teacher's bearer token, and an own script its production and director's | `{ script_id, script_revision, cast, mode?, kind?, class_id?, seats?, assignments?, production_id? }` | the snapshot with `member_key` and `transport` (`socket` or `poll`); the creator leads |
+| `POST /v1/read` | anyone; a class room needs its teacher's bearer token, and an own script its production and director's | `{ script_id, script_revision, cast, mode?, kind?, class_id?, seats?, assignments?, production_id?, range? }` | the snapshot with `member_key` and `transport` (`socket` or `poll`); the creator leads; `400 bad_range`; `409 range_mismatch` |
 | `POST /v1/read/{code}/join` | anyone with the code; a class seat with its key | `{ role?: "reader" or "screen", seat?, seat_key?, move?, name? }` | the snapshot with `member_key`; `409 room_full`, `joining_locked`, `seat_in_use`; `400 seat_required`; `403 seat_key_required`; `422 bad_name`; `404 no_such_room`; `410 room_ended` |
 | `GET /v1/read/{code}?gen=N` | a member (`x-read-key`) | | the snapshot; a long poll: with `gen` at the room's generation the object holds the request until a change or 20 s (`LONG_POLL_MS`) and adds `held_ms`; behind, or with no `gen`, at once. A held poll is presence in memory, so it writes nothing |
 | `POST /v1/read/{code}/send` | a member | a message | the snapshot (and `reply` for a ping), or the refusal |
@@ -484,7 +493,7 @@ All under `/v1/plays`, all bearer except the open reads below. `:pid` is a produ
 | Method and path | Who | Body | Answer |
 |---|---|---|---|
 | `GET /consent` | anyone | | `{ version, text, uploads, publishes }`: the CC0 consent's version id, the owner's words, whether takes can pass through (the `TAKE_RELAY` binding), and whether Publish is (both archive.org keys set) |
-| `POST /productions` | anyone | `{ script_id, script_revision, cast, display_name? }` | `201` the record; the caller directs |
+| `POST /productions` | anyone | `{ script_id, script_revision, cast, display_name?, range?, heading? }` | `201` the record; the caller directs. `range` and `heading` make a production of one scene (below); `400 bad_range`; `422 bad_name` (`detail` is `heading`) |
 | `GET /productions` | anyone | | `{ productions: [{ id, title, script_id, director, updated_at }] }`, the caller's |
 | `GET /productions/:pid` | a member | | the record (below) |
 | `POST /productions/:pid/invites` | the director | `{ expires_in_days? }` 1 to 30, default 7 | `201 { id, token, expires_at }`; the token is shown once |
@@ -684,6 +693,24 @@ false: listening through is the device's). A take carries `id`, `lineID`,
 ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
 `uploads` (whether takes can pass through, so a client can say so before anyone records), `class_id`, `assignments` (a class production's), `reviews` (the director's view of a class production: take id to `{ state, note, reviewed_at }`), `server_time`, `invites` (the director's view), and per take `user_id` and
 `seat`, per part `user_id` and `claim_expires_at`. No take has an audio path: the audio is on the devices.
+
+### One scene of a catalog play (PLAYS-DESIGN section 2.12)
+
+`POST /productions` and `POST /classes/:id/productions` take an optional `range: { from, to }`, two line ids of the
+script, and an optional `heading`, the scene's heading as printed (for example `Scene II`). The client still sends the
+whole script's `cast` sheet, and the cast hash is checked over all of it (`422 cast_mismatch`), unchanged.
+
+- **The Worker keeps the slice.** `cast_sheet` is the cast from `from` through `to`, so every rule that reads the cast
+  (parts, claim, finish, silent, incomplete, `next`, the invite views, take routing) covers only the range. A part is
+  done when each of its lines in the range has a chosen take. The range itself is kept in `play_productions.scene_range`.
+- **`400 bad_range`** when `range` is not an object of two strings, when either id is not a line of the cast, when `from`
+  comes after `to`, or when the request is `own: true` (a range is for catalog scripts only). `null` is no range.
+- **The title** is `<play's title>, <heading>`. A heading is 1 to 80 characters after trimming and passes the filter an
+  own script's title passes (`wordsRefusal`); otherwise `422 bad_name` with `detail: "heading"`. A heading with no
+  range is ignored.
+- **The record, the signed-in invite view and the open invite view carry `range: { from, to }`** when the production
+  has one, so a client cuts its script to the same lines. Without a range the key is absent, and an older production's
+  responses are unchanged.
 
 ### Rules the clients rely on
 
@@ -900,7 +927,7 @@ Times are milliseconds.
 | `queue` | `(user_id, ord)` | `episode_id` |
 | `rooms` | `code` | `episode_id`, `archive_id`, `file`, `position`, `playing`, `rate`, `updated_at`, `generation`, `host_member`, `created_at`, `touched_at` |
 | `room_members` | `id` | `code`, `key_hash` (SHA-256 of the member key), `joined_at`, `seen_at` |
-| `play_productions` | `id` | `user_id` (the director), `script_id`, `script_revision`, `title`, `cast_sheet` (JSON `[[line id, part]]`), `created_at`, `updated_at`, `class_id` (a class production; deleted with the class), `script_row` (the manifest row it was made from, JSON; null before migration 0012) |
+| `play_productions` | `id` | `user_id` (the director), `script_id`, `script_revision`, `title`, `cast_sheet` (JSON `[[line id, part]]`), `created_at`, `updated_at`, `class_id` (a class production; deleted with the class), `script_row` (the manifest row it was made from, JSON; null before migration 0012), `scene_range` (JSON `{from, to}` of the one scene it records, whose slice is `cast_sheet`; null for the whole play; migration 0014) |
 | `play_members` | `(production_id, user_id)` | `display_name`, `joined_at` |
 | `play_invites` | `id` | `production_id`, `user_id` (its maker), `token_hash` (SHA-256), `created_at`, `expires_at`, `revoked` |
 | `play_parts` | `(production_id, part)` | `status` (`recording`, `done`, `silent`; no row is open), `user_id`, `claimed_at` |
@@ -1075,6 +1102,11 @@ none publishes even with a forged row. The scripts come from the castable file b
 never by name.
 `.github/workflows/worker-test.yml` runs `npm test` on any change under
 `worker/` or to the bundled scripts. It has no Cloudflare credential and no deploy step.
+
+Scenes (`test/scene-range.test.js`): the slice kept, the cast hash over the whole cast, a part done on its range lines
+only, each `bad_range` case, own scripts refused, the composed title and the heading filter, an older production's
+responses without `range`, and a room's range from the request or the production, `range_mismatch`, and the snapshot
+on both transports.
 
 ## Needs Ben
 

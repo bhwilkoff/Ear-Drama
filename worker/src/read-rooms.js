@@ -34,7 +34,7 @@ import { DurableObject } from "cloudflare:workers";
 import { castable, madeFrom } from "./plays-castable.js";
 import { isOwn, newPersonRefusal, sendScript } from "./plays-own.js";
 import { castHash } from "./plays-manifest.js";
-import { canonicalCast, parseCast } from "./plays-relay.js";
+import { canonicalCast, cutRange, parseCast, rangeOf } from "./plays-relay.js";
 import { json, problem, readJson, limited } from "./http.js";
 import { randomToken, sha256Hex } from "./jwt.js";
 import { authenticate } from "./auth.js";
@@ -214,6 +214,7 @@ async function createInput(request, env) {
   // A production's room opens at the production's own revision, whatever the library holds now.
   let made = null;
   let own = null;
+  let prod = null;
   if (body.kind === "class") {
     // A class room is its teacher's: the account that owns the class opens it.
     const auth = await authenticate(request, env);
@@ -224,10 +225,11 @@ async function createInput(request, env) {
     // The roster and the casting are the class's own (T2), never the request's.
     body.seats = (await seatsOf(env, body.class_id)).map((s) => ({ id: s.id, label: s.label }));
     if (body.production_id !== undefined) {
-      const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT id, class_id, script_id, script_revision, script_row, cast_sheet FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
+      const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT id, class_id, script_id, script_revision, script_row, cast_sheet, scene_range FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
       if (!p || p.class_id !== body.class_id || p.script_id !== body.script_id) return { response: problem(404, "no_such_production") };
       body.assignments = await assignmentRows(env, body.production_id);
       made = madeFrom(p);
+      prod = p;
       if (isOwn(p)) own = p;
     }
   }
@@ -235,14 +237,35 @@ async function createInput(request, env) {
     // An adult production's room is its director's: only they attach one, so no stranger writes takes into a production (§12.11).
     const auth = await authenticate(request, env);
     if (auth.error) return { response: auth.error };
-    const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT id, user_id, class_id, script_id, script_revision, script_row, cast_sheet FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
+    const p = typeof body.production_id === "string" ? await env.DB.prepare("SELECT id, user_id, class_id, script_id, script_revision, script_row, cast_sheet, scene_range FROM play_productions WHERE id = ?1").bind(body.production_id).first() : null;
     if (!p || p.class_id || p.user_id !== auth.userId || p.script_id !== body.script_id) return { response: problem(404, "no_such_production") };
     made = madeFrom(p);
+    prod = p;
     if (isOwn(p)) own = p;
   }
   const found = own ? await ownRoom(env, body, own, cast) : await castable(env, body.script_id, body.script_revision, made);
   if (found.refusal) return { response: found.refusal };
   if (!own && (await castHash(cast)) !== found.row.cast) return { response: problem(422, "cast_mismatch") };
+  let range = null;
+  let kept = cast;
+  const asked = body.range !== undefined && body.range !== null;
+  const held = prod ? rangeOf(prod) : null;
+  if (asked && own) return { response: problem(400, "bad_range") };
+  if (asked) {
+    const cut = cutRange(body.range, cast);
+    if (!cut) return { response: problem(400, "bad_range") };
+    range = cut.range;
+    kept = cut.slice;
+  }
+  if (held) {
+    if (range && (range.from !== held.from || range.to !== held.to)) return { response: problem(409, "range_mismatch") };
+    if (!range) {
+      const cut = cutRange(held, cast);
+      if (!cut) return { response: problem(409, "range_mismatch") };
+      range = cut.range;
+      kept = cut.slice;
+    }
+  }
   const input = {
     kind: body.kind,
     script_id: body.script_id,
@@ -253,8 +276,9 @@ async function createInput(request, env) {
     owner_name: body.owner_name,
     seats: body.seats,
     assignments: body.assignments,
+    range,
   };
-  return { input, cast };
+  return { input, cast: kept };
 }
 
 /**

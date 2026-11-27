@@ -302,6 +302,10 @@ test('the reader\'s Record continues the part, else takes it where it is open, e
   eq(SC.productionFor([other], notShared, script, MOLLY), { make: true }, 'never another play\'s');
   const done = mk('p5', 9, { [MOLLY]: { status: 'done' } });
   eq(SC.productionFor([done], notShared, script, MOLLY), { make: true }, 'a part already done is not reopened from the reader');
+  const scene = { ...C.newProduction(script, { range: { from: 'L0006', to: 'L0009' }, heading: 'Scene II' }), id: 'p6', created: 20 };
+  eq(SC.productionFor([scene, open], notShared, script, MOLLY), { id: 'p1', take: true }, 'the reader never records into a scene\'s production');
+  eq(SC.productionFor([scene, open], notShared, script, MOLLY, { from: 'L0006', to: 'L0009' }), { id: 'p6', take: true }, 'a scene\'s door records into that scene\'s');
+  eq(SC.productionFor([open], notShared, script, MOLLY, { from: 'L0006', to: 'L0009' }), { make: true }, 'control: a whole-play production is not a scene\'s');
 });
 
 test('the cast shows the performer of a part someone else holds, never mine, open or silent ones', () => {

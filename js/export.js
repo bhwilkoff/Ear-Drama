@@ -32,6 +32,7 @@ const DataExport = (() => {
         production: p.id, title: p.title, created: iso(p.created),
         takes: (p.takes || []).map(t => ({ ...t, chosen: (p.chosen || {})[t.lineID] === t.id })),
         ...(p.sound ? { sound: JSON.parse(JSON.stringify(p.sound)) } : {}),
+        ...(p.range ? { range: { from: p.range.from, to: p.range.to } } : {}),
       })),
       marks: marks.map(m => ({ ...m })),
       scripts: scripts.map(s => ({ ...s })),

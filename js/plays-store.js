@@ -126,6 +126,7 @@ const PlayStore = (() => {
     const mixPath = (id) => `${id}/mix.wav`;
     const sharePath = (id) => `${id}/share.json`;
     const shares = new Map();
+    const dropped = new Set();
 
     const store = {
       backend,
@@ -140,7 +141,8 @@ const PlayStore = (() => {
             const records = await Promise.all(keys.filter(k => /^[^/]+\/production\.json$/.test(k)).map(async k => {
               try { return JSON.parse(await backend.get(k)); } catch { return null; }
             }));
-            productions = records.filter(Boolean).sort((a, b) => b.created - a.created);
+            // A newer app's record is kept on disk, never listed or rewritten here; an older one is read as the current format.
+            productions = records.filter(r => r && !C.productionTooNew(r)).map(C.migrateProduction).sort((a, b) => b.created - a.created);
             await Promise.all(productions.map(async p => {
               const raw = await backend.get(sharePath(p.id)).catch(() => null);
               if (raw) { try { shares.set(p.id, JSON.parse(raw)); } catch { /* unreadable: not shared */ } }
@@ -156,16 +158,30 @@ const PlayStore = (() => {
         return loaded;
       },
 
-      async create(script) {
-        const p = C.newProduction(script);
+      /** `opts.range` and `opts.heading` make a production of one scene (PLAYS-DESIGN §2.12); the whole script is kept either way. */
+      async create(script, opts = {}) {
+        const p = C.newProduction(script, opts);
         await backend.put(scriptPath(p.id), JSON.stringify(script));
         scripts.set(p.id, script);
         await store.save(p);
         return p;
       },
 
-      /** The script as cast, read back from the production's own record. */
+      /** The script as cast, read back from the production's own record, cut to its range when it has one
+          (PLAYS-DESIGN §2.12). A range whose bounds the script no longer holds is dropped here (rule 4). */
       async script(p) {
+        const whole = await store.wholeScript(p);
+        if (!whole) return null;
+        const cur = store.production(p.id) || p;
+        if (C.rangeDrifted(cur, whole)) {
+          dropped.add(p.id);
+          await store.save(C.dropRange(cur, whole));
+          return whole;
+        }
+        return C.scoped(cur, whole);
+      },
+      /** The script as cast, whole: what a share's cast sheet is hashed from. */
+      async wholeScript(p) {
         if (!scripts.has(p.id)) {
           const raw = await backend.get(scriptPath(p.id));
           if (raw === null) return null;
@@ -173,6 +189,8 @@ const PlayStore = (() => {
         }
         return scripts.get(p.id);
       },
+      /** True once after `script` dropped this production's range, so the cast sheet says so. */
+      takeDropped(id) { return dropped.delete(id); },
 
       /** The in-memory record changes now; its write follows in order, one per production. */
       save(p) {
@@ -262,13 +280,13 @@ const PlayStore = (() => {
        */
       async adopt(script) {
         for (const found of await store.productionsOf(script.id)) {
-          if (shares.has(found.id)) continue;
+          if (shares.has(found.id) || C.productionTooNew(found)) continue;
           await (writes.get(found.id) || Promise.resolve()).catch(() => {});
           const p = JSON.parse(await backend.get(recordPath(found.id)));
           const raw = await backend.get(scriptPath(p.id));
           const was = raw ? JSON.parse(raw) : { lines: [] };
           const parts = {};
-          for (const part of C.castParts(script)) parts[part.id] = p.parts[part.id] || { status: 'open' };
+          for (const part of C.castParts(script, p.range)) parts[part.id] = p.parts[part.id] || { status: 'open' };
           const next = { ...p, parts, title: script.title, scriptRevision: script.revision };
           const ids = (s) => s.lines.map(l => l.id).join(' ');
           if (ids(was) !== ids(script)) { next.listenedThrough = false; delete next.mixedFrom; }
