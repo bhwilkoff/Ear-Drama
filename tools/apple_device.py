@@ -43,11 +43,34 @@ def sh(cmd, timeout=90, env=None):
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=env)
 
 
-def devicectl(*args, timeout=90):
+def _devicectl(args, timeout):
     env = dict(os.environ)
     env["DEVELOPER_DIR"] = (env.get("DEVELOPER_DIR") or app_config.DEVELOPER_DIR
                             or "/Applications/Xcode.app/Contents/Developer")
     return sh(["xcrun", "devicectl", *args], timeout=timeout, env=env)
+
+
+def _device_of(args):
+    return args[args.index("--device") + 1] if "--device" in args and args.index("--device") + 1 < len(args) else None
+
+
+def wake_tunnel(udid):
+    """A paired device listed "available (paired)" has no tunnel up yet, and an install or launch then fails with
+    CoreDevice error 4016 (the Duo, 2026-11-27). Asking for the device's details brings the tunnel up; True when
+    the device then says "connected"."""
+    r = _devicectl(["device", "info", "details", "--device", udid], 120)
+    return r.returncode == 0 and "Device State: connected" in r.stdout
+
+
+def devicectl(*args, timeout=90):
+    udid = _device_of(args)
+    if udid and args[:2] != ("device", "info"):
+        wake_tunnel(udid)
+    r = _devicectl(args, timeout)
+    if udid and r.returncode != 0 and "4016" in (r.stdout + r.stderr):
+        wake_tunnel(udid)
+        r = _devicectl(args, timeout)
+    return r
 
 
 # ── processes ────────────────────────────────────────────────────────────────
