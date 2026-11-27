@@ -59,6 +59,15 @@ def wake_tunnel(udid):
     CoreDevice error 4016 (the Duo, 2026-11-27). Asking for the device's details brings the tunnel up; True when
     the device then says "connected"."""
     r = _devicectl(["device", "info", "details", "--device", udid], 120)
+    if r.returncode == 0 and "Device State: connected" in r.stdout:
+        return True
+    # After the Mac's overload crash (2026-11-27 12:38) the Duo stayed "unavailable" for 25 minutes while it still
+    # advertised _remotepairing on the LAN with its port open; restarting CoreDeviceService did nothing. The user-level
+    # remotepairingd had lost it: killing it (launchd respawns it) brought the Duo back to "connected" at once.
+    print(f"[device] {udid} not connected after a details call: restarting remotepairingd")
+    subprocess.run(["pkill", "-f", "RemotePairing.framework/.*/remotepairingd"], check=False)
+    time.sleep(6)
+    r = _devicectl(["device", "info", "details", "--device", udid], 120)
     return r.returncode == 0 and "Device State: connected" in r.stdout
 
 

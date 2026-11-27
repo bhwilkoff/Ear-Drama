@@ -100,6 +100,8 @@ Restarting the Mac did, first time. After a macOS update, the first tvOS
 build may fail until you run
 `xcodebuild -downloadComponent MetalToolchain`.
 
+**One iPhone "unavailable" while it advertises on the LAN** (the Duo, 2026-11-27, after the Mac's overload crash): `dns-sd -L` shows it at `<name>.local.:49152` and `nc -z` reaches the port, yet devicectl says unavailable and a details call does not wake it. Restarting CoreDeviceService did nothing; killing the user-level `remotepairingd` (launchd respawns it) brought it back at once. `apple_device.wake_tunnel` now does this when a details call leaves the device unconnected. An open Duo captures its inner screen only with `--display-unique-id` (`apple_device.active_display_id`); the default display is the black outer one.
+
 If captures fail with `CoreDeviceError 3` on one box while others work,
 switch to another TV and come back to that one later.
 
