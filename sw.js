@@ -17,7 +17,9 @@ const SHELL_VERSION = 'ed-shell-v71';
 const DATA_VERSION = 'ed-data-v1';
 // The sound pack's downloaded categories (js/sound-store.js, B32 §5.2): kept through every shell version.
 const SOUNDS_CACHE = 'ed-sounds-1';
-const KEEP = [SHELL_VERSION, DATA_VERSION, SOUNDS_CACHE];
+// The downloaded Kokoro voices (js/voices.js CACHE, Decision 078): the person's download, kept through every shell version.
+const KOKORO_CACHE = 'ed-kokoro-v1';
+const KEEP = [SHELL_VERSION, DATA_VERSION, SOUNDS_CACHE, KOKORO_CACHE];
 
 const SHELL = [
   './',

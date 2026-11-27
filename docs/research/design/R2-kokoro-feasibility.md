@@ -537,6 +537,27 @@ memory under 600 MB): `KokoroFlag.inRelease` is true. Two earlier runs stopped l
 dimmed and suspended the app; the bench now holds the idle timer off while it runs. Not measured: the iPhone 12 (4 GB,
 behind a Screen Time limit) and the iPad; the memory margin is 61 MB.
 
+## The web on Android's q8 model (2026-11-27): slower than real time on one thread, not adopted
+
+The owner, on the iPhone Duo's Safari: "Didn't we slim down to kokoro voices already? Can we use those on the web?"
+Measured in headless Chrome 157 on the M3 (load 4 to 10, `nice -n 15`), the Release's `kokoro-v2-model_q8.onnx`
+(92,361,116 bytes, SHA-256 checked) on onnxruntime-web 1.31.1 WASM, through the shipped `js/kokoro-worker.js`
+and `KokoroVoice.selfTest()`, then 12 lines of `gut-59770-105`'s published phonemes (60 s of audio, 400-symbol
+pieces, five voices):
+
+| Model, threads | Self-test RTF | RTF all lines / p50 / p95 | Verdict |
+|---|---|---|---|
+| q8, 1 thread (eardrama.org) | 1.33 | 1.36 / 1.33 / 1.56 | refused "slow" |
+| uint8 (`model_uint8.onnx`, 177 MB), 1 thread | 1.28 | 1.30 / 1.30 / 1.33 | refused "slow" |
+| q8, 2 threads (cross-origin isolated, local server) | 0.80 | 0.77 / 0.75 / 0.81 | refused "slow" |
+| q8, 4 threads (cross-origin isolated, local server) | 0.57 | 0.62 / 0.59 / 0.89 | passes |
+
+Every render finite, none silent (lowest line RMS 0.058; a 23 s WAV of the first four lines at -22.5 dBFS);
+the whole headless Chrome peaked at 1.0 to 1.2 GB RSS, page JS heap 108 MB. An 8 s line waits about 11 s on one
+thread. Isolation is not available: eardrama.org sends no COOP/COEP, and archive.org's `/services/img/` sends no
+CORP or CORS headers, so a service worker adding `COEP: require-corp` would block the pictures, and `COOP: same-origin` cuts sign-in popups off from the page.
+A phone's two fast cores would sit near the 2-thread row anyway. The web keeps the fp32 model on WebGPU.
+
 ## Sources
 
 

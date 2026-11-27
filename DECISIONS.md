@@ -636,6 +636,26 @@ fp32 activations instead (`kokoro-v2-manifest.json`, ~107 MB), with the CPU aren
 shrunk after every render and 100-symbol pieces: RTF and peak memory pass the gate
 (R2-kokoro-feasibility, "S6a on the Pixel 8a"). Never fp16 on Android either.
 
+*Update, the web and the slimmed models (2026-11-27)*: the web does not switch to
+Android's q8 model on WASM. Measured in headless Chrome on the M3 with the Release's
+`kokoro-v2-model_q8.onnx`, onnxruntime-web 1.31.1, the shipped worker and self-test, 12
+lines of a real play's published phonemes: one thread (all eardrama.org can have) RTF
+**1.33** (self-test 1.33, refused "slow"; p95 1.56); `model_uint8` 1.28; cross-origin
+isolated, 2 threads 0.80 (refused), 4 threads 0.57 to 0.62. Samples finite and audible
+(RMS -22.5 dBFS). A phone has two fast cores, so even isolation would not pass, and
+isolation itself is out: GitHub Pages sends no COOP/COEP, and a service worker adding
+`COEP: require-corp` would block archive.org's images (no CORP or CORS headers on
+`/services/img/`). Apple's 185 MB model is Core ML and cannot run in a browser. So the
+web keeps one model, the fp32 on WebGPU, and an iPhone's Safari keeps the system
+voices until something passes its self-test there (the native app has Kokoro). The
+same day: the service worker kept `ed-kokoro-v1` out of its keep list, so every deploy
+deleted a downloaded model; it is kept now (`tools/test_sw.mjs`).
+**Why**: the owner asked "Can we use those on the web?"; the gate (sound, RTF under 0.7)
+answers it, and a download that is sure to be refused is worse than not offering it.
+**How to apply**: do not retry q8 or uint8 on single-threaded WASM. A web model for
+phones needs a different export (an fp16-weight model with fp32 compute on WebGPU, or a
+smaller model), measured against the same self-test before it ships.
+
 ## 079: A first take needs no account; empty productions stay out of sight; Today's scene everywhere (answered 2026-11-15)
 
 **Rule**: a newcomer can record without signing in; takes stay on the device, and
