@@ -102,7 +102,9 @@ const Reader = (() => {
   }
 
   function rowNode(row, namesRx, hues) {
-    const n = el('span', { class: `rd-row${row.cue ? ' rd-sfx' : ''}${row.indent ? ' rd-half' : ''}` });
+    // A cue row inside a speech names its piece, the Sound part's slot (B32 §3.1).
+    const n = el('span', { class: `rd-row${row.cue ? ' rd-sfx' : ''}${row.indent ? ' rd-half' : ''}`,
+                           ...(row.cue && row.runs.length && typeof row.runs[0].piece === 'number' ? { dataset: { piece: String(row.runs[0].piece) } } : {}) });
     if (row.cue) n.append(el('span', { class: 'rd-sfx-mark' }, svg('cue')));
     row.runs.forEach((r, i) => {
       // A space between two printed pieces (the data keeps no spacing there), never before a period.
@@ -921,7 +923,8 @@ const Reader = (() => {
     window.addEventListener('keydown', onMyLineKey, true);
     const startPart = opts.studio ? opts.studio.part : opts.room ? null : saved.part;
     if (startPart && parts.some(p => p.id === startPart)) { partSel.value = startPart; setPart(st, startPart); }
-    if (opts.studio && typeof Studio !== 'undefined') st.studio = Studio.attach(studioApi(st, opts), opts.studio);
+    if (opts.studio && opts.studio.part === PlaysCore.SOUND && typeof SoundStudio !== 'undefined') st.studio = SoundStudio.attach(studioApi(st, opts), opts.studio);
+    else if (opts.studio && typeof Studio !== 'undefined') st.studio = Studio.attach(studioApi(st, opts), opts.studio);
     if (typeof Marks !== 'undefined') st.marks = Marks.attach(marksApi(st, markHost));
     if (st.marks) st.marks.draw();
     layout(st, at);

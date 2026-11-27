@@ -11,9 +11,10 @@ const DataExport = (() => {
   /**
    * `store` is Store; `productions` is the plays store's productions (records only, never audio);
    * `marks` is MarksCore.exportRows(localStorage), every play's marks on this device; `scripts` is
-   * OwnScripts.exportRows(), the scripts the person added (PLAYS-DESIGN §13).
+   * OwnScripts.exportRows(), the scripts the person added (PLAYS-DESIGN §13); `ownSounds` is
+   * SoundStore.exportRows(), the sounds the person recorded or brought (B32 §3.4), each with its audio.
    */
-  function build(store, productions = [], now = Date.now(), marks = [], scripts = []) {
+  function build(store, productions = [], now = Date.now(), marks = [], scripts = [], ownSounds = []) {
     const positions = (id) => store.position(id) || {};
     return {
       app: 'Ear Drama',
@@ -34,6 +35,7 @@ const DataExport = (() => {
       })),
       marks: marks.map(m => ({ ...m })),
       scripts: scripts.map(s => ({ ...s })),
+      ownSounds: ownSounds.map(s => ({ ...s })),
     };
   }
 

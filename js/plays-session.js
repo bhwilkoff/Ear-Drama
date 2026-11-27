@@ -150,7 +150,7 @@ const RecordingSession = (() => {
         };
         const loudness = C.integratedLoudness(atRate.samples, atRate.sampleRate);
         if (loudness !== null) take.loudness = loudness;
-        mutate(p => C.addTake(p, take));
+        mutate(p => (over.keep ? over.keep(p, take) : C.addTake(p, take)));
         s.lastTakeBleed = bleed;
         return take;
       })();
@@ -232,6 +232,24 @@ const RecordingSession = (() => {
     s.recordInRoom = async (lineID, part, capture = 'room') => {
       if (!s.started || s.isBusy() || ended) return null;
       const t = await listenAndKeep(lineID, {}, false, { part, capture });
+      if (!ended && s.phase.kind !== 'failed') set({ kind: 'idle' });
+      return t;
+    };
+
+    /**
+     * A performed cue (B32 §3.1 item 6): the slot's line is the cue (a speech heard as it sits in the play; for a
+     * printed cue, the line before it), then the microphone, and `keep(production, take)` puts the take in its slot,
+     * never in a line's chosen takes. Resolves to the take, or null.
+     */
+    s.recordCue = async (lineID, keep) => {
+      if (!s.started || s.isBusy() || ended) return null;
+      cancelled = false;
+      const line = script.lines.find(l => l.id === lineID);
+      const cue = line && line.kind === 'speech' ? [line] : C.cueLines(script, lineID);
+      const { heard, bleed } = await playCues(cue, C.thresholdFor(roomToneRMS));
+      if (ended) return null;
+      if (cancelled) { set({ kind: 'idle' }); return null; }
+      const t = await listenAndKeep(lineID, heard, bleed, { part: C.SOUND, keep });
       if (!ended && s.phase.kind !== 'failed') set({ kind: 'idle' });
       return t;
     };
@@ -356,10 +374,22 @@ const ListenThrough = (() => {
   'use strict';
   const C = PlaysCore;
 
-  function create({ production, script, store, audio, voice, onChange = () => {} }) {
+  /**
+   * `cues(plan)` (B32 §4.4, the Sound part's live cues; js/sound-studio.js) gives `{ at(index), start(item), stopAll() }`:
+   * the sounds before, under and after each entry, started as the entry comes, ducked while it sounds. `until`
+   * stops after that entry (Hear it in place).
+   */
+  function create({ production, script, store, audio, voice, onChange = () => {}, cues = null, until = null }) {
     const plan = C.listenPlan(production, script, voice.reads ? (part) => !C.isSpeaking(part) && voice.reads(part) : null);
+    const sounds = cues ? cues(plan) : null;
     let run = 0;
-    const s = { plan, index: 0, playing: false, rate: 1 };
+    const s = { plan, index: 0, playing: false, rate: 1, until };
+    const running = new Set();
+    const begin = async (item) => {
+      const h = await sounds.start(item);
+      if (h) { running.add(h); h.done.then(() => running.delete(h)); }
+      return h;
+    };
 
     s.current = () => plan[s.index] || null;
 
@@ -371,14 +401,26 @@ const ListenThrough = (() => {
       onChange(s);
       try {
         await audio.startPlayback();
-        while (my === run && s.index < plan.length) {
+        while (my === run && s.index < plan.length && (s.until === null || s.index <= s.until)) {
           const entry = plan[s.index];
+          const at = sounds ? sounds.at(s.index) : null;
+          if (at) {
+            for (const item of at.before) { const h = await begin(item); if (h) await h.done; if (my !== run) return; }
+            for (const item of at.under) await begin(item);
+          }
           onChange(s);
+          for (const h of running) h.duck(true);
           if (entry.source === 'take') await audio.playTake(await store.readTake(production.id, entry.take.file));
           else await voice.speak(entry.text, entry.part, s.rate);
           if (my !== run) return;
+          for (const h of running) h.duck(false);
+          if (at) {
+            for (const item of at.after) { const h = await begin(item); if (h) await h.done; if (my !== run) return; }
+            for (const id of at.stop) for (const h of running) if (h.soundID === id) h.stop();
+          }
           s.index += 1;
         }
+        if (sounds && my === run) { for (const h of [...running]) if (!h.bed) await h.done; if (my === run) sounds.stopAll(); }
       } catch (e) {
         console.error('listen-through', e);
       }
@@ -394,6 +436,7 @@ const ListenThrough = (() => {
       s.playing = false;
       voice.cancel();
       audio.stopPlayback();
+      if (sounds) sounds.stopAll();
       onChange(s);
     };
 
@@ -402,6 +445,7 @@ const ListenThrough = (() => {
       s.playing = false;
       voice.cancel();
       audio.stop();
+      if (sounds) sounds.stopAll();
     };
 
     return s;

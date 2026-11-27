@@ -368,11 +368,11 @@ const PlayStore = (() => {
        * speaking line is human (owner 2026-10-23), rendered first if missing or stale.
        * Refused otherwise (§5 rule 4).
        */
-      async exportMix(id, makeContext) {
+      async exportMix(id, makeContext, opts = {}) {
         const p = store.production(id);
         const script = p && await store.script(p);
         if (!p || !script || !C.isComplete(p, script)) throw new C.MixFailure('unfinished');
-        const blob = await store.renderMix(id, makeContext);
+        const blob = await store.renderMix(id, makeContext, opts);
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = `${p.title.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Play'}.wav`;

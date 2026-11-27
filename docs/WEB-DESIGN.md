@@ -985,7 +985,7 @@ web app follows today.
      and an empty dock under the page area is the studio's (S3).
   13. **Voices and Hear the cast** (Decision 076 S2, PLAYS-DESIGN §2.8). A
      fourth top-bar icon, **Voices**, opens the play's cast in a sheet: each
-     part (speaking parts largest first, then Sound effects and Stage
+     part (speaking parts largest first, then Sound and Stage
      directions) with its voice chip, the same picker as the cast sheet,
      and Recast all. This cast is the play's (`s:<script>`), and a
      production made later starts from it. In the bottom bar, **Hear the
@@ -1098,6 +1098,87 @@ web app follows today.
        top (close, the part over the play, "K of N" kept), the strip ... the
        dock. At 1100 px and wider, "In this scene" (faces) on the left and
        this line's aids and the keys on the right" (§4.10b's fixed slots).
+  14a. **Stage directions and Sound as parts; the sound board** (B32,
+     `docs/research/design/B32-sound-board.md` §2-§3 and §7 are binding on
+     the verbs; Decision 091 on the mix; owner 2026-11-26: *"I'd like to add
+     the ability to record both stage direction (as a character) and foley
+     sounds within a well-designed foley (or sound effects, depending on the
+     need of the play) soundboard/interface that would allow someone to add
+     sounds in the backgrounds of a recording."*). Code: `js/sound-core.js`
+     (no DOM: slots, placement edits, the pack manifest reader, search, the
+     live listen's cue schedule), `js/sound-store.js` (the pack in Cache
+     Storage `ed-sounds-1`, own sounds in `ed-plays` under `sounds/mine/`, the
+     mix's resolver, audition), `js/sound-studio.js` (the Sound part's
+     studio and the board); tests `js/sound.test.js`; frames
+     `tools/web_fit_sound.py`.
+     - **The cast sheet** lists **Sound** after the speaking parts on every
+       script (`PlaysCore.castParts` always ends Sound, then Stage directions
+       when the script has any). Sound's row: "N cues" (the reader's cue
+       rows), "Add sounds" with none; taken, "9 of 12 cues · 2 beds". Stage
+       directions' row keeps its voice chip ("Not read" until cast); taken,
+       "6 of 22 recorded · the rest silent". A shared production lists Sound
+       only where its record holds the part (the Worker's cast is unchanged).
+     - **Stage directions** in the studio: each direction line carries the
+       take state at its line end (`.rd-take`), records as any line, and
+       **Done with this part** is enabled from the first take: an unrecorded
+       direction is silent and never blocks finishing.
+     - **The Sound part's studio** (`?read=&production=&part=sound`): each cue
+       row on the page is a **slot** with the take state at its end (an empty
+       ring, the number of sounds in it, or a dash for Leave silent); the
+       current slot is outlined in ink (`.sb-cur`); its chosen sounds are
+       listed under the cue in caption type ("Thunder, close · After"); a bed
+       draws a 3 px rule in the left margin from its first line to its last.
+       A right click or a long press on any line offers **Add a sound here**
+       (a slot at that line's end, removed when left empty). The dock: one
+       status row, "Cue 13 of 34 · Thunder, close · After" (no mode
+       control). The transport: **Sounds** (the board), Previous slot, the
+       round record control (a performed cue: a take on the slot, never a
+       line's chosen take; the headphones gate and room tone as for any
+       part, asked at the first press), Next slot, Listen from here. Keys:
+       `J` / `K` next and previous slot, Space records, `S` the board, `L`
+       hears the slot in place.
+     - **The board** (a `<dialog>` sheet below 860 px of reader width, the
+       studio's 360 px panel from it): the slot ("CUE 13 OF 34 · URIAH" and
+       the cue's words), **Done**, and **Leave silent** while empty; **In this
+       cue** (each sound: play, title, its length and placement, Remove; for
+       the selected one Before · Under · After · Bed as `.pl-mode` radios,
+       **Start** −/+ in 0.1 s down to −2 s, **Level and fades** (a
+       `<details>`: level −12 to +6 dB, fade in and out 0, 0.2, 0.5, 1, 2 s,
+       Under's length Whole or Loop to the end of the line, Under voices the
+       lane's or the cue's own, Off included), a Bed's **Until** (a tap on a
+       line of the page; the sheet steps aside while it waits), and **Hear it
+       in place**); **Search** (`<input type="search">`, opened holding the
+       first word of the cue that is a tag in the pack, else empty; titles and
+       tags); one row of single-select category chips, the pack's own then
+       **Mine**; the results (56 px rows: audition, title, "0:06 · OpenGameArt
+       · CC0", **Add** / **In cue**; a tap on the title opens its record:
+       source, license, evidence, date checked). A category not downloaded
+       heads its rows with "Weather · 1.3 MB" and **Download**, its rows
+       dimmed; offline, "1.3 MB · Offline".
+     - **The pack is a source that may be absent** (BACKLOG-LOOP round 3:
+       its hosting waits on the owner). `CONFIG.sounds.manifest` null: the
+       library shows nothing and the board is search over Mine, Mine,
+       performed cues and Leave silent. Configured but unreachable: one line,
+       "The sounds are not downloaded yet." with Try again. A manifest row
+       without a license in {CC0-1.0, PDM-1.0, US-pre-1926}, an evidence URL
+       and a checked date, or from a refused host, is never listed.
+     - **Mine** (own sounds, B32 §3.4): this device only, never synced,
+       uploaded, shared or published; the production stores the id. **Record a
+       sound** (up to 30 s, no headphones gate: nothing plays) and **Bring a
+       file** (`<input type="file" accept="audio/*">`, up to 10 minutes and
+       50 MB, stored as a 16-bit 48 kHz WAV). Export my data carries them
+       (docs/EXPORT.md `ownSounds[]`). A slot whose own sound is not here
+       reads "On another device" and plays nothing.
+     - **Listening**: Listen through and Listen from here play the cues at
+       their anchors live, ducked while a voice entry sounds; a complete play
+       renders through `PlaysCore.renderMix` with the duck. A sound the device
+       lacks refuses the mix naming it: "2 sounds are on another device: Owl
+       at night, Gate creak." with **Export without them** and Cancel.
+     - **States** (B32 §7): the manifest loading, three skeleton rows; no
+       match, "No sound called “zeppelin”." with **Record it**; Mine empty,
+       "No sounds of your own yet." with Record a sound and Bring a file; a
+       failed category download says so in its header with Try again. No hint
+       banner, no walkthrough.
   15. **Marks** (Decision 076 S5; PLAYS-DESIGN §2.10 is binding on the
      verbs; owner 2026-11-14: *"...and mark them up and do all of the
      things that a good book/script reading experience should contain."*).

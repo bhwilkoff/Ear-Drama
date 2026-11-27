@@ -29,6 +29,7 @@ DEFAULT_SUITES="js/api.test.js
   js/along.test.js
   js/marks.test.js
   js/studio.test.js
+  js/sound.test.js
   js/voice-cast.test.js
   js/kokoro.test.js
   js/voices-step.test.js

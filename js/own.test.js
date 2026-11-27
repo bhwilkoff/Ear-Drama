@@ -97,7 +97,7 @@ test('Done gives each line its id once and keeps the castable shape, sealed', as
   eq(s.revision, await O.revisionOf(s.lines), 'the revision is its lines\'');
   eq(s.lines.map(l => l.id).slice(0, 3), ['L0001', 'L0002', 'L0003'], 'ids in order');
   eq(s.lines.filter(l => l.kind === 'direction').map(l => l.source), ['A LITTLE PLAY', 'Somebody knocks twice.'], 'a line with no part is a direction');
-  eq(C.castParts(s).map(p => p.title), ['ANNA', 'BEN', 'Sound effects', 'Stage directions'], 'the recorder casts it');
+  eq(C.castParts(s).map(p => p.title), ['ANNA', 'BEN', 'Sound', 'Stage directions'], 'the recorder casts it');
   eq((await env.own.list())[0].done, true, 'its row says Done');
 });
 

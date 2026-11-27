@@ -174,7 +174,7 @@ const ReaderCore = (() => {
   }
 
   /** An aside whose words begin "sound of", "noise of" or "music" is a cue, whatever the parser called it. */
-  const CUE_WORDS = /^[\s(\[_]*(?:(?:sounds?|noises?) of\b|music\b)/i;
+  const CUE_WORDS = PlaysCore.CUE_WORDS;
 
   /**
    * How a line is set. A speech gives `speeches`: one, or more when the printed text runs a second
