@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
@@ -81,6 +82,8 @@ import androidx.core.content.FileProvider
 import com.example.appname.plays.CastPart
 import com.example.appname.plays.LiveListen
 import com.example.appname.plays.MixPlayback
+import com.example.appname.plays.MixTimeline
+import com.example.appname.plays.SoundCore
 import com.example.appname.plays.OwnScript
 import com.example.appname.plays.OwnWords
 import com.example.appname.plays.PartID
@@ -652,11 +655,23 @@ fun ProductionScreen(
 /** The who line of a part card: who holds it and how far it is, or that it is open or left silent. */
 internal fun partWho(part: CastPart, production: Production, script: PlayScript): String {
     val state = production.state(part.id)
+    // Sound counts cues and beds, Stage directions what is recorded, the rest silent (B32 §2 item 3, §3.1 item 1).
+    val sound = part.id == PartID.SOUND
+    val directions = part.id == PartID.DIRECTIONS
+    val soundHolds = sound && com.example.appname.plays.SoundCore.summary(script, production).sounds > 0
+    val by = state.performer?.let { "$it · " }.orEmpty()
     return when (state.status) {
-        PartState.Status.Open -> "Open"
-        PartState.Status.Recording ->
-            "You · ${part.lineCount - Relay.missingLines(part.id, production, script).size} of ${part.lineCount}"
-        PartState.Status.Done -> state.performer?.let { "$it · recorded" } ?: "Recorded"
+        PartState.Status.Open -> if (soundHolds) com.example.appname.plays.SoundCore.partLine(script, production, taken = false) else "Open"
+        PartState.Status.Recording -> when {
+            sound -> "You · " + com.example.appname.plays.SoundCore.partLine(script, production, taken = true)
+            directions -> "You · " + com.example.appname.plays.SoundCore.directionsLine(script, production)
+            else -> "You · ${part.lineCount - Relay.missingLines(part.id, production, script).size} of ${part.lineCount}"
+        }
+        PartState.Status.Done -> when {
+            sound -> by + com.example.appname.plays.SoundCore.partLine(script, production, taken = true)
+            directions -> by + com.example.appname.plays.SoundCore.directionsLine(script, production)
+            else -> state.performer?.let { "$it · recorded" } ?: "Recorded"
+        }
         PartState.Status.Silent -> "Left silent"
     }
 }
@@ -772,6 +787,55 @@ internal fun ListenThrough(production: Production, script: PlayScript, shared: S
     var liveJob by remember { mutableStateOf<Job?>(null) }
     var reportingTake by remember { mutableStateOf<String?>(null) }
     val complete = Relay.isComplete(production, script)
+    // A sound this device lacks refuses the mix by name; Export without them leaves it out (B32 §7).
+    var missing by remember { mutableStateOf<Pair<List<String>, Boolean>?>(null) }
+
+    /** Renders the mix; null when a sound is not on this device (named in [missing]) or the render failed (in [error]). */
+    suspend fun render(without: Boolean, forExport: Boolean): File? = try {
+        missing = null
+        plays.renderMix(production.id, without)
+    } catch (e: MixTimeline.MissingSounds) {
+        missing = plays.missingNames(production.id, e.ids) to forExport
+        null
+    }
+
+    fun listenMix(without: Boolean) {
+        scope.launch {
+            mixing = true
+            try {
+                shared?.prepareListen()
+                val file = render(without, false) ?: return@launch
+                listenedFrom = plays.store.production(production.id)?.chosenFingerprint
+                mix.onEnded = {
+                    playing = false
+                    val from = listenedFrom
+                    if (!mix.skipped && from != null) plays.store.markListenedThrough(production.id, from)
+                }
+                mix.load(file)
+                loaded = true
+                error = null
+                if (container.playback.state.value.isPlaying) container.playback.togglePlay()
+                mix.toggle()
+                playing = true
+            } catch (e: Exception) {
+                error = e.message ?: "The play could not be mixed."
+            } finally {
+                mixing = false
+            }
+        }
+    }
+
+    fun exportMix(without: Boolean) {
+        scope.launch {
+            try {
+                val file = render(without, true) ?: return@launch
+                shareMix(context, file)
+                error = null
+            } catch (e: Exception) {
+                error = e.message ?: "The play could not be mixed."
+            }
+        }
+    }
 
     fun stopLive() {
         liveJob?.cancel()
@@ -834,31 +898,7 @@ internal fun ListenThrough(production: Production, script: PlayScript, shared: S
                     )
                 }
             }
-            complete -> Button(onClick = {
-                scope.launch {
-                    mixing = true
-                    try {
-                        shared?.prepareListen()
-                        val file = plays.renderMix(production.id)
-                        listenedFrom = plays.store.production(production.id)?.chosenFingerprint
-                        mix.onEnded = {
-                            playing = false
-                            val from = listenedFrom
-                            if (!mix.skipped && from != null) plays.store.markListenedThrough(production.id, from)
-                        }
-                        mix.load(file)
-                        loaded = true
-                        error = null
-                        if (container.playback.state.value.isPlaying) container.playback.togglePlay()
-                        mix.toggle()
-                        playing = true
-                    } catch (e: Exception) {
-                        error = e.message ?: "The play could not be mixed."
-                    } finally {
-                        mixing = false
-                    }
-                }
-            }, colors = playButtonColors()) {
+            complete -> Button(onClick = { listenMix(false) }, colors = playButtonColors()) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Text(if (production.isFinished) "Play" else "Listen through", Modifier.padding(start = Spacing.S2.dp))
             }
@@ -894,18 +934,19 @@ internal fun ListenThrough(production: Production, script: PlayScript, shared: S
             }
         }
         if (complete && running == null) {
-            OutlinedButton(onClick = {
-                scope.launch {
-                    try {
-                        shareMix(context, plays.renderMix(production.id))
-                        error = null
-                    } catch (e: Exception) {
-                        error = e.message ?: "The play could not be mixed."
-                    }
-                }
-            }, enabled = !mixing) {
+            OutlinedButton(onClick = { exportMix(false) }, enabled = !mixing) {
                 Icon(Icons.Filled.Share, contentDescription = null)
                 Text("Export", Modifier.padding(start = Spacing.S2.dp))
+            }
+        }
+        missing?.let { (names, forExport) ->
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Warning, contentDescription = null, tint = AppSemantics.colors.warning)
+                Text(SoundCore.missingLine(names), style = MaterialTheme.typography.bodyMedium)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+                OutlinedButton(onClick = { if (forExport) exportMix(true) else listenMix(true) }, colors = wayColors()) { Text("Export without them") }
+                TextButton(onClick = { missing = null }) { Text("Cancel") }
             }
         }
         error?.let { ErrorLine(it) }

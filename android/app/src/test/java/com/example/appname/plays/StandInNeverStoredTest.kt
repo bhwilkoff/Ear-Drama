@@ -304,10 +304,11 @@ class StandInNeverStoredTest {
     /** The model store downloads model bytes only: no audio type may appear in it. */
     private val modelStoreForbidden = listOf("FloatArray", "AudioTrack", "StandInAudio", "SyntheticPCM", "KokoroRenderer")
 
+    /** SoundStore.kt: the person's own sounds, a recording they made or a file they brought, through WavSink, which refuses a device voice. */
     private val audioWriters = mapOf(
         "FileOutputStream" to setOf("plays/PlayFiles.kt"),
         "RandomAccessFile" to setOf("plays/PlayFiles.kt"),
-        "WavSink(" to setOf("plays/PlayFiles.kt"),
+        "WavSink(" to setOf("plays/PlayFiles.kt", "plays/SoundStore.kt"),
         "TakeAudio.write(" to setOf("plays/PlayFiles.kt"),
         "MediaMuxer" to setOf("plays/MixEncoder.kt"),
         "AacMixSink(" to setOf("plays/MixEncoder.kt", "plays/PlaysLibrary.kt"),

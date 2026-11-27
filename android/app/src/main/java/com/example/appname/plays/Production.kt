@@ -39,6 +39,8 @@ data class Take(
     /** A take that arrived from a room reader's device: the seat it was credited to and the member that sent it. */
     val seat: String? = null,
     val member: String? = null,
+    /** A performed cue (B32 §3.1 item 6): the slot this Sound part take belongs to. It is the slot's, never its line's take. */
+    val cue: String? = null,
 ) {
     @Serializable
     enum class Capture {
@@ -145,7 +147,8 @@ data class Production(
     /** Cues placed against lines (B32 §5.1); absent from `production.json` until a sound is placed. */
     val sound: SoundBlock? = null,
 ) {
-    val isEmpty: Boolean get() = takes.isEmpty()
+    /** No take and no placed sound: a production holding only a sound someone chose is the person's work, not an empty shell. */
+    val isEmpty: Boolean get() = takes.isEmpty() && sound?.slots.orEmpty().none { it.silent || it.sounds.isNotEmpty() }
 
     fun state(part: PartID): PartState = parts[part] ?: PartState()
 
@@ -160,7 +163,7 @@ data class Production(
      */
     fun usableTake(lineID: String): Take? = chosenTake(lineID)?.takeIf { !it.bleed }
 
-    fun takes(lineID: String): List<Take> = takes.filter { it.lineID == lineID }
+    fun takes(lineID: String): List<Take> = takes.filter { it.lineID == lineID && it.cue == null }
 
     fun withPart(part: PartID, state: PartState) = copy(parts = parts + (part to state))
 

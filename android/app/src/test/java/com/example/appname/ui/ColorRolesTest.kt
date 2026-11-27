@@ -31,9 +31,9 @@ class ColorRolesTest {
         assertEquals(setOf("colorScheme.tertiary"), redOutsideTheRoles("tint = MaterialTheme.colorScheme.tertiary"))
     }
 
-    /** Owner, 2026-10-29: "Red means recording." Only the places recording happens use it: the recording screen and Recorder.kt, and since the studio moved into the reader (Decision 076 S3) StudioUi.kt (the record control, the meter, Start recording) ReaderScreen.kt (the current line's outline while a cue plays or the microphone is open) and, since a room records on each reader's own device (PLAYS-DESIGN §12.10), ReaderRoom.kt (the Recording dot beside Stop); and the helper that defines the button. */
+    /** Owner, 2026-10-29: "Red means recording." Only the places recording happens use it: the recording screen and Recorder.kt, and since the studio moved into the reader (Decision 076 S3) StudioUi.kt (the record control, the meter, Start recording) ReaderScreen.kt (the current line's outline while a cue plays or the microphone is open) and, since a room records on each reader's own device (PLAYS-DESIGN §12.10), ReaderRoom.kt (the Recording dot beside Stop), and since the Sound part records a performed cue and the person's own sounds (B32) SoundScreen.kt and SoundBoard.kt; and the helper that defines the button. */
     @Test fun `the record red appears only where recording happens`() {
-        val found = sources.filter { it.name !in setOf("RecordingScreen.kt", "Recorder.kt", "StudioUi.kt", "ReaderScreen.kt", "ReaderRoom.kt") && it.parentFile?.name != "theme" }
+        val found = sources.filter { it.name !in setOf("RecordingScreen.kt", "Recorder.kt", "StudioUi.kt", "ReaderScreen.kt", "ReaderRoom.kt", "SoundScreen.kt", "SoundBoard.kt") && it.parentFile?.name != "theme" }
             .associate { it.name to recordRole(it.readText()).minus(if (it.name == "Components.kt") setOf("OnAir.colors.record", "OnAir.colors.onRecord", "recordButtonColors()") else emptySet()) }
             .filterValues { it.isNotEmpty() }
         assertEquals(emptyMap<String, Set<String>>(), found)

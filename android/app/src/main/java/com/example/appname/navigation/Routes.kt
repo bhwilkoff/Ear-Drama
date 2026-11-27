@@ -57,6 +57,8 @@ sealed interface Route : NavKey {
     @Serializable data class Ear(val episode: String) : Route
     /** A production's cast sheet. */
     @Serializable data class Production(val id: String) : Route
+    /** The Sound part's studio and board for a production (B32, ANDROID-DESIGN §4.17): the cue rows as slots, never the reader's page. */
+    @Serializable data class Sound(val productionId: String) : Route
     /** The invitation page for the token the session holds (never in the key: a token is not saved state). */
     @Serializable data object Invitation : Route
     /** A finished ear drama's page. */

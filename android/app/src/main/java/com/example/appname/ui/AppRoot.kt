@@ -220,7 +220,7 @@ fun AppRoot(
     val accountAsk by container.plays.accountAsk.collectAsState()
     // Reading is full screen (§4.17): the tab bar, the mini player and the offline line step aside.
     val last = stack.lastOrNull()
-    val reading = last is Route.Reader || last is Route.ReadRoom || last is Route.ReadPair ||
+    val reading = last is Route.Reader || last is Route.Sound || last is Route.ReadRoom || last is Route.ReadPair ||
         last is Route.AddScript || last is Route.OwnParts || last is Route.Ear
     // A page that has done its work gives way to the next one: depth stays the same (§1.4).
     val swap: (Route) -> Unit = { to ->
@@ -447,7 +447,9 @@ fun AppRoot(
                             entry<Route.Production> { route ->
                                 // Take Part, Record and Open Part open the reader with the studio (PLAYS-DESIGN §2.9 rule 1).
                                 val openStudio = { part: PartID, line: String? ->
-                                    container.plays.store.production(route.id)?.let { stack.add(Route.Reader(it.scriptID, line, route.id, part.raw)) }
+                                    // The Sound part is a list of cue slots with a board, not a role's lines on the reader's page.
+                                    if (part == PartID.SOUND) stack.add(Route.Sound(route.id))
+                                    else container.plays.store.production(route.id)?.let { stack.add(Route.Reader(it.scriptID, line, route.id, part.raw)) }
                                     Unit
                                 }
                                 val readAlong = {
@@ -455,6 +457,9 @@ fun AppRoot(
                                     Unit
                                 }
                                 ProductionScreen(route.id, onBack = back, onRecord = { part -> openStudio(part, null) }, onReplace = { part, line -> openStudio(part, line) }, onReadAlong = readAlong, onEditOwn = { stack.navigateTo(Route.OwnParts(it)) }, onCastByEar = { stack.navigateTo(Route.Ear(it)) })
+                            }
+                            entry<Route.Sound> { route ->
+                                com.example.appname.ui.screens.SoundScreen(route.productionId, onBack = back)
                             }
                             entry<Route.Recording> { route ->
                                 RecordingScreen(route.production, PartID(route.part), onBack = back, startLine = route.line)

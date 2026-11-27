@@ -28,7 +28,7 @@ class CastableScriptsFileTest {
             assertEquals("${script.id} line ids are unique", script.lines.size, script.lines.map { it.id }.toSet().size)
             val speaking = script.castParts.filter { it.id.isSpeaking }.map { it.lineCount }
             assertEquals("${script.id} largest part first", speaking.sortedDescending(), speaking)
-            assertEquals("every line belongs to one part", script.lines.size, script.castParts.sumOf { it.lineCount })
+            assertEquals("every line belongs to one part (Sound counts its cue rows, B32)", script.lines.size, script.castParts.filter { it.id != PartID.SOUND }.sumOf { it.lineCount } + script.lines(PartID.SOUND).size)
         }
     }
 
