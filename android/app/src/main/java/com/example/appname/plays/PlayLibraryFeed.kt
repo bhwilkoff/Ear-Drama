@@ -8,6 +8,10 @@ import io.ktor.http.isSuccess
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,10 +31,11 @@ fun interface LibraryTransport {
 /** The one Ktor client's read of the published library (contract §4.1): public data, no session to refresh. */
 class KtorLibraryTransport(private val client: HttpClient, private val root: String = DEFAULT_ROOT) : LibraryTransport {
     override suspend fun get(path: String): String? = withTimeout(TIMEOUT_MS) {
+        val t0 = System.nanoTime()
         val response = client.get(root + path)
         when {
             response.status == HttpStatusCode.NotFound -> null
-            response.status.isSuccess() -> response.bodyAsText()
+            response.status.isSuccess() -> response.bodyAsText().also { PlaysPerf.say("fetch $path", t0, "${it.length} chars") }
             else -> throw IOException("HTTP ${response.status.value} for $path")
         }
     }
@@ -50,6 +55,7 @@ class KtorLibraryTransport(private val client: HttpClient, private val root: Str
 class PlayLibraryFeed(
     private val transport: LibraryTransport,
     private val cacheDir: File?,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     private val bundle: suspend () -> List<PlayScript>,
 ) {
     sealed interface Rows {
@@ -63,10 +69,51 @@ class PlayLibraryFeed(
     val rows: StateFlow<Rows> = _rows
     private val lock = Mutex()
 
+    private var refresh: Job? = null
+
+    /**
+     * The copy kept on this device answers at once and the published index is asked for behind it (as Apple's `PlaysLibrary.load`
+     * does); only a device with no copy waits for the network. A cold start used to wait for the 1.8 MB download and its decode
+     * (13 s on a Google TV) before any list drew.
+     */
     suspend fun loadRows() = lock.withLock {
         val now = _rows.value
         if (now is Rows.Ready && now.published) return@withLock
-        _rows.value = withContext(Dispatchers.IO) { read() }
+        _rows.value = PlaysPerf.time("loadRows") {
+            val kept = withContext(Dispatchers.IO) { keptIndex() }
+            if (kept != null) {
+                refresh = scope.launch { refreshIndex(kept.first) }
+                Rows.Ready(kept.second.plays, published = true, facets = kept.second.facets)
+            } else {
+                withContext(Dispatchers.IO) { read() }
+            }
+        }
+    }
+
+    /** Waits for the refresh behind a kept copy, if one started (the tests'; the app never waits on it). */
+    suspend fun refreshed() { refresh?.join() }
+
+    private suspend fun keptIndex(): Pair<String, PlayIndex>? = try {
+        val text = PlaysPerf.time("read kept index") { cache("index.json")?.takeIf { it.exists() }?.let { String(it.readBytes(), Charsets.UTF_8) } }
+        text?.let { t -> PlaysPerf.time("decode kept index", { "${t.length} chars" }) { PlayIndex.decode(t) }.takeIf { it.plays.isNotEmpty() }?.let { t to it } }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
+    }
+
+    private suspend fun refreshIndex(keptText: String) {
+        try {
+            val text = transport.get("index.json") ?: return
+            if (text == keptText) return
+            val fresh = PlaysPerf.time("decode fresh index", { "${text.length} chars" }) { PlayIndex.decode(text) }
+            if (fresh.plays.isEmpty()) return
+            runCatching { cache("index.json")?.apply { parentFile?.mkdirs() }?.writeText(text) }
+            _rows.value = Rows.Ready(fresh.plays, published = true, facets = fresh.facets)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+        }
     }
 
     /** Forgets an unavailable answer so the next [loadRows] asks again. */
@@ -77,18 +124,16 @@ class PlayLibraryFeed(
     private suspend fun read(): Rows {
         var text: String? = null
         val fresh = try {
-            transport.get("index.json")?.also { text = it }?.let(PlayIndex::decode)?.takeIf { it.plays.isNotEmpty() }
+            transport.get("index.json")?.also { text = it }?.let { t -> PlaysPerf.time("decode index", { "${t.length} chars" }) { PlayIndex.decode(t) } }?.takeIf { it.plays.isNotEmpty() }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             null
         }
         if (fresh != null) {
-            runCatching { cache("index.json")?.apply { parentFile?.mkdirs() }?.writeText(text!!) }
+            PlaysPerf.time("cache index") { runCatching { cache("index.json")?.apply { parentFile?.mkdirs() }?.writeText(text!!) } }
             return Rows.Ready(fresh.plays, published = true, facets = fresh.facets)
         }
-        val kept = runCatching { cache("index.json")?.takeIf { it.exists() }?.readText()?.let(PlayIndex::decode) }.getOrNull()
-        if (kept != null && kept.plays.isNotEmpty()) return Rows.Ready(kept.plays, published = true, facets = kept.facets)
         val bundled = runCatching { bundle() }.getOrDefault(emptyList())
         return if (bundled.isEmpty()) Rows.Unavailable else Rows.Ready(bundled.map(PlayRow::of), published = false)
     }
@@ -101,7 +146,9 @@ class PlayLibraryFeed(
      * when none is it though another is, which the caller says as "This play has changed". Null too when no one has the
      * play; throws the fetch's error when the library could not be reached and the bundle does not hold it.
      */
-    suspend fun script(id: String, revision: String? = null): PlayScript? {
+    suspend fun script(id: String, revision: String? = null): PlayScript? = PlaysPerf.time("script $id") { scriptRead(id, revision) }
+
+    private suspend fun scriptRead(id: String, revision: String?): PlayScript? {
         loadRows()
         val row = (_rows.value as? Rows.Ready)?.rows?.firstOrNull { it.id == id }
         var failure: Exception? = null
@@ -115,7 +162,7 @@ class PlayLibraryFeed(
             } else {
                 try {
                     val text = transport.get(row.path)
-                    found = text?.let { withContext(Dispatchers.Default) { decode(it, id) } }
+                    found = text?.let { withContext(Dispatchers.Default) { PlaysPerf.time("decode script $id", { "${it.length} chars" }) { decode(it, id) } } }
                     if (found != null && file != null) runCatching { file.apply { parentFile?.mkdirs() }.writeText(text!!) }
                 } catch (e: CancellationException) {
                     throw e

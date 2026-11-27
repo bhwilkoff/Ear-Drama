@@ -471,4 +471,70 @@ object SoundCore {
         val head = if (n == 1) "1 sound is" else "$n sounds are"
         return "$head on another device${if (known.isNotEmpty()) ": ${known.joinToString(", ")}" else ""}."
     }
+
+    /** A cue at its slot, as a live listen plays it. */
+    data class LiveCue(val slot: SoundSlot, val sound: SoundCue)
+
+    /**
+     * What a plan entry holds: `before` its words (the line waits for them), `under` (and a bed) from its start, `after` it
+     * (the next entry waits), and the beds that end with it (`stop`, by sound id).
+     */
+    data class EntryCues(
+        val before: MutableList<LiveCue> = ArrayList(),
+        val under: MutableList<LiveCue> = ArrayList(),
+        val after: MutableList<LiveCue> = ArrayList(),
+        val stop: MutableList<String> = ArrayList(),
+    )
+
+    /**
+     * For a listen plan, which sounds play at each entry (B32 section 4.4: close, not sample-exact); a slot on a line the plan
+     * skips (a silent direction) plays with the next entry. Mirror of `listenCues` in js/sound-core.js.
+     */
+    fun listenCues(script: PlayScript, p: Production, plan: List<Relay.ListenEntry>): List<EntryCues> {
+        val out = plan.map { EntryCues() }
+        if (plan.isEmpty()) return out
+        val at = script.lines.withIndex().associate { (i, l) -> l.id to i }
+        val entryAt = plan.map { at[it.lineID] ?: -1 }
+        fun entryFor(line: String): Int {
+            val k = at[line] ?: return -1
+            return entryAt.indexOfFirst { it >= k }
+        }
+        fun lastFor(line: String): Int {
+            val k = at[line] ?: return -1
+            var j = -1
+            entryAt.forEachIndexed { i, x -> if (x <= k) j = i }
+            return j
+        }
+        val readable = try { MixSound.readSound(p.sound) } catch (_: MixTimeline.SoundVersion) { null } ?: return out
+        for (slot in readable.slots) {
+            if (slot.line !in at) continue
+            val i = entryFor(slot.line)
+            val exact = i >= 0 && plan[i].lineID == slot.line
+            for (x in slot.sounds) {
+                if (x.at !in PLACEMENTS) continue
+                val cue = LiveCue(slot, x)
+                if (i < 0) { out[plan.size - 1].after += cue; continue }
+                if (!exact && (x.at == "after" || x.at == "under")) { out[i].before += cue; continue }
+                when (x.at) {
+                    "before" -> out[i].before += cue
+                    "after" -> out[i].after += cue
+                    else -> out[i].under += cue
+                }
+                if (x.at == "bed") out[maxOf(i, lastFor(x.until ?: slot.line))].stop += x.id
+            }
+        }
+        return out
+    }
+
+    /** The plan entries Hear it in place plays (section 3.2 item 2): from the entry before the slot's line to the one after it. */
+    fun inPlace(script: PlayScript, plan: List<Relay.ListenEntry>, line: String): IntRange? {
+        if (plan.isEmpty()) return null
+        val at = script.lines.withIndex().associate { (i, l) -> l.id to i }
+        val k = at[line] ?: 0
+        val i = plan.indexOfFirst { (at[it.lineID] ?: 0) >= k }.let { if (it < 0) plan.size else it }
+        val exact = i < plan.size && plan[i].lineID == line
+        val from = maxOf(0, i - 1)
+        val to = minOf(plan.size - 1, if (exact) i + 1 else i)
+        return from..maxOf(from, to)
+    }
 }

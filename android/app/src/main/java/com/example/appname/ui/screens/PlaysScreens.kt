@@ -917,7 +917,9 @@ internal fun ListenThrough(production: Production, script: PlayScript, shared: S
                 liveJob = scope.launch {
                     try {
                         shared?.prepareListen()
-                        listen.run(Relay.listenPlan(plays.store.production(production.id) ?: production, script) { !it.isSpeaking && cast.cast.resolve(it).read })
+                        val now = plays.store.production(production.id) ?: production
+                        val plan = Relay.listenPlan(now, script) { !it.isSpeaking && cast.cast.resolve(it).read }
+                        listen.run(plan, plays.listenCues(now, script, plan, muted))
                     } finally {
                         if (live === listen) {
                             listen.close()
