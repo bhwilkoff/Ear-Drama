@@ -7,7 +7,7 @@ import Foundation
 // summarizes, or fills in a word (§8 rule 2).
 
 /// One part on the cast sheet: a speaking role as the script names it, or one of
-/// the two parts "like any other" (§2.2), stage directions and sound effects.
+/// the two parts "like any other" (§2.2), stage directions and sound (B32 §3.1: effects and music).
 nonisolated struct PartID: Hashable, Codable, Sendable, RawRepresentable, CodingKeyRepresentable, Comparable {
     let rawValue: String
     init(rawValue: String) { self.rawValue = rawValue }
@@ -22,7 +22,7 @@ nonisolated struct PartID: Hashable, Codable, Sendable, RawRepresentable, Coding
 
     var title: String {
         if let roleName { return roleName }
-        return self == .directions ? "Stage directions" : "Sound effects"
+        return self == .directions ? "Stage directions" : "Sound"
     }
 
     init(from decoder: any Decoder) throws {
@@ -232,8 +232,8 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
     func lines(for part: PartID) -> [ScriptLine] { lines.filter { $0.part == part } }
 
     /// The parts on the cast sheet: speaking parts largest first (by lines, then
-    /// by first appearance), then sound effects and stage directions where the
-    /// script has them (§2.2).
+    /// by first appearance), then Sound on every script (its count the cue rows, B32 §3.1 item 1), then stage
+    /// directions where the script has them (§2.2).
     var castParts: [CastPart] {
         var counts: [PartID: Int] = [:]
         var first: [PartID: Int] = [:]
@@ -244,11 +244,40 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
         let speaking = counts.keys.filter(\.isSpeaking).sorted {
             counts[$0]! != counts[$1]! ? counts[$0]! > counts[$1]! : first[$0]! < first[$1]!
         }
+        counts[.sound] = cueRows.count
         let others = [PartID.sound, .directions].filter { counts[$0] != nil }
         return (speaking + others).map { CastPart(id: $0, lineCount: counts[$0]!) }
     }
 
     var speechLineIDs: [String] { lines.filter { $0.kind == .speech }.map(\.id) }
+
+    /// One of the script's cue rows, a slot the Sound part may fill (B32 §3.1): a sound or music line (`piece` nil), or
+    /// inside a speech a printed sound piece or an aside beginning "sound of", "noise of" or "music" (`piece` its index).
+    struct CueRow: Equatable, Sendable {
+        let line: String
+        let piece: Int?
+        let text: String
+    }
+
+    /// The cue rows by the reader's rule (`PlayPage.isCueWords`), the mirror of `PlaysCore.cueRows`. Never filled in.
+    var cueRows: [CueRow] {
+        var out: [CueRow] = []
+        for line in lines {
+            if line.kind == .sound || line.kind == .music {
+                out.append(CueRow(line: line.id, piece: nil, text: line.source ?? ""))
+                continue
+            }
+            guard line.kind == .speech, let parts = line.parts else { continue }
+            for (i, piece) in parts.enumerated() {
+                switch piece {
+                case let .sound(t): out.append(CueRow(line: line.id, piece: i, text: t))
+                case let .direction(t) where PlayPage.isCueWords(t): out.append(CueRow(line: line.id, piece: i, text: t))
+                default: break
+                }
+            }
+        }
+        return out
+    }
 
     /// Each role's published stand-in register by part (catalog DECISIONS 049), only "high" or "low".
     var registers: [PartID: String] {
@@ -301,6 +330,11 @@ nonisolated struct CastPart: Identifiable, Hashable, Sendable {
     let id: PartID
     let lineCount: Int
     var title: String { id.title }
+    /// "12 lines", or for Sound its cue rows: "34 cues", "Add sounds" with none (B32 §3.1 item 1).
+    var lengthText: String {
+        if id == .sound { return SoundBoard.cuesLength(lineCount) }
+        return lineCount == 1 ? "1 line" : "\(lineCount.formatted()) lines"
+    }
 }
 
 /// The bundled castable scripts (phase 1 bundles the file; PLAYS-DESIGN §3).

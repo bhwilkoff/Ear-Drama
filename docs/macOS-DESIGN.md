@@ -293,6 +293,20 @@ only here:
     Return keep, ⌥⌘I the inspector). Each of my lines shows its take state after
     the name, clickable. A window too narrow for inspector and page shows the
     inspector over the page (the system's own behavior).
+  - **Stage directions and Sound; the sound board** (B32, 2026-11-26; iOS-DESIGN
+    §4.15 "Stage directions and Sound as parts; the sound board" is the same
+    view and its rules hold here; web sibling WEB-DESIGN §4.16 item 14a). The
+    Sound part's **inspector is the board** (the slot, In This Cue with the
+    selected sound's settings, the search field at its top, the categories, the
+    results, Mine, Listen Through From Here, Done With This Part) with the dock's
+    status and transport at its head, since a Mac window has no dock. **Add a
+    Sound Here** is in the page's context menu (with a selection: a double-click
+    or a drag first) and in the **Recording** menu for the current slot's line.
+    The Recording menu for Sound: Record This Cue (Space), Next Cue (J),
+    Previous Cue (K), Add a Sound Here, Hear It in Place (L), Show / Hide Sounds
+    (S, the inspector) and ⌥⌘I; disabled, never hidden. Bring a File is the
+    system's open panel (`.fileImporter`). Own sounds live in the app
+    container's `Application Support/Sounds/mine/` and are in no sync.
   - **The page is the Ear Drama page** (PLAYS-DESIGN §2.7 rule 10; iOS-DESIGN
     §4.15 for the shared TextKit set-up). Most Mac windows give a page of 30 em
     or more, so the speaker's name sits in the right-aligned gutter; a narrow

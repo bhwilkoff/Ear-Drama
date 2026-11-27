@@ -207,14 +207,14 @@ struct PartCard<Actions: View>: View {
                     if let who {
                         Text(verbatim: who).font(TypeRamp.caption.weight(.semibold)).foregroundStyle(Color.brandText)
                     }
-                    Text(part.lineCount == 1 ? "1 line" : "\(part.lineCount) lines")
+                    Text(verbatim: part.lengthText)
                         .font(TypeRamp.caption)
                         .foregroundStyle(Color.brandTextMuted)
                 }
                 PresenceStrip(script: script, part: part.id)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel([part.title, who, part.lineCount == 1 ? "1 line" : "\(part.lineCount) lines"]
+            .accessibilityLabel([part.title, who, part.lengthText]
                 .compactMap { $0 }.joined(separator: ", "))
         }
     }

@@ -745,10 +745,46 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         var takes: [Int: StudioCore.LineState] = [:]
         /// The device-voice ring on each other part's line the studio marks: its voice's short name.
         var rings: [RingKey: String] = [:]
+        /// A studio of a part with no speaker's name to mark (Stage directions, Sound): its current line is outlined
+        /// all the same, and each of its lines carries its mark at the line's end (B32 §2 item 2, §3.1 item 2).
+        var studioLines = false
+        var ends: [Int: EndMark] = [:]
+        /// The Sound part's beds: a 3 pt rule in the left margin from each bed's first line to its last (B32 §3.1 item 2).
+        var beds: [ClosedRange<Int>] = []
         /// The reader's marks (PLAYS-DESIGN §2.10) on this script, the line index of each id, and the selection (a range of the page string).
         var marks: [Mark] = []
         var lineIndex: [String: Int] = [:]
         var selection: NSRange? = nil
+    }
+
+    /// A mark at a line's end: a direction's take state, or a sound slot's (an empty ring, the number of sounds in it, or
+    /// a dash for Leave Silent).
+    enum EndMark: Equatable, Sendable {
+        case take(StudioCore.LineState)
+        case slot(sounds: Int, silent: Bool)
+    }
+
+    /// Where each line's end mark sits on a page, in the text's own coordinates: after the line's last glyph, or in the
+    /// right margin when the text runs to the edge.
+    func endSpots(page: Int, lines wanted: Set<Int>) -> [Int: CGRect] {
+        guard !wanted.isEmpty else { return [:] }
+        let frame = self.frame(page)
+        let ctLines = CTFrameGetLines(frame) as! [CTLine]
+        var origins = [CGPoint](repeating: .zero, count: ctLines.count)
+        CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
+        let g = style.size * 0.8125
+        var out: [Int: CGRect] = [:]
+        for (i, line) in ctLines.enumerated() {
+            for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+                let attrs = CTRunGetAttributes(run) as NSDictionary
+                guard let at = attrs[NSAttributedString.Key.edLine] as? Int, wanted.contains(at) else { continue }
+                let rr = CTRunGetStringRange(run)
+                let x1 = origins[i].x + CTLineGetOffsetForStringIndex(line, rr.location + rr.length, nil)
+                let x = min(x1 + g * 0.5, textSize.width + Self.inset - g - 1)
+                out[at] = CGRect(x: x, y: origins[i].y - 1, width: g, height: g)
+            }
+        }
+        return out
     }
 
     /// Where a take-state mark sits after a speaker's name, in the text's own coordinates (y up from the text foot).
@@ -950,7 +986,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         }
 
         // The studio's current line: outlined in ink, dashed record red while its cue plays, solid while the microphone is open.
-        if let current = marks.current, marks.role != nil || marks.mineLines != nil {
+        if let current = marks.current, marks.role != nil || marks.mineLines != nil || marks.studioLines {
             var lo = CGFloat.greatestFiniteMagnitude, hi = -CGFloat.greatestFiniteMagnitude
             for (i, line) in lines.enumerated() {
                 let loc = CTLineGetStringRange(line).location
@@ -1072,6 +1108,53 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         }
 
         drawMarkRules(page: page, in: cg, theme: theme, marks: marks)
+
+        // The Sound part's beds: a rule in the left margin across each bed's lines.
+        if !marks.beds.isEmpty {
+            cg.setFillColor(theme.ink.copy(alpha: 0.55) ?? theme.ink)
+            for (i, line) in lines.enumerated() {
+                let loc = CTLineGetStringRange(line).location
+                guard loc < string.length, let at = string.attributes(at: loc, effectiveRange: nil)[.edLine] as? Int,
+                      marks.beds.contains(where: { $0.contains(at) }) else { continue }
+                let band = info[i].band
+                cg.fill(CGRect(x: -Self.inset + 1, y: band.minY - 2, width: 3, height: band.height + 4))
+            }
+        }
+
+        // A direction's take state or a sound slot's, at the line's end.
+        if !marks.ends.isEmpty {
+            let g = style.size * 0.8125
+            for (at, rect) in endSpots(page: page, lines: Set(marks.ends.keys)) {
+                guard let mark = marks.ends[at] else { continue }
+                let color: CGColor
+                let symbol: String
+                var count: String?
+                switch mark {
+                case let .take(state):
+                    switch state.state {
+                    case .none: color = theme.muted; symbol = "circle"
+                    case .chosen: color = theme.ink; symbol = "circle.fill"; count = "\(state.takes)"
+                    case .flagged: color = theme.warning ?? theme.muted; symbol = "exclamationmark.triangle.fill"
+                    }
+                case let .slot(n, silent):
+                    if silent { color = theme.muted; symbol = "minus.circle" } else if n == 0 { color = theme.muted; symbol = "circle" } else {
+                        color = theme.ink; symbol = "speaker.wave.2.circle.fill"; count = n > 1 ? "\(n)" : nil
+                    }
+                }
+                if let image = ReaderGlyph.symbol(symbol, size: g, color: color) {
+                    let h = rect.height * 0.95
+                    let w = h * CGFloat(image.width) / CGFloat(image.height)
+                    cg.draw(image, in: CGRect(x: rect.minX, y: rect.minY, width: w, height: h))
+                }
+                if let count, rect.maxX + 3 + g < textSize.width + Self.inset {
+                    let s = NSAttributedString(string: count, attributes: [
+                        .font: markFont, NSAttributedString.Key(kCTForegroundColorAttributeName as String): color,
+                    ])
+                    cg.textPosition = CGPoint(x: rect.maxX + 3, y: rect.minY + 1)
+                    CTLineDraw(CTLineCreateWithAttributedString(s), cg)
+                }
+            }
+        }
 
         // Another part's line a device voice reads: a dashed ring in the part's hue holding a waveform, and the voice's name.
         if !marks.rings.isEmpty {

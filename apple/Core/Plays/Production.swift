@@ -30,6 +30,9 @@ nonisolated struct Take: Codable, Identifiable, Equatable, Sendable {
     let peak: Float
     /// The bleed check found the device voice in the microphone (§5 rule 2).
     let bleed: Bool
+    /// A performed cue (B32 §3.1 item 6): the sound slot this take was recorded for. Such a take is the slot's, never its
+    /// line's chosen take and never in the line's take list.
+    var cue: String? = nil
 
     static let standIn = "standin"
 
@@ -99,7 +102,8 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
     /// or reaches the mix (§5 rule 2, §8 rule 3).
     func usableTake(for lineID: String) -> Take? { chosenTake(for: lineID).flatMap { $0.bleed ? nil : $0 } }
 
-    func takes(for lineID: String) -> [Take] { takes.filter { $0.lineID == lineID } }
+    /// A line's takes; a performed cue (`cue`) is its slot's, never the line's.
+    func takes(for lineID: String) -> [Take] { takes.filter { $0.lineID == lineID && $0.cue == nil } }
 
     /// A new take becomes the line's chosen one; the older takes stay.
     mutating func add(_ take: Take) {

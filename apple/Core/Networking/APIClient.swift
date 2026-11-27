@@ -46,6 +46,15 @@ actor APIClient {
         return String(decoding: data, as: UTF8.self)
     }
 
+    /// The sound pack's manifest or one of its files (B32 §5.2), from where the pack is served. No token: not a Worker.
+    func soundPackData(_ url: URL) async throws -> Data {
+        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 60)
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, 200...299 ~= http.statusCode else { throw URLError(.badServerResponse) }
+        guard data.count <= 20_000_000 else { throw URLError(.dataLengthExceedsMaximum) }
+        return data
+    }
+
     /// A transcript's times as archive.org serves them (`.vtt`, beside the `.txt`), with the status: a 404 is an answer
     /// (no times), not a failure. No token: it is not a Worker. The text is capped before it is read.
     func transcriptCues(_ url: URL) async throws -> (String, Int) {

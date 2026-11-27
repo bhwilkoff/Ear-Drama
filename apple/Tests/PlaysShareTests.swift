@@ -544,7 +544,7 @@ struct PlaysShareLineTests {
         #expect(PlaysShare.line(PlaysRefusal.code("not_open")) == "This part is taken.")
         #expect(PlaysShare.line(PlaysRefusal.code("script_not_publishable", status: 422)) == "This play cannot be published.")
         #expect(PlaysShare.line(PlaysRefusal.code("another_part_is_recording", detail: "role:MOLLY")) == "MOLLY is still recording.")
-        #expect(PlaysShare.line(PlaysRefusal.code("another_part_is_recording", detail: "sound")) == "Sound effects is still recording.")
+        #expect(PlaysShare.line(PlaysRefusal.code("another_part_is_recording", detail: "sound")) == "Sound is still recording.")
         #expect(PlaysShare.line(PlaysRefusal.code("lines_missing", count: 1)) == "1 line still needs a take.")
         #expect(PlaysShare.line(PlaysRefusal.code("lines_missing", count: 3)) == "3 lines still need a take.")
         #expect(PlaysShare.line(PlaysRefusal.code("invite_not_found", status: 404)) == "This invite does not work.")

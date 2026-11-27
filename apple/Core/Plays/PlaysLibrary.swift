@@ -32,6 +32,9 @@ final class PlaysLibrary {
     let store: ProductionStore
     /// The person's own scripts on this device (PLAYS-DESIGN §13).
     let own: OwnScripts
+    /// The person's own sounds (B32 §3.4), on this device only, and the sound pack (§5.2, absent until the owner rules).
+    let ownSounds: OwnSoundStore
+    let soundPack: SoundPackStore
 
     @ObservationIgnored private var hub: RelayHub?
     @ObservationIgnored private let fetch: Fetch
@@ -49,6 +52,9 @@ final class PlaysLibrary {
         // Beside the productions they are cast into; a store made anywhere else keeps its scripts there too.
         let elsewhere = store.root == ProductionStore.defaultRoot ? nil : store.root.appending(path: "Scripts", directoryHint: .isDirectory)
         self.own = own ?? OwnScripts(root: elsewhere, plays: store)
+        ownSounds = OwnSoundStore(root: store.root == ProductionStore.defaultRoot ? nil
+                                    : store.root.appending(path: "Sounds", directoryHint: .isDirectory).appending(path: "mine", directoryHint: .isDirectory))
+        soundPack = SoundPackStore()
         self.fetch = fetch
         self.cache = cache
         self.bundled = bundled

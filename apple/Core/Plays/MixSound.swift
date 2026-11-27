@@ -7,17 +7,18 @@ import Foundation
 /// Where a cue's samples come from: a pack cue, one of the person's own files, or a take performed in a slot.
 nonisolated enum SoundSource: Codable, Equatable, Hashable, Sendable {
     case pack(pack: String, cue: String)
-    case own(String)
+    /// The id, and the person's own name for it, so another device can say which sound it lacks (B32 §3.4 item 2).
+    case own(String, name: String? = nil)
     case take(String)
 
-    private enum Keys: String, CodingKey { case pack, cue, own, take }
+    private enum Keys: String, CodingKey { case pack, cue, own, take, name }
 
     init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: Keys.self)
         if let take = try c.decodeIfPresent(String.self, forKey: .take) {
             self = .take(take)
         } else if let own = try c.decodeIfPresent(String.self, forKey: .own) {
-            self = .own(own)
+            self = .own(own, name: try? c.decodeIfPresent(String.self, forKey: .name))
         } else {
             self = .pack(pack: try c.decode(String.self, forKey: .pack), cue: try c.decode(String.self, forKey: .cue))
         }
@@ -29,7 +30,9 @@ nonisolated enum SoundSource: Codable, Equatable, Hashable, Sendable {
         case let .pack(pack, cue):
             try c.encode(pack, forKey: .pack)
             try c.encode(cue, forKey: .cue)
-        case let .own(id): try c.encode(id, forKey: .own)
+        case let .own(id, name):
+            try c.encode(id, forKey: .own)
+            try c.encodeIfPresent(name, forKey: .name)
         case let .take(id): try c.encode(id, forKey: .take)
         }
     }

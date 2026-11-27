@@ -115,7 +115,9 @@ final class RecordingSession {
     func begin(echoCancelled: Bool) async {
         guard !started else { return }
         do {
+            if engineOn { audio.stop() }
             try audio.start(echoCancelled: echoCancelled)
+            engineOn = true
         } catch {
             phase = .failed(error.localizedDescription)
             return
@@ -158,7 +160,8 @@ final class RecordingSession {
     /// Opens the microphone on a line until it ends (or Stop) and keeps the line window as a new take.
     /// The stand-ins held for the bleed check are released here, win or lose.
     private func listenAndKeep(_ lineID: String, heard: [String: String], part takePart: PartID? = nil,
-                               capture takeCapture: Take.Capture? = nil) async -> Take? {
+                               capture takeCapture: Take.Capture? = nil,
+                               keep: ((Production, Take) -> Production)? = nil) async -> Take? {
         await announce()
         guard !ended else { heldStandIns = []; return nil }
         phase = .listening(lineID: lineID)
@@ -189,7 +192,7 @@ final class RecordingSession {
                                 capture: takeCapture ?? (echoCancelled ? .aec : .direct), heard: heard,
                                 loudness: BS1770.integratedLoudness(kept.samples, sampleRate: kept.sampleRate),
                                 peak: BS1770.samplePeak(kept.samples), bleed: bleed)
-                mutate { $0.add(take) }
+                if let keep { mutate { $0 = keep($0, take) } } else { mutate { $0.add(take) } }
                 lastTakeBleed = bleed
                 return take
             }
@@ -249,6 +252,53 @@ final class RecordingSession {
         let take = await listenAndKeep(lineID, heard: [:], part: part, capture: .room)
         if !failed { phase = .idle }
         return take
+    }
+
+    /// A performed cue (B32 §3.1 item 6, round 3: a take like any line): the slot's line is the cue (a speech heard as it
+    /// sits in the play; for a printed cue, the line before it), then the microphone, and `keep` puts the take in its
+    /// slot, never in a line's chosen takes. The headphones gate, room tone and the bleed check are a line's.
+    @discardableResult
+    func recordCue(_ lineID: String, keep: @escaping (Production, Take) -> Production) async -> Take? {
+        guard started, !isBusy, !ended, run == nil else { return nil }
+        heldStandIns = []
+        cancelled = false
+        let line = script.lines.first { $0.id == lineID }
+        let cues = line?.kind == .speech ? [line!] : Relay.cueLines(before: lineID, in: script, runUp: false)
+        let heard = await playCues(cues, live: { !ended && !cancelled })
+        guard !ended else { heldStandIns = []; return nil }
+        guard !cancelled else { heldStandIns = []; phase = .idle; return nil }
+        let take = await listenAndKeep(lineID, heard: heard, part: .sound, keep: keep)
+        if !ended, !failed { phase = .idle }
+        return take
+    }
+
+    /// Record a sound for Mine (B32 §3.2 item 6): the microphone with nothing playing (so no headphones gate and no room
+    /// tone), until `endOwnSound` or the board's 30 s limit.
+    private(set) var capturingOwn = false
+    @ObservationIgnored private var engineOn = false
+
+    func beginOwnSound() -> Bool {
+        guard !isBusy, !ended, !capturingOwn, run == nil else { return false }
+        if !engineOn {
+            do { try audio.start(echoCancelled: false) } catch { phase = .failed(error.localizedDescription); return false }
+            engineOn = true
+        }
+        capturingOwn = true
+        levels = []
+        audio.beginCapture { [weak self] chunk in
+            guard let self else { return }
+            self.levels.append(min(1, LineEndDetector.rms(chunk) * 12))
+            if self.levels.count > 48 { self.levels.removeFirst(self.levels.count - 48) }
+        }
+        return true
+    }
+
+    /// The sound recorded, cut to `maxSeconds`; empty when nothing was heard.
+    func endOwnSound(maxSeconds: Double) -> [Float] {
+        guard capturingOwn else { return [] }
+        capturingOwn = false
+        let capture = audio.endCapture()
+        return Array(capture.samples.prefix(Int(maxSeconds * capture.sampleRate)))
     }
 
     /// Run through (owner ruling 4): the play runs straight through from the line's cue, other parts in

@@ -205,7 +205,9 @@ final class ReaderModel {
         inkFinger = door?.inkFinger == true
         if door?.inkDemo == true { seedDemoInk(from: index) }
         inkMode = door?.ink == true
-        if let name = door?.part ?? saved?.part, script.castParts.contains(where: { $0.id.rawValue == name && $0.id.isSpeaking }) {
+        // The studio door may name Sound or Stage directions (DEBUG frames, B32); the reader alone, a speaking part only.
+        if let name = door?.part ?? saved?.part,
+           script.castParts.contains(where: { $0.id.rawValue == name && ($0.id.isSpeaking || (door?.studio == true && door?.part == name)) }) {
             let id = PartID(rawValue: name)
             part = id
             mine = Set(ScriptReading.lineIndexes(of: id, in: script))
@@ -493,6 +495,50 @@ final class ReaderModel {
         return out
     }
 
+    /// A part with no speaker's name (Stage directions, Sound): each of its lines' marks at the line's end on a page.
+    func studioEnds(onPage page: Int) -> [Int: ReaderLayout.EndMark] {
+        guard let studio, let layout else { return [:] }
+        let range = layout.lines(onPage: page)
+        var out: [Int: ReaderLayout.EndMark] = [:]
+        if let sound = studio.sound {
+            var byLine: [String: (n: Int, silent: Bool)] = [:]
+            for slot in sound.slots {
+                let was = byLine[slot.line] ?? (0, true)
+                byLine[slot.line] = (was.n + slot.sounds.count, was.silent && slot.silent)
+            }
+            for i in range { if let m = byLine[script.lines[i].id] { out[i] = .slot(sounds: m.n, silent: m.silent && m.n == 0) } }
+        } else if studio.part == .directions, let mine {
+            for i in range where mine.contains(i) { out[i] = .take(studio.studio.lineState(script.lines[i].id)) }
+        }
+        return out
+    }
+
+    /// The Sound part's beds as script line ranges (B32 §3.1 item 2).
+    var studioBeds: [ClosedRange<Int>] {
+        guard let sound = studio?.sound else { return [] }
+        var out: [ClosedRange<Int>] = []
+        for slot in sound.slots {
+            for x in slot.sounds where x.at == "bed" {
+                guard let a = structure.indexByID[slot.line], let b = structure.indexByID[x.until ?? slot.line] else { continue }
+                out.append(min(a, b)...max(a, b))
+            }
+        }
+        return out
+    }
+
+    /// Add a Sound Here (B32 §3.1 item 3): the line the selection sits in, for the edit menu and the context menu.
+    var soundHereLine: String? {
+        guard studio?.sound != nil, let sel = selection, let layout, sel.location < layout.string.length,
+              let at = layout.string.attributes(at: sel.location, effectiveRange: nil)[.edLine] as? Int else { return nil }
+        return script.lines[at].id
+    }
+
+    func addSoundHere() {
+        guard let line = soundHereLine, let sound = studio?.sound else { return }
+        clearSelection()
+        sound.addHere(line)
+    }
+
     /// Each other part's speech line without a usable take, on a page: its voice's short name, for the ring after the
     /// speaker's name (§2.9 rule 3a).
     func studioRings(onPage page: Int) -> [ReaderLayout.RingKey: String] {
@@ -512,6 +558,17 @@ final class ReaderModel {
     /// A tap on my line's name or its mark opens its take list; elsewhere on one of my lines it becomes current. A tap on
     /// another part's ring opens that part's voice picker. Either way the page does not turn (§2.9 rule 2).
     private func studioTap(_ point: CGPoint) -> Bool {
+        if let studio, studio.part == .sound || studio.part == .directions, let layout, let at = pagePoint(point) {
+            guard let line = layout.line(at: at.local, page: at.page) else { return false }
+            let id = script.lines[line].id
+            if let sound = studio.sound { return sound.tapLine(id) }
+            let up = CGPoint(x: at.local.x - ReaderLayout.inset, y: layout.pageSize.height - at.local.y)
+            if let spot = layout.endSpots(page: at.page, lines: [line])[line], spot.insetBy(dx: -10, dy: -10).contains(up) {
+                studio.openTakes(id)
+                return true
+            }
+            return studio.studio.select(id)
+        }
         guard let studio, let me = part?.roleName, let layout, let at = pagePoint(point) else { return false }
         let up = CGPoint(x: at.local.x - ReaderLayout.inset, y: layout.pageSize.height - at.local.y)
         if let ring = layout.ringSpots(page: at.page, rings: studioRings(onPage: at.page)).first(where: { $0.hit.contains(up) }) {
@@ -666,7 +723,7 @@ struct ScriptReaderView: View {
                 failed = true
                 return
             }
-            let made = ReaderModel(script: s.script, startLine: s.studio.current, door: app.readerDoor,
+            let made = ReaderModel(script: s.script, startLine: s.sound?.current?.line ?? s.studio.current, door: app.readerDoor,
                                    production: target.production, studioPart: target.partID)
             made.studio = s
             s.studio.onFollow = { [weak made] id in made?.go(to: id) }
@@ -848,6 +905,7 @@ private struct ReaderScreen: View {
         .onChange(of: model.along?.lineID) { _, id in model.alongHeard(id) }
         .onChange(of: model.along?.word) { _, w in model.alongWordHeard(w) }
         .onChange(of: studio?.studio.current) { _, id in if let id { model.go(to: id) } }
+        .onChange(of: studio?.sound?.current?.line) { _, id in if let id { model.go(to: id) } }
         .onChange(of: studio?.listen.current?.lineID) { _, id in if let id { model.followLine(id) } }
         .onChange(of: model.room?.snapshot, initial: true) { _, snap in model.roomChanged(snap) }
         .onChange(of: model.room?.hideMine) { model.roomChanged(model.room?.snapshot) }
@@ -855,7 +913,12 @@ private struct ReaderScreen: View {
         #if os(iOS)
         .onChange(of: wide) { _, now in if now { studio?.sheet = false } }
         .sheet(isPresented: Binding(get: { (studio?.sheet ?? false) && !wide }, set: { studio?.sheet = $0 })) {
-            if let studio {
+            if let studio, let sound = studio.sound {
+                // The board over the page (B32 §3.2): the page stays live above the medium detent, for a bed's Until.
+                NavigationStack { StudioPanel(model: studio, voices: model.voices, close: { studio.sheet = false }) }
+                    .presentationDetents([.medium, .large], selection: Bindable(sound).detent)
+                    .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            } else if let studio {
                 NavigationStack { StudioPanel(model: studio, voices: model.voices, close: { studio.sheet = false }) }
                     .presentationDetents([.medium, .large])
             }
@@ -1146,6 +1209,7 @@ private struct ReaderSubtitle: ViewModifier {
 private struct ReaderKeys: ViewModifier {
     let model: ReaderModel
     @FocusState private var focused: Bool
+    @Environment(AudioPlayer.self) private var player
 
     func body(content: Content) -> some View {
         content
@@ -1156,11 +1220,22 @@ private struct ReaderKeys: ViewModifier {
             .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .pageUp, .pageDown, .space, .home, .end,
                                KeyEquivalent("j"), KeyEquivalent("k"), KeyEquivalent("r"), .return, .escape,
                                KeyEquivalent("h"), KeyEquivalent("u"), KeyEquivalent("/"), KeyEquivalent("p"),
-                               KeyEquivalent("b"), KeyEquivalent("n")]) { press in
+                               KeyEquivalent("b"), KeyEquivalent("n"), KeyEquivalent("s"), KeyEquivalent("l")]) { press in
                 // With words selected the mark keys come first: H, U, /, P, B, N; Esc lets go.
                 if model.selection != nil {
                     if press.key == .escape { model.clearSelection(); return .handled }
                     if let kind = ReaderModel.markKey(press.key) { model.markSelection(kind); return .handled }
+                }
+                // The Sound part's keys (B32 §3.1 item 5): Space records the cue, J / K the slots, S the board, L in place.
+                if let studio = model.studio, let sound = studio.sound {
+                    switch press.key {
+                    case .space: sound.recordCue(player: player); return .handled
+                    case KeyEquivalent("j"): sound.move(1); return .handled
+                    case KeyEquivalent("k"): sound.move(-1); return .handled
+                    case KeyEquivalent("s"): studio.sheet = true; return .handled
+                    case KeyEquivalent("l"): sound.hearInPlace(); return .handled
+                    default: break
+                    }
                 }
                 // The studio's keys come first (§2.9 rule 8): Space records, stops or cancels; R again; Return keeps.
                 if model.studioActive, let studio = model.studio {
@@ -1249,6 +1324,15 @@ private struct ReaderPageView: View {
             marks.outline = Self.outline(studio)
             marks.takes = takes
             marks.rings = rings
+            if !studio.part.isSpeaking {
+                marks.studioLines = true
+                marks.ends = model.studioEnds(onPage: page)
+                marks.beds = model.studioBeds
+                if let sound = studio.sound {
+                    marks.current = sound.current.flatMap { model.structure.indexByID[$0.line] }
+                    if case .cue = studio.session.phase { marks.outline = .armed }
+                }
+            }
         }
         let scheme = scheme
         let ink = model.inkImage(layout, page: page, dark: scheme == .dark, scale: displayScale)

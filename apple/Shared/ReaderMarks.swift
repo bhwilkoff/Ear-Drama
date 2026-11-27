@@ -283,7 +283,10 @@ struct MarkSelecting: ViewModifier {
                 .onChanged { model.dragSelect(from: $0.startLocation, to: $0.location) }
                 .onEnded { _ in model.dragEnded() })
             .simultaneousGesture(SpatialTapGesture(count: 2).onEnded { _ = model.beginSelection(at: $0.location) })
-            .contextMenu { if model.selection != nil { MarkMenuItems(model: model) } }
+            .contextMenu {
+                if model.soundHereLine != nil { Button("Add a Sound Here") { model.addSoundHere() } }
+                if model.selection != nil { MarkMenuItems(model: model) }
+            }
         #endif
     }
 }
@@ -446,7 +449,10 @@ final class SelectionView: UIView, UIEditMenuInteractionDelegate, UIGestureRecog
         let swatch = UIImage(systemName: "circle.fill")?
             .withTintColor(UIColor(Color.mark(model.markHue)), renderingMode: .alwaysOriginal)
         let model = model
-        let items: [UIMenuElement] = [
+        let items: [UIMenuElement?] = [
+            model.soundHereLine.map { _ in
+                UIAction(title: "Add a Sound Here", image: UIImage(systemName: "speaker.wave.2")) { _ in model.addSoundHere() }
+            },
             UIAction(title: MarkKind.highlight.title, image: swatch) { _ in model.markSelection(.highlight) },
             UIAction(title: MarkKind.underline.title) { _ in model.markSelection(.underline) },
             UIAction(title: MarkKind.breath.title) { _ in model.markSelection(.breath) },
@@ -454,7 +460,7 @@ final class SelectionView: UIView, UIEditMenuInteractionDelegate, UIGestureRecog
             UIAction(title: MarkKind.beat.title) { _ in model.markSelection(.beat) },
             UIAction(title: MarkKind.note.title) { _ in model.markSelection(.note) },
         ]
-        return UIMenu(children: items)
+        return UIMenu(children: items.compactMap { $0 })
     }
 }
 

@@ -71,15 +71,21 @@ final class LiveListenThrough {
 
     func reads(_ part: PartID) -> Bool { speaker.reads(part) }
 
-    func run(_ plan: [ListenEntry], takeURL: (Take) -> URL) async {
+    /// `cues` (B32 §4.4) plays the Sound part's sounds at their entries, ducked while each entry sounds; `range` limits the
+    /// run to those plan entries (Hear it in place).
+    func run(_ plan: [ListenEntry], takeURL: (Take) -> URL, cues: ListenCues? = nil, range: ClosedRange<Int>? = nil) async {
         guard !isRunning else { return }
         isRunning = true
         stopped = false
+        cuePlayer = cues?.player
+        var running: [LiveCueHandle] = []
         defer {
             isRunning = false
             current = nil
             index = nil
             word = nil
+            cues?.player.stopAll()
+            cuePlayer = nil
         }
         #if os(iOS) || os(tvOS)
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
@@ -87,9 +93,19 @@ final class LiveListenThrough {
         #endif
         for (i, entry) in plan.enumerated() {
             guard !stopped else { break }
+            if let range, !range.contains(i) { continue }
+            let at = cues.flatMap { i < $0.entries.count ? $0.entries[i] : nil }
+            if let cues, let at {
+                for c in at.before {
+                    if let h = cues.player.start(c, url: cues.url(c.sound.src)) { await h.done() }
+                    guard !stopped else { return }
+                }
+                for c in at.under { if let h = cues.player.start(c, url: cues.url(c.sound.src)) { running.append(h) } }
+            }
             word = nil
             index = i
             current = entry
+            running.forEach { $0.duck(true) }
             switch entry {
             case let .take(_, _, take):
                 player.setRate(speed)
@@ -100,13 +116,28 @@ final class LiveListenThrough {
                     self.word = w
                 }
             }
+            guard !stopped else { break }
+            running.forEach { $0.duck(false) }
+            if let cues, let at {
+                for c in at.after {
+                    if let h = cues.player.start(c, url: cues.url(c.sound.src)) { await h.done() }
+                    guard !stopped else { return }
+                }
+                for id in at.stop { running.filter { $0.soundID == id }.forEach { $0.stop() } }
+            }
+        }
+        if !stopped, cues != nil {
+            for h in running where !h.isBed { await h.done() }
         }
     }
+
+    @ObservationIgnored private var cuePlayer: ListenCuePlayer?
 
     func stop() {
         stopped = true
         speaker.stop()
         player.stop()
+        cuePlayer?.stopAll()
     }
 }
 

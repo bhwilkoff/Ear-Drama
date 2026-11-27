@@ -326,7 +326,10 @@ The only shapes; a new one needs a new rule.
   rule 10, 2026-11-23): the listen-through and a drama's files play at the device's remembered read-along speed
   (`ReadAlong.savedSpeed()`, 1× until a speed is chosen on this device, which the TV cannot do yet). Built 2026-11-15 as PLAYS-DESIGN §2.11 rule 10: `ReadAlongPanel` in the Listen Through screen; the line comes from the listen plan, 31 pt body, inside the 5% safe area.
   **No studio** (PLAYS-DESIGN §2.9): the TV records nothing, so the reader's
-  studio, take lists and Record never appear here. **No marks** (PLAYS-DESIGN
+  studio, take lists and Record never appear here. **No sound board** (B32 §4.4,
+  2026-11-26: n/a, listen only): no Sound row on a shared production's parts
+  unless the record holds the part (`PlaysShare.castParts`), no Mine, no file
+  import; a mixed or published ear drama plays with its sound as rendered. **No marks** (PLAYS-DESIGN
   §2.10): marks are made where there is a selection, a keyboard or a pencil, and
   are private to the device that made them; the read-along panel draws none.
   A **finished ear drama's** Listen (the shared `FinishedDramaScreen`) shows the same panel
