@@ -108,6 +108,15 @@ const html = readFileSync(join(root, "pulse", "index.html"), "utf8");
 
 /* ── load the real files against the reading ─────────────────────────── */
 const DATA = JSON.parse(readFileSync(readingPath, "utf8"));
+/* The page ages reviews and readings against today, so the fixture's checks read it on the day it was made:
+   its 2-star review left the 60-day window on 2026-11-26 and failed every deploy after. */
+if (!process.argv[2] && DATA.generatedAt) {
+  const fixed = Date.parse(DATA.generatedAt), Real = Date;
+  globalThis.Date = class extends Real {
+    constructor(...a) { super(...(a.length ? a : [fixed])); }
+    static now() { return fixed; }
+  };
+}
 let byId = freshDom();
 let api;
 try {
