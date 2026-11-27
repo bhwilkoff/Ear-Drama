@@ -88,7 +88,7 @@ fun ExportRow(modifier: Modifier = Modifier) {
             takes = container.plays.store.productions.value.map { p ->
                 DataExport.Production(p.id, p.title, DataExport.fromReferenceDate(p.created), p.takes.map { t ->
                     DataExport.Take(t.id, t.lineID, t.part.raw, DataExport.fromReferenceDate(t.created), t.frames / t.sampleRate, p.chosen[t.lineID] == t.id)
-                }, p.sound?.let { com.example.appname.plays.ProductionStore.json.encodeToJsonElement(com.example.appname.plays.SoundBlock.serializer(), it) })
+                }, p.sound?.let { com.example.appname.plays.ProductionStore.json.encodeToJsonElement(com.example.appname.plays.SoundBlock.serializer(), it) }, p.range?.let { it.from to it.to })
             },
             marks = com.example.appname.plays.MarksRepository(com.example.appname.plays.MarksDatabase.get(context).marks()).exportRows(),
             scripts = withContext(Dispatchers.IO) { container.plays.own.exportRows() },

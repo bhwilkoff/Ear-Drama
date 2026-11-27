@@ -435,8 +435,9 @@ fun ProductionScreen(
     // The cast sheet holds its production: an empty one is never removed out from under it (PLAYS-DESIGN §2.3 rule 3a).
     DisposableEffect(id) {
         plays.store.hold(id)
-        onDispose { plays.store.release(id) }
+        onDispose { plays.store.release(id); plays.acknowledgeDrift(id) }
     }
+    val drifted by plays.drifted.collectAsState()
     var refusal by remember { mutableStateOf<String?>(null) }
     var taking by remember { mutableStateOf<PartID?>(null) }
     var confirmingDelete by remember { mutableStateOf(false) }
@@ -511,6 +512,9 @@ fun ProductionScreen(
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
             item(key = "head") { PlayHeadBoard(script, kicker = "Ear drama", title = production.title) }
+            if (id in drifted) {
+                item(key = "drift") { SectionCaption("The scene's lines changed. This production is the whole play now.") }
+            }
             item(key = "listen") {
                 Box(Modifier.padding(top = Spacing.S3.dp)) { ListenThrough(production, script, sheet, castHandle, onReadAlong) }
             }

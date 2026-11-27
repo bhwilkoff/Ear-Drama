@@ -507,7 +507,8 @@ private fun rememberRoomScript(snap: ReadSnapshot?, attempt: Int, key: String?):
             ScriptLoad.Failed(if (e is com.example.appname.plays.PlaysException) com.example.appname.plays.PlaysShare.line(e) else ReadCore.refusal("error"))
         }
     }
-    return load
+    val ready = load as? ScriptLoad.Ready
+    return if (ready != null && snap?.range != null) ScriptLoad.Ready(ready.script.scoped(snap.range)) else load
 }
 
 /** The spinner while the play is asked for, or the words and a way to ask again. */

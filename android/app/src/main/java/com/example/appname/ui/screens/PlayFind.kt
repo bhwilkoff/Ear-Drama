@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,12 +20,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -37,6 +40,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,6 +57,7 @@ import com.example.appname.plays.PlayCollections
 import com.example.appname.plays.PlayLibraryFeed
 import com.example.appname.plays.PlayRow
 import com.example.appname.plays.PlaySearchModel
+import com.example.appname.plays.StudioOpen
 import com.example.appname.ui.EmptyAction
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.LocalAppContainer
@@ -270,25 +275,52 @@ fun SceneCard(hit: FindCore.SceneHit, modifier: Modifier = Modifier, inPlay: Boo
     val dark = OnAir.colors.dark
     val ink = onBoardColor(hit.row.hue, dark)
     val s = hit.scene
+    val plays = LocalAppContainer.current.plays
+    val openProduction = LocalOpenProduction.current
+    val scope = rememberCoroutineScope()
+    val range = s.range
+    val records = range != null && openProduction != null
     val kick = listOfNotNull(s.heading, if (s.minutes > 0) "${s.minutes} min" else null).joinToString(" · ")
     val spoken = listOfNotNull(if (inPlay) null else hit.row.title, s.heading, if (s.minutes > 0) "${s.minutes} min" else null, FindCore.names(s.parts)).joinToString(", ")
-    Column(
+    val record: () -> Unit = {
+        scope.launch {
+            val id = runCatching {
+                val whole = plays.script(hit.row.id) ?: error("not on this device")
+                StudioOpen.recordScene(plays, whole, range!!, s.heading)
+            }.getOrElse { onClick(); return@launch }
+            id?.let { openProduction?.invoke(it) }
+        }
+    }
+    Box(
         modifier
             .width(200.dp)
-            .heightIn(min = if (inPlay) 72.dp else 104.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(boardColor(hit.row.hue, dark))
-            .tvFocusMark()
-            .clickable(onClickLabel = "Open the reader at this scene", onClick = onClick)
-            .padding(Spacing.S3.dp)
-            .semantics(mergeDescendants = true) { contentDescription = spoken },
-        verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp),
+            .background(boardColor(hit.row.hue, dark)),
     ) {
-        if (kick.isNotEmpty()) Text(kick, style = MaterialTheme.typography.labelMedium, color = ink.copy(alpha = 0.8f))
-        if (!inPlay) Text(hit.row.title, style = MaterialTheme.typography.titleMedium, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(FindCore.names(s.parts), style = MaterialTheme.typography.labelMedium, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = if (inPlay) 72.dp else 104.dp)
+                .tvFocusMark()
+                .clickable(onClickLabel = if (records) "Record this scene" else "Open the reader at this scene", onClick = if (records) record else onClick)
+                .padding(Spacing.S3.dp)
+                .semantics(mergeDescendants = true) { contentDescription = spoken },
+            verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp),
+        ) {
+            if (kick.isNotEmpty()) Text(kick, style = MaterialTheme.typography.labelMedium, color = ink.copy(alpha = 0.8f), modifier = if (records) Modifier.padding(end = Spacing.S6.dp) else Modifier)
+            if (!inPlay) Text(hit.row.title, style = MaterialTheme.typography.titleMedium, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(FindCore.names(s.parts), style = MaterialTheme.typography.labelMedium, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        if (records) {
+            IconButton(onClick = onClick, modifier = Modifier.align(Alignment.TopEnd).size(48.dp).tvFocusMark()) {
+                Icon(Icons.AutoMirrored.Outlined.MenuBook, contentDescription = "Read this scene", tint = ink)
+            }
+        }
     }
 }
+
+/** Opens a production's cast sheet; provided by the root so a scene card's door needs no plumbing through every screen. */
+val LocalOpenProduction = androidx.compose.runtime.staticCompositionLocalOf<((String) -> Unit)?> { null }
 
 // MARK: - A collection, the scenes for N voices
 

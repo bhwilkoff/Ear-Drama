@@ -126,6 +126,8 @@ data class SharedRecord(
     /** An own script's text: `owed` until the director sends it, `kept`, or `removed` (docs/WORKER.md "Own scripts"). */
     @SerialName("own_script") val ownScript: OwnScriptState? = null,
     @SerialName("class_id") val classId: String? = null,
+    /** A production of one scene (PLAYS-DESIGN §2.12): its first and last line; the cast sheet above is the range's. */
+    val range: ProductionRange? = null,
 )
 
 /** The record's own-script block: its state, who brought it (null once their account is gone), and the episode a transcript came from. */
@@ -153,6 +155,7 @@ data class InviteView(
     val next: String? = null,
     val member: Boolean = false,
     @SerialName("own_script") val ownScript: OwnScriptState? = null,
+    val range: ProductionRange? = null,
 )
 
 /** `GET /productions`: a shared production this person is in. */
@@ -229,6 +232,15 @@ interface ShareStore {
     fun production(id: String): Production?
     fun save(production: Production)
     fun create(script: PlayScript): Production
+
+    /** A production of one scene of [script] (PLAYS-DESIGN §2.12); a range that does not resolve makes a whole-play one. */
+    fun create(script: PlayScript, range: ProductionRange?, heading: String?): Production {
+        val made = create(script)
+        if (range == null) return made
+        val ranged = Production.create(script, made.id, range, heading)
+        if (ranged.range == null) return made
+        return ranged.copy(created = made.created).also { save(it) }
+    }
     fun share(id: String): ShareLink?
     fun setShare(id: String, link: ShareLink)
 
@@ -506,17 +518,17 @@ object PlaysShare {
     /** "Share": the Worker makes the record; the caller directs it. */
     suspend fun share(api: PlaysTransport, store: ShareStore, local: Production, script: PlayScript, displayName: String?): SharedRecord {
         val name = displayName?.trim().orEmpty()
-        val body = JsonObject(OwnShare.makeBody(script) + if (name.isNotEmpty()) mapOf("display_name" to JsonPrimitive(name)) else emptyMap())
+        val body = JsonObject(OwnShare.makeBody(script, local.range, local.range?.let { Production.headingOf(script.wholeScript, local.title) }) + if (name.isNotEmpty()) mapOf("display_name" to JsonPrimitive(name)) else emptyMap())
         val rec = api.create(body)
         store.setShare(local.id, ShareLink(rec.id))
         return rec
     }
 
     /** The production on this device for a shared one, made from the bundle's script on first open. */
-    fun localFor(store: ShareStore, pid: String, script: PlayScript?): Production {
+    fun localFor(store: ShareStore, pid: String, script: PlayScript?, range: ProductionRange? = null, title: String? = null): Production {
         store.findShared(pid)?.let { return it }
         script ?: throw PlaysException("revision_mismatch")
-        val local = store.create(script)
+        val local = store.create(script, range, title?.let { Production.headingOf(script.wholeScript, it) })
         store.setShare(local.id, ShareLink(pid))
         return local
     }
@@ -537,7 +549,7 @@ object PlaysShare {
         script: PlayScript?,
     ): Joined {
         val rec = api.joinByInvite(token, part, displayName?.trim()?.takeIf { it.isNotEmpty() })
-        return Joined(rec, localFor(store, rec.id, script))
+        return Joined(rec, localFor(store, rec.id, script, rec.range, rec.title))
     }
 
     data class LibraryRow(val local: Production?, val pid: String?, val remote: RemoteRow? = null)

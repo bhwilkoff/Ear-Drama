@@ -119,6 +119,10 @@ data class PartState(val status: Status = Status.Open, val performer: String? = 
     }
 }
 
+/** A scene's range (PLAYS-DESIGN §2.12): two line ids of the script, the scene's first line and its last. */
+@Serializable
+data class ProductionRange(val from: String, val to: String)
+
 /**
  * The production record (`Plays/<id>/production.json`, §6): who took which
  * part, every take and what it heard, the chosen take per line, and the state
@@ -146,7 +150,33 @@ data class Production(
     val roomOutbox: List<String> = emptyList(),
     /** Cues placed against lines (B32 §5.1); absent from `production.json` until a sound is placed. */
     val sound: SoundBlock? = null,
+    /** The record's format: 2 since a range may stand in it; a record without one is format 1 and read as it is. */
+    val format: Int? = null,
+    /** A production of one scene: only these lines and the ones between; absent on a whole play. */
+    val range: ProductionRange? = null,
 ) {
+    /** The script this production records: cut to its range, else whole. */
+    fun scoped(script: PlayScript): PlayScript = script.scoped(range)
+
+    /** True when the range no longer resolves in [script] (a revision moved a bound, rule 4). */
+    fun rangeDrifted(script: PlayScript): Boolean {
+        val whole = script.wholeScript
+        return range != null && whole.rangeSpan(range) == null
+    }
+
+    /** The whole play, under the play's title, to be listened through again; its takes stay. */
+    fun dropRange(script: PlayScript): Production {
+        val whole = script.wholeScript
+        val added = whole.castParts.filter { it.id !in parts }.associate { it.id to PartState() }
+        return copy(range = null, title = whole.title, parts = parts + added, listenedThrough = false, mixedFrom = null)
+    }
+
+    /** A newer app's record: kept on disk, never listed or rewritten here. */
+    val tooNew: Boolean get() = (format ?: 1) > FORMAT
+
+    /** Reads an older record as the current format: nothing but `format` changes, so no fingerprint moves. */
+    fun migrated(): Production = if (tooNew || format == FORMAT) this else copy(format = FORMAT)
+
     /** No take and no placed sound: a production holding only a sound someone chose is the person's work, not an empty shell. */
     val isEmpty: Boolean get() = takes.isEmpty() && sound?.slots.orEmpty().none { it.silent || it.sounds.isNotEmpty() }
 
@@ -232,6 +262,14 @@ data class Production(
     val isFinished: Boolean get() = listenedThrough && mixedFrom == chosenFingerprint
 
     companion object {
+        const val FORMAT = 2
+
+        /** "Adelphi, Scene II": the play's title with the scene's heading as printed. */
+        fun rangeTitle(title: String, heading: String?): String = if (heading.isNullOrBlank()) title else "$title, $heading"
+
+        /** The heading a range production's title carries after the play's title, or null. */
+        fun headingOf(whole: PlayScript, title: String): String? = title.removePrefix("${whole.title}, ").takeIf { it != title && it.isNotBlank() }
+
         /** Signed out, a production on this device that holds a take makes the next one a second (Decision 079); an empty one does not count. */
         fun secondNeedsAccount(productions: List<Production>, signedIn: Boolean): Boolean =
             !signedIn && productions.any { !it.isEmpty }
@@ -240,13 +278,20 @@ data class Production(
         fun abandoned(productions: List<Production>, isShared: (String) -> Boolean): List<String> =
             productions.filter { it.isEmpty && it.room == null && !isShared(it.id) }.map { it.id }
 
-        fun create(script: PlayScript, id: String = UUID.randomUUID().toString().uppercase()) = Production(
-            id = id,
-            scriptID = script.id,
-            scriptRevision = script.revision,
-            title = script.title,
-            created = ReferenceDate.now(),
-            parts = script.castParts.associate { it.id to PartState() },
-        )
+        /** A production of [script], or of [range] of it (a script already cut makes a production of its own range). */
+        fun create(script: PlayScript, id: String = UUID.randomUUID().toString().uppercase(), range: ProductionRange? = null, heading: String? = null): Production {
+            val whole = script.wholeScript
+            val cut = script.scoped(range ?: script.scopedTo).takeIf { it.scopedTo != null } ?: whole
+            return Production(
+                id = id,
+                scriptID = whole.id,
+                scriptRevision = whole.revision,
+                title = if (cut.scopedTo != null) rangeTitle(whole.title, heading) else whole.title,
+                created = ReferenceDate.now(),
+                parts = cut.castParts.associate { it.id to PartState() },
+                format = FORMAT,
+                range = cut.scopedTo,
+            )
+        }
     }
 }
