@@ -30,6 +30,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.appname.plays.PlaySearchModel
+import kotlinx.coroutines.launch
 import com.example.appname.data.SearchResults
 import com.example.appname.data.Transcript
 import com.example.appname.ui.EmptyMessage
@@ -55,6 +59,7 @@ fun SearchScreen(
     onIncomingTaken: () -> Unit = {},
     onAddScript: () -> Unit = {},
     onOpenOwn: (com.example.appname.plays.OwnRow) -> Unit = {},
+    onReadAt: (String, String?) -> Unit = { id, _ -> onOpenScript(id) },
 ) {
     val container = LocalAppContainer.current
     var query by rememberSaveable { mutableStateOf("") }
@@ -75,10 +80,19 @@ fun SearchScreen(
         settled = query.trim()
     }
     val allPlays = rememberCastableRows()
-    val plays = remember(settled, allPlays) { playsMatching(allPlays, settled) }
+    // The play sections (B31 §3.3): run from this page, once per query; a section that composes never starts it again.
+    val search = remember(container.plays.feed) { PlaySearchModel(container.plays.feed) }
+    val ps by search.state.collectAsState()
+    LaunchedEffect(settled, allPlays) { if (settled.length >= 2 && allPlays.isNotEmpty()) search.run(settled, allPlays) }
+    val playsAsked = settled.length >= 2 && allPlays.isNotEmpty()
+    val playsDone = !playsAsked || (ps.query == settled && ps.phase == PlaySearchModel.Phase.Done && !ps.reading && ps.left <= 0)
+    val playsFound = playsAsked && ps.query == settled && ps.foundAny
+    // One letter is not a play search: it keeps the title and author prefix, as before.
+    val oneLetter = if (settled.length == 1) playsMatching(allPlays, settled) else emptyList()
+    val scope = rememberCoroutineScope()
     val ownRows = rememberOwnRows()
     val mine = remember(settled, ownRows) { if (settled.isEmpty()) emptyList() else playsMatching(ownRows, settled) }
-    val adds = !com.example.appname.ui.LocalIsTelevision.current && plays.isEmpty() && mine.isEmpty()
+    val adds = !com.example.appname.ui.LocalIsTelevision.current && playsDone && !playsFound && oneLetter.isEmpty() && mine.isEmpty()
     val results by rememberCatalogQuery(settled) { db ->
         if (settled.isEmpty()) SearchResults(emptyList(), emptyList()) else db.search(settled)
     }
@@ -112,7 +126,7 @@ fun SearchScreen(
         LoadableContent(results) { found ->
             when {
                 settled.isEmpty() -> Unit
-                found.isEmpty && plays.isEmpty() && mine.isEmpty() -> EmptyMessage(
+                found.isEmpty && playsDone && !playsFound && oneLetter.isEmpty() && mine.isEmpty() -> EmptyMessage(
                     "No matches for “$settled”.", action = if (adds) com.example.appname.ui.EmptyAction("Add a script", onAddScript) else null,
                 )
                 else -> LazyColumn(Modifier.fillMaxSize()) {
@@ -135,10 +149,15 @@ fun SearchScreen(
                     if (adds) {
                         item(key = "own-add") { androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) { AddScriptButton(onAddScript) } }
                     }
-                    if (plays.isNotEmpty()) {
+                    if (oneLetter.isNotEmpty()) {
                         item(key = "plays-h") { SectionHeader("Plays") }
-                        items(plays, key = { "p:" + it.id }) { script ->
+                        items(oneLetter, key = { "p:" + it.id }) { script ->
                             PlayListItem(script, onOpen = { onOpenScript(script.id) })
+                        }
+                    }
+                    if (playsAsked) {
+                        item(key = "play-sections") {
+                            PlaySearchSections(settled, search, onOpenScript, onReadAt, onMore = { scope.launch { search.more() } }, emptyLine = false)
                         }
                     }
                     val aired = found.aired

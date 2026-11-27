@@ -15,6 +15,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 
 /** Reads a file of the published play library by its path under `data/plays/library/`; null when the server has none (404). Throws on any other failure. */
 fun interface LibraryTransport {
@@ -51,7 +54,8 @@ class PlayLibraryFeed(
 ) {
     sealed interface Rows {
         data object Loading : Rows
-        data class Ready(val rows: List<PlayRow>, val published: Boolean) : Rows
+        /** [facets] are the index's own counts and bins (contract §4.1, B31 C3); null in a library built before them or while only the bundle answers. */
+        data class Ready(val rows: List<PlayRow>, val published: Boolean, val facets: PlayFacetsIndex? = null) : Rows
         data object Unavailable : Rows
     }
 
@@ -71,19 +75,20 @@ class PlayLibraryFeed(
     }
 
     private suspend fun read(): Rows {
+        var text: String? = null
         val fresh = try {
-            transport.get("index.json")?.let(PlayIndex::decode)?.plays?.takeIf { it.isNotEmpty() }
+            transport.get("index.json")?.also { text = it }?.let(PlayIndex::decode)?.takeIf { it.plays.isNotEmpty() }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             null
         }
         if (fresh != null) {
-            runCatching { cache("index.json")?.apply { parentFile?.mkdirs() }?.writeText(PlayIndex.json.encodeToString(PlayIndex.serializer(), PlayIndex(1, fresh.size, fresh))) }
-            return Rows.Ready(fresh, published = true)
+            runCatching { cache("index.json")?.apply { parentFile?.mkdirs() }?.writeText(text!!) }
+            return Rows.Ready(fresh.plays, published = true, facets = fresh.facets)
         }
-        val kept = runCatching { cache("index.json")?.takeIf { it.exists() }?.readText()?.let(PlayIndex::decode)?.plays }.getOrNull()
-        if (!kept.isNullOrEmpty()) return Rows.Ready(kept, published = true)
+        val kept = runCatching { cache("index.json")?.takeIf { it.exists() }?.readText()?.let(PlayIndex::decode) }.getOrNull()
+        if (kept != null && kept.plays.isNotEmpty()) return Rows.Ready(kept.plays, published = true, facets = kept.facets)
         val bundled = runCatching { bundle() }.getOrDefault(emptyList())
         return if (bundled.isEmpty()) Rows.Unavailable else Rows.Ready(bundled.map(PlayRow::of), published = false)
     }
@@ -143,6 +148,52 @@ class PlayLibraryFeed(
         if (!now.published) return null
         val path = now.rows.firstOrNull { it.id == id }?.phonemes ?: return null
         return transport.get(path)
+    }
+
+    // ---- Finding a play (B31 §3): the library's own files, never an index built here ----
+
+    private var collectionsRead: PlayCollections? = null
+    private var charactersRead: PlayCharacters? = null
+    private val shards = java.util.concurrent.ConcurrentHashMap<String, Map<String, List<Int>>>()
+
+    /** The library's collections, read beside the index it was built with; null in an older library or while only the bundle answers. */
+    suspend fun collections(): PlayCollections? {
+        collectionsRead?.let { return it }
+        if ((_rows.value as? Rows.Ready)?.published != true) return null
+        val text = try { transport.get("collections.json") } catch (e: CancellationException) { throw e } catch (e: Exception) { null } ?: return null
+        return runCatching { PlayCollections.decode(text) }.getOrNull()?.also { collectionsRead = it }
+    }
+
+    /** `characters.json`, read once; null in an older library or the bundle. Throws when the file could not be fetched. */
+    suspend fun characterNames(): Map<String, List<List<Int>>>? {
+        charactersRead?.let { return it.names }
+        if ((_rows.value as? Rows.Ready)?.published != true) return null
+        val text = transport.get("characters.json") ?: return null
+        return PlayCharacters.decode(text).also { charactersRead = it }.names
+    }
+
+    /**
+     * One shard of `search/lines/` or `search/said/`, kept while the search runs: null when the library has no such directory (a 404
+     * for the shard), empty for a shard with no words. Throws when the file could not be fetched.
+     */
+    suspend fun shard(dir: String, file: String): Map<String, List<Int>>? {
+        val key = "$dir/$file"
+        shards[key]?.let { return it }
+        if ((_rows.value as? Rows.Ready)?.published != true) return null
+        val text = transport.get("search/$key.json") ?: return null
+        val terms = withContext(Dispatchers.Default) { PlayIndex.json.decodeFromString(MapSerializer(String.serializer(), ListSerializer(Int.serializer())), text) }
+        shards[key] = terms
+        return terms
+    }
+
+    /** Forgets the shards a finished search kept. */
+    fun forgetShards() = shards.clear()
+
+    /** A library script read for a line search and not kept (a line search reads many and opens few), decoded off the main thread; null when the row names no file. */
+    suspend fun scriptOnce(row: PlayRow): PlayScript? {
+        if (row.path.isEmpty()) return null
+        val text = transport.get(row.path) ?: return null
+        return withContext(Dispatchers.Default) { decode(text, row.id) }
     }
 
     private fun decode(text: String, id: String): PlayScript? = PlayScriptFile.decode(text).scripts.firstOrNull { it.id == id }

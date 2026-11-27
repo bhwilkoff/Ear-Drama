@@ -70,7 +70,7 @@ fun VoicesStepContent(
             style = MaterialTheme.typography.bodyMedium,
         )
         KokoroSection(kokoro, actions, canDownload = !low)
-        if (low && freeBytes != null) {
+        if (freeBytes != null && low) {
             Text(
                 "Not enough space: ${KokoroModelStore.megabytes(freeBytes)} free.",
                 Modifier.padding(horizontal = Spacing.S4.dp),

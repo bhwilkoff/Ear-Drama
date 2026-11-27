@@ -118,8 +118,9 @@ fun SeriesBrowseScreen(
     onVoicesRequestHandled: () -> Unit = {},
     onOpenDrama: (String) -> Unit = {},
     onOpenPerson: (String) -> Unit = {},
+    onOpenScript: (String) -> Unit = {},
 ) {
-    var scopeKey by rememberSaveable { mutableStateOf("shows") }
+    var scopeKey by rememberSaveable { mutableStateOf(com.example.appname.navigation.FindDoor.scope?.takeIf { it in setOf("shows", "voices", "dramas", "plays") } ?: "shows") }
     val dramas = scopeKey == "dramas"
     LaunchedEffect(dramasRequest) {
         if (dramasRequest) {
@@ -178,18 +179,21 @@ fun SeriesBrowseScreen(
     val bar = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(modifier = Modifier.nestedScroll(bar.nestedScrollConnection), topBar = { TopAppBar(title = { Text("Browse") }, scrollBehavior = bar) }) { padding ->
       Column(Modifier.padding(padding)) {
-        if (!isTv) {
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
-                listOf("shows" to "Shows", "voices" to "Voices", "dramas" to "Ear dramas").forEachIndexed { i, (key, label) ->
-                    SegmentedButton(
-                        selected = scopeKey == key,
-                        onClick = { if (scopeKey != key) { scopeKey = key; haptics(Haptic.Selection) } },
-                        shape = SegmentedButtonDefaults.itemShape(i, 3),
-                    ) { Text(label) }
-                }
+        // Plays is the TV's scope (B31 §3.7, ANDROID-DESIGN §9.2): on a phone and a tablet the plays are Record's.
+        val scopes = if (isTv) listOf("shows" to "Shows", "plays" to "Plays") else listOf("shows" to "Shows", "voices" to "Voices", "dramas" to "Ear dramas")
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
+            scopes.forEachIndexed { i, (key, label) ->
+                SegmentedButton(
+                    selected = scopeKey == key,
+                    onClick = { if (scopeKey != key) { scopeKey = key; haptics(Haptic.Selection) } },
+                    shape = SegmentedButtonDefaults.itemShape(i, scopes.size),
+                    modifier = Modifier.tvFocusMark(),
+                ) { Text(label) }
             }
         }
-        if (scopeKey == "voices" && !isTv) {
+        if (scopeKey == "plays" && isTv) {
+            PlaysScopeTv(onOpenScript, Modifier.weight(1f))
+        } else if (scopeKey == "voices" && !isTv) {
             VoicesScope(onOpenPerson, Modifier.weight(1f))
         } else if (dramas && !isTv) {
             EarDramasScope(onOpenDrama, Modifier.weight(1f))
