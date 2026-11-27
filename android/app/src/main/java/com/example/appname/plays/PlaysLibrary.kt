@@ -152,6 +152,20 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
         store.renderMix(id, resolver::info, resolver::samples, withoutMissing) { AacMixSink(it) }
     }
 
+    /** The live cues for a listen plan (B32 4.4), or null when the production has no sound. A sound this device lacks plays nothing. */
+    suspend fun listenCues(production: Production, script: PlayScript, plan: List<Relay.ListenEntry>, muted: Boolean = false): ListenCues? {
+        if (!MixSound.hasSound(production)) return null
+        val pack = withContext(Dispatchers.IO) { (soundPack.manifest() as? SoundPack.State.Ready)?.pack }
+        return ListenCues(SoundCore.listenCues(script, production, plan), { src ->
+            when {
+                src.take != null -> production.take(src.take)?.let { store.takeFile(production, it) }
+                src.own != null -> ownSounds.file(src.own).takeIf { it.isFile }
+                src.pack != null && pack != null -> pack.cues.firstOrNull { it.id == src.cue }?.takeIf { soundPack.has(pack, it) }?.let { soundPack.file(pack, it) }
+                else -> null
+            }
+        }, SystemCuePlayer(muted))
+    }
+
     private suspend fun soundResolver(): SoundResolver {
         val pack = (soundPack.manifest() as? SoundPack.State.Ready)?.pack
         return SoundResolver(ownSounds, pack) { cue -> pack?.let { p -> soundPack.file(p, cue).takeIf { soundPack.has(p, cue) } } }

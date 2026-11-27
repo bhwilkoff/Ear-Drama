@@ -113,7 +113,9 @@ data class LaunchDoors(
             startRead?.let {
                 InboxRequest.Read(
                     it.substringBefore('@'), it.substringAfter('@', "").ifEmpty { null },
-                    studioPart = startStudio?.takeIf { s -> s.isNotBlank() }?.let { s -> com.example.appname.plays.PartID.role(s).raw },
+                    studioPart = startStudio?.takeIf { s -> s.isNotBlank() }?.let { s ->
+                        if (s == com.example.appname.plays.PartID.DIRECTIONS.raw || s == com.example.appname.plays.PartID.SOUND.raw) s else com.example.appname.plays.PartID.role(s).raw
+                    },
                 )
             },
         )

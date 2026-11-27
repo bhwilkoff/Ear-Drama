@@ -103,7 +103,9 @@ import com.example.appname.plays.CueAudio
 import com.example.appname.plays.DeviceLiveAudio
 import com.example.appname.plays.LineEndDetector
 import com.example.appname.plays.LiveAudio
+import com.example.appname.plays.ListenCues
 import com.example.appname.plays.LiveListen
+import com.example.appname.plays.Production
 import com.example.appname.plays.MicrophoneCapture
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PlayScript
@@ -183,7 +185,7 @@ class StudioModel(
     }
 
     /** Listen through from the current line: takes from their files, the rest in the cast's device voices, live; the reader follows. */
-    fun listenFromHere(scope: CoroutineScope, handle: CastHandle, store: com.example.appname.plays.ProductionStore, muted: Boolean, follow: (String) -> Unit) {
+    fun listenFromHere(scope: CoroutineScope, handle: CastHandle, store: com.example.appname.plays.ProductionStore, muted: Boolean, follow: (String) -> Unit, cues: (suspend (Production, List<Relay.ListenEntry>) -> ListenCues?)? = null) {
         listen?.let { stopListen(); return }
         val production = session.production.value
         val at = script.lines.indexOfFirst { it.id == studio.current.value }.coerceAtLeast(0)
@@ -194,7 +196,7 @@ class StudioModel(
         listenJob = scope.launch {
             val follower = launch { live.current.collect { it?.let { e -> follow(e.lineID) } } }
             try {
-                live.run(plan)
+                live.run(plan, cues?.invoke(production, plan))
             } finally {
                 follower.cancel()
                 if (listen === live) {
@@ -736,7 +738,7 @@ fun rememberListenAction(model: StudioModel, handle: CastHandle?, muted: Boolean
     if (handle == null) return null
     return {
         if (container.playback.state.value.isPlaying) container.playback.togglePlay()
-        model.listenFromHere(scope, handle, container.plays.store, muted, onFollow)
+        model.listenFromHere(scope, handle, container.plays.store, muted, onFollow) { p, plan -> container.plays.listenCues(p, model.script, plan, muted) }
     }
 }
 
@@ -858,7 +860,7 @@ fun StudioPanel(
                     TextButton(
                         onClick = {
                             if (container.playback.state.value.isPlaying) container.playback.togglePlay()
-                            model.listenFromHere(scope, handle, container.plays.store, muted, onFollow)
+                            model.listenFromHere(scope, handle, container.plays.store, muted, onFollow) { p, plan -> container.plays.listenCues(p, model.script, plan, muted) }
                         },
                         enabled = !session.isBusy,
                     ) {

@@ -94,12 +94,14 @@ import com.example.appname.plays.AudioRoute
 import com.example.appname.plays.DeviceLiveAudio
 import com.example.appname.plays.LinePart
 import com.example.appname.plays.LiveAudio
+import com.example.appname.plays.LiveListen
 import com.example.appname.plays.MixSound
 import com.example.appname.plays.OwnSounds
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PlayScript
 import com.example.appname.plays.Production
 import com.example.appname.plays.RecordingSession
+import com.example.appname.plays.Relay
 import com.example.appname.plays.ScriptLine
 import com.example.appname.plays.SoundCore
 import com.example.appname.plays.SoundCue
@@ -108,6 +110,8 @@ import com.example.appname.plays.SoundSource
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.recordButtonColors
+import com.example.appname.ui.rememberCast
+import com.example.appname.ui.rememberDeviceVoices
 import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.theme.AppSemantics
 import com.example.appname.ui.theme.OnAir
@@ -116,6 +120,7 @@ import com.example.appname.ui.wayColors
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -257,6 +262,38 @@ private fun SoundStudio(productionId: String, script: PlayScript, onBack: () -> 
         auditioning = key
     }
 
+    // Hear it in place (B32 3.2 item 2): the line before the slot to the line after, mixed live as it will sound.
+    val voices = rememberCast(rememberDeviceVoices(), script, productionId)
+    var hearing by remember { mutableStateOf<LiveListen?>(null) }
+    var hearJob by remember { mutableStateOf<Job?>(null) }
+    fun stopHear() {
+        hearJob?.cancel()
+        hearing?.close()
+        hearing = null
+        hearJob = null
+    }
+    DisposableEffect(Unit) { onDispose { stopHear() } }
+
+    fun hearInPlace(slot: SoundCore.Slot) {
+        if (hearing != null) { stopHear(); return }
+        val h = voices ?: return
+        val prod = latest() ?: return
+        player.stop()
+        auditioning = null
+        if (container.playback.state.value.isPlaying) container.playback.togglePlay()
+        val plan = Relay.listenPlan(prod, script) { !it.isSpeaking && h.cast.resolve(it).read }
+        val range = SoundCore.inPlace(script, plan, slot.line) ?: return
+        val live = LiveListen(store.takesFolder(prod.id), h.speaker).also { it.muted = muted }
+        hearing = live
+        hearJob = scope.launch {
+            try {
+                live.run(plan, plays.listenCues(prod, script, plan, muted), range)
+            } finally {
+                if (hearing === live) { live.close(); hearing = null; hearJob = null }
+            }
+        }
+    }
+
     // The performed cue: a take of the Sound part on the slot, never a line's chosen take.
     val stub = BuildConfig.DEBUG && StudioDoor.stub
     val audio: LiveAudio = remember(productionId) { if (stub) StubLiveAudio(hold = false) else DeviceLiveAudio(context) }
@@ -294,6 +331,7 @@ private fun SoundStudio(productionId: String, script: PlayScript, onBack: () -> 
 
     fun recordCue() {
         val slot = current ?: return
+        stopHear()
         player.stop()
         auditioning = null
         if (listening) { session.stopListening(); return }
@@ -414,6 +452,7 @@ private fun SoundStudio(productionId: String, script: PlayScript, onBack: () -> 
                 ?: if (sel?.at == "bed") MixSound.Defaults.MUSIC_DUCK_DB else MixSound.Defaults.EFFECTS_DUCK_DB,
             query = query, category = category, pack = packUi, inCueIds = inIds, mine = mine,
             recordingOwn = recordingOwn, ownSeconds = ownSeconds, ownError = ownError, auditioning = auditioning, picking = picking,
+            hearing = hearing != null, canHear = voices != null && !session.isBusy,
         )
     }
 
@@ -427,7 +466,7 @@ private fun SoundStudio(productionId: String, script: PlayScript, onBack: () -> 
     }
 
     fun act(slot: SoundCore.Slot) = BoardActions(
-        onDone = { board = false; player.stop(); auditioning = null; latest()?.let { p -> SoundCore.prune(p).takeIf { it != p }?.let(store::save) } },
+        onDone = { board = false; stopHear(); player.stop(); auditioning = null; latest()?.let { p -> SoundCore.prune(p).takeIf { it != p }?.let(store::save) } },
         onSilent = { on -> val id = open(slot); if (id != null) edit { SoundCore.setSilent(it, id, on) }; if (on) board = false },
         onSelect = { selId = it },
         onRemove = { sid -> slot.id?.let { id -> edit { SoundCore.removeSound(it, id, sid) }; if (selId == sid) selId = null } },
@@ -468,6 +507,7 @@ private fun SoundStudio(productionId: String, script: PlayScript, onBack: () -> 
             else ownPermission.launch(Manifest.permission.RECORD_AUDIO)
         },
         onBring = { bring.launch(arrayOf("audio/*")) },
+        onHear = { hearInPlace(slot) },
         onRemoveOwn = { id -> plays.ownSounds.remove(id); mine = plays.ownSounds.list() },
         onRecordIt = { board = false; recordCue() },
     )
@@ -565,7 +605,7 @@ private fun SoundStudio(productionId: String, script: PlayScript, onBack: () -> 
                 }
             }
             if (!wide && board && current != null) {
-                ModalBottomSheet(onDismissRequest = { board = false; player.stop(); auditioning = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)) {
+                ModalBottomSheet(onDismissRequest = { board = false; stopHear(); player.stop(); auditioning = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)) {
                     SoundBoard(boardModel(current), act(current))
                 }
             }

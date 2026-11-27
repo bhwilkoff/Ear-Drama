@@ -104,6 +104,46 @@ class PlayLibraryFeedTest {
         }
     }
 
+    // MARK: A cold start (Google TV: 13 s before any list drew)
+
+    private fun manyRows(n: Int, tag: String = "") = (0 until n).map {
+        PlayRow(id = "gut-$it", revision = "r$it$tag", title = "T$it \"q } ] { [ \\ æ $tag", authors = listOf("A, \"B\""), voices = it % 5, minutes = 3, path = "scripts/gut-$it.json")
+    }
+
+    private class Gate(val files: MutableMap<String, String?>) : LibraryTransport {
+        val open = kotlinx.coroutines.CompletableDeferred<Unit>()
+        override suspend fun get(path: String): String? { open.await(); return files[path] }
+    }
+
+    @Test fun `a kept index answers before the network does, and a newer one replaces it behind`() = runBlocking {
+        val dir = temporaryRoot()
+        val old = PlayIndex.json.encodeToString(PlayIndex.serializer(), PlayIndex(1, 1, manyRows(1, "old")))
+        File(dir, "index.json").writeText(old)
+        val gate = Gate(mutableMapOf("index.json" to PlayIndex.json.encodeToString(PlayIndex.serializer(), PlayIndex(1, 2, manyRows(2, "new")))))
+        val f = feed(gate, dir)
+        f.loadRows()
+        val first = f.rows.value as PlayLibraryFeed.Rows.Ready
+        assertEquals("the kept copy drew while the network was still closed", listOf("r0old"), first.rows.map { it.revision })
+        assertTrue(first.published)
+        gate.open.complete(Unit)
+        f.refreshed()
+        assertEquals(listOf("r0new", "r1new"), (f.rows.value as PlayLibraryFeed.Rows.Ready).rows.map { it.revision })
+        assertEquals("and kept for the next start", listOf("r0new", "r1new"), PlayIndex.decode(File(dir, "index.json").readText()).plays.map { it.revision })
+    }
+
+    @Test fun `a refresh that finds the same index, or none, leaves the rows alone`() = runBlocking {
+        val dir = temporaryRoot()
+        val text = PlayIndex.json.encodeToString(PlayIndex.serializer(), PlayIndex(1, 1, manyRows(1)))
+        File(dir, "index.json").writeText(text)
+        for (t in listOf<LibraryTransport>(Stub(mapOf("index.json" to text)), Stub(emptyMap(), fail = true), Stub(mapOf("index.json" to "{\"format\":1}")))) {
+            val f = feed(t, dir)
+            f.loadRows()
+            val before = f.rows.value
+            f.refreshed()
+            assertTrue("the same rows", before === f.rows.value)
+        }
+    }
+
     // MARK: Open parts
 
     private class Worker(val rows: List<RemoteRow>, val records: Map<String, SharedRecord>) : PlaysTransport {

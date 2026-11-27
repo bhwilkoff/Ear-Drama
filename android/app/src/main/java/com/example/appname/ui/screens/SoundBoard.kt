@@ -103,6 +103,8 @@ data class BoardModel(
     val ownError: String? = null,
     val auditioning: String? = null,
     val picking: Boolean = false,
+    val hearing: Boolean = false,
+    val canHear: Boolean = true,
 )
 
 class BoardActions(
@@ -123,6 +125,7 @@ class BoardActions(
     val onBring: () -> Unit = {},
     val onRemoveOwn: (String) -> Unit = {},
     val onRecordIt: () -> Unit = {},
+    val onHear: () -> Unit = {},
 )
 
 private fun dbWords(db: Double) = (if (db < 0) "−" else if (db > 0) "+" else "") + "${kotlin.math.abs(db).toInt()} dB"
@@ -287,6 +290,10 @@ private fun Controls(x: SoundCue, model: BoardModel, act: BoardActions) {
             Stepper("Start", secondsWords(x.startMs).let { if (x.startMs > 0) "+$it" else if (x.startMs < 0) "−${it.removePrefix("-")}" else it },
                 canLess = x.startMs > -2000.0, onLess = { act.onPatch(SoundCore.Patch(startMs = x.startMs - SoundCore.START_STEP_MS)) },
                 onMore = { act.onPatch(SoundCore.Patch(startMs = x.startMs + SoundCore.START_STEP_MS)) })
+        }
+        OutlinedButton(onClick = act.onHear, enabled = model.canHear || model.hearing, colors = wayColors()) {
+            Icon(if (model.hearing) Icons.Filled.Stop else Icons.Filled.PlayArrow, contentDescription = null)
+            Text(if (model.hearing) "Stop" else "Hear it in place", Modifier.padding(start = Spacing.S2.dp))
         }
         TextButton(onClick = { more = !more }) {
             Text("Level and fades")

@@ -826,7 +826,15 @@ private class StudioPaint(
     val rings: Map<String, DeviceVoice> = emptyMap(),
     /** Script line indexes whose chosen take is usable. */
     val taken: Set<Int> = emptySet(),
+    /** A studio of a part with no speaker's name (Stage directions, B32 section 2): each of its lines carries its take state at the line's end. */
+    val lines: Boolean = false,
+    val ends: Map<Int, StudioCore.LineState> = emptyMap(),
 )
+
+/** Whether a block is one of the studio part's own lines: a speaker's speech, or (a part without a name) a direction. */
+private fun StudioPaint.mineBlk(b: Blk): Boolean = if (lines) b.kind == Kind.Direction else b.role == role
+
+private fun StudioPaint.holds(owner: Int): Boolean = if (lines) ends.containsKey(owner) else states.containsKey(owner)
 
 /** What a device-voice ring says: the short name it shows and the name the part's voice is read as. */
 private class DeviceVoice(val part: PartID, val text: String, val label: String)
@@ -838,6 +846,24 @@ private fun measureRing(ink: Ink, d: Density, text: String): TextLayoutResult =
     ink.measurer.measure(androidx.compose.ui.text.AnnotatedString(text), TextStyle(fontSize = with(d) { (CAPTION_EM * ink.bodyPx).toSp() }, color = ink.muted))
 
 private class MarkSpot(val glyph: Rect, val textX: Float, val cy: Float, val hit: Rect)
+
+/**
+ * Where a direction's take-state mark sits (B32 section 2): after the line's last glyph, or in the right margin when the words run
+ * to the edge. [top] is the slice's top and [from] its first text line, as [drawSlice] takes them; the hit area is a finger tall.
+ */
+private fun endSpot(m: Measured, blk: Blk, ink: Ink, top: Float, from: Int, state: StudioCore.LineState, pageWidth: Float): MarkSpot? {
+    val lay = m.text
+    if (lay.lineCount == 0) return null
+    val l = lay.lineCount - 1
+    val g = ink.bodyPx * MARK_GLYPH_EM
+    val countW = if (state.state == StudioCore.LineState.Kind.Chosen) ink.bodyPx * (0.25f + 0.55f * state.takes.toString().length) else 0f
+    val right = ink.insetPx + blk.xOffEm * ink.bodyPx + lay.getLineRight(l)
+    val left = minOf(right + g * 0.5f, pageWidth - ink.insetPx - g - countW)
+    val shift = top - lay.getLineTop(from)
+    val cy = shift + (lay.getLineTop(l) + lay.getLineBottom(l)) / 2
+    val half = maxOf(lay.getLineBottom(l) - lay.getLineTop(l), ink.targetPx) / 2
+    return MarkSpot(Rect(left, cy - g / 2, left + g, cy + g / 2), left + g + ink.bodyPx * 0.25f, cy, Rect(left - 6f, cy - half, left + g + countW + 6f, cy + half))
+}
 
 /**
  * Where a line's take-state mark sits (§2.9 rule 3), in the slice's coordinates: after the speaker's name when it stands above
@@ -1148,6 +1174,7 @@ private fun DrawScope.drawSlice(
     studio: StudioPaint? = null,
     marks: MarkLayer? = null,
     heard: Heard? = null,
+    last: Boolean = true,
 ) {
     val layout = m.text
     val tone = blk.hue ?: ink.accent
@@ -1265,8 +1292,11 @@ private fun DrawScope.drawSlice(
                 }
             }
         }
-        if (studio != null && from == 0 && blk.speechStart && blk.role == studio.role) {
+        if (studio != null && from == 0 && !studio.lines && blk.speechStart && blk.role == studio.role) {
             studio.states[blk.owner]?.let { state -> markSpot(m, blk, ink, top, state)?.let { drawMark(it, state, blk, ink, studio) } }
+        }
+        if (studio != null && studio.lines && last && blk.kind == Kind.Direction) {
+            studio.ends[blk.owner]?.let { state -> endSpot(m, blk, ink, top, from, state, size.width)?.let { drawMark(it, state, blk, ink, studio) } }
         }
         if (studio != null && from == 0) {
             studio.ringFor(blk)?.let { v -> ringSpot(m, blk, ink, top, this, v)?.let { drawRing(it, v, blk, ink) } }
@@ -1409,11 +1439,12 @@ private fun PageView(
                         lit = mine.lit == b.owner && b.kind != Kind.Heading,
                         heard = heard?.takeIf { it.line == b.owner },
                         studio = studio,
+                        last = seg.to >= layouts[s].text.lineCount,
                         marks = MarkLayer(if (ui.model.show) ui.model.byLine[flow.ids[b.owner]].orEmpty() else emptyList(), selRange(sel, seg.block, b.text.length), selTint),
                     )
                 }
                 if (studio?.current != null) {
-                    val current = segs.filter { flow.blocks[it.block].let { b -> b.owner == studio.current && b.role == studio.role } }
+                    val current = segs.filter { flow.blocks[it.block].let { b -> b.owner == studio.current && studio.mineBlk(b) } }
                     if (current.isNotEmpty()) {
                         val margin = 6.dp.toPx()
                         val top = current.first().top - ink.pad - margin
@@ -1443,7 +1474,22 @@ private fun PageView(
                 )
             }
         }
-        if (studio != null) {
+        if (studio != null && studio.lines) {
+            segs.forEachIndexed { s, seg ->
+                val b = flow.blocks[seg.block]
+                if (b.kind != Kind.Direction || seg.to < layouts[s].text.lineCount) return@forEachIndexed
+                val state = studio.ends[b.owner] ?: return@forEachIndexed
+                val spot = endSpot(layouts[s], b, ink, seg.top, seg.from, state, flow.colPx.toFloat()) ?: return@forEachIndexed
+                Box(
+                    Modifier
+                        .offset { IntOffset(spot.hit.left.toInt(), (spot.hit.top + headPx).toInt()) }
+                        .size(with(density) { spot.hit.width.toDp() }, with(density) { spot.hit.height.toDp() })
+                        .clickable(role = Role.Button, onClickLabel = "Open the take list") { onTakes(b.owner) }
+                        .semantics(mergeDescendants = true) { contentDescription = StudioCore.spoken(state) },
+                )
+            }
+        }
+        if (studio != null && !studio.lines) {
             segs.forEachIndexed { s, seg ->
                 val b = flow.blocks[seg.block]
                 if (seg.from != 0 || !b.speechStart || b.role != studio.role) return@forEachIndexed
@@ -1994,16 +2040,21 @@ internal fun ReaderBody(
     val inReview = studioPhase is RecordingSession.Phase.Review || studioPhase is RecordingSession.Phase.RunReview
     val recordRed = OnAir.colors.record
     val warningInk = AppSemantics.colors.warning
-    val paint = if (studio != null && studioProduction != null && mineRole != null) {
+    val directionsStudio = studio != null && studio.part == PartID.DIRECTIONS
+    val paint = if (studio != null && studioProduction != null && (mineRole != null || directionsStudio)) {
         StudioPaint(
-            role = mineRole,
+            role = mineRole.orEmpty(),
+            lines = mineRole == null,
+            ends = if (mineRole == null) studio.studio.mine.associate { id ->
+                script.lines.indexOfFirst { it.id == id } to StudioCore.lineState(studioProduction, id)
+            } else emptyMap(),
             current = studioCurrent?.let { id -> script.lines.indexOfFirst { it.id == id }.takeIf { it >= 0 } },
             outline = when (studioPhase) {
                 is RecordingSession.Phase.Listening -> StudioOutline.Recording
                 is RecordingSession.Phase.Cue -> StudioOutline.Armed
                 else -> StudioOutline.Ink
             },
-            states = studio.studio.mine.associate { id ->
+            states = if (mineRole == null) emptyMap() else studio.studio.mine.associate { id ->
                 script.lines.indexOfFirst { it.id == id } to StudioCore.lineState(studioProduction, id)
             },
             record = recordRed,
@@ -2454,7 +2505,7 @@ private fun PagesStage(
                 val page = if (col in 0 until per) paged.pages.getOrNull(pager.currentPage * per + col) else null
                 val hit = page?.segAt(off.y - headPx)?.let { flow.blocks[it.block] }
                 // A tap on one of my lines in the studio makes it current and does not turn the page.
-                if (hit != null && studio != null && hit.role == studio.role && hit.kind != Kind.Heading && studio.states.containsKey(hit.owner)) {
+                if (hit != null && studio != null && studio.mineBlk(hit) && hit.kind != Kind.Heading && studio.holds(hit.owner)) {
                     onSelect(hit.owner)
                     return@detectTapGestures
                 }
