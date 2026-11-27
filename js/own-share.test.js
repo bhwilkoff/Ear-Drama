@@ -292,6 +292,8 @@ test('the lines match the cast sheet, as each door knows it', async () => {
   const inv = (ps) => S.fits.invite({ parts: ps });
   const at = (fit) => ask(W, rec, { pid: rec.id }, { fit });
   ok(await at(inv(parts)), 'control: the invite\'s own parts');
+  ok(await at(inv(parts.filter(p => p.id !== 'sound'))), 'the Worker\'s cast, which lists no Sound part on a script with no sound line');
+  ok(await at(inv(parts.map(p => (p.id === 'sound' ? { ...p, lineCount: 0 } : p)))), 'Sound is held by its presence, not its count');
   await refused(at(inv(parts.slice(1))), 'script_damaged', 'a part the sheet does not have');
   await refused(at(inv([...parts, { id: 'role:ZED', lineCount: 1 }])), 'script_damaged', 'a part the lines do not have');
   await refused(at(inv(parts.map((p, i) => (i ? p : { ...p, lineCount: p.lineCount + 1 })))), 'script_damaged', 'a part with other lines');

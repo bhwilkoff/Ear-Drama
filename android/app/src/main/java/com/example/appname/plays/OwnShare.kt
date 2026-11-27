@@ -166,7 +166,7 @@ object OwnShare {
     private fun sameParts(script: PlayScript, want: List<Pair<String, Int?>>): Boolean {
         // The Worker's cast lists Sound only where its record holds it (B32): the board's part stays local.
         val have = script.castParts.filter { it.id != PartID.SOUND || want.any { (id, _) -> id == PartID.SOUND.raw } }
-        return have.size == want.size && want.all { (id, n) -> have.any { it.id.raw == id && (n == null || it.lineCount == n) } }
+        return have.size == want.size && want.all { (id, n) -> have.any { it.id.raw == id && (n == null || it.id == PartID.SOUND || it.lineCount == n) } }
     }
 
     private fun holdsLines(script: PlayScript, ids: List<String?>): Boolean {

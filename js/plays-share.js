@@ -336,8 +336,11 @@ const PlaysShare = (() => {
 
   const fetched = new Map();
   const sameParts = (script, want) => {
-    const have = C.castParts(script);
-    return have.length === want.length && want.every((w) => have.some((p) => p.id === w.id && (w.lineCount === undefined || p.lineCount === w.lineCount)));
+    // The Worker's cast lists Sound only where the script prints a sound line and counts those lines; the cast sheet lists
+    // Sound on every script and counts its cue rows (B32 §3.1 item 1), so Sound is held only by its presence.
+    const workerSound = want.some((w) => w.id === 'sound');
+    const have = C.castParts(script).filter((p) => p.id !== 'sound' || workerSound);
+    return have.length === want.length && want.every((w) => have.some((p) => p.id === w.id && (w.lineCount === undefined || p.id === 'sound' || p.lineCount === w.lineCount)));
   };
   const holdsLines = (script, ids) => { const at = new Set(script.lines.map((l) => l.id)); return ids.every((id) => !id || at.has(id)); };
   const holdsParts = (script, ids) => { const at = new Set(C.castParts(script).map((p) => p.id)); return ids.every((id) => at.has(id)); };
