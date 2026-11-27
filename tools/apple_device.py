@@ -132,10 +132,28 @@ def launch(udid, bundle, env=None, url=None, terminate_existing=True, timeout=90
     return "Launched application" in out, out.strip()[-400:]
 
 
+def active_display_id(udid):
+    """The uniqueId of the active display on a two-display device (the Duo), else
+    None. A capture with no display id takes the primary (outer) display, which is
+    pure black while the phone is open."""
+    r = devicectl("device", "info", "displays", "--device", udid, timeout=30)
+    blocks = re.split(r"\n\s*\u25bf", r.stdout)
+    shown = [b for b in blocks if "uniqueId:" in b]
+    if len(shown) < 2:
+        return None
+    for b in shown:
+        if re.search(r"active:\s*true", b):
+            m = re.search(r"uniqueId:\s*(\S+)", b)
+            return m.group(1) if m else None
+    return None
+
+
 def capture(udid, path, timeout=45):
     """A fresh screenshot or a refusal: (ok, why). See devharness.capture_fresh."""
+    disp = active_display_id(udid)
+    extra = ["--display-unique-id", disp] if disp else []
     return capture_fresh(path, lambda p: devicectl(
-        "device", "capture", "screenshot", "--device", udid,
+        "device", "capture", "screenshot", "--device", udid, *extra,
         "--destination", str(p), timeout=timeout))
 
 
