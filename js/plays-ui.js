@@ -108,6 +108,9 @@ const PlaysUI = (() => {
     return box;
   }
 
+  /** The Sound part's length (B32 §3.1 item 1): its cue rows, or Add sounds when the script prints none. */
+  const cues = (n) => (!n ? 'Add sounds' : n === 1 ? '1 cue' : `${num.format(n)} cues`);
+
   function progressLine(p, script) {
     if (C.isFinished(p)) return 'Finished';
     if (!script) return '';
@@ -378,7 +381,7 @@ const PlaysUI = (() => {
     return h.el('li', { class: `pl-part${mine ? ' mine' : ''}`, dataset: typeof status === 'string' ? { status } : {} },
       h.el('span', { class: 'pl-part-head' }, face(script, part.id, { who, voice, ok, size: 'sm' }),
         href ? h.el('a', { class: 'pl-part-link', href }, name) : name),
-      h.el('span', { class: 'caption tabular pl-part-len' }, lines(part.lineCount)),
+      h.el('span', { class: 'caption tabular pl-part-len' }, part.id === C.SOUND ? cues(part.lineCount) : lines(part.lineCount)),
       presence(script, part.id),
       status ? h.el('span', { class: 'caption pl-part-who' }, status) : h.el('span', { class: 'pl-part-who' }),
       actions && actions.childNodes.length ? actions : h.el('span', { class: 'pl-part-hold' }));
@@ -589,7 +592,13 @@ const PlaysUI = (() => {
       const who = st.performer || null;
       // A part no person holds shows the voice that reads it (PLAYS-DESIGN §2.8; WEB-DESIGN §4.10).
       const voiced = st.status === 'open' && ['Device voice', 'Open'].includes(heardAs(p, script, part.id));
-      const status = st.status === 'recording' ? `${who || 'Recording'} · ${num.format(kept)} of ${num.format(part.lineCount)}`
+      // Sound counts cues and beds; Stage directions count what is recorded, the rest silent (B32 §2, §3.1 item 1).
+      const sound = part.id === C.SOUND && typeof SoundCore !== 'undefined';
+      const dirs = part.id === C.DIRECTIONS && typeof SoundCore !== 'undefined';
+      const soundLine = sound && !(st.status === 'open' && !SoundCore.summary(script, p).sounds) ? SoundCore.partLine(script, p, st.status !== 'open') : null;
+      const status = sound && st.status !== 'silent' ? (soundLine ? (who && st.status !== 'open' ? `${who} · ` : '') + soundLine : null)
+        : dirs && (st.status === 'recording' || st.status === 'done') ? (who ? `${who} · ` : '') + SoundCore.directionsLine(script, p)
+        : st.status === 'recording' ? `${who || 'Recording'} · ${num.format(kept)} of ${num.format(part.lineCount)}`
         : st.status === 'done' ? (who ? `${who} · recorded` : 'Recorded')
           : st.status === 'silent' ? 'Left silent'
             : voiced ? voiceChip(script, cast, part.id, chips, () => {
@@ -847,7 +856,8 @@ const PlaysUI = (() => {
     const held = !!own && own.held;
     const partHref = (part) => `?production=${encodeURIComponent(id)}&part=${encodeURIComponent(part)}`;
 
-    const rows = C.castParts(script).map(part => {
+    // The Worker's cast lists Sound only where the script prints a sound line; the board's Sound part stays local (B32).
+    const rows = C.castParts(script).filter(part => part.id !== C.SOUND || rec.parts[C.SOUND]).map(part => {
       const s = rec.parts[part.id] || { status: 'open' };
       const actions = h.el('div', { class: 'cast-actions' });
       if (S.isMine(rec, part.id, me)) {
@@ -1095,7 +1105,7 @@ const PlaysUI = (() => {
           line.textContent = '';
           try { await S.publishPlay({ api: API.plays, store, local, pid, consent: c }); rerender(); }
           catch (err) { console.error(err); line.textContent = S.line(err); pub.disabled = false; }
-        }) }, 'Publish');
+        }, local) }, 'Publish');
         const agreed = h.el('ul', { class: 'cast-list agreed-list', 'aria-label': 'Agreed to publish' },
           S.performers(rec).map(m => h.el('li', { class: 'cast-row' },
             h.el('span', { class: 'body-strong' }, m.display_name || 'No name'),
@@ -1124,11 +1134,14 @@ const PlaysUI = (() => {
   }
 
   /** The CC0 consent (rule 6): the Worker's words exactly as served, then I agree or Not now. */
-  function consentSheet(c, onAgree) {
+  function consentSheet(c, onAgree, local = null) {
     const d = h.el('dialog', { class: 'account-sheet consent-sheet', 'aria-labelledby': 'consent-h' });
     d.addEventListener('close', () => d.remove());
+    // Own sounds never leave the device (B32 §3.4 item 3): said before the consent, as a warning.
+    const own = local && typeof SoundCore !== 'undefined' && SoundCore.sources(local).own.length;
     d.append(
       h.el('h2', { id: 'consent-h', class: 'section-header' }, 'Publish'),
+      ...(own ? [h.el('p', { class: 'pl-warn', role: 'note' }, svg('warn', 'i-inline'), 'Your own sounds stay on this device. The published play leaves them out.')] : []),
       consentView(c.text),
       h.el('div', { class: 'actions' },
         h.el('button', { type: 'button', class: 'btn btn-primary', onclick: () => { d.close(); onAgree(); } }, 'I agree to publish my recording under CC0.')),
@@ -1277,17 +1290,28 @@ const PlaysUI = (() => {
       if (autoplay) audio.play().catch(() => {});
     }
 
-    async function prepare(autoplay) {
+    /** A sound this device lacks refuses the mix, naming it, with Export without them (B32 §7). */
+    function missingBox(err, retry) {
+      status.replaceChildren(h.el('span', { class: 'pl-warn', role: 'alert' }, svg('warn', 'i-inline'), SoundStudio.missingLine(err.detail || [])),
+        h.el('span', { class: 'actions' },
+          h.el('button', { type: 'button', class: 'btn', onclick: () => { status.textContent = ''; retry(true); } }, 'Export without them'),
+          h.el('button', { type: 'button', class: 'btn btn-way', onclick: () => { status.textContent = ''; play.disabled = false; } }, 'Cancel')));
+    }
+    const soundOpts = (without) => (typeof SoundStudio !== 'undefined' ? SoundStudio.mixOptions(store, store.production(p.id), { without }) : Promise.resolve({}));
+    const isMissing = (err) => err instanceof C.MixFailure && err.kind === 'missingSounds';
+
+    async function prepare(autoplay, without = false) {
       play.disabled = true;
       status.textContent = 'Mixing';
       try {
-        const blob = await store.renderMix(p.id, LiveAudio.offlineContext);
+        const blob = await store.renderMix(p.id, LiveAudio.offlineContext, await soundOpts(without));
         if (mix) URL.revokeObjectURL(mix.url);
         mix = { id: p.id, from, url: URL.createObjectURL(blob) };
         status.textContent = '';
         attach(autoplay);
       } catch (err) {
         console.error(err);
+        if (isMissing(err)) { missingBox(err, (w) => prepare(autoplay, w)); return; }
         status.textContent = 'The mix did not render.';
         play.disabled = false;
       }
@@ -1296,9 +1320,14 @@ const PlaysUI = (() => {
     box.append(play, slot, status);
     if (mix && mix.id === p.id && mix.from === from) attach(false);
     box.append(along);
-    box.append(h.el('div', { class: 'actions' }, h.el('button', { type: 'button', class: 'btn', onclick: async () => {
-      try { await store.exportMix(p.id, LiveAudio.offlineContext); } catch (err) { console.error(err); status.textContent = 'The mix did not export.'; }
-    } }, 'Export')));
+    const exportIt = async (without = false) => {
+      try { await store.exportMix(p.id, LiveAudio.offlineContext, await soundOpts(without)); } catch (err) {
+        console.error(err);
+        if (isMissing(err)) { missingBox(err, (w) => exportIt(w)); return; }
+        status.textContent = 'The mix did not export.';
+      }
+    };
+    box.append(h.el('div', { class: 'actions' }, h.el('button', { type: 'button', class: 'btn', onclick: () => exportIt() }, 'Export')));
     return box;
   }
 
@@ -1310,6 +1339,7 @@ const PlaysUI = (() => {
     const l = ListenThrough.create({
       production: p, script, store,
       audio: LiveAudio.create({ muted }), voice: StandInVoice.create({ muted, cast: CastUI.castFor({ script, production: p.id }) }),
+      cues: C.hasSound(p) && typeof SoundStudio !== 'undefined' ? SoundStudio.liveCues(store, p, script) : null,
       onChange: () => paint(),
     });
     listen = l;
@@ -1694,7 +1724,8 @@ const PlaysUI = (() => {
     const performer = h.el('input', { class: 'field-input', type: 'text', name: 'performer', autocomplete: 'name', maxlength: '40',
                                       id: 'pl-performer', placeholder: 'Your name' });
     const signedIn = API.account.signedIn();
-    const cards = (script ? C.castParts(script) : inv.parts.map(pt => ({ id: pt.id, lineCount: pt.lineCount, title: C.partTitle(pt.id) })))
+    const cards = (script ? C.castParts(script).filter(part => part.id !== C.SOUND || inv.parts.some(x => x.id === C.SOUND))
+      : inv.parts.map(pt => ({ id: pt.id, lineCount: pt.lineCount, title: C.partTitle(pt.id) })))
       .map(part => {
         const pt = inv.parts.find(x => x.id === part.id) || { id: part.id, status: 'open', lineCount: part.lineCount };
         const who = pt.performer || null;

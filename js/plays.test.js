@@ -180,7 +180,7 @@ test('the cue is the line before when someone else speaks it', () => {
 test('the cast sheet lists parts largest first, with directions and sound as parts', () => {
   const parts = C.castParts(fixtureScript());
   eq(parts.map(p => [p.title, p.lineCount]),
-    [['MOLLY', 5], ['FIBBER', 3], ['DOC', 1], ['Sound effects', 1], ['Stage directions', 1]], 'titles and counts');
+    [['MOLLY', 5], ['FIBBER', 3], ['DOC', 1], ['Sound', 1], ['Stage directions', 1]], 'titles and counts');
   eq(C.displayName('Carlton, Henry Fisk'), 'Henry Fisk Carlton', 'a filed name reads in order');
   eq(C.displayName('Baker, 1832-1890'), 'Baker, 1832-1890', 'control: a date is not a first name');
 });
@@ -718,7 +718,9 @@ test('guard: no synthetic buffer from a live listen-through reaches a take, the 
 function writeViolations(file, source) {
   const out = [];
   if (/\bMediaRecorder\b|captureStream\s*\(|createMediaStreamDestination/.test(source)) out.push(`${file}: records an output stream`);
-  if (/\bencodeWav\s*\(/.test(source) && !['plays-core.js', 'plays-store.js'].includes(file)) out.push(`${file}: encodes audio`);
+  // sound-store.js keeps a person's own sounds (B32 §3.4): a microphone capture or a file they brought, never a voice.
+  if (/\bencodeWav\s*\(/.test(source) && !['plays-core.js', 'plays-store.js', 'sound-store.js'].includes(file)) out.push(`${file}: encodes audio`);
+  if (file === 'sound-store.js' && /StandInVoice|TableRead|Kokoro|\.speak\s*\(/.test(source)) out.push(`${file}: reaches a device voice`);
   if (/\b(speechSynthesis|SpeechSynthesisUtterance)\b/.test(source) && file !== 'plays-voice.js') out.push(`${file}: speaks`);
   if (file.startsWith('plays-') && file !== 'plays-store.js'
       && /\bindexedDB\b|createWritable|getDirectory\s*\(|\.download\s*=/.test(source)) out.push(`${file}: persists`);

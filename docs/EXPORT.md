@@ -26,6 +26,8 @@ share or save sheet. Nothing is uploaded, and no account is needed.
 
 - `scripts[]` (PLAYS-DESIGN §13, Decision 088.3): the scripts the person added, the last one changed first: `id`, `title`, `source` (`Added by you`), `created`, `done`, and `lines[]` in the castable shape (`id`, `kind`, `role` and `parts` for a speech, `source` for the rest); a script not yet Done has no line ids, and a line with no part has `kind` `open`. The web, Apple and Android since 2026-11-24 (`OwnScripts.exportRows` on each). One cast by ear has `source` `Automatic transcript` and its `episode`. One its person shared has `shared`, the time (the web since R4-5, 2026-11-24). A script someone else brought is in the production they shared, not here. The class export (docs/WORKER.md) gains each own script's `lines` from the teacher's app the same day, on the web.
 
+- `ownSounds[]` (B32 §3.4 item 4, WEB-DESIGN §4.16 item 14a): the sounds the person recorded or brought for the Sound part, which live only on that device and are never synced, uploaded or published: `id` (what a production's `sound` block names in `src.own`), `name`, `created` (ISO 8601), `from` (`recorded` or `file`), `seconds`, `bytes`, and `wav`, the sound itself as a base64 16-bit 48 kHz mono WAV, so the export is a whole copy of the person's own work (the ink precedent above). The web since 2026-11-26; Apple and Android add it with their boards (B32 batches A and D) and omit the key until then.
+
 A field the device does not know is `null`, never invented. An empty library
 exports empty lists, not an error.
 

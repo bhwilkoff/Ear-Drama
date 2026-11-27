@@ -936,6 +936,46 @@ const API = (() => {
   }
 
   /**
+   * The sound pack (B32 §5.2; WEB-DESIGN §4.16 item 14a): its manifest and its files, read from where the pack is
+   * served, never bundled. `sounds.manifestURL()` is null while no pack is configured (its hosting waits on the
+   * owner), and then the board's library shows nothing. A page served from this machine may name a manifest on
+   * the same server with `?sounds=PATH` (the fit tool's fixture); a deployed page never can.
+   */
+  const sounds = {
+    manifestURL() {
+      const conf = typeof CONFIG !== 'undefined' && CONFIG.sounds ? CONFIG.sounds.manifest : null;
+      if (typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+        // The page's own links drop the parameter, so this tab keeps it (sessionStorage) once it is seen.
+        let local = new URLSearchParams(location.search).get('sounds') || '';
+        try { if (local) sessionStorage.setItem('ed.sounds.local', local); else local = sessionStorage.getItem('ed.sounds.local') || ''; } catch { /* a blocked store */ }
+        if (/^[\w./-]+\.json$/.test(local) && !local.includes('..')) return new URL(local, location.href).href;
+      }
+      return conf || null;
+    },
+    async manifest(url, timeout = 15000) {
+      let resp;
+      try { resp = await fetch(url, { signal: AbortSignal.timeout(timeout), cache: 'no-cache' }); } catch (e) {
+        throw new DataError(isOffline() ? 'offline' : 'error', `${e.message} ${url}`);
+      }
+      if (resp.status === 404) throw new DataError('missing', url);
+      if (!resp.ok) throw new DataError('error', `${resp.status} ${url}`);
+      return resp.json();
+    },
+    /** One pack file's bytes, from its path beside the manifest. */
+    async file(manifestURL, path, timeout = 60000) {
+      const url = new URL(path, manifestURL).href;
+      let resp;
+      try { resp = await fetch(url, { signal: AbortSignal.timeout(timeout) }); } catch (e) {
+        throw new DataError(isOffline() ? 'offline' : 'error', `${e.message} ${url}`);
+      }
+      if (!resp.ok) throw new DataError(resp.status === 404 ? 'missing' : 'error', `${resp.status} ${url}`);
+      return { url, bytes: await resp.arrayBuffer(), type: resp.headers.get('content-type') || '' };
+    },
+  };
+  // A local ?sounds= is read at load, so the tab keeps it after the page's own links drop it.
+  if (typeof location !== 'undefined') { try { sounds.manifestURL(); } catch { /* no page */ } }
+
+  /**
    * Where the same transcript's times are read (R4 §1.3): the `.vtt` beside the `.txt`, at `/cors/`,
    * the only path archive.org lets a browser read it by. Null for any other address.
    */
@@ -1881,7 +1921,7 @@ const API = (() => {
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople, voices,
-    transcript, transcriptCues, cuesURL, transcriptLines, transcriptLabel, transcriptSnippet, saidWords, searchSaidNumbers,
+    sounds, transcript, transcriptCues, cuesURL, transcriptLines, transcriptLabel, transcriptSnippet, saidWords, searchSaidNumbers,
     dateQuery, dateLabel, searchAired,
     localDate, tonight, tonightFile, onAir, stations, onNow, ahead, castableScripts, playLibrary, playIndex, playCollections, playCharacters, playSaid, playLines, playScriptOnce, playScript, playWindowPicture, account,
   };

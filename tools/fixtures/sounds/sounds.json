@@ -1,0 +1,287 @@
+{
+  "format": 1,
+  "pack": "eardrama-sounds-fixture",
+  "built": "2026-11-26",
+  "categories": [
+    {
+      "id": "weather",
+      "title": "Weather",
+      "bytes": 73732
+    },
+    {
+      "id": "doors",
+      "title": "Doors",
+      "bytes": 24088
+    },
+    {
+      "id": "music",
+      "title": "Music",
+      "bytes": 40044
+    }
+  ],
+  "cues": [
+    {
+      "id": "thunder-close",
+      "title": "Thunder, close",
+      "category": "weather",
+      "tags": [
+        "thunder",
+        "storm"
+      ],
+      "kind": "effect",
+      "ms": 1200,
+      "loop": false,
+      "file": "weather/thunder-close.wav",
+      "bytes": 19244,
+      "sha256": "b4a71bc5ee5ad2095c68843dba905288d3060bf988f8a077e38792cf94410d35",
+      "lufs": -20,
+      "peak": 0.4,
+      "source": {
+        "name": "Fixture",
+        "page": "https://example.org/fixture",
+        "file": null,
+        "maker": null
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "https://example.org/fixture/license",
+        "checked": "2026-11-26"
+      }
+    },
+    {
+      "id": "thunder-distant",
+      "title": "Thunder, distant",
+      "category": "weather",
+      "tags": [
+        "thunder",
+        "storm"
+      ],
+      "kind": "effect",
+      "ms": 1400,
+      "loop": false,
+      "file": "weather/thunder-distant.wav",
+      "bytes": 22444,
+      "sha256": "3aaf9ade7d6b0c72f2f86570c0cf70cc19bfa04f63a7ced6cb5ba3e9b47f981a",
+      "lufs": -20,
+      "peak": 0.4,
+      "source": {
+        "name": "Fixture",
+        "page": "https://example.org/fixture",
+        "file": null,
+        "maker": null
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "https://example.org/fixture/license",
+        "checked": "2026-11-26"
+      }
+    },
+    {
+      "id": "rain-steady",
+      "title": "Rain, steady",
+      "category": "weather",
+      "tags": [
+        "rain",
+        "storm",
+        "water"
+      ],
+      "kind": "ambience",
+      "ms": 2000,
+      "loop": true,
+      "file": "weather/rain-steady.wav",
+      "bytes": 32044,
+      "sha256": "e7c6569af00b17ff35e0b3ac5314ad1bd40d866a343d22a227318f848ebb345c",
+      "lufs": -20,
+      "peak": 0.4,
+      "source": {
+        "name": "Fixture",
+        "page": "https://example.org/fixture",
+        "file": null,
+        "maker": null
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "https://example.org/fixture/license",
+        "checked": "2026-11-26"
+      }
+    },
+    {
+      "id": "knock-wood",
+      "title": "Knock on wood",
+      "category": "doors",
+      "tags": [
+        "knock",
+        "door",
+        "wood"
+      ],
+      "kind": "effect",
+      "ms": 600,
+      "loop": false,
+      "file": "doors/knock-wood.wav",
+      "bytes": 9644,
+      "sha256": "5b05619a3ca5cdac9271b791e5938eff328ea11e6e1d30b83ed82390d2548b4e",
+      "lufs": -20,
+      "peak": 0.4,
+      "source": {
+        "name": "Fixture",
+        "page": "https://example.org/fixture",
+        "file": null,
+        "maker": null
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "https://example.org/fixture/license",
+        "checked": "2026-11-26"
+      }
+    },
+    {
+      "id": "door-creak",
+      "title": "Door creak",
+      "category": "doors",
+      "tags": [
+        "door",
+        "creak"
+      ],
+      "kind": "effect",
+      "ms": 900,
+      "loop": false,
+      "file": "doors/door-creak.wav",
+      "bytes": 14444,
+      "sha256": "4b51bd9e758ef8584392461a09ad79d5f19776b1e8dd2e6180ec45d1830da520",
+      "lufs": -20,
+      "peak": 0.4,
+      "source": {
+        "name": "Fixture",
+        "page": "https://example.org/fixture",
+        "file": null,
+        "maker": null
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "https://example.org/fixture/license",
+        "checked": "2026-11-26"
+      }
+    },
+    {
+      "id": "calm-prelude",
+      "title": "Prelude, calm",
+      "category": "music",
+      "tags": [
+        "calm",
+        "piano"
+      ],
+      "kind": "music",
+      "ms": 2500,
+      "loop": true,
+      "file": "music/calm-prelude.wav",
+      "bytes": 40044,
+      "sha256": "41a8fccbd9cc15ac6e97daaed52b55aeebdb135ec332c5bcbd3ed974d2ad1c29",
+      "lufs": -20,
+      "peak": 0.4,
+      "source": {
+        "name": "Fixture",
+        "page": "https://example.org/fixture",
+        "file": null,
+        "maker": null
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "https://example.org/fixture/license",
+        "checked": "2026-11-26"
+      }
+    },
+    {
+      "id": "planted-cc-by",
+      "title": "Planted planted-cc-by",
+      "category": "weather",
+      "tags": [
+        "thunder",
+        "storm"
+      ],
+      "kind": "effect",
+      "ms": 1200,
+      "loop": false,
+      "file": "weather/thunder-close.wav",
+      "bytes": 19244,
+      "sha256": "b4a71bc5ee5ad2095c68843dba905288d3060bf988f8a077e38792cf94410d35",
+      "lufs": -20,
+      "peak": 0.4,
+      "source": {
+        "name": "Fixture",
+        "page": "https://example.org/fixture",
+        "file": null,
+        "maker": null
+      },
+      "license": {
+        "id": "CC-BY-4.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "https://example.org/fixture/license",
+        "checked": "2026-11-26"
+      }
+    },
+    {
+      "id": "planted-no-evidence",
+      "title": "Planted planted-no-evidence",
+      "category": "weather",
+      "tags": [
+        "thunder",
+        "storm"
+      ],
+      "kind": "effect",
+      "ms": 1200,
+      "loop": false,
+      "file": "weather/thunder-close.wav",
+      "bytes": 19244,
+      "sha256": "b4a71bc5ee5ad2095c68843dba905288d3060bf988f8a077e38792cf94410d35",
+      "lufs": -20,
+      "peak": 0.4,
+      "source": {
+        "name": "Fixture",
+        "page": "https://example.org/fixture",
+        "file": null,
+        "maker": null
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "",
+        "checked": "2026-11-26"
+      }
+    },
+    {
+      "id": "planted-refused-host",
+      "title": "Planted planted-refused-host",
+      "category": "weather",
+      "tags": [
+        "thunder",
+        "storm"
+      ],
+      "kind": "effect",
+      "ms": 1200,
+      "loop": false,
+      "file": "weather/thunder-close.wav",
+      "bytes": 19244,
+      "sha256": "b4a71bc5ee5ad2095c68843dba905288d3060bf988f8a077e38792cf94410d35",
+      "lufs": -20,
+      "peak": 0.4,
+      "source": {
+        "name": "Fixture",
+        "page": "https://freesound.org/people/x/sounds/1/",
+        "file": null,
+        "maker": null
+      },
+      "license": {
+        "id": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "evidence": "https://example.org/fixture/license",
+        "checked": "2026-11-26"
+      }
+    }
+  ]
+}

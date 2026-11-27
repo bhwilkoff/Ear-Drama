@@ -105,9 +105,11 @@ const Studio = (() => {
       const node = api.line(lid);
       const sp = node && (node.querySelector(`.rd-sp[data-part="${CSS.escape(part)}"]`) || node.querySelector('.rd-sp'));
       const who = sp && sp.querySelector('.rd-who');
-      if (!who) continue;
-      const b = el('button', { type: 'button', class: 'rd-take', dataset: { line: lid } });
-      who.append(b);
+      // A stage direction has no name row: its take state sits at the line's end (B32 §2 item 2).
+      const host = who || (node && !sp ? node : null);
+      if (!host) continue;
+      const b = el('button', { type: 'button', class: who ? 'rd-take' : 'rd-take rd-take-end', dataset: { line: lid } });
+      if (who) host.append(b); else host.prepend(b);
       badges.set(lid, b);
     }
     function paintBadge(lid) {
@@ -465,8 +467,10 @@ const Studio = (() => {
             if (!confirm(`Delete ${unused === 1 ? '1 unused take' : `${num.format(unused)} unused takes`} of ${C.partTitle(part)}?`)) return;
             await core.deleteUnused();
           } }, 'Delete unused takes') : null,
-          el('button', { type: 'button', class: 'btn', disabled: locked || missing > 0, onclick: () => done() }, 'Done with this part'),
-          missing ? el('p', { class: 'caption st-muted' }, missing === 1 ? '1 line to go' : `${num.format(missing)} lines to go`) : null,
+          // Stage directions never block (B32 §2 item 3): Done from the first take, the rest silent.
+          el('button', { type: 'button', class: 'btn', disabled: locked || (C.isSpeaking(part) ? missing > 0 : core.kept() === 0), onclick: () => done() }, 'Done with this part'),
+          missing && C.isSpeaking(part) ? el('p', { class: 'caption st-muted' }, missing === 1 ? '1 line to go' : `${num.format(missing)} lines to go`) : null,
+          missing && !C.isSpeaking(part) && core.kept() ? el('p', { class: 'caption st-muted' }, 'The rest silent') : null,
           el('p', { class: 'caption refusal st-done-err', role: 'alert' })),
         el('dl', { class: 'pl-keys st-keys' }, keys.flatMap(([k, v]) => [el('dt', {}, el('kbd', {}, k)), el('dd', {}, v)])));
     }

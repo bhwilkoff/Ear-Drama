@@ -21,6 +21,9 @@ const CONFIG = Object.freeze({
     // A return URL registered on that Services ID. The popup flow never navigates to it.
     redirectURI: 'https://eardrama.org/',
   },
+  // The sound pack's manifest (B32 §5.2), e.g. https://archive.org/download/eardrama-sounds-1/sounds.json. Null until
+  // the owner rules on its archive.org item: the board then offers own sounds and performed cues only.
+  sounds: { manifest: null },
   google: {
     // The Web OAuth client id (it is also in the Worker's GOOGLE_AUDIENCES).
     clientId: '1083349339355-hmed22o33qemdc3dfhbqhkt0vho782ak.apps.googleusercontent.com',

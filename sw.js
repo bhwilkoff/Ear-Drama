@@ -8,13 +8,16 @@
  *    copy as the fallback, so whatever a person has opened still opens offline.
  *    The castable plays (data/plays/castable-scripts.json) are data like the rest.
  *    A play's takes live in IndexedDB, never in these caches.
- *  - Audio is never cached here (downloads are a later step), and the ops pages
+ *  - Audio is never cached here (downloads are a later step; the sound pack's files go into `ed-sounds-1` from the
+ *    page itself, and activate keeps that cache), and the ops pages
  *    (/pulse/, /cast/), the sign-in return pages (/auth/), and other origins' pages pass through untouched.
  *  - Caches are named by version; activate deletes every older Ear Drama cache.
  */
 const SHELL_VERSION = 'ed-shell-v71';
 const DATA_VERSION = 'ed-data-v1';
-const KEEP = [SHELL_VERSION, DATA_VERSION];
+// The sound pack's downloaded categories (js/sound-store.js, B32 §5.2): kept through every shell version.
+const SOUNDS_CACHE = 'ed-sounds-1';
+const KEEP = [SHELL_VERSION, DATA_VERSION, SOUNDS_CACHE];
 
 const SHELL = [
   './',
@@ -69,6 +72,9 @@ const SHELL = [
   'js/marks.js',
   'js/studio-core.js',
   'js/studio.js',
+  'js/sound-core.js',
+  'js/sound-store.js',
+  'js/sound-studio.js',
   'js/together-core.js',
   'js/together.js',
   'js/together-ui.js',

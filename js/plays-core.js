@@ -38,7 +38,7 @@ const PlaysCore = (() => {
   function partTitle(part) {
     const name = roleName(part);
     if (name !== null) return name;
-    return part === DIRECTIONS ? 'Stage directions' : 'Sound effects';
+    return part === DIRECTIONS ? 'Stage directions' : 'Sound';
   }
 
   /** The part a line belongs to: its role, or one of the two parts "like any other" (§2.2). */
@@ -54,6 +54,26 @@ const PlaysCore = (() => {
     return k === 'say' || k === 'mic' || k === 'sound' ? k : 'direction';
   }
   const pieceText = (piece) => piece[Object.keys(piece)[0]] || '';
+
+  /** An aside that is a sound cue by its words (the reader's sound lane, WEB-DESIGN §4.16 item 3). */
+  const CUE_WORDS = /^[\s(\[_]*(?:(?:sounds?|noises?) of\b|music\b)/i;
+  /**
+   * The script's cue rows, the Sound part's slots (B32 §3.1): a sound or music line (`piece` null), and
+   * inside a speech each printed sound piece or aside beginning "sound of", "noise of" or "music"
+   * (`piece` its index). Never filled in: a row is only where a person may put a sound.
+   */
+  function cueRows(script) {
+    const out = [];
+    for (const line of script.lines || []) {
+      if (line.kind === 'sound' || line.kind === 'music') { out.push({ line: line.id, piece: null, text: line.source || '' }); continue; }
+      if (line.kind !== 'speech' || !Array.isArray(line.parts)) continue;
+      line.parts.forEach((pc, i) => {
+        const k = pieceKind(pc);
+        if (k === 'sound' || (k === 'direction' && CUE_WORDS.test(pieceText(pc)))) out.push({ line: line.id, piece: i, text: pieceText(pc) });
+      });
+    }
+    return out;
+  }
 
   /** The words a performer (or the device voice) says: a speech's said parts, or a printed block. */
   function spokenText(line) {
@@ -203,7 +223,10 @@ const PlaysCore = (() => {
   const linesFor = (script, part) => script.lines.filter(l => linePart(l) === part);
   const speechLineIDs = (script) => script.lines.filter(l => l.kind === 'speech').map(l => l.id);
 
-  /** Speaking parts largest first (by lines, then first appearance), then sound, then directions. */
+  /**
+   * Speaking parts largest first (by lines, then first appearance), then Sound on every script (its count the
+   * cue rows, B32 §3.1 item 1), then directions when there are any.
+   */
   function castParts(script) {
     const counts = new Map();
     const first = new Map();
@@ -214,6 +237,7 @@ const PlaysCore = (() => {
     });
     const speaking = [...counts.keys()].filter(isSpeaking)
       .sort((a, b) => (counts.get(b) - counts.get(a)) || (first.get(a) - first.get(b)));
+    counts.set(SOUND, cueRows(script).length);
     const others = [SOUND, DIRECTIONS].filter(p => counts.has(p));
     // The register the catalog publishes for a role's stand-in voice (catalog DECISIONS 049): auto-cast only, never shown.
     const reg = new Map((script.roles || []).filter(r => r && (r.register === 'high' || r.register === 'low')).map(r => [role(r.name), r.register]));
@@ -241,7 +265,8 @@ const PlaysCore = (() => {
   const stateOf = (p, part) => p.parts[part] || { status: 'open' };
   const takeById = (p, id) => p.takes.find(t => t.id === id) || null;
   const chosenTake = (p, lineID) => (p.chosen[lineID] ? takeById(p, p.chosen[lineID]) : null);
-  const takesFor = (p, lineID) => p.takes.filter(t => t.lineID === lineID);
+  /** A line's takes; a performed cue (`cue`, a Sound part take on its slot's line, B32 §3.1 item 6) is the slot's, never the line's. */
+  const takesFor = (p, lineID) => p.takes.filter(t => t.lineID === lineID && !t.cue);
   /** The chosen take when it counts: a take the bleed check flagged is kept on disk but never
    *  counts or reaches the mix (§5 rule 2, §8 rule 3). */
   const usableTake = (p, lineID) => { const t = chosenTake(p, lineID); return t && !t.bleed ? t : null; };
@@ -1197,7 +1222,7 @@ const PlaysCore = (() => {
   return {
     DIRECTIONS, SOUND, STANDIN, TAKE_RATE, ROOM_TONE_SECONDS, DEFAULT_GAP, TARGET_LUFS, PEAK_CEILING,
     BLEED_LOUD_FRACTION, now, uuid, clone,
-    role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, spokenText, displayName, authorName, authorLine,
+    role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, CUE_WORDS, cueRows, spokenText, displayName, authorName, authorLine,
     WORDS_PER_MINUTE, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, pickList, fnv1a64, todaysPlay, scenePool, todaysScene, openingOf,
     linesFor, speechLineIDs, castParts,
     newProduction, isEmptyProduction, secondProductionNeedsAccount, madeHereLeads, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, soundTakeIDs, discardUnused, deleteTake,

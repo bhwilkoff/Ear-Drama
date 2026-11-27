@@ -2674,11 +2674,18 @@
     const stamp = new Date().toISOString().slice(0, 10);
     const gather = async () => {
       let productions = [];
-      try { const s = PlayStore.open(); await s.load(); productions = s.productions; } catch { /* no ear dramas to list */ }
+      let ownSounds = [];
+      try {
+        const s = PlayStore.open();
+        await s.load();
+        productions = s.productions;
+        // Own sounds live only on this device (B32 §3.4 item 4): the export carries each one whole.
+        if (typeof SoundStore !== 'undefined') ownSounds = await SoundStore.create({ backend: s.backend, api: null }).exportRows();
+      } catch (e) { if (productions.length) console.error(e); }
       const marks = typeof MarksCore !== 'undefined' ? (() => { try { return MarksCore.exportRows(localStorage); } catch { return []; } })() : [];
       let scripts = [];
       try { scripts = await OwnScripts.shared().exportRows(); } catch (e) { console.error(e); }
-      return DataExport.build(Store, productions, Date.now(), marks, scripts);
+      return DataExport.build(Store, productions, Date.now(), marks, scripts, ownSounds);
     };
     row.replaceChildren(
       el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {
