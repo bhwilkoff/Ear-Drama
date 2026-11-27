@@ -186,6 +186,33 @@ download remains small, but ... an onboarding ... to download the better quality
   onboarding at first launch (the owner's word), skippable, plus at first Read/Cast/Record if skipped; guard test against
   bundled models; CI prints IPA/AAB sizes.
 
+## Round 4 batches (2026-11-27; owner: "solve for all of the issues")
+
+Owner, 2026-11-27: "You should definitely solve for all of the issues you have identified here. Although, I already
+have preliminary approval for the workshop's texts (check my email back from Larry on that). 13 seconds is too long to
+wait for anything on a TV. Also, I'd like for you to make the "read together" experience far better. I'd like "read
+together" to allow multiple people with different devices to either be able to read/rehearse in a single synced
+experience in the same room and I'd like it to be possible to have a synced reading experience on a call (SharePlay,
+etc.). Please research and implement."
+Larry Groebe (GRW), 2026-11-24: "I'd probably be happiest if you downloaded any of the scripts/transcripts you needed,
+and hosted them as part of your site" (initial thought; we credit the Workshop and transcriber). So B19 proceeds,
+hosted by us, credited; the old Release assets need not be deleted (item closed).
+
+- [ ] **B36 TV in under 2 s.** Google TV cold load 13.5 s (decode of the 1.8 MB index). A slim TV projection of the
+  index from the catalog, a baseline profile, cache; Apple TV measured too. Target: shelves drawn < 2 s cold.
+- [ ] **B37 Full role names on the cast sheet** (display names, ids unchanged: "DEM" shows "Demea").
+- [ ] **B38 The Duo**: every round 3 surface seen on it when it is reachable.
+- [ ] **B39 Sound pack and book plates on archive.org** under the project's account (owner: "solve for all"):
+  K1 starter pack (Kenney, OpenGameArt CC0, PD Chopin) plus USC library gaps (uploader-labeled CC0, kept and removed
+  on request like any unclaimed recording, evidence recorded); C2 plates (about 180).
+- [ ] **B40 Third-party text out of future public caches** (RadioGOLDINdex plots, Haendiges pages, OTRRpedia synopses,
+  archive.org reviews; transcripts stay). Old Release assets are not deleted without the owner's explicit yes.
+- [ ] **B19 Radio scripts** with GRW texts hosted by us, credited to the Workshop and transcriber.
+- [ ] **B41 Read together, far better.** Research then build: same room, many devices, one synced reading/rehearsal
+  (who reads which part, cursor, cues, a leader, late joiners, offline-tolerant); on a call: SharePlay (FaceTime) on
+  Apple, Google Meet Live Sharing / Android, web via the room link alongside any call; one protocol over transports.
+- [ ] **B42 Listening pass** of the sound board's duck depths (audible: ask the owner first).
+
 ## Waiting on the owner (never blocks the loop)
 
 **B19**: the Workshop's answer (request drafted to Larry Groebe, owner sends). Kokoro re-export for Android and web word marks; a read-only Cloudflare analytics token for a usage
