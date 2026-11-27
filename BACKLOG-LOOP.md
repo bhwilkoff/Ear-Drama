@@ -394,3 +394,4 @@ GRW request sent or not.
 - 2026-11-26 19:00: 1.1.6 on TestFlight and Play internal. B32 D merged (Android board; cue decoder proven on the Pixel with AAC/Vorbis/Opus/MP3, one bug fixed). Left on Android: Hear it in place, live listen with cues, direction take marks in the reader. B32 A running.
 - 2026-11-26 19:35: B32 A merged (Apple board; iPhone 12, iPad frames). Fixed live web regression: own-script shares refused once Sound was always listed (also Android count). Scene names + range agent running.
 - 2026-11-26 19:45: scene names merged (373 cards in 101 plays; cast sheet roles stay abbreviated: renaming role ids needs a migration). 1.1.7 (179) dispatched with the Apple and Android boards. Library refresh running for the names. B35 scene-range recording running (plan in B31 §3.4).
+- 2026-11-26 20:15: scene names live (plays-library-2026-11-27). 1.1.7 on TestFlight and Play internal. B35 scene range running.
