@@ -419,7 +419,7 @@ class PlaysShareTest {
         assertEquals("Ear Drama could not be reached.", PlaysShare.line(IllegalStateException()))
         assertEquals("", PlaysShare.line(null))
         assertEquals("MOLLY is still recording.", said("another_part_is_recording", detail = JsonPrimitive("role:MOLLY")))
-        assertEquals("Sound effects is still recording.", said("another_part_is_recording", detail = JsonPrimitive("sound")))
+        assertEquals("Sound is still recording.", said("another_part_is_recording", detail = JsonPrimitive("sound")))
         assertEquals("1 line still needs a take.", said("lines_missing", detail = JsonArray(listOf(JsonPrimitive("L1")))))
         assertEquals("3 lines still need a take.", said("lines_missing", detail = JsonArray(List(3) { JsonPrimitive("L$it") })))
     }

@@ -18,6 +18,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.AlertDialog
@@ -256,7 +257,8 @@ fun LazyListScope.sharedCastRows(
     }
     item(key = "shared-parts-h") { SectionHeader("Parts") }
     item(key = "shared-parts") {
-        PartGrid(sheet.script.castParts) { part, modifier ->
+        // The Worker's cast lists Sound only where its record holds the part; the board's Sound part stays local (B32).
+        PartGrid(sheet.script.castParts.filter { it.id != com.example.appname.plays.PartID.SOUND || rec.parts.containsKey(it.id.raw) }) { part, modifier ->
         val state = rec.parts[part.id.raw] ?: SharedPart()
         SharedCastRow(
             modifier = modifier,
@@ -357,7 +359,19 @@ fun LazyListScope.sharedCastRows(
                     AlertDialog(
                         onDismissRequest = { asking = false },
                         title = { Text("Publish") },
-                        text = { ConsentWords(words.text, Modifier.verticalScroll(rememberScrollState())) },
+                        text = {
+                            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Spacing.S3.dp)) {
+                                // Own sounds never leave the device (B32 §3.4 item 3): said before the consent, as a warning.
+                                val own = LocalAppContainer.current.plays.store.production(sheet.id)?.let { com.example.appname.plays.SoundCore.sources(it).own.isNotEmpty() } == true
+                                if (own) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Filled.Warning, contentDescription = null, tint = AppSemantics.colors.warning)
+                                        Text(com.example.appname.plays.SoundCore.OWN_STAY_HOME, style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                                ConsentWords(words.text)
+                            }
+                        },
                         confirmButton = { TextButton(onClick = { asking = false; sheet.publish(words) }) { Text("I agree to publish my recording under CC0.") } },
                         dismissButton = { TextButton(onClick = { asking = false }) { Text("Not now") } },
                     )

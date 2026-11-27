@@ -711,7 +711,7 @@ private fun inkColors() = ButtonDefaults.buttonColors(containerColor = OnAir.col
 
 /** The round record control, 52 dp: Record (From here in Run through), Stop while the microphone is open, Cancel in ink while a cue plays, Pause during a run. */
 @Composable
-private fun RoundControl(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, container: Color, content: Color, enabled: Boolean, onClick: () -> Unit) {
+internal fun RoundControl(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, container: Color, content: Color, enabled: Boolean, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier

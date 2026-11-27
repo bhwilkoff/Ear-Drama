@@ -25,6 +25,8 @@ data class DataExport(
     val marks: List<com.example.appname.plays.MarksCore.ExportRow> = emptyList(),
     /** Every own script on the device, the last one changed first (PLAYS-DESIGN §13; docs/EXPORT.md `scripts[]`). */
     val scripts: List<JsonObject> = emptyList(),
+    /** The sounds the person recorded or brought for the Sound part, each whole (B32 §3.4 item 4; docs/EXPORT.md `ownSounds[]`). */
+    val ownSounds: List<JsonObject> = emptyList(),
 ) {
     data class History(
         val episode: String,
@@ -76,6 +78,7 @@ data class DataExport(
                 })
             }))
             put("scripts", JsonArray(scripts))
+            put("ownSounds", JsonArray(ownSounds))
             put("marks", JsonArray(marks.map { m ->
                 obj(
                     "script" to text(m.script), "title" to text(m.title), "revision" to text(m.revision), "line" to text(m.line),

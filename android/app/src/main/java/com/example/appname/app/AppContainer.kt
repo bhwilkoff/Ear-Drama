@@ -46,7 +46,7 @@ class AppContainer(context: Context, scope: CoroutineScope) {
     val downloads = DownloadStore(File(context.filesDir, "downloads"), WorkManagerDownloadTransport(context))
     val playback = PlaybackEngine(context, api, catalog, user, downloads)
     val queue by lazy { QueueVerbs(user, playback) }
-    val plays = PlaysLibrary(context, KtorLibraryTransport(api.client)).also { p -> p.signedIn = { accounts.account.value != null } }
+    val plays = PlaysLibrary(context, KtorLibraryTransport(api.client), com.example.appname.plays.KtorSoundFetch(api.client)).also { p -> p.signedIn = { accounts.account.value != null } }
     val isTelevision = context.isTelevision()
 
     /** A script another app handed over, until Add a script reads it (the inbox puts it here; never in a route or saved state). */

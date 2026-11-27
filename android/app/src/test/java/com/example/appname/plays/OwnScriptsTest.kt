@@ -106,7 +106,7 @@ ANNA: Sit down.
         assertEquals("the revision is its lines'", OwnScript.revisionOf(built["lines"]), s.revision)
         assertEquals(listOf("L0001", "L0002", "L0003"), s.lines.map { it.id }.take(3))
         assertEquals(listOf("A LITTLE PLAY", "Somebody knocks twice."), s.lines.filter { it.kind == ScriptLine.Kind.Direction }.map { it.source })
-        assertEquals("the recorder casts it", listOf("ANNA", "BEN", "Sound effects", "Stage directions"), s.castParts.map { it.title })
+        assertEquals("the recorder casts it", listOf("ANNA", "BEN", "Sound", "Stage directions"), s.castParts.map { it.title })
         val row = env.own.list().single()
         assertTrue(row.done)
         assertEquals("2 parts · ${rec.doc.lines.size} lines", row.facts)

@@ -362,6 +362,10 @@ private fun linesFact(n: Int) = String.format(java.util.Locale.US, "%,d", n) + i
 
 fun lineCountText(n: Int) = if (n == 1) "1 line" else "$n lines"
 
+/** A part's length on its card: lines, or for Sound its cue rows (B32 §3.1 item 1). */
+fun partCountText(part: CastPart) =
+    if (part.id == com.example.appname.plays.PartID.SOUND) com.example.appname.plays.SoundCore.cuesText(part.lineCount) else lineCountText(part.lineCount)
+
 /**
  * A part card: the face, the part's name in the display face, its lines, the presence strip, the
  * who line (or [whoSlot], a part's voice chip, in its place), and the verbs the page gives it. [highlight] outlines the part being recorded (a full
@@ -383,7 +387,7 @@ fun PartCard(
     Surface(
         modifier
             .semantics(mergeDescendants = true) {
-                contentDescription = listOfNotNull(part.title, lineCountText(part.lineCount), who).joinToString(", ")
+                contentDescription = listOfNotNull(part.title, partCountText(part), who).joinToString(", ")
             },
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -399,7 +403,7 @@ fun PartCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(lineCountText(part.lineCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(partCountText(part), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             PresenceStrip(script, part.id)
             if (whoSlot != null) whoSlot() else if (who != null) Text(who, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             if (actions != null) {

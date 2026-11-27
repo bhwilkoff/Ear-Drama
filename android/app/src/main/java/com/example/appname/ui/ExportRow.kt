@@ -92,6 +92,7 @@ fun ExportRow(modifier: Modifier = Modifier) {
             },
             marks = com.example.appname.plays.MarksRepository(com.example.appname.plays.MarksDatabase.get(context).marks()).exportRows(),
             scripts = withContext(Dispatchers.IO) { container.plays.own.exportRows() },
+            ownSounds = withContext(Dispatchers.IO) { container.plays.ownSounds.exportRows() },
         )
     }
 

@@ -947,6 +947,83 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     `appname_studio_phase` (`idle`, `listening`, `takes`) exist for frames; the
     mute door silences take playback and cue voices too. A voice chip names a
     voice by its distinguishing part (a region in initials, the number kept).
+  - **Sound as a part, and the sound board** (B32 batch D, 2026-11-26;
+    `docs/research/design/B32-sound-board.md` §2, §3, §7 and WEB-DESIGN §4.16
+    item 14a are binding on the verbs; Decision 091 on the mix; owner
+    2026-11-26: *"I'd like to add the ability to record both stage direction
+    (as a character) and foley sounds within a well-designed foley (or sound
+    effects, depending on the need of the play) soundboard/interface that
+    would allow someone to add sounds in the backgrounds of a recording. You
+    should be able to duck the sound effects and foley work under the voices
+    and/or add your own custom sounds."*). Code: `plays/SoundCore.kt` (no view:
+    the mirror of `js/sound-core.js`, slots, placement edits, the pack manifest
+    reader with its rights gate, search, the cast sheet's words),
+    `plays/SoundStore.kt` (own sounds under `filesDir/Sounds/mine/`, the pack
+    cache under `noBackupFilesDir/sounds/`, the mix's resolver),
+    `ui/screens/SoundScreen.kt` (the Sound part's studio and the board);
+    tests `SoundCoreTest`, `SoundRenderTest` (Roborazzi), and `CueDecoderDeviceTest`
+    (instrumented: real compressed files through `CueDecoder` and the AAC encoder; run by hand on a device).
+    - **The cast sheet** lists **Sound** after the speaking parts on every
+      script and **Stage directions** after it when the script has any
+      (`PlayScript.castParts`; title "Sound", never "Sound effects"). Sound's
+      card says "N cues" (`PlayScript.cueRows`, the reader's rule), "Add sounds"
+      with none, and once taken "9 of 12 cues · 2 beds"; a shared production
+      lists Sound only where its record holds the part. Take part / Record on
+      Sound opens `Route.Sound(productionId)`, never the reader, because the
+      reader's page is a pager of speaking roles (§4.17 above) and a slot is a
+      cue row, not a role's line.
+    - **The Sound screen** is a `LazyColumn` of the script's lines (the cue
+      rows drawn as slots, the cue's own words in the cue style), a dock and
+      the board. A slot carries an outlined ring (empty, the number of sounds
+      in it, or a dash for Leave silent); the current slot is outlined in
+      ink; its chosen sounds are listed under it in `bodySmall` ("Thunder,
+      close · After"); a bed draws a 3 dp rule in the margin from its first
+      line to its last. A long press on any line opens a `DropdownMenu` with
+      **Add a sound here** (a slot at that line's end, dropped when left
+      empty). The dock is one status row, "Cue 13 of 34 · Thunder, close ·
+      After", then **Sounds** (the board), Previous slot, the round record
+      control (a performed cue: a take on the slot, never a line's chosen
+      take; the headphones gate and room tone as for any part), Next slot.
+      Keys: J / K slots, Space records, S the board. A slot is never filled
+      for the person: it opens empty and **Leave silent** marks it done. **Done with
+      this part** is the top bar's action while the part records. The part never blocks completeness.
+    - **The board** is a `ModalBottomSheet` below 840 dp and the screen's
+      end pane from it: the slot ("CUE 13 OF 34 · URIAH" in `labelMedium`
+      caps, then its words), **Done**, **Leave silent**; **In this cue**
+      (each sound: audition, title, its length and placement, Remove; for the
+      selected one a `SingleChoiceSegmentedButtonRow` Before · Under · After
+      · Bed, **Start** −/+ in 0.1 s down to −2 s, **Level and fades** in an
+      expandable row (level −12 to +6 dB, fades 0, 0.2, 0.5, 1, 2 s, Under's
+      length Whole or Loop, **Under voices** the lane's or the cue's own, Off
+      included), a Bed's **Until** picked by tapping a line behind the sheet,
+      which steps to its partial detent while it waits); **Search**
+      (`OutlinedTextField` with `ImeAction.Search`, seeded with the first
+      word of the cue that is a tag in the pack, else empty); one
+      `FlowRow` of single-select `FilterChip`s (the pack's categories, then
+      **Mine**); 72 dp results (audition, title, "0:06 · OpenGameArt · CC0",
+      **Add** or **In cue**). A category not downloaded heads its rows with
+      "Weather · 1.3 MB" and **Download**, dimmed; offline, "1.3 MB ·
+      Offline". Not built: Hear it in place and a result's record (source page,
+      evidence, date checked); the live listen with cues is the web's. A complete
+      play's Listen through and Export play the mix with sound.
+    - **The pack is a source that may be absent**
+      (`SoundPack.MANIFEST_URL` null until the owner rules on its hosting):
+      the library shows nothing and the board is search over Mine, Mine,
+      performed cues and Leave silent. A manifest row outside the rights
+      gate is never listed. Files are checked against their sha256 before
+      use and decoded by `CueDecoder` (MediaExtractor + MediaCodec).
+    - **Mine** (own sounds, B32 §3.4): this device only, never synced,
+      uploaded, shared or published; the production stores the id. **Record a
+      sound** (up to 30 s, no headphones gate) and **Bring a file**
+      (`ActivityResultContracts.OpenDocument("audio/*")`, up to 10 minutes and
+      50 MB, decoded and stored as the take format). A slot whose own sound is
+      not here reads "On another device" and plays nothing. **Publish** says,
+      before the consent, "Your own sounds stay on this device. The published
+      play leaves them out." Export my data carries each one whole
+      (`ownSounds[]`, docs/EXPORT.md).
+    - **Export** of a play whose sounds this device lacks refuses naming them
+      ("2 sounds are on another device: Owl at night, Gate creak.") with
+      **Export without them** and Cancel; nothing is dropped silently.
   - **Marks** (Decision 076 S5; PLAYS-DESIGN §2.10 binding; web sibling WEB-DESIGN
     §4.16 item 15; port spec `docs/research/design/R2-marks-port-brief.md`).
     `plays/MarksCore.kt` mirrors `js/marks-core.js` (anchor, `snapWords`,

@@ -18,7 +18,7 @@ import kotlinx.coroutines.withContext
  * this device. It opens no audio and asks for nothing; the microphone is asked
  * for only when a performer starts recording (§2.3).
  */
-class PlaysLibrary(private val context: Context, transport: LibraryTransport? = null) {
+class PlaysLibrary(private val context: Context, transport: LibraryTransport? = null, soundFetch: SoundFetch? = null) {
     sealed interface State {
         data object Loading : State
         data class Ready(val scripts: List<PlayScript>) : State
@@ -118,8 +118,33 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
         VoiceCasting.forget(VoiceCasting.productionKey(productionId), PrefsCastStore(context))
     }
 
-    suspend fun renderMix(id: String): File = withContext(Dispatchers.Default) {
-        store.renderMix(id) { AacMixSink(it) }
+    /** The person's own sounds: `filesDir/Sounds/mine/`, this device only (B32 §3.4). */
+    val ownSounds: OwnSounds by lazy { OwnSounds(File(context.filesDir, "Sounds/mine")) }
+
+    /** The cue pack, a source that may be absent; re-downloadable, so it lives where a backup does not take it. */
+    val soundPack: SoundPack by lazy { SoundPack(File(context.noBackupFilesDir, "sounds"), soundFetch) }
+
+    /**
+     * Renders `mix.m4a`. A production with sound resolves every cue it names first: one this device lacks refuses the mix
+     * ([MixTimeline.MissingSounds], named by [missingNames]) unless [withoutMissing] (Export without them).
+     */
+    suspend fun renderMix(id: String, withoutMissing: Boolean = false): File = withContext(Dispatchers.Default) {
+        val production = store.production(id)
+        if (production == null || !MixSound.hasSound(production)) return@withContext store.renderMix(id) { AacMixSink(it) }
+        val resolver = soundResolver()
+        store.renderMix(id, resolver::info, resolver::samples, withoutMissing) { AacMixSink(it) }
+    }
+
+    private suspend fun soundResolver(): SoundResolver {
+        val pack = (soundPack.manifest() as? SoundPack.State.Ready)?.pack
+        return SoundResolver(ownSounds, pack) { cue -> pack?.let { p -> soundPack.file(p, cue).takeIf { soundPack.has(p, cue) } } }
+    }
+
+    /** The sounds a production names that this device lacks, by the name a person gave them or the pack's title. */
+    suspend fun missingNames(id: String, ids: List<String>): List<String> = withContext(Dispatchers.Default) {
+        val production = store.production(id) ?: return@withContext ids
+        val resolver = soundResolver()
+        ids.map { resolver.nameOf(production, it) }
     }
 }
 

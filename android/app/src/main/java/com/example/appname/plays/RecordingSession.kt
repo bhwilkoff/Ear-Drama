@@ -156,7 +156,7 @@ class RecordingSession(
     }
 
     /** Opens the microphone on a line until it ends (or Stop), and keeps the line window as a new take; null when nothing was kept. */
-    private suspend fun listenAndKeep(lineID: String, heard: Map<String, String>, credit: PartID = part, kind: Take.Capture? = null): Take? {
+    private suspend fun listenAndKeep(lineID: String, heard: Map<String, String>, credit: PartID = part, kind: Take.Capture? = null, cue: String? = null): Take? {
         announce()
         if (!started) return null
         phaseNow = Phase.Listening(lineID, run = _run.value != null)
@@ -190,8 +190,10 @@ class RecordingSession(
                     loudness = BS1770.integratedLoudness(kept.samples, kept.sampleRate),
                     peak = BS1770.samplePeak(kept.samples),
                     bleed = bleed,
+                    cue = cue,
                 )
-                mutate { it.add(take) }
+                // A performed cue is the slot's take: kept, never a line's chosen take (B32 §3.1 item 6).
+                if (cue != null) mutate { it.copy(takes = it.takes + take, listenedThrough = false) } else mutate { it.add(take) }
                 lastTakeBleed = bleed
                 take
             }
@@ -209,6 +211,19 @@ class RecordingSession(
         if (!started || isBusy) return null
         heldStandIns = ArrayList()
         val take = listenAndKeep(lineID, LinkedHashMap(), credit, Take.Capture.Room)
+        if (started && _phase.value !is Phase.Failed) phaseNow = Phase.Idle
+        return take
+    }
+
+    /**
+     * A performed cue (B32 §3.1 item 6, the radio tradition: knock on the table): the microphone opens at once, no cue played,
+     * and the take is kept on the slot's line as a Sound part take naming the slot (`cue`). It is never a line's chosen take and
+     * never in the actor's take list; [SoundCore.addPerformed] places it. Null when nothing was kept.
+     */
+    suspend fun recordCue(slotID: String, lineID: String): Take? {
+        if (!started || isBusy) return null
+        heldStandIns = ArrayList()
+        val take = listenAndKeep(lineID, LinkedHashMap(), PartID.SOUND, null, slotID)
         if (started && _phase.value !is Phase.Failed) phaseNow = Phase.Idle
         return take
     }

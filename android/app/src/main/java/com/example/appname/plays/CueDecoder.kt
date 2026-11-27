@@ -5,6 +5,7 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import java.io.File
+import java.io.IOException
 import java.nio.ByteOrder
 import kotlin.math.floor
 
@@ -14,6 +15,7 @@ import kotlin.math.floor
  */
 object CueDecoder {
     private const val TIMEOUT_US = 10_000L
+    private const val MAX_STALLS = 1_000
 
     fun decode(file: File): FloatArray? {
         val extractor = MediaExtractor()
@@ -37,6 +39,7 @@ object CueDecoder {
             val info = MediaCodec.BufferInfo()
             var inputDone = false
             var outputDone = false
+            var stalled = 0
             while (!outputDone) {
                 if (!inputDone) {
                     val index = decoder.dequeueInputBuffer(TIMEOUT_US)
@@ -53,6 +56,11 @@ object CueDecoder {
                     }
                 }
                 val index = decoder.dequeueOutputBuffer(info, TIMEOUT_US)
+                if (index == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                    if (++stalled > MAX_STALLS) return null
+                } else {
+                    stalled = 0
+                }
                 if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     val out = decoder.outputFormat
                     rate = out.getInteger(MediaFormat.KEY_SAMPLE_RATE)
@@ -77,6 +85,15 @@ object CueDecoder {
                 }
             }
             return resample(mono.copyOf(size), rate)
+        } catch (e: IOException) {
+            // "Failed to instantiate extractor": not audio, or audio this device has no extractor for (found running it on a Pixel).
+            return null
+        } catch (e: IllegalArgumentException) {
+            return null
+        } catch (e: IllegalStateException) {
+            return null
+        } catch (e: MediaCodec.CodecException) {
+            return null
         } finally {
             codec?.release()
             extractor.release()

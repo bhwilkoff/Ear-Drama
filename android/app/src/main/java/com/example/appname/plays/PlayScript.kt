@@ -26,7 +26,7 @@ import kotlinx.serialization.json.Json
 value class PartID(val raw: String) : Comparable<PartID> {
     val roleName: String? get() = if (raw.startsWith(ROLE)) raw.removePrefix(ROLE) else null
     val isSpeaking: Boolean get() = roleName != null
-    val title: String get() = roleName ?: if (this == DIRECTIONS) "Stage directions" else "Sound effects"
+    val title: String get() = roleName ?: if (this == DIRECTIONS) "Stage directions" else "Sound"
 
     override fun compareTo(other: PartID): Int = raw.compareTo(other.raw)
     override fun toString(): String = raw
@@ -197,8 +197,28 @@ data class PlayScript(
         }
         val speaking = counts.keys.filter { it.isSpeaking }
             .sortedWith(compareByDescending<PartID> { counts.getValue(it) }.thenBy { first.getValue(it) })
+        counts[PartID.SOUND] = cueRows.size
         val others = listOf(PartID.SOUND, PartID.DIRECTIONS).filter { it in counts }
         (speaking + others).map { CastPart(it, counts.getValue(it)) }
+    }
+
+    /**
+     * The script's cue rows, the Sound part's slots (B32 §3.1): a sound or music line (no piece), and inside a speech each
+     * printed sound piece or aside that begins "sound of", "noise of" or "music". Never filled in: a row is only where a person
+     * may put a sound. The mirror of `PlaysCore.cueRows`.
+     */
+    val cueRows: List<CueRow> by lazy {
+        val out = ArrayList<CueRow>()
+        for (line in lines) {
+            if (line.kind == ScriptLine.Kind.Sound || line.kind == ScriptLine.Kind.Music) {
+                out += CueRow(line.id, null, line.source.orEmpty())
+            } else if (line.kind == ScriptLine.Kind.Speech) {
+                line.parts.orEmpty().forEachIndexed { i, pc ->
+                    if (pc is LinePart.Sound || (pc is LinePart.Direction && CUE_WORDS.containsMatchIn(pc.text))) out += CueRow(line.id, i, pc.text)
+                }
+            }
+        }
+        out
     }
 
     val speechLineIDs: List<String> get() = lines.filter { it.kind == ScriptLine.Kind.Speech }.map { it.id }
@@ -228,6 +248,8 @@ data class PlayScript(
     }
 
     companion object {
+        /** An aside that is a sound cue by its words (the reader's sound lane). */
+        val CUE_WORDS = Regex("^[\\s(\\[_]*(?:(?:sounds?|noises?) of\\b|music\\b)", RegexOption.IGNORE_CASE)
         const val WORDS_PER_MINUTE = 150
         val VOICE_BANDS = listOf(Band("1-2", 1, 2), Band("3-5", 3, 5), Band("6-10", 6, 10), Band("11+", 11, Int.MAX_VALUE))
         val LENGTH_BANDS = listOf(Band("short", 0, 29), Band("mid", 30, 60), Band("long", 61, Int.MAX_VALUE))
@@ -319,6 +341,9 @@ data class OpeningSpeech(val part: PartID, val name: String, val text: String, v
 
 /** A facet band: [key] holds every count from [lo] to [hi]. */
 data class Band(val key: String, val lo: Int, val hi: Int)
+
+/** A place a person may put a sound: a line (and the piece of it, null for the whole line) and the cue's own words. */
+data class CueRow(val line: String, val piece: Int?, val text: String)
 
 data class CastPart(val id: PartID, val lineCount: Int) {
     val title: String get() = id.title
