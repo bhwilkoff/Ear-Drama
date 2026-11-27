@@ -11,7 +11,8 @@ where the print has them. It never moves an id, never invents a role, and never 
 - a speaker cut at a title or a particle ("MRS" over "BANGER. Thank you"), misprinted once, or joined to its first
   words ("BOHUN. I--") is the speaker the print names;
 - a speech printed as "_2 Merch._ Sir, we saw 'em not." and read as a direction is that speaker's, as the print says;
-- a labeled speech folded into the speech above it is a line of its own (`split`: the id above plus a letter).
+- a labeled speech folded into the speech above it is a line of its own (`split`: the id above plus a letter);
+- a speaker printed with an article and without ("A MEGARIAN", "MEGARIAN") is one part, under the bare name.
 
 What no rule here can settle is left as it was; plays/known-faults.json lists it, and an unpublished play is held
 (build_play_library.READ_AND_HELD). Every rule was written against a play that showed the fault (tests/test_play_roles.py).
@@ -22,12 +23,13 @@ import re
 import script_parse as P
 
 CASTABLE = P.CASTABLE_LINES
+ARTICLE = re.compile(r"^(?:A|AN|THE) (.+)$")
 
 
 def refine(items, text, title=None, raw=""):
     r = Refiner(items, text, title, raw)
     for step in (r.boilerplate, r.notes, r.label_ends, r.tail, r.front, r.labels_in_directions, r.labels_in_lines, r.folded, r.capitals_in_lines, r.one_number_one_name, r.words_read_as_speakers,
-                 r.cut_labels, r.songs, r.headings, r.italic_verse, r.short_names, r.misprints):
+                 r.cut_labels, r.songs, r.headings, r.italic_verse, r.short_names, r.misprints, r.articles):
         step()
         r.count()
     return r.items
@@ -1029,6 +1031,17 @@ class Refiner:
             for it in self.speech():
                 if it["role"] == role:
                     it["role"] = b
+
+    # -- 12. a label with an article ("A MEGARIAN", "AN INFORMER", "THE WITCH") where the play also prints the bare name: the
+    # cast list's form or a first entrance, one part with the other's lines (owner 2026-11-27: The Acharnians had 34 voices).
+    # Only the article goes: "FIRST WOMAN" and "SECOND WOMAN", "AN OLD SLAVE" and "SLAVE" stay apart.
+    def articles(self):
+        for role in list(self.n):
+            m = ARTICLE.match(role)
+            if m and m.group(1) in self.n:
+                for it in self.speech():
+                    if it["role"] == role:
+                        it["role"] = m.group(1)
 
     def _printed_elsewhere(self, role):
         """The name is printed somewhere that is not its own label."""

@@ -650,11 +650,17 @@ const API = (() => {
     }
     return out;
   }
-  /** A title that still carries an upload's catalog number ("AbyM #026 ...") or an identifier: raw upload
-      text, which never shows (AGENTS.md; owner 2026-10-31). The caller composes from the record's data instead. */
+  /** A log's or an uploader's stand-in for a title it did not have ("?? Title Unknown ??", "Ceiling Unlimited Title
+      Unknown", "No Title Given", "Untitled"): never a title (owner 2026-11-27). The same rule as display_text.py. */
+  const PLACEHOLDER_TITLE = /^(?:.*\s)?[?*\s.\-–]*(?:title\s+(?:unknown|not\s+known)|unknown\s+title|no\s+title(?:\s+given)?)[?*\s.\-–]*$|^[?*\s.\-–]*(?:untitled(?:\s+episode)?|unknown|n\/a|tba|tbd)[?*\s.\-–]*$/i;
+  function placeholderTitle(title) {
+    return PLACEHOLDER_TITLE.test(String(title || '').trim());
+  }
+  /** A title that still carries an upload's catalog number ("AbyM #026 ...") or an identifier, or is a placeholder:
+      raw upload text, which never shows (AGENTS.md; owner 2026-10-31). The caller composes from the record's data instead. */
   function uploadTagged(title) {
     const t = String(title || '');
-    return /(^|\s)#\s?\d+\b/.test(t) || looksLikeIdentifier(t);
+    return /(^|\s)#\s?\d+\b/.test(t) || looksLikeIdentifier(t) || placeholderTitle(t);
   }
 
   async function listenShelves(date = new Date(), get = getJSON) {
@@ -1917,7 +1923,7 @@ const API = (() => {
     rooms, read, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
     monogram, blockSize, nameStep, headNameStep, windowFill, eventParts, RUN_AXIS, runSpan, runBars, undatedBare, azLetter, azLetters, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
-    manifest, seriesIndex, leadPicture, artRow, galleryOf, seriesLead, playLead, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingNamed, safeLink, aboutParagraphs, aboutLink, showFacts, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, homeShelves, homeShows, uploadTagged, LENGTH_BANDS, seriesPage, episodeDetail, arcOf,
+    manifest, seriesIndex, leadPicture, artRow, galleryOf, seriesLead, playLead, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingNamed, safeLink, aboutParagraphs, aboutLink, showFacts, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, homeShelves, homeShows, uploadTagged, placeholderTitle, LENGTH_BANDS, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople, voices,

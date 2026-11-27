@@ -579,11 +579,20 @@ const PlaysCore = (() => {
     return `${parts === 1 ? '1 part' : `${parts} parts`} · ${n === 1 ? '1 line' : `${n.toLocaleString('en-US')} lines`}`;
   }
 
-  /** "Henry Fisk Carlton (1892-1973)": each author with the years their record carries. */
+  /** An author's years as the record has them, a year before the era as BCE (the label's rule, label-core lifeOf):
+      "1856–1950", "450–388 BCE", "4 BCE–65", "b. 1901", "d. 388 BCE"; '' with neither. */
+  function lifeYears(born, died) {
+    const b = Number.isInteger(born) ? born : null, d = Number.isInteger(died) ? died : null;
+    const year = (y) => (y < 0 ? `${-y} BCE` : String(y));
+    if (b !== null && d !== null) return b < 0 && d < 0 ? `${-b}–${-d} BCE` : `${year(b)}–${year(d)}`;
+    if (b !== null) return `b. ${year(b)}`;
+    return d !== null ? `d. ${year(d)}` : '';
+  }
+  /** "Henry Fisk Carlton (1892–1973)": each author with the years their record carries. */
   function authorFacts(script) {
     return (script.authors || []).filter(a => a.name).map(a => {
-      const years = a.born && a.died ? ` (${a.born}–${a.died})` : a.born ? ` (b. ${a.born})` : a.died ? ` (d. ${a.died})` : '';
-      return authorName(a) + years;
+      const years = lifeYears(a.born, a.died);
+      return authorName(a) + (years ? ` (${years})` : '');
     }).join(', ');
   }
 
@@ -1321,7 +1330,7 @@ const PlaysCore = (() => {
     fingerprint, isFinished, stableStringify,
     Refusal, order, current, next, take, finish, leaveSilent, reopen, missingLines, missingSpeech, needsRetake, isComplete,
     cueLines, sectionLevel, sectionTitle, actKey, sectionsOf, contentsOf, placeOf, lineText, fold, searchScript,
-    lineIndexesOf, nextLineOf, openSpeakingParts, refusalText, listenPlan, runPlan, discardRun, PART_HUES, partHue, MODES, lengthLine, authorFacts,
+    lineIndexesOf, nextLineOf, openSpeakingParts, refusalText, listenPlan, runPlan, discardRun, PART_HUES, partHue, MODES, lengthLine, authorFacts, lifeYears,
     MixFailure, gain, buildTimeline, renderMix,
     SOUND_VERSION, SOUND_DEFAULTS, hasSound, readSound, msFrames, duckEnvelope, duckGains, renderSound, mixScalar,
     integratedLoudness, samplePeak, rms, thresholdFor, LineEndDetector, lineWindow, CueMeter,

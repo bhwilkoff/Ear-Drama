@@ -577,7 +577,16 @@ test('a play is marked only by facts from its record (Decision 067)', () => {
   const script = { ...fixtureScript(), authors: [{ name: 'Carlton, Henry Fisk', born: 1893, died: 1973 },
                                                  { name: 'Other, Ann', born: 1901 }, { name: 'Last, Al', died: 1950 }] };
   eq(C.authorFacts(script), 'Henry Fisk Carlton (1893–1973), Ann Other (b. 1901), Al Last (d. 1950)', 'authors with their years');
+  eq(C.authorFacts({ authors: [{ name: 'Aristophanes', display: 'Aristophanes', born: -450, died: -388 }] }), 'Aristophanes (450–388 BCE)',
+     'a life before the era reads as BCE, never as negative years');
   eq(C.lengthLine(script), `3 parts · ${script.lines.length} lines`, 'speaking parts and every line, as Apple and Android count');
+});
+
+// The golden cases of an author's years: apple/Tests/PlaysTests.swift and PlayScriptTest.kt hold the same table.
+test('an author\'s years: AD as printed, BCE for a year before the era, one side or none', () => {
+  const golden = [[1856, 1950, '1856–1950'], [-450, -388, '450–388 BCE'], [-4, 65, '4 BCE–65'], [1901, null, 'b. 1901'],
+    [-450, null, 'b. 450 BCE'], [null, 1950, 'd. 1950'], [null, -388, 'd. 388 BCE'], [null, null, '']];
+  for (const [b, d, want] of golden) eq(C.lifeYears(b, d), want, `${b}, ${d}`);
 });
 
 test('an author reads by the record\'s display name, never the filed form (Decision 075)', () => {

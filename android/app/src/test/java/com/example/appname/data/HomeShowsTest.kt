@@ -40,6 +40,18 @@ class HomeShowsTest {
         }
     }
 
+    /** js/api.test.js "placeholderTitle": the same cases. */
+    @Test
+    fun aPlaceholderIsNeverATitle() {
+        for (t in listOf("Title Unknown", "?? Title Unknown ??", "Ceiling Unlimited Title Unknown", "Unknown Title", "No Title Given", "Untitled", "Unknown")) {
+            assertTrue("$t is a placeholder", placeholderTitle(t) && uploadTagged(t))
+        }
+        for (t in listOf("Murderer Unknown", "The Unknown Voice", "Mission to the Unknown", "The Case of the Unknown Source", "Untitled Love", "")) {
+            assertFalse("$t is a title", placeholderTitle(t))
+        }
+        assertEquals("On the air shows the broadcast's date", "1945-04-11", heroTitle("Title Unknown", "amannamedjordan|1945-04-11") { it })
+    }
+
     @Test
     fun aRawTitleGivesWayToTheBroadcastDate() {
         assertEquals("The Telltale Bottle", heroTitle("The Telltale Bottle", "ellery|1939-04-02") { it })

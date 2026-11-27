@@ -19,7 +19,8 @@ def run(step, where):
     open(os.path.join(where, "play_roles.py"), "w", encoding="utf-8").write(mutant)
     code = ("import sys; sys.path[:0] = [%r, %r]; sys.argv = ['t']; import play_roles; assert play_roles.__file__.startswith(%r); "
             "import runpy; runpy.run_path(%r, run_name='__main__')") % (where, TOOLS, where, os.path.join(HERE, "test_play_roles.py"))
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True).stdout
+    # -B: two mutants of one size written in the same second would otherwise share a stale .pyc (seen 2026-11-27)
+    out = subprocess.run([sys.executable, "-B", "-c", code], capture_output=True, text=True).stdout
     return re.findall(r"^FAIL (\w+)", out, re.M)
 
 

@@ -51,6 +51,20 @@ struct HomeShowsTests {
         }
     }
 
+    // js/api.test.js "placeholderTitle": the same cases.
+    @Test func aPlaceholderIsNeverATitle() {
+        for title in ["Title Unknown", "?? Title Unknown ??", "Ceiling Unlimited Title Unknown", "Unknown Title",
+                      "No Title Given", "Untitled", "Unknown"] {
+            #expect(HomeShows.placeholderTitle(title) && HomeShows.uploadTagged(title), "\(title) is a placeholder")
+        }
+        for title in ["Murderer Unknown", "The Unknown Voice", "Mission to the Unknown", "The Case of the Unknown Source",
+                      "Untitled Love", ""] {
+            #expect(!HomeShows.placeholderTitle(title), "\(title) is a title")
+        }
+        #expect(HomeShows.heroTitle("Title Unknown", id: "amannamedjordan|1945-04-11") == AirDate.medium("1945-04-11"),
+                "On the air shows the broadcast's date, never the placeholder")
+    }
+
     @Test func aRawTitleGivesWayToTheBroadcastDate() {
         #expect(HomeShows.heroTitle("The Telltale Bottle", id: "ellery|1939-04-02") == "The Telltale Bottle")
         let raw = HomeShows.heroTitle("AbyM #026 Gracie", id: "abym|1946-03-04")

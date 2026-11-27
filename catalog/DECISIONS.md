@@ -1849,3 +1849,26 @@ label ("DEMEA", not "DEM"): another role it begins, else the one capitalized wor
 (`play_facets.full_names`). **Why:** the scene cards read "Dem and Mic", "Ana and Tri". 373 of 1,226 cards (101 plays)
 change; a label with two candidates or none keeps the label. **How to apply:** `parts` is display text only; a role's
 `name` stays the id of its part and its takes.
+
+## 051 — A placeholder is never a title; a part printed with an article and without is one part
+
+*Date: 2026-11-27*
+
+**Rule**: an episode title that is a stand-in for a missing one ("Title Unknown", "?? Title Unknown ??", "Unknown
+Title", "No Title Given", "Untitled", alone or after the series' own name) is unreadable (`display_text.placeholder_title`):
+the title is composed from the air date or number, else the episode is withheld (025). The clients refuse the same
+placeholders wherever they already refuse raw upload text (`uploadTagged` in js/api.js, HomeShows.swift, HomeShows.kt,
+one regex, the same cases on each stack). In a play, a speaker printed as "A MEGARIAN" or "THE WITCH" where the play
+also prints "MEGARIAN" or "WITCH" is the one part, under the bare name (`play_roles.articles`); "AN OLD SLAVE" and
+"SLAVE", "FIRST WOMAN" and "SECOND WOMAN" stay apart.
+
+**Why**: Home's On the air showed "Title Unknown" on the open iPhone Duo (owner 2026-11-27); nine episodes of the
+published projection carried such a title, and the earlier rule caught only "no title". The Acharnians claimed 34
+voices because its first entrances print the article ("A MEGARIAN", "AN INFORMER") and its speech labels do not; the
+merge changes 92 of 1,186 library plays and folds 193 roles (The Acharnians 34 to 27, Chantecler 181 to 167, Lysistrata
+28 to 21). Nine of those plays carry audited corrections; their revisions were rebound after a build showed every
+correction still applies (the merge renames labels only, no word or line id moves).
+
+**How to apply**: a new placeholder phrase goes in all four regexes with a case on each stack. A role's name is still
+the id of its part and its takes: the merge changes the revision of those 92 plays, so publish it with the library, not
+alone.

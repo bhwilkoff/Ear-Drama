@@ -803,6 +803,20 @@ struct PlayFactsTests {
         #expect(script.lengthLine == "3 parts · 11 lines")
         #expect(script.year == 1931)
         #expect(base.year == nil)
+        let greek = PlayScript(id: base.id, revision: base.revision, kind: base.kind, title: base.title,
+                               authors: [.init(name: "Aristophanes", born: -450, died: -388)],
+                               year: nil, source: base.source, rights: base.rights, roles: base.roles, lines: base.lines)
+        #expect(greek.authorLineWithYears == "Aristophanes (450–388 BCE)", "never negative years")
+    }
+
+    // js/plays.test.js "an author's years": the same golden table.
+    @Test func anAuthorsYearsReadAsPrinted() {
+        let golden: [(Int?, Int?, String)] = [(1856, 1950, "1856–1950"), (-450, -388, "450–388 BCE"), (-4, 65, "4 BCE–65"),
+                                              (1901, nil, "b. 1901"), (-450, nil, "b. 450 BCE"), (nil, 1950, "d. 1950"),
+                                              (nil, -388, "d. 388 BCE"), (nil, nil, "")]
+        for (born, died, want) in golden {
+            #expect(PlayScript.lifeYears(born: born, died: died) == want, "\(String(describing: born)), \(String(describing: died))")
+        }
     }
 }
 
