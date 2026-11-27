@@ -211,6 +211,9 @@ fun AppRoot(
     val openDrama: (String) -> Unit = { id -> stack.navigateTo(Route.Drama(id)) }
     val openProduction: (String) -> Unit = { id -> stack.navigateTo(Route.Production(id)) }
     val openReader: (String) -> Unit = { id -> stack.navigateTo(Route.Reader(id)) }
+    // A scene or a found line opens the reader at that line (B31 §3.3, §3.4).
+    val openReaderAt: (String, String?) -> Unit = { id, line -> stack.navigateTo(Route.Reader(id, line)) }
+    val openCollection: (String) -> Unit = { id -> stack.navigateTo(Route.PlayCollection(id)) }
     val openStudio: com.example.appname.ui.screens.OpenStudio = { id, line, production, part ->
         stack.navigateTo(Route.Reader(id, line, production, part))
     }
@@ -310,6 +313,7 @@ fun AppRoot(
                                     voicesRequest = browseVoices, onVoicesRequestHandled = { browseVoices = false },
                                     onOpenPerson = openPerson,
                                     onOpenDrama = openDrama,
+                                    onOpenScript = openScript,
                                 )
                             }
                             entry<Route.Surprise> {
@@ -329,8 +333,18 @@ fun AppRoot(
                                     onOpenStudio = openStudio,
                                     onAddScript = { stack.navigateTo(Route.AddScript) },
                                     onOpenOwn = openOwn,
+                                    onReadAt = openReaderAt,
+                                    onOpenCollection = openCollection,
+                                    onOpenScenes = { stack.navigateTo(Route.PlayScenes(it)) },
                                 )
                             }
+                            entry<Route.PlayCollection> { route ->
+                                com.example.appname.ui.screens.PlayCollectionScreen(
+                                    route.id, onBack = back, onOpenScript = openScript,
+                                    onRead = if (container.isTelevision) null else openReader,
+                                )
+                            }
+                            entry<Route.PlayScenes> { route -> com.example.appname.ui.screens.PlayScenesScreen(route.voices, onBack = back, onReadAt = openReaderAt) }
                             entry<Route.Search> {
                                 SearchScreen(
                                     onOpenSeries = openSeries,
@@ -341,6 +355,7 @@ fun AppRoot(
                                     onIncomingTaken = { incomingSearch = null },
                                     onAddScript = { stack.navigateTo(Route.AddScript) },
                                     onOpenOwn = openOwn,
+                                    onReadAt = openReaderAt,
                                 )
                             }
                             entry<Route.Library> {
@@ -413,7 +428,7 @@ fun AppRoot(
             entry<Route.Parts> { com.example.appname.ui.screens.PartsScreen(onBack = back, onRecord = openStudio) }
             entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
                             entry<Route.Script> { route ->
-                                ScriptScreen(route.id, onBack = back, onRead = openReader, onOpenEpisode = openEpisode, onEditOwn = { stack.navigateTo(Route.OwnParts(it)) }, onCastByEar = { stack.navigateTo(Route.Ear(it)) }, onOpenProduction = { id ->
+                                ScriptScreen(route.id, onBack = back, onRead = openReader, onOpenScript = openScript, onReadAt = openReaderAt, onCollection = openCollection, onOpenEpisode = openEpisode, onEditOwn = { stack.navigateTo(Route.OwnParts(it)) }, onCastByEar = { stack.navigateTo(Route.Ear(it)) }, onOpenProduction = { id ->
                                     // Starting one replaces the play's page with its cast sheet: depth stays two (§1.4).
                                     if (stack.lastOrNull() == route) stack.removeAt(stack.lastIndex)
                                     stack.add(Route.Production(id))

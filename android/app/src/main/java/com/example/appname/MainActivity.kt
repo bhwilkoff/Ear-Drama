@@ -101,6 +101,9 @@ class MainActivity : ComponentActivity() {
         doors.studioPhase?.let { com.example.appname.navigation.StudioDoor.phase = it }
         if (doors.emptyLibrary) com.example.appname.navigation.LibraryDoor.empty = true
         if (doors.skipOnboard) com.example.appname.navigation.VoicesStepDoor.skip = true
+        com.example.appname.navigation.FindDoor.query = doors.playQuery
+        com.example.appname.navigation.FindDoor.picks = doors.playPicks
+        com.example.appname.navigation.FindDoor.scope = doors.browseScope
         if (doors.voicesStep) com.example.appname.navigation.VoicesStepDoor.force = true
         com.example.appname.navigation.ReadRoomDoor.part = doors.startReadPart
         com.example.appname.navigation.ReadRoomDoor.record = doors.startReadRecord

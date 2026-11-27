@@ -421,7 +421,15 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   (§4.12).
 - **§4.5 Search** is a `DockedSearchBar` ("Titles, series, people"),
   debounced, with Clear, series first, then People (§4.15), then plays (title and author,
-  word-prefix), then "Aired {date}" when the query names an air date
+  word-prefix; *replaced* 2026-11-26 by B31 §3.3, WEB-DESIGN §4.6's plays rule, `PlaySearchSections`: **Plays**, word
+  prefix on the title and author; **Characters**, a role's printed name from the library's `characters.json`, each row the
+  play with "Role · N lines · author", most lines first; **Lines**, the plays with one speech line holding every word of three
+  letters or more from the `search/lines/` shards intersected at the line, rarest word first (`search/said/` when a library has
+  no line shards), those lines then checked in the script, only the exact phrase's lines when any holds it; scripts read once
+  and not kept, a batch within about 1.6 MB a press, **More lines (N plays)** for the next; each row the play's window,
+  "Role · author" and the line in italic, verbatim, opening the reader at that line. The search runs from the page
+  (`PlaySearchModel.run`, keyed on the query in a `LaunchedEffect`), never from a section that composes: Apple's sections each
+  restarted it and the first results never showed. One letter keeps the title and author prefix. Not on a TV), then "Aired {date}" when the query names an air date
   (`DateQuery`, contract §3.4), then episodes, then **Automatic
   transcript** (`Transcript.LABEL`): each row the episode row with the
   line where the words are said as an italic second supporting line,
@@ -728,14 +736,43 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   lines have no part" while it is being corrected, or "N of N lines cast";
   absent when empty), **Today's
   scene** (§4.1's card; *replaced* 2026-11-15: "Today's play
-  (`PlayHeadBoard` with Record this and Parts)"), **Plays** under a row of
-  `FilterChip`s with menus (Voices 1-2 / 3-5 / 6-10 / 11+; Length Under
-  30 min / 30-60 min / Over an hour, `minutesOf` at 150 words a minute;
-  Kind Radio play / Stage play; Sort Fewest voices, Shortest, A to Z),
-  each play a tile whose window draws its cast (one bar per speaking
-  part, largest first, up to seven, in the board's one color, "+N" for the rest; the Today's play board wears the same window)
-  with "N voices · About M min", then **Made here**. Author lines use
-  each author's `display` name.
+  (`PlayHeadBoard` with Record this and Parts)"), **Plays** (B31 §3.1, owner 2026-11-26: *"We need to research a FAR BETTER way of searching for and finding a play that you might like to perform/record. I'd love to see themes and collections for plays and different ways of finding plays to read or record."*
+  WEB-DESIGN §4.15 item 3 is the shared rule, iOS-DESIGN §4.14 its Apple twin; `ui/screens/PlayFind.kt` over
+  `plays/FindCore.kt`, held by `FindCoreTest` to js/find.test.js's fixture). The root is a `Column`: a **`DockedSearchBar`**
+  always drawn above the page ("Titles, authors, characters, lines"); two letters or more replace the page under it with the
+  search's play sections (§4.5) and hide Yours, Today's scene and Made here. Otherwise the lazy grid: Yours, Your scripts,
+  Today's scene, **Plays** under **the facets** as one sideways row of `FilterChip`s with `DropdownMenu`s whose values carry
+  their counts against the other picks (a value with none is not offered unless chosen; "Any number", "Any length" first):
+  **Voices**, **Length**, **Form**, **Era** (the index's `facets`, never computed here: 1-2, 3-4, 5-6, 7-10, 11+; Up to 10 min,
+  10-20, 20-40, 40-90, Longer; the forms with Not named; the seven eras with Undated), "Sort: Fewest voices" (Fewest voices,
+  Shortest, A to Z), then **Filters**, a `ModalBottomSheet` (a section per facet adding How the lines are shared, Subject,
+  Literature of the original and One act, each value a row with its count and a check; Clear filters, and "Show N plays" counted
+  live); Clear leads the row when anything is chosen. With nothing chosen, **the ways in**: each a section whose heading is the
+  rule that fills it, the count and **All** at its right (pushing `Route.PlayCollection` or `Route.PlayScenes`), a `LazyRow` of
+  tiles or scene cards, the editor's collections first (its credit under the heading; absent while the file is empty), **Scenes for
+  two voices** (a scene card: the heading as printed and minutes, the play, the parts' names, on the play's board; it opens the
+  reader at its line), then `ten-minutes`, `two-voices`, `star-part`, `one-act` under the catalog's titles; a play appears once on
+  the screen. Then **the grid** under the sort's name with its count. Each play a tile in the show tile's grammar on the form's
+  board (else neutral): the window holds a picture of the play, else its label (§6.r); the name at most three lines; the cast
+  fingerprint in the strip slot; "N voices · About M min"; Read on the window's corner. The four states: loading is the spinner under
+  the Plays heading; a failed read "This did not load." with Try again (offline: "You are offline."); filters that match nothing
+  "Nothing matches these filters." with Clear filters; a search with no hit "No plays match "q"." with Add a script. A library
+  built before B31 has no facets or collections: Voices and Length only, no rails but the scenes'; a field the client does not
+  understand never loses a row (`Lenient.kt`). Then **Made here**. Author lines use each author's `display` name. *Replaced*
+  2026-11-26: "Plays under a row of `FilterChip`s with menus (Voices 1-2 / 3-5 / 6-10 / 11+; Length Under 30 min / 30-60 min /
+  Over an hour ...; Kind Radio play / Stage play ...), each play a tile whose window draws its cast (one bar per speaking
+  part ...)".
+
+  **A play's page** (B31 §3.5, WEB-DESIGN §4.10): for a library play the head board is on the form's board (else neutral) with
+  the play's window (a picture of the play, else its title page or author's portrait, else its label), the kicker "Stage play ·
+  Comedy · One act" (each word only when the record says it), the author with their years ("Attributed to" when the record's
+  author is the catalog's dubious one), "N voices", "About M min"; Record this and Read; the parts; then **Scenes for two
+  voices** (not on a TV), **Same voices and length** (within one voice and 15 minutes, closest first) and **More by** the author's
+  surname (All when the catalog publishes the author's collection), each a `LazyRow`, absent when empty; the rights line. An own
+  script keeps its opening drawn as a page.
+
+  **Debug doors** (DEBUG builds only): `appname_play_query`, `appname_play_picks` (`voices=1-2,form=comedy`) and
+  `appname_browse_scope` (`plays`) open Record and Browse in a known state.
 
 - **§4.14 Surprise** (`ui/screens/SurpriseScreen.kt`; Archive Watch
   PARITY §5) is a `LazyColumn` of three picks drawn when it opens, and a
@@ -1043,7 +1080,12 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   natively (Compose `Canvas`) from the same `labelSpec` goldens as the web (`cross-platform-determinism`):
   genre board, a run arc on the 1930-1962 dial, the monogram or the episode's date on the label,
   network · decade on the rim at tier L from `series.network`; a finished ear drama's part-hue rim;
-  a person's groove ring; a play's script page with voice-band rules. A picture that passes the
+  a person's groove ring; a stage play's **label, a printed page** (B31 2.1, WEB-DESIGN 6.4r: the form's board from the row's
+  `hue` else neutral, the monogram from the left, a column per speaking part with one dimmer column for the rest, the era ruler at
+  M and L, "SURNAME · LIFE YEARS" at L; `LabelSpec.make` with the shared `playPage` goldens, `LabelSpecTest`, three mutants that must
+  fail; *replaced* 2026-11-26: "a play's script page with voice-band rules"). **A play's window** leads with a picture of the play
+  only (`picture.kind` work, production or book; `PlayRow.windowPicture`) in tiles, rows and rails; a title page or an author's
+  portrait leads only the play's own page head (`PlayRow.pageLead`). A picture that passes the
   size floor always wins, and the two never share an object's slot. Networks and sponsors are names
   in our type, never logos; user-made ear dramas never take an uploaded picture. The media notification and Android Auto show the episode's label as the session art. Built in
   Round 3 V4.
@@ -1126,6 +1168,12 @@ file (`StandInNeverStoredTest`). No analytics.
   and a remote is no way to type an Apple ID. The account row is absent on
   a TV signed out; an account signed in on that device still syncs, as
   `android-tv`, with Sync now, Sign out, and Delete account (§4.11).
+- **§9.2b Browse's Plays scope on a TV** (B31 §3.7; tvOS-DESIGN §4.2a is the Apple twin): the TV's Browse gains a segmented row
+  Shows | Plays; Plays is the data collections (and the editor's) as focus shelves, each a heading with its rule and count over a
+  row of 200 dp tiles (`PlaysScopeTv`, `PlayShelvesTv`), the authors' collections left out; no search, no facets, no scenes, no
+  Read and no record door (a TV records nothing); a tile opens the play's page. Loading, "This did not load." with Try again,
+  "You are offline." and "No plays yet." are the four states. On a phone and a tablet the plays are Record's.
+
 - **§9.2a The TV safe area and the focus claim** (2026-11-14, from the
   Google TV Streamer check; owner: *"The android tv should be available
   too. Are you testing features on everything?"*). On a TV the whole app

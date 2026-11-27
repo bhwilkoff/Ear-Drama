@@ -31,6 +31,9 @@ sealed interface Route : NavKey {
     @Serializable data object Surprise : Route
     /** A castable script: its rights line, its parts, and "Start an ear drama". */
     @Serializable data class Script(val id: String) : Route
+    /** Finding a play (B31 §3.2, §3.4): a collection whole, and every scene for [voices] voices. */
+    @Serializable data class PlayCollection(val id: String) : Route
+    @Serializable data class PlayScenes(val voices: Int) : Route
     /**
      * The script reader (ANDROID-DESIGN §4.17), full screen over the tab bar; [lineId] opens at that line, else where this
      * device left off. With [productionId] and [part] (a raw `PartID`) the studio is attached (PLAYS-DESIGN §2.9): the script

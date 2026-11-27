@@ -165,14 +165,17 @@ fun <T : PlayListing> playsMatching(scripts: List<T>, query: String): List<T> {
 
 /** A play as a list row: its title, then author and part count; it opens the play's page. */
 @Composable
-fun PlayListItem(script: PlayListing, onOpen: () -> Unit) {
+fun PlayListItem(script: PlayListing, onOpen: () -> Unit, sub: List<Any?>? = null, quote: String? = null, openLabel: String = "Open play") {
     val speaking = script.voices
+    val row = script as? PlayRow
     GrammarRow(
         title = script.title,
-        visual = { m -> PictureWindow(null, script.title, PLAY_BOARD, m) },
+        // A library play's window holds a picture of the play, else its label (B31 §1.4, 2.1).
+        visual = { m -> if (row != null) PictureWindow(row.windowPicture, row.title, row.hue, m, label = row.labelItem) else PictureWindow(null, script.title, PLAY_BOARD, m) },
         onOpen = onOpen,
-        sub = listOf(script.authorLine.ifEmpty { null }, "$speaking parts"),
-        openLabel = "Open play",
+        sub = sub ?: listOf(script.authorLine.ifEmpty { null }, "$speaking ${if (speaking == 1) "voice" else "voices"}", "About ${script.minutes} min"),
+        quote = quote,
+        openLabel = openLabel,
     )
 }
 
@@ -293,8 +296,12 @@ fun ScriptScreen(
     onOpenEpisode: (String) -> Unit = {},
     onEditOwn: (String) -> Unit = {},
     onCastByEar: (String) -> Unit = {},
+    onOpenScript: (String) -> Unit = {},
+    onReadAt: (String, String?) -> Unit = { id, _ -> onRead(id) },
+    onCollection: (String) -> Unit = {},
 ) {
     val plays = LocalAppContainer.current.plays
+    val indexRows by plays.rows.collectAsState()
     var attempt by remember { mutableIntStateOf(0) }
     val loaded by produceState<PlayLoad>(PlayLoad.Loading, id, attempt) {
         value = PlayLoad.Loading
@@ -321,9 +328,13 @@ fun ScriptScreen(
             is PlayLoad.Ready -> {
                 val television = LocalIsTelevision.current
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+                    // The index row carries what the script file does not: the form, era, life, scenes and pictures (contract §4.1).
+                    val row = if (l.script.isOwn) null else (indexRows as? PlayLibraryFeed.Rows.Ready)?.rows?.firstOrNull { it.id == l.script.id }
                     playPage(
                         l.script, television, onOpenProduction, onRead = { onRead(l.script.id) },
                         ownFoot = { OwnFoot(l.script, onDeleted = onBack, onOpenEpisode = onOpenEpisode, onEdit = onEditOwn, onCastByEar = onCastByEar) },
+                        row = row,
+                        neighbors = if (row != null) ({ PlayNeighbors(row, television, onOpenScript, onReadAt, onCollection) }) else null,
                     )
                 }
             }
@@ -353,8 +364,11 @@ fun LazyListScope.playPage(
     },
     onRead: (() -> Unit)? = null,
     ownFoot: @Composable () -> Unit = {},
+    /** The library's index row (B31 §3.5): the head's board, kicker and picture; with [neighbors], the scenes and the plays like it under the parts. */
+    row: PlayRow? = null,
+    neighbors: (@Composable () -> Unit)? = null,
 ) {
-    item(key = "head") { PlayPageHead(script, kicker = playKicker(script)) }
+    item(key = "head") { PlayPageHead(script, kicker = playKicker(script), row = row) }
     if (!television) {
         item(key = "actions") {
             ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
@@ -367,6 +381,7 @@ fun LazyListScope.playPage(
     item(key = "parts") {
         PartGrid(script.castParts) { part, modifier -> PartCard(script, part, Holder.DeviceVoice, recorded = false, modifier = modifier) }
     }
+    if (neighbors != null) item(key = "neighbors") { neighbors() }
     item(key = "rights") { Box(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S4.dp)) { if (script.isOwn) ownFoot() else RightsLine(script) } }
 }
 

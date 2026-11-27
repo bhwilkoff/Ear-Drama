@@ -96,6 +96,10 @@ data class LaunchDoors(
     val skipOnboard: Boolean = false,
     /** `appname_voices_step`: the Better voices step at launch, without reading or writing its record (§4.6b). */
     val voicesStep: Boolean = false,
+    /** `appname_play_query` and `appname_play_picks` (`voices=1-2,form=comedy`): Record's Plays opens with that search and those facets; `appname_browse_scope` (`plays`): Browse opens on that scope. */
+    val playQuery: String? = null,
+    val playPicks: String? = null,
+    val browseScope: String? = null,
 ) {
     fun requests(): List<InboxRequest> =
         listOfNotNull(
@@ -141,6 +145,9 @@ data class LaunchDoors(
         const val EXTRA_EMPTY_LIBRARY = "appname_empty_library"
         const val EXTRA_SKIP_ONBOARD = "appname_skip_onboard"
         const val EXTRA_VOICES_STEP = "appname_voices_step"
+        const val EXTRA_PLAY_QUERY = "appname_play_query"
+        const val EXTRA_PLAY_PICKS = "appname_play_picks"
+        const val EXTRA_BROWSE_SCOPE = "appname_browse_scope"
         const val EXTRA_READ_DIAG = "appname_read_diag"
         const val EXTRA_WORKER_URL = "appname_worker_url"
         private val BENCH_HOST = Regex("""^http://(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|localhost|127\.0\.0\.1):\d+$""")
@@ -181,9 +188,23 @@ data class LaunchDoors(
                 emptyLibrary = extras[EXTRA_EMPTY_LIBRARY].let { it == true || it == "1" || it == "true" },
                 skipOnboard = extras[EXTRA_SKIP_ONBOARD].let { it == true || it == "1" || it == "true" },
                 voicesStep = extras[EXTRA_VOICES_STEP].let { it == true || it == "1" || it == "true" },
+                playQuery = extras[EXTRA_PLAY_QUERY]?.toString()?.takeIf { it.isNotBlank() },
+                playPicks = extras[EXTRA_PLAY_PICKS]?.toString()?.takeIf { it.isNotBlank() },
+                browseScope = extras[EXTRA_BROWSE_SCOPE]?.toString()?.takeIf { it.isNotBlank() },
             )
         }
     }
+}
+
+/** DEBUG doors for finding a play (B31): Record's initial search and facet picks, Browse's initial scope. Set once by MainActivity; never set in release. */
+object FindDoor {
+    @Volatile var query: String? = null
+    @Volatile var picks: String? = null
+    @Volatile var scope: String? = null
+
+    /** `voices=1-2,form=comedy` as picks. */
+    fun picksOf(text: String?): Map<String, String> =
+        text.orEmpty().split(',').mapNotNull { p -> p.split('=', limit = 2).takeIf { it.size == 2 && it[0].isNotBlank() }?.let { it[0].trim() to it[1].trim() } }.toMap()
 }
 
 /**

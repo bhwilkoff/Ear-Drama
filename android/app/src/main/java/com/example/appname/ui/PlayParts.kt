@@ -50,6 +50,7 @@ import com.example.appname.plays.CastPart
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PartState
 import com.example.appname.plays.PlayListing
+import com.example.appname.plays.PlayRow
 import com.example.appname.plays.PlayScript
 import com.example.appname.plays.Production
 import com.example.appname.ui.theme.OnAir
@@ -284,7 +285,34 @@ fun PlayHeadBoard(script: PlayListing, kicker: String, modifier: Modifier = Modi
  * as a page at tier L, the voice bands at its foot. The production's board keeps [PlayHeadBoard].
  */
 @Composable
-fun PlayPageHead(script: PlayListing, kicker: String, modifier: Modifier = Modifier, titlePage: Artwork? = null, authorArt: Artwork? = null, production: Artwork? = null) {
+fun PlayPageHead(
+    script: PlayListing,
+    kicker: String,
+    modifier: Modifier = Modifier,
+    titlePage: Artwork? = null,
+    authorArt: Artwork? = null,
+    production: Artwork? = null,
+    /** The library's index row for this play (B31 §3.5): the head is then on the form's board with a picture of the play, else its title page or portrait, else its label. */
+    row: PlayRow? = null,
+) {
+    if (row != null) {
+        val voices = script.voices
+        ItemHeadBoard(
+            name = script.title,
+            genre = row.hue,
+            label = row.labelItem,
+            modifier = modifier,
+            art = row.pageLead,
+            kicker = { ink -> TextKicker(com.example.appname.plays.FindCore.kicker(row.kind, row.form, row.oneAct), ink) },
+            facts = listOf(script.year?.toString(), "$voices ${if (voices == 1) "voice" else "voices"}", "About ${script.minutes} min"),
+            credits = script.authorWithYears.ifEmpty { row.authorLine }.ifEmpty { null }?.let { if (row.attributed) "Attributed to $it" else it },
+            mark = { h ->
+                val on = onBoardColor(row.hue, OnAir.colors.dark)
+                Box(Modifier.height(h), contentAlignment = Alignment.BottomStart) { CastFingerprint(script, onBoard = on, height = 10.dp) }
+            },
+        )
+        return
+    }
     val lead = ItemLead.playLead(titlePage, authorArt, production)
     val facts = listOf(
         script.year?.toString(),

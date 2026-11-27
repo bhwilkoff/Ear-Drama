@@ -80,6 +80,7 @@ import com.example.appname.data.dateBlockParts
 import com.example.appname.data.eventParts
 import com.example.appname.data.gradeOf
 import com.example.appname.data.LabelItem
+import com.example.appname.plays.PlayRow
 import com.example.appname.data.LabelKind
 import com.example.appname.data.labelItem
 import com.example.appname.data.headNameStep
@@ -148,7 +149,7 @@ fun TitleBlock(item: LabelItem, modifier: Modifier = Modifier) {
         item,
         modifier
             .clip(WindowShape)
-            .hairline(onBoard(item.genre).copy(alpha = 0.32f)),
+            .hairline(onBoard(item.genre ?: item.hue).copy(alpha = 0.32f)),
     )
 }
 
@@ -380,6 +381,8 @@ fun ShowTile(
 /** A tile's window shows this many opening speeches (js/app.js openingWindow; the index carries two). */
 private const val TILE_SPEECHES = 2
 
+private val PLAY_NAME_MAX = 84.dp
+
 /**
  * A play's tile (§4.9a): the show tile's grammar on the drama board, the window drawing the play's opening speeches
  * ([PlayOpeningWindow], B21), else its cast ([CastWindow]), the name, the cast fingerprint in the strip slot, and "N voices" and "About M min".
@@ -394,7 +397,11 @@ fun PlayTile(
     nameHeight: Dp? = null,
     onRead: (() -> Unit)? = null,
 ) {
-    val on = onBoard(PLAY_BOARD)
+    // A library play is on its form's board (else the neutral one) and its window holds a picture of the play, else its label
+    // (B31 2.1, §1.4); a listing without an index row keeps the drama board and its opening drawn as a page.
+    val row = script as? PlayRow
+    val genre = if (row != null) row.hue else PLAY_BOARD
+    val on = onBoard(genre)
     val style = nameStyle(nameStep(script.title), MaterialTheme.typography)
     val voices = script.voices
     val facts = listOf("$voices ${if (voices == 1) "voice" else "voices"}", "About ${script.minutes} min")
@@ -404,24 +411,29 @@ fun PlayTile(
                 .width(width)
                 .tvFocusMark()
                 .clip(RoundedCornerShape(12.dp))
-                .background(board(PLAY_BOARD))
+                .background(board(genre))
                 .clickable(onClickLabel = "Open play", onClick = onOpen)
                 .padding(start = TilePad, top = TilePad, end = TilePad, bottom = 10.dp)
                 .semantics(mergeDescendants = true) { contentDescription = (listOf(script.title) + facts).joinToString(", ") },
         ) {
             val window = Modifier.fillMaxWidth().height(innerWidth(width))
-            if (remember(script) { PlayScript.openingOf(script, TILE_SPEECHES).isNotEmpty() }) {
+            if (row != null) {
+                PictureWindow(row.windowPicture, row.title, row.hue, window, label = row.labelItem)
+            } else if (remember(script) { PlayScript.openingOf(script, TILE_SPEECHES).isNotEmpty() }) {
                 PlayOpeningWindow(script, LabelItem(LabelKind.Play, voices = script.voices, opening = true), window, TILE_SPEECHES)
             } else {
                 CastWindow(script, window)
             }
+            // A library title can be a whole sentence: three lines at most, and a row shares no more than that.
             Text(
                 nameText(script.title),
                 style = style,
                 color = on,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .padding(top = Spacing.S2.dp)
-                    .then(if (nameHeight != null) Modifier.height(nameHeight) else Modifier),
+                    .then(if (nameHeight != null) Modifier.height(minOf(nameHeight, PLAY_NAME_MAX)) else Modifier),
             )
             CastFingerprint(script, Modifier.padding(top = Spacing.S1.dp), onBoard = on, height = 10.dp)
             facts.forEach { Text(it, style = MaterialTheme.typography.labelMedium, color = on) }

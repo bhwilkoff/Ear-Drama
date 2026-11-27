@@ -40,7 +40,14 @@ data class LabelItem(
     val voices: Int = 0,
     val opening: Boolean = false,
     val cast: List<Int> = emptyList(),
+    /** A play's page label (B31 2.1): its first author's display name, the board its form borrows, the playwright's era cell and life years (negative for BCE), all the index row's. */
+    val author: String? = null,
+    val hue: String? = null,
+    val era: String? = null,
+    val life: LabelLife? = null,
 )
+
+data class LabelLife(val born: Int? = null, val died: Int? = null)
 
 @Serializable data class LabelDisc(val r: Double, val opacity: Double)
 @Serializable data class LabelGrooves(val radii: List<Double>, val width: Double, val opacity: Double)
@@ -52,13 +59,24 @@ data class LabelItem(
 @Serializable data class LabelParts(val r: Double, val width: Double, val backing: LabelBacking, val segments: List<LabelSegment>)
 @Serializable data class LabelRing(val r: Double, val width: Double, val opacity: Double)
 @Serializable data class LabelDot(val r: Double)
-@Serializable data class LabelText(val s: String, val face: String, val size: Double, val x: Double, val y: Double, val anchor: String, val fill: String)
+@Serializable data class LabelText(val s: String, val face: String, val size: Double, val x: Double, val y: Double, val anchor: String, val fill: String,
+    /** Letter spacing in ems and the ink's opacity, for the play page's top line only. */
+    val tracking: Double? = null, val opacity: Double? = null,
+)
 @Serializable data class LabelRim(val text: String, val r: Double, val size: Double, val tracking: Double, val opacity: Double, val centerDeg: Double)
 @Serializable data class LabelRules(
     val count: Int, val x0: Double, val y: Double, val len: Double, val gap: Double, val width: Double, val opacity: Double, val foot: Double,
 )
 @Serializable data class LabelBar(val x: Double, val y: Double, val w: Double, val h: Double)
 @Serializable data class LabelCast(val bars: List<LabelBar>)
+@Serializable data class LabelColumn(val x: Double, val y: Double, val w: Double, val h: Double, val rest: Boolean)
+/** The play page's cast: a column per speaking part, the last one standing for the rest at [restOpacity]. */
+@Serializable data class LabelCols(val restOpacity: Double, val bars: List<LabelColumn>)
+/** The play page's era ruler: seven cells over [span] from [x0] at [y], the playwright's cell [lit] (-1 undated). */
+@Serializable data class LabelRuler(
+    val y: Double, val x0: Double, val span: Double, val cell: Double, val lit: Int,
+    val h: Double, val tick: Double, val width: Double, val opacity: Double, val inset: Double,
+)
 
 @Serializable
 data class LabelSpec(
@@ -80,6 +98,8 @@ data class LabelSpec(
     val rim: LabelRim? = null,
     val rules: LabelRules? = null,
     val cast: LabelCast? = null,
+    val cols: LabelCols? = null,
+    val ruler: LabelRuler? = null,
 ) {
     companion object {
         fun isFull(from: Double, to: Double): Boolean = from - to >= 359.99
@@ -89,7 +109,8 @@ data class LabelSpec(
             val tier = LabelMath.tierOf(size)
             return when (item.kind) {
                 LabelKind.Person -> LabelMath.person(item, tier)
-                LabelKind.Play -> LabelMath.play(item, tier)
+                // A play with its name is its page label (B31); the nameless form is R4-2c's bars (the shared golden `cases`).
+                LabelKind.Play -> if (!item.opening && item.name != null) LabelMath.playPage(item, tier) else LabelMath.play(item, tier)
                 else -> LabelMath.disc(item, tier, item.kind)
             }
         }
@@ -274,6 +295,76 @@ internal object LabelMath {
             arc = if (tier == "L") runArc(it.first, it.last, T["person"]["arc"]["r"].d(), T["person"]["arc"]["width"].d()) else null,
             ring = LabelRing(ring["r"].d(), ring["width"].d(tier), ring["opacity"].d()),
             text = centered(listOf(Line(monogram(it.name), "display")), box * T["label"]["fitW"].d(), box * T["label"]["fitH"].d(), "on"))
+    }
+
+    /** The surname the play page's top line names: the display name's last word, a parenthesis and a Jr. or III dropped. */
+    fun surnameOf(author: String?): String {
+        val bare = (author ?: "").replace(Regex("\\([^)]*\\)"), " ")
+        val words = bare.split(Regex("[ ,\\s]+")).filter { it.isNotEmpty() }.toMutableList()
+        while (words.size > 1 && Regex("^(jr|sr|ii|iii|iv)\\.?$", RegexOption.IGNORE_CASE).matches(words.last())) words.removeAt(words.lastIndex)
+        return words.lastOrNull()?.uppercase() ?: ""
+    }
+
+    /** Life years as the record has them: 1856-1950, 496-407 BCE (both before the era), 4 BCE-65 (across it). */
+    fun lifeOf(life: LabelLife?): String {
+        val b = life?.born ?: return ""
+        val d = life.died ?: return ""
+        return if (b < 0 && d < 0) "${-b}-${-d} BCE" else if (b < 0) "${-b} BCE-$d" else "$b-$d"
+    }
+
+    /**
+     * The play's label (B31 2.1, WEB-DESIGN 6.4r): a printed page, not a disc. The board is the form's (`hue`, the catalog's) or the
+     * neutral one; the monogram from the left in the top half; a column per speaking part, largest first, its height its lines over the
+     * largest part's; the era ruler at the foot (M, L); at L the line "SURNAME · LIFE YEARS". The top right corner stays clear for Read.
+     */
+    fun playPage(it: LabelItem, tier: String): LabelSpec {
+        val p = T["play"]["page"]
+        val g = if (known(it.hue)) it.hue else null
+        val x0 = p["x0"].d()
+        val span = p["span"].d()
+        val text = mutableListOf<LabelText>()
+        val m = monogram(it.name)
+        if (m.isNotEmpty()) {
+            val size = min(p["mono"]["cap"].d(tier) / T["glyphs"]["display"]["cap"].d(), span / max(em(m, "display"), 0.01))
+            text += LabelText(m, "display", r2(size), p["mono"]["x"].d(), p["mono"]["y"].d(tier), "start", "on")
+        }
+        var ruler: LabelRuler? = null
+        if (tier != "S") {
+            val eras = p["eras"].list.map { e -> e.s }
+            val r = p["ruler"]
+            ruler = LabelRuler(r["y"].d(), x0, span, r2(span / eras.size), it.era?.let { e -> eras.indexOf(e) } ?: -1, r["h"].d(tier), r["tick"].d(),
+                r["width"].d(), r["opacity"].d(), r["inset"].d())
+        }
+        val cast = it.cast.filter { n -> n > 0 }
+        var cols: LabelCols? = null
+        if (cast.isNotEmpty()) {
+            val c = p["cols"]
+            val most = c["max"].d(tier).toInt()
+            val gap = c["gap"].d(tier)
+            val base = c["base"].d(tier)
+            val height = c["h"].d(tier)
+            val more = cast.size > most
+            val shown = if (more) cast.take(most - 1) else cast
+            val n = (shown.size + if (more) 1 else 0).toDouble()
+            val w = min(c["maxW"].d(tier), (span - gap * (n - 1)) / n)
+            fun col(v: Int, i: Int, rest: Boolean): LabelColumn {
+                val h = max(c["min"].d(), v.toDouble() / cast[0]) * height
+                return LabelColumn(r2(x0 + i * (w + gap)), r2(base - h), r2(w), r2(h), rest)
+            }
+            val bars = shown.mapIndexed { i, v -> col(v, i, false) }.toMutableList()
+            if (more) bars += col(cast[most - 1], shown.size, true)
+            cols = LabelCols(c["restOpacity"].d(), bars)
+        }
+        if (tier == "L") {
+            val line = listOf(surnameOf(it.author), lifeOf(it.life)).filter { s -> s.isNotEmpty() }.joinToString(" · ")
+            if (line.isNotEmpty()) {
+                val rim = p["rim"]
+                val perEm = em(line, "body") + line.codePointCount(0, line.length) * rim["tracking"].d()
+                val size = r2(min(rim["size"].d(), span / max(perEm, 0.01)))
+                text.add(0, LabelText(line, "body", size, rim["x"].d(), rim["y"].d(), "start", "on", rim["tracking"].d(), rim["opacity"].d()))
+            }
+        }
+        return LabelSpec("play", "square", tier, T["viewBox"].d(), groundOf(g), onOf(g), text = text, cols = cols, ruler = ruler)
     }
 
     fun play(it: LabelItem, tier: String): LabelSpec {

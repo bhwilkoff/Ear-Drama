@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.em
 import com.example.appname.data.LabelItem
 import com.example.appname.data.LabelSpec
 import com.example.appname.ui.theme.OnAir
@@ -108,6 +109,20 @@ fun DrawScope.drawLabel(s: LabelSpec, measurer: TextMeasurer, palette: LabelPale
         drawRoundRect(on, Offset((b.x * k).toFloat(), (b.y * k).toFloat()), Size((b.w * k).toFloat(), h),
             androidx.compose.ui.geometry.CornerRadius(h / 2))
     }
+    s.ruler?.let { r ->
+        val inkRule = withAlpha(on, r.opacity)
+        val ys = (r.y * k).toFloat()
+        drawLine(inkRule, Offset((r.x0 * k).toFloat(), ys), Offset(((r.x0 + r.span) * k).toFloat(), ys), (r.width * k).toFloat())
+        for (i in 0..7) {
+            val x = ((r.x0 + i * r.cell) * k).toFloat()
+            drawLine(inkRule, Offset(x, ((r.y - r.tick) * k).toFloat()), Offset(x, ((r.y + r.tick) * k).toFloat()), (r.width * k).toFloat())
+        }
+        if (r.lit >= 0) {
+            val h = (r.h * k).toFloat()
+            drawRoundRect(on, Offset(((r.x0 + r.lit * r.cell + r.inset) * k).toFloat(), ((r.y - r.h / 2) * k).toFloat()),
+                Size(((r.cell - 2 * r.inset) * k).toFloat(), h), androidx.compose.ui.geometry.CornerRadius(h / 2))
+        }
+    }
     s.disc?.let { drawCircle(withAlpha(on, it.opacity), (it.r * k).toFloat(), Offset(50 * k, 50 * k), style = Fill) }
     s.grooves?.let { g -> g.radii.forEach { r -> ring(withAlpha(on, g.opacity), r, 0.0, -360.0, g.width, k) } }
     s.ticks?.let { t -> t.deg.forEach { d -> line(withAlpha(on, t.opacity), point(t.r0, d, k), point(t.r1, d, k), t.width, k) } }
@@ -124,10 +139,15 @@ fun DrawScope.drawLabel(s: LabelSpec, measurer: TextMeasurer, palette: LabelPale
     s.evening?.let { e -> line(on, point(e.r0, e.deg, k), point(e.r1, e.deg, k), e.width, k, StrokeCap.Round) }
     s.label?.let { drawCircle(on, (it.r * k).toFloat(), Offset(50 * k, 50 * k)) }
     for (t in s.text) {
-        val ink = palette.color(if (t.fill == "ground") s.ground else s.on)
-        val layout = measurer.measure(t.s, labelStyle(t.face, (t.size * k).toFloat(), ink), softWrap = false, maxLines = 1)
-        val x = (t.x * k).toFloat() - if (t.anchor == "end") layout.size.width.toFloat() else layout.size.width / 2f
+        val ink = withAlpha(palette.color(if (t.fill == "ground") s.ground else s.on), t.opacity ?: 1.0)
+        val layout = measurer.measure(t.s, labelStyle(t.face, (t.size * k).toFloat(), ink, t.tracking ?: 0.0), softWrap = false, maxLines = 1)
+        val x = (t.x * k).toFloat() - when (t.anchor) { "end" -> layout.size.width.toFloat(); "start" -> 0f; else -> layout.size.width / 2f }
         drawText(layout, topLeft = Offset(x, (t.y * k).toFloat() - layout.firstBaseline))
+    }
+    s.cols?.let { c ->
+        for (b in c.bars) {
+            drawRect(withAlpha(on, if (b.rest) c.restOpacity else 1.0), Offset((b.x * k).toFloat(), (b.y * k).toFloat()), Size((b.w * k).toFloat(), (b.h * k).toFloat()))
+        }
     }
     s.rim?.let { rim ->
         val px = (rim.size * k).toFloat()
@@ -156,7 +176,8 @@ fun DrawScope.drawLabel(s: LabelSpec, measurer: TextMeasurer, palette: LabelPale
     }
 }
 
-private fun DrawScope.labelStyle(face: String, px: Float, color: Color) = TextStyle(
+private fun DrawScope.labelStyle(face: String, px: Float, color: Color, tracking: Double = 0.0) = TextStyle(
+    letterSpacing = tracking.em,
     fontFamily = if (face == "display") DisplayFontFamily else FontFamily.Default,
     fontWeight = FontWeight.Bold,
     fontSize = px.toSp(),
