@@ -29,6 +29,17 @@ nonisolated struct LabelItem: Sendable, Equatable {
     var voices: Int = 0
     var opening = false
     var cast: [Int] = []
+    /// A play's page label (B31 2.1): its first author's display name, the board its form borrows, the playwright's
+    /// era cell and life years (negative for BCE), all the index row's.
+    var author: String?
+    var hue: String?
+    var era: String?
+    var life: Life?
+
+    struct Life: Sendable, Equatable {
+        var born: Int?
+        var died: Int?
+    }
 }
 
 nonisolated struct LabelSpec: Encodable, Equatable, Sendable {
@@ -49,6 +60,9 @@ nonisolated struct LabelSpec: Encodable, Equatable, Sendable {
         var s, face: String
         var size, x, y: Double
         var anchor, fill: String
+        /// Letter spacing in ems and the ink's opacity, for the play page's top line only.
+        var tracking: Double? = nil
+        var opacity: Double? = nil
     }
     struct Rim: Encodable, Equatable, Sendable {
         var text: String
@@ -60,6 +74,18 @@ nonisolated struct LabelSpec: Encodable, Equatable, Sendable {
     }
     struct Bar: Encodable, Equatable, Sendable { var x, y, w, h: Double }
     struct Cast: Encodable, Equatable, Sendable { var bars: [Bar] }
+    struct Column: Encodable, Equatable, Sendable {
+        var x, y, w, h: Double
+        var rest: Bool
+    }
+    /// The play page's cast: a column per speaking part, the last one standing for the rest at `restOpacity`.
+    struct Cols: Encodable, Equatable, Sendable { var restOpacity: Double; var bars: [Column] }
+    /// The play page's era ruler: seven cells over `span` from `x0` at `y`, the playwright's cell `lit` (-1 undated).
+    struct Ruler: Encodable, Equatable, Sendable {
+        var y, x0, span, cell: Double
+        var lit: Int
+        var h, tick, width, opacity, inset: Double
+    }
 
     var kind, shape, tier: String
     var viewBox: Double
@@ -76,6 +102,8 @@ nonisolated struct LabelSpec: Encodable, Equatable, Sendable {
     var rim: Rim?
     var rules: Rules?
     var cast: Cast?
+    var cols: Cols?
+    var ruler: Ruler?
 
     /// A run arc or a part segment drawn all the way round.
     static func isFull(from: Double, to: Double) -> Bool { from - to >= 359.99 }
@@ -316,12 +344,84 @@ extension LabelSpec {
         return base
     }
 
+    /// The surname the play page's top line names: the display name's last word, a parenthesis and a Jr. or III dropped.
+    static func surnameOf(_ author: String?) -> String {
+        let bare = (author ?? "").replacingOccurrences(of: #"\([^)]*\)"#, with: " ", options: .regularExpression)
+        var words = bare.split { $0 == " " || $0 == "," || $0.isWhitespace }.map(String.init)
+        while words.count > 1, let last = words.last,
+              last.range(of: #"^(jr|sr|ii|iii|iv)\.?$"#, options: [.regularExpression, .caseInsensitive]) != nil {
+            words.removeLast()
+        }
+        return words.last?.uppercased() ?? ""
+    }
+
+    /// Life years as the record has them: 1856-1950, 496-407 BCE (both before the era), 4 BCE-65 (across it).
+    static func lifeOf(_ life: LabelItem.Life?) -> String {
+        guard let b = life?.born, let d = life?.died else { return "" }
+        if b < 0, d < 0 { return "\(-b)-\(-d) BCE" }
+        if b < 0 { return "\(-b) BCE-\(d)" }
+        return "\(b)-\(d)"
+    }
+
+    /// The play's label (B31 2.1, WEB-DESIGN 6.4r): a printed page, not a disc. The board is the form's (`hue`, the
+    /// catalog's) or the neutral one; the monogram from the left in the top half; a column per speaking part, largest
+    /// first, its height its lines over the largest part's; the era ruler at the foot (M, L); at L the line
+    /// "SURNAME · LIFE YEARS". The top right corner stays clear for Read.
+    private static func playPage(_ it: LabelItem, _ tier: String) -> LabelSpec {
+        let P = T["play"]["page"]
+        let g = known(it.hue) ? it.hue : nil
+        var spec = LabelSpec(kind: "play", shape: "square", tier: tier, viewBox: T["viewBox"].d(), ground: groundOf(g), on: onOf(g))
+        let x0 = P["x0"].d(), span = P["span"].d()
+        let m = Grammar.monogram(it.name)
+        if !m.isEmpty {
+            let size = min(P["mono"]["cap"].d(tier) / T["glyphs"]["display"]["cap"].d(), span / max(em(m, "display"), 0.01))
+            spec.text.append(Text(s: m, face: "display", size: r2(size), x: P["mono"]["x"].d(), y: P["mono"]["y"].d(tier),
+                                  anchor: "start", fill: "on"))
+        }
+        if tier != "S" {
+            let eras = P["eras"].list.map(\.s)
+            let R = P["ruler"]
+            spec.ruler = Ruler(y: R["y"].d(), x0: x0, span: span, cell: r2(span / Double(eras.count)),
+                               lit: it.era.flatMap { eras.firstIndex(of: $0) } ?? -1, h: R["h"].d(tier), tick: R["tick"].d(),
+                               width: R["width"].d(), opacity: R["opacity"].d(), inset: R["inset"].d())
+        }
+        let cast = it.cast.filter { $0 > 0 }
+        if let top = cast.first {
+            let C = P["cols"]
+            let most = Int(C["max"].d(tier)), gap = C["gap"].d(tier), base = C["base"].d(tier), H = C["h"].d(tier)
+            let more = cast.count > most
+            let shown = more ? Array(cast.prefix(most - 1)) : cast
+            let n = Double(shown.count + (more ? 1 : 0))
+            let w = min(C["maxW"].d(tier), (span - gap * (n - 1)) / n)
+            func col(_ v: Int, _ i: Int, _ rest: Bool) -> Column {
+                let h = max(C["min"].d(), Double(v) / Double(top)) * H
+                return Column(x: r2(x0 + Double(i) * (w + gap)), y: r2(base - h), w: r2(w), h: r2(h), rest: rest)
+            }
+            var bars = shown.enumerated().map { col($1, $0, false) }
+            if more { bars.append(col(cast[most - 1], shown.count, true)) }
+            spec.cols = Cols(restOpacity: C["restOpacity"].d(), bars: bars)
+        }
+        if tier == "L" {
+            let line = [surnameOf(it.author), lifeOf(it.life)].filter { !$0.isEmpty }.joined(separator: " · ")
+            if !line.isEmpty {
+                let rim = P["rim"]
+                let perEm = em(line, "body") + Double(line.unicodeScalars.count) * rim["tracking"].d()
+                let size = r2(min(rim["size"].d(), span / max(perEm, 0.01)))
+                spec.text.insert(Text(s: line, face: "body", size: size, x: rim["x"].d(), y: rim["y"].d(), anchor: "start", fill: "on",
+                                      tracking: rim["tracking"].d(), opacity: rim["opacity"].d()), at: 0)
+            }
+        }
+        return spec
+    }
+
     /// What the label draws for `item` in a window `size` points on a side (the size picks the tier).
     static func make(_ item: LabelItem, size: Double) -> LabelSpec {
         let tier = tierOf(size)
         switch item.kind {
         case .person: return person(item, tier)
-        case .play: return play(item, tier)
+        // A play with its name is its page label (B31); the nameless form is R4-2c's bars, which the shared golden
+        // `cases` still hold until Kotlin takes the page (D1).
+        case .play: return !item.opening && item.name != nil ? playPage(item, tier) : play(item, tier)
         default: return disc(item, tier, item.kind)
         }
     }

@@ -90,6 +90,12 @@ SCENARIOS = {
         env={HOOK_START_ITEM: QA_ITEM_ID, HOOK_DOOR_SECONDS: "15"}, minutes=0.8,
         expect_seq=[QA_ITEM_RX, r"Listen"], expect_end=r"Listen",
         note="APP_DOOR_SECONDS ends the door and returns to Listen by itself."),
+    "browse-plays": dict(
+        # B31 3.7: Browse's Plays scope (APP_BROWSE_SCOPE), then two presses down into the shelves to see a tile lift.
+        env={HOOK_START_TAB: "browse", "APP_BROWSE_SCOPE": "plays"}, minutes=1.2,
+        presses=[(14, "down"), (30, "down")],
+        expect_any=r"Ten minutes or less|Plays for two voices|One Act Plays",
+        note="The Plays scope draws the library's data shelves."),
 }
 
 

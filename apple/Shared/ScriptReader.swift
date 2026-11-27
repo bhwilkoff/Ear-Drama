@@ -1739,7 +1739,7 @@ struct ReadButton: View {
 
     private func open() {
         #if os(macOS)
-        openWindow(id: ReaderWindow_macOS.id, value: scriptID)
+        openWindow(id: ReaderWindow_macOS.id, value: ReaderWindow_macOS.value(scriptID, line: line))
         #else
         app.reading = ReaderTarget(scriptID: scriptID, line: line)
         #endif
@@ -1782,10 +1782,14 @@ struct ReadTileButton: View {
 /// A script is a window (macOS-DESIGN §4.7), one per play, restored with the window.
 struct ReaderWindow_macOS: View {
     static let id = "reader"
+    /// The window's value: the script's id, and "#" and a line when it opens at one (a scene, a line found by search).
     let scriptID: String
 
+    static func value(_ scriptID: String, line: String? = nil) -> String { line.map { "\(scriptID)#\($0)" } ?? scriptID }
+
     var body: some View {
-        ScriptReaderView(scriptID: scriptID)
+        let parts = scriptID.split(separator: "#", maxSplits: 1).map(String.init)
+        ScriptReaderView(scriptID: parts.first ?? scriptID, startLine: parts.count > 1 ? parts[1] : nil)
             .frame(minWidth: 520, minHeight: 480)
     }
 }

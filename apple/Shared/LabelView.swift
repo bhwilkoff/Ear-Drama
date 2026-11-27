@@ -87,6 +87,22 @@ struct LabelView: View {
                 fill(&context, Path(roundedRect: CGRect(x: b.x * k, y: b.y * k, width: b.w * k, height: b.h * k), cornerRadius: b.h * k / 2), on)
             }
         }
+        if let r = s.ruler {
+            var p = Path()
+            p.move(to: CGPoint(x: r.x0 * k, y: r.y * k))
+            p.addLine(to: CGPoint(x: (r.x0 + r.span) * k, y: r.y * k))
+            for i in 0...7 {
+                let x = (r.x0 + Double(i) * r.cell) * k
+                p.move(to: CGPoint(x: x, y: (r.y - r.tick) * k))
+                p.addLine(to: CGPoint(x: x, y: (r.y + r.tick) * k))
+            }
+            stroke(&context, p, on, r.width, r.opacity, k)
+            if r.lit >= 0 {
+                let rect = CGRect(x: (r.x0 + Double(r.lit) * r.cell + r.inset) * k, y: (r.y - r.h / 2) * k,
+                                  width: (r.cell - 2 * r.inset) * k, height: r.h * k)
+                fill(&context, Path(roundedRect: rect, cornerRadius: r.h * k / 2), on)
+            }
+        }
         if let d = s.disc { fill(&context, circle(d.r, k), on, d.opacity) }
         if let g = s.grooves { for r in g.radii { stroke(&context, circle(r, k), on, g.width, g.opacity, k) } }
         if let t = s.ticks {
@@ -119,10 +135,17 @@ struct LabelView: View {
         }
         if let l = s.label { fill(&context, circle(l.r, k), on) }
         for t in s.text {
-            let resolved = context.resolve(Text(verbatim: t.s).font(font(t.face, CGFloat(t.size) * k))
-                .foregroundStyle(Color.label(t.fill == "ground" ? s.ground : on)))
+            let px = CGFloat(t.size) * k
+            let resolved = context.resolve(Text(verbatim: t.s).font(font(t.face, px)).tracking(CGFloat(t.tracking ?? 0) * px)
+                .foregroundStyle(Color.label(t.fill == "ground" ? s.ground : on).opacity(t.opacity ?? 1)))
             let base = resolved.firstBaseline(in: CGSize(width: CGFloat.infinity, height: CGFloat.infinity))
-            context.draw(resolved, at: CGPoint(x: t.x * k, y: t.y * k - base), anchor: t.anchor == "end" ? .topTrailing : .top)
+            let anchor: UnitPoint = t.anchor == "end" ? .topTrailing : t.anchor == "start" ? .topLeading : .top
+            context.draw(resolved, at: CGPoint(x: t.x * k, y: t.y * k - base), anchor: anchor)
+        }
+        if let cols = s.cols {
+            for b in cols.bars {
+                fill(&context, Path(CGRect(x: b.x * k, y: b.y * k, width: b.w * k, height: b.h * k)), on, b.rest ? cols.restOpacity : 1)
+            }
         }
         if let rim = s.rim { paintRim(rim, on: on, in: &context, k) }
         if let rules = s.rules {

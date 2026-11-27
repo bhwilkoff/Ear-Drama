@@ -73,6 +73,10 @@ import Foundation
 ///
 /// - APP_DOOR_FILE (Mac): commands read from a file while the app runs (DoorFile_macOS)
 ///
+/// - APP_PLAY_QUERY=<words> (iOS and macOS): Record's search field holds those words (B31 §3.3);
+///   APP_PLAY_PICKS=form=comedy,voices=1-2 chooses those facet values (B31 §3.1)
+/// - APP_BROWSE_SCOPE=plays (tvOS): Browse opens on that scope (B31 §3.7)
+///
 /// DEBUG-only: in a Release build `current` is always empty, so every door is a
 /// no-op in production. Doors never touch the router directly; they are posted
 /// to the AppStore inbox and consumed by RootView like any other deep link.
@@ -111,6 +115,9 @@ struct LaunchDoors: Sendable, Equatable {
     var castSteps: String?
     var skipOnboard = false
     var voicesStep = false
+    var playQuery: String?
+    var playPicks: [String: String] = [:]
+    var browseScope: String?
 
     var isEmpty: Bool { self == LaunchDoors() }
 
@@ -167,8 +174,21 @@ struct LaunchDoors: Sendable, Equatable {
             cast: environment["APP_START_CAST"].flatMap { $0.isEmpty ? nil : $0 },
             castSteps: environment["APP_CAST_STEPS"],
             skipOnboard: environment["APP_SKIP_ONBOARD"] == "1",
-            voicesStep: environment["APP_VOICES_STEP"] == "1"
+            voicesStep: environment["APP_VOICES_STEP"] == "1",
+            playQuery: environment["APP_PLAY_QUERY"].flatMap { $0.isEmpty ? nil : $0 },
+            playPicks: Self.picks(environment["APP_PLAY_PICKS"]),
+            browseScope: environment["APP_BROWSE_SCOPE"].flatMap { $0.isEmpty ? nil : $0 }
         )
+    }
+
+    /// "form=comedy,voices=1-2" as facet picks.
+    static func picks(_ text: String?) -> [String: String] {
+        var out: [String: String] = [:]
+        for pair in (text ?? "").split(separator: ",") {
+            let kv = pair.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            if kv.count == 2, !kv[0].isEmpty, !kv[1].isEmpty { out[kv[0]] = kv[1] }
+        }
+        return out
     }
 
     private static func scratch(_ environment: [String: String]) -> String? {

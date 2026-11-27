@@ -20,6 +20,9 @@ enum PlayRoute: Hashable {
     case addScript
     case parts(String)
     case cast(String)
+    /// Finding a play (B31 §3.2, §3.4): a collection whole, and every scene for N voices.
+    case collection(String)
+    case scenes(Int)
 }
 
 // MARK: - Record this
@@ -230,22 +233,33 @@ struct PlayScriptScreen: View {
     }
 }
 
-/// A play's page: the head board, Record This, the parts, the rights line (D3-6).
+/// A play's page (D3-6; B31 §3.5, iOS-DESIGN §4.12): the head board on the form's board with the play's window (a
+/// picture of the play, else its title page or author's portrait, else its label), the kicker with its form and One act,
+/// the author, voices and minutes; Record This and Read; the parts; then for a library play its scenes for two voices,
+/// Same voices and length, and More by the author, each absent when empty; the rights line.
 struct PlayPageBody: View {
     let script: PlayScript
-    /// The published title page and author's portrait (R3b §5.5 `play.titlePage`, `play.authorArt`); a play carries
-    /// neither until the pipeline does, and its head is then its opening drawn as a page (WEB-DESIGN §6.4g).
-    var titlePage: Artwork? = nil
-    var production: Artwork? = nil
-    var authorArt: Artwork? = nil
+    @Environment(PlaysLibrary.self) private var plays
 
     var body: some View {
-        let lead = ItemLead.playLead(titlePage: titlePage, production: production, authorArt: authorArt)
+        // The index row carries what the script file does not: the form, era, life, scenes and pictures (contract §4.1).
+        let row = script.isOwn ? nil : plays.rows.first { $0.id == script.id }
+        let lead = row?.pageLead
+        let named = script.authorLineWithYears.isEmpty ? (row?.authorLine ?? "") : script.authorLineWithYears
+        let author: String? = named.isEmpty ? nil : named
         VStack(alignment: .leading, spacing: Spacing.s4) {
-            ItemHeadBoard(kicker: ItemKicker.text(PlayHead.kicker(script)), name: script.title, genre: PlayScript.boardGenre, art: lead,
-                          label: script.pageLabel, facts: PlayHead.facts(script), credits: script.authorLineWithYears,
-                          cast: CastSummary(script: script),
-                          customWindow: ItemLead.shown(lead) == nil ? { side in AnyView(PlayOpeningWindow(script: script, side: side)) } : nil)
+            if let row {
+                ItemHeadBoard(kicker: ItemKicker.text(FindCore.kicker(kind: row.kind, form: row.form, oneAct: row.oneAct)), name: script.title,
+                              genre: row.hue, art: lead, label: row.labelItem,
+                              facts: [script.year.map(String.init), script.voicesText, script.minutesText],
+                              credits: author.map { row.attributed ? "Attributed to \($0)" : $0 },
+                              cast: CastSummary(script: script))
+            } else {
+                ItemHeadBoard(kicker: ItemKicker.text(PlayHead.kicker(script)), name: script.title, genre: PlayScript.boardGenre,
+                              label: script.pageLabel, facts: PlayHead.facts(script), credits: script.authorLineWithYears,
+                              cast: CastSummary(script: script),
+                              customWindow: { side in AnyView(PlayOpeningWindow(script: script, side: side)) })
+            }
             ActionRow {
                 StartEarDramaButton(script: script)
                 ReadButton(scriptID: script.id)
@@ -258,6 +272,7 @@ struct PlayPageBody: View {
                     PartCard(script: script, part: part)
                 }
             }
+            if let row { PlayNeighbors(row: row) }
             if script.isOwn { OwnScriptFoot(script: script) } else { RightsLine(script: script) }
         }
         .padding(.vertical, Spacing.s4)
@@ -268,6 +283,49 @@ struct PlayPageBody: View {
         #else
         .modifier(ReadableColumn())
         #endif
+    }
+}
+
+/// Under a library play's parts (B31 §3.5): its scenes for two voices, then Same voices and length (the rule as the
+/// heading: within one voice and 15 minutes), then More by the author's surname (All when the catalog publishes the
+/// author's collection). A section with nothing is absent.
+private struct PlayNeighbors: View {
+    let row: PlayRow
+    @Environment(PlaysLibrary.self) private var plays
+
+    var body: some View {
+        let scenes = row.scenes.filter { $0.voices == 2 && !$0.line.isEmpty }
+        let same = FindCore.sameShape(plays.rows, row)
+        let by = FindCore.byAuthor(plays.rows, plays.collections, row)
+        if !scenes.isEmpty {
+            shelf("Scenes for two voices") {
+                ForEach(scenes, id: \.line) { SceneCard(hit: .init(row: row, scene: $0), inPlay: true) }
+            }
+        }
+        if !same.isEmpty {
+            shelf("Same voices and length") { ForEach(same) { PlayTile(script: $0) } }
+        }
+        if !by.plays.isEmpty {
+            let surname = LabelSpec.surnameOf(row.firstAuthor)
+            let name = surname.isEmpty ? "the author" : String(surname.prefix(1)) + surname.dropFirst().lowercased()
+            shelf("More by \(name)", all: by.id.flatMap { by.total > by.plays.count ? PlayRoute.collection($0) : nil }) {
+                ForEach(by.plays) { PlayTile(script: $0) }
+            }
+        }
+    }
+
+    private func shelf<Content: View>(_ title: String, all: PlayRoute? = nil, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.s2) {
+            SectionHead(title: title) {
+                if let all { PushLink(value: all) { Text("All") }.buttonStyle(.borderless) }
+            }
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: Spacing.s3) { content() }
+                    .sharesNameHeight()
+                    .padding(.vertical, Spacing.s1)
+            }
+            .scrollIndicators(.hidden)
+        }
     }
 }
 

@@ -70,13 +70,24 @@ struct FinishedTile: View {
 
 /// What Browse lists: the shows, the most heard voices, or the finished ear dramas.
 enum BrowseScope: String, CaseIterable, Hashable {
-    case shows, voices, dramas
+    case shows, voices, dramas, plays
     var title: String {
         switch self {
         case .shows: "Shows"
         case .voices: "Voices"
         case .dramas: "Ear dramas"
+        case .plays: "Plays"
         }
+    }
+
+    /// The scopes this platform's Browse offers. Plays is the TV's (B31 §3.7, tvOS-DESIGN §4.2); on a phone, a tablet
+    /// and a Mac the plays are Record's.
+    static var offered: [BrowseScope] {
+        #if os(tvOS)
+        [.shows, .voices, .dramas, .plays]
+        #else
+        [.shows, .voices, .dramas]
+        #endif
     }
 }
 

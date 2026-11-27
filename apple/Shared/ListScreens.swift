@@ -42,6 +42,8 @@ struct RouteDestinations: ViewModifier {
             case .addScript: AddScriptScreen()
             case let .parts(id): OwnPartsScreen(id: id).id(route)
             case let .cast(id): EarScreen(id: id).id(route)
+            case let .collection(id): PlayCollectionScreen(id: id)
+            case let .scenes(n): PlayScenesScreen(voices: n)
             }
         }
     }
@@ -403,7 +405,7 @@ struct SeriesBrowseScreen: View {
     private var controls: some View {
         VStack(spacing: 0) {
             Picker("Browse", selection: $scope) {
-                ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
+                ForEach(BrowseScope.offered, id: \.self) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -1243,15 +1245,18 @@ struct SearchResultsList: View {
     @Environment(AppStore.self) private var app
     @State private var results: SearchResults?
     @State private var searchedFor = ""
+    /// Plays by title, character and spoken line (B31 §3.3), searched beside the catalog.
+    @State private var playSearch = PlaySearchModel()
 
     var body: some View {
         Group {
             if query.trimmingCharacters(in: .whitespaces).isEmpty {
                 EmptyState("Search titles, people, and spoken words", systemImage: "magnifyingglass")
             } else if let results, searchedFor == query {
-                let matchingPlays = Self.plays(plays.rows, matching: query)
+                // Until the play search has answered for this query, it may still find something.
+                let foundPlays = playSearch.query != query || playSearch.phase != .done || playSearch.foundAny || playSearch.reading
                 let mine = Self.own(plays.own.rows, matching: query)
-                if results.isEmpty && matchingPlays.isEmpty && mine.isEmpty {
+                if results.isEmpty && !foundPlays && mine.isEmpty {
                     EmptyState("No matches for “\(query)”", systemImage: "magnifyingglass",
                                action: .init(title: "Add a Script") { app.wantsAddScript = true })
                 } else {
@@ -1275,14 +1280,7 @@ struct SearchResultsList: View {
                                 }
                             }
                         }
-                        if !matchingPlays.isEmpty {
-                            PageRows("Plays") {
-                                ForEach(matchingPlays) { script in
-                                    NavigationLink(value: PlayRoute.script(script.id)) { ScriptRow(script: script) }
-                                        .pageRow()
-                                }
-                            }
-                        }
+                        PlaySearchSections(query: query, search: playSearch)
                         if let aired = results.aired, !aired.episodes.isEmpty {
                             PageRows(aired.title) {
                                 ForEach(aired.episodes) { episode in
@@ -1308,7 +1306,7 @@ struct SearchResultsList: View {
                             }
                         }
                         // A search that found no play: the person may have the words themselves.
-                        if matchingPlays.isEmpty && mine.isEmpty {
+                        if !foundPlays && mine.isEmpty {
                             PageSection {
                                 Button { app.wantsAddScript = true } label: { Label("Add a Script", systemImage: "plus") }
                                     .gridRow(.words)
@@ -1340,6 +1338,8 @@ struct SearchResultsList: View {
             guard (try? await Task.sleep(for: .milliseconds(250))) != nil else { return }
             results = await catalog.search(q)
             searchedFor = q
+            await plays.load()
+            await playSearch.run(q, plays: plays)
         }
     }
 }

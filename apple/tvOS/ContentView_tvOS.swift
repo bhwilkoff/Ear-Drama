@@ -458,7 +458,8 @@ private struct SeriesBrowseScreen_tvOS: View {
     @State private var sort: SeriesSort = .popular
     @State private var singles = false
     @State private var shown = BrowseScreenPage.size
-    @State private var scope: BrowseScope = .shows
+    // APP_BROWSE_SCOPE (DEBUG) opens Browse on a scope, for a frame of the Plays shelves.
+    @State private var scope: BrowseScope = LaunchDoors.current.browseScope.flatMap(BrowseScope.init(rawValue:)) ?? .shows
     @State private var fieldOpen = false
     @State private var azFrom: String?
     @Environment(AppStore.self) private var store
@@ -473,12 +474,14 @@ private struct SeriesBrowseScreen_tvOS: View {
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: Spacing.s4) {
                         Picker("Browse", selection: $scope) {
-                            ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
+                            ForEach(BrowseScope.offered, id: \.self) { Text($0.title).tag($0) }
                         }
                         .pickerStyle(.segmented)
                         .fixedSize()
                         if scope == .dramas {
                             FinishedBrowse()
+                        } else if scope == .plays {
+                            PlaysBrowse_tvOS()
                         } else if scope == .voices {
                             VoicesBrowse()
                         } else {

@@ -52,7 +52,7 @@ struct ContentView_macOS: View {
         // A launch door asks for a script; the Mac reads in its own window.
         .onChange(of: store.reading, initial: true) { _, target in
             guard let target else { return }
-            openWindow(id: ReaderWindow_macOS.id, value: target.scriptID)
+            openWindow(id: ReaderWindow_macOS.id, value: ReaderWindow_macOS.value(target.scriptID, line: target.line))
             store.reading = nil
         }
         // Space plays and pauses here, never as a menu key (macOS-DESIGN §5.3):

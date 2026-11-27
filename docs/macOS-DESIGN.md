@@ -112,8 +112,12 @@ Mac uses the same Core, so the same code holds them:
   then the rule rows (no doors, Decision 089).
   **Stations** is pushed in Home's stack (On the air's All Stations) and **Surprise** by Home's toolbar button (⇧⌘S in the Go
   menu); neither is a sidebar section. **Record** is iOS-DESIGN §4.14 as
-  a `WidePage`: Yours, Today's Scene, the plays under the chip bar, Made
-  here. "Record This" beside Play on a play's page, or on an episode
+  a `WidePage`: Yours, Today's Scene, the plays, Made here. Finding a play (B31 §3.7, owner 2026-11-26: *"We need to research a FAR BETTER way of searching for and finding a play that you might like to perform/record. I'd love to see themes and collections for plays and different ways of finding plays to read or record."*): the search
+  field is the window's toolbar field (`.searchable`, "Titles, authors, characters, lines"); **the facets are toolbar
+  menus** (Voices, Length, Form, Era, Sort, Filters; each value with its count; Filters a 420 by 520 sheet), so the
+  page under them is the ways in and the grid alone, the grid a page of 60 tiles at a time with Show more; a scene
+  card and a found line open the script's own window at that line (`ReaderWindow_macOS.value`, the script id and
+  "#line"). *Replaced* 2026-11-26: "the plays under the chip bar". "Record This" beside Play on a play's page, or on an episode
   whose `script` is set, opens the production's window; Library still
   lists Ear dramas. A new section amends this rule first.
   - **Today's Scene and Made Here leading** (Decision 079): Home and Record
@@ -413,7 +417,13 @@ only here:
   natively (SwiftUI `Canvas`) from the same `labelSpec` goldens as the web (`cross-platform-determinism`):
   genre board, a run arc on the 1930-1962 dial, the monogram or the episode's date on the label,
   network · decade on the rim at tier L from `series.network`; a finished ear drama's part-hue rim;
-  a person's groove ring; a play's script page with voice-band rules. A picture that passes the
+  a person's groove ring; a stage play's **label, a printed page** (B31 2.1, WEB-DESIGN 6.4r: the form's board
+  from the row's `hue` else neutral, the monogram from the left, a column per speaking part with one dimmer column
+  for the rest, the era ruler at M and L, "SURNAME · LIFE YEARS" at L; `LabelSpec.make` with the shared `playPage`
+  goldens, `LabelSpecTests`; *replaced* 2026-11-26: "a play's script page with voice-band rules"). **A play's
+  window** leads with a picture of the play only (`picture.kind` work, production or book; `PlayRow.windowPicture`)
+  in tiles, rows and rails; a title page or an author's portrait leads only the play's own page head
+  (`PlayRow.pageLead`). A picture that passes the
   size floor always wins, and the two never share an object's slot. Networks and sponsors are names
   in our type, never logos; user-made ear dramas never take an uploaded picture. Now Playing in Control Center shows the episode's label. Built in
   Round 3 V4.

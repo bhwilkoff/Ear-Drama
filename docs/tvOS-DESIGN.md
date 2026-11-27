@@ -89,7 +89,7 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
   `Tab(role: .search)`. **Record is n/a on the TV**: it has no microphone
   and records nothing (PLAYS-DESIGN §6, §11.7 rule 12), so there is no
   Record entry, no Record a Play row, no Today's play, no Try a
-  Line, and no Record This (Today's Scene is on Home, to hear); Browse, Search, and Surprise show no plays. Library keeps
+  Line, and no Record This (Today's Scene is on Home, to hear); Search and Surprise show no plays, and Browse shows them only as its Plays scope (§4.2; *replaced* 2026-11-26: "Browse, Search, and Surprise show no plays"). Library keeps
   the shared Ear dramas this person is in, to listen to (§4.12): that is
   all "making" means on a TV. **Home opens on what is on the air**: its
   hero is On the air (tonight's slot on now, else the first genre station
@@ -184,7 +184,17 @@ The only shapes; a new one needs a new rule.
   hero; there are no doors (the tab bar navigates and the TV records nothing). A show at most once
   per Home and one window size per row hold as on every platform; the rim (network · decade) reads
   at the hero's size. Built in Round 3 V6.
-- **§4.2 Browse** (was Series) is Shows, Voices and Ear dramas at natural width, then one line: the
+- **§4.2a Browse's Plays scope** (B31 §3.7, owner 2026-11-26: *"We need to research a FAR BETTER way of searching for and finding a play that you might like to perform/record. I'd love to see themes and collections for plays and different ways of finding plays to read or record."*; `apple/tvOS/PlaysBrowse_tvOS.swift`). A fourth scope beside
+  Shows, Voices and Ear dramas: the count line, then the library's data shelves as focus shelves (`TVShelf`), each
+  headed by the rule that fills it with its count: the editor's collections, then Ten minutes or less, Plays for two
+  voices, A star part, One Act Plays, then every other data collection but an author's, a play once on the screen
+  (`FindCore.rails(scenes: false, ids: FindCore.tvIDs)`). Each play is the grammar's tile at 312 pt (the phone's 144
+  times 2.2; type at the 29 pt floor) with its label or a picture of the play, the fingerprint, "N voices" and "About
+  M min", on the form's board. **No facets, no scenes, no line search, no record door**: the TV records nothing. A
+  tile is a focus stop (`.focusable()`, lifted by hand: scale 1.08 and a shadow, the rest dimmed, since `.hoverEffect(.highlight)` drew no mark on Ben Bedroom) that opens nothing until the reader reaches the TV
+  (B21), then its page with Read. Loading is the spinner; a failed read "This did not load." with Try Again; offline
+  "You are offline."; an older library without collections shows the count and no shelves ("No plays yet").
+- **§4.2 Browse** (was Series) is Shows, Voices, Ear dramas and Plays (§4.2a) at natural width, then one line: the
   count, then Genre and Sort as menus (Popular by default, A to Z, Most episodes, Oldest first;
   Popular as `docs/iOS-DESIGN.md` §4.2), By decade and the singles switch; then the tiles. The tab
   bar names the section, so the screen draws no title, as every tvOS tab. In A to Z a letter starts
@@ -447,7 +457,13 @@ The only shapes; a new one needs a new rule.
   natively (SwiftUI `Canvas`) from the same `labelSpec` goldens as the web (`cross-platform-determinism`):
   genre board, a run arc on the 1930-1962 dial, the monogram or the episode's date on the label,
   network · decade on the rim at tier L from `series.network`; a finished ear drama's part-hue rim;
-  a person's groove ring; a play's script page with voice-band rules. A picture that passes the
+  a person's groove ring; a stage play's **label, a printed page** (B31 2.1, WEB-DESIGN 6.4r: the form's board
+  from the row's `hue` else neutral, the monogram from the left, a column per speaking part with one dimmer column
+  for the rest, the era ruler at M and L, "SURNAME · LIFE YEARS" at L; `LabelSpec.make` with the shared `playPage`
+  goldens, `LabelSpecTests`; *replaced* 2026-11-26: "a play's script page with voice-band rules"). **A play's
+  window** leads with a picture of the play only (`picture.kind` work, production or book; `PlayRow.windowPicture`)
+  in tiles, rows and rails; a title page or an author's portrait leads only the play's own page head
+  (`PlayRow.pageLead`). A picture that passes the
   size floor always wins, and the two never share an object's slot. Networks and sponsors are names
   in our type, never logos; user-made ear dramas never take an uploaded picture. The ten-foot hero draws it at full size; Top Shelf uses the rendered label. Built in
   Round 3 V4.
