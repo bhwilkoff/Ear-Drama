@@ -98,7 +98,7 @@ struct PlaysLibraryTests {
         }
         await lib.load()
         #expect(try await lib.script(id: "gut-1")?.title == "Cached")
-        try await Task.sleep(for: .milliseconds(400))
+        await lib.cacheWritten()
         let again = PlaysLibrary(store: ProductionStore(root: dir.appending(path: "Plays2")), fetch: { _ in throw Offline() },
                                  cache: dir.appending(path: "Cache"), bundled: { nil })
         await again.load()

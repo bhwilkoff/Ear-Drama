@@ -296,10 +296,12 @@ nonisolated private func fill(_ unit: String, _ n: Int = OwnScript.maxBytes) -> 
     return String(decoding: out[0..<n], as: UTF16.self)
 }
 
+/// CPU time of this thread, not wall time: the budgets guard how much work a parse does, and a loaded machine that
+/// schedules the thread late must not read as a parse that got slower.
 nonisolated private func took(_ block: () -> Void) -> Double {
-    let t = DispatchTime.now().uptimeNanoseconds
+    let t = clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID)
     block()
-    return Double(DispatchTime.now().uptimeNanoseconds - t) / 1e6
+    return Double(clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID) - t) / 1e6
 }
 
 #if DEBUG

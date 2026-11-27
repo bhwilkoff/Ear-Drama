@@ -40,6 +40,7 @@ final class PlaysLibrary {
     @ObservationIgnored private let fetch: Fetch
     @ObservationIgnored private let cache: URL
     @ObservationIgnored private let bundled: @Sendable () -> CastableLibrary?
+    @ObservationIgnored private var writes: [Task<Void, Never>] = []
     /// The Worker's reads of an own script's text (a seam so a test can stand one in).
     @ObservationIgnored var reads: any OwnScriptReads = WorkerOwnScripts(api: .shared)
 
@@ -88,6 +89,20 @@ final class PlaysLibrary {
         state = rows.isEmpty ? .unavailable : .ready
     }
 
+    /// Writes a fetched file into the cache behind the caller (utility priority); `cacheWritten()` waits for these.
+    private func keep(_ data: Data, as file: URL) {
+        let root = cache
+        writes.append(Task.detached(priority: .utility) { Self.write(data, to: file, in: root) })
+    }
+
+    /// Returns once every cache write started so far has finished: the tests' seam, so a second library reads the first's cache
+    /// without a pause that a loaded machine can outlast.
+    func cacheWritten() async {
+        let pending = writes
+        writes = []
+        for t in pending { await t.value }
+    }
+
     /// Asks the site for the index; a failure or an empty index leaves the rows as they are.
     private func refreshIndex() async {
         guard let data = try? await fetch("library/index.json"),
@@ -98,8 +113,7 @@ final class PlaysLibrary {
         rows = index.plays
         facets = index.facets
         fromLibrary = true
-        let cache = cache
-        Task.detached(priority: .utility) { Self.write(data, to: cache.appending(path: "index.json"), in: cache) }
+        keep(data, as: cache.appending(path: "index.json"))
         await loadCollections()
     }
 
@@ -158,9 +172,7 @@ final class PlaysLibrary {
         if let path = rows.first(where: { $0.id == id })?.path {
             do {
                 if let data = try await fetch("library/\(path)"), let found = Self.pick(id, from: data) {
-                    let file = cache.appending(path: path)
-                    let root = cache
-                    Task.detached(priority: .utility) { Self.write(data, to: file, in: root) }
+                    keep(data, as: cache.appending(path: path))
                     return found
                 }
             } catch {
