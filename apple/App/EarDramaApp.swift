@@ -23,6 +23,9 @@ struct EarDramaApp: App {
     #endif
 
     init() {
+        #if DEBUG && (os(iOS) || os(macOS))
+        if SoundPass.asked { Task { @MainActor in await SoundPass.run() } }
+        #endif
         LaunchDoors.resetUserStateIfAsked()
         LaunchDoors.restoreUserStateIfSetAside()
         #if os(iOS) || os(macOS)

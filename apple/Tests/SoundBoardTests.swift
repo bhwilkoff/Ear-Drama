@@ -318,4 +318,19 @@ private var fixtureManifest: Data {
         let q = SoundBoard.addSound(gap.production, s, slotID: gap.id, src: .pack(pack: "x", cue: "hooves")).production
         #expect(SoundBoard.listenCues(s, q, plan: plan)[5].before.map(\.sound.src) == [.pack(pack: "x", cue: "hooves")])
     }
+
+    /// Found on the 2026-11-27 listening pass: an Under sound set to loop never stopped in a live listen (the export
+    /// ends it with its line), and the listen's closing wait on it never returned.
+    @Test func aLoopingUnderSoundStopsWithItsLine() {
+        let s = radioScript()
+        var p = Production(script: s)
+        for l in s.lines where l.kind == .speech { p.add(take("t-\(l.id)", l.id, seconds: 0.5)) }
+        let e = SoundBoard.ensure(p, SoundBoard.slots(s, p)[1])
+        let rain = SoundBoard.addSound(e.production, s, slotID: e.id, src: .pack(pack: "x", cue: "rain"))
+        p = SoundBoard.updateSound(rain.production, slotID: e.id, soundID: rain.id!, .init(at: "under", loop: true))
+        let plan = Relay.listenPlan(p, s)
+        let cues = SoundBoard.listenCues(s, p, plan: plan)
+        #expect(cues[3].under.map(\.sound.id) == [rain.id!], "it starts with line 4")
+        #expect(cues[3].stop == [rain.id!], "and stops after line 4, as the export ends it")
+    }
 }

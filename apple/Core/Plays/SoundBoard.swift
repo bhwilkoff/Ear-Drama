@@ -554,6 +554,7 @@ nonisolated enum SoundBoard {
                 case "after": out[i].after.append(cue)
                 default: out[i].under.append(cue)
                 }
+                if x.at == "under", x.loop { out[i].stop.append(x.id) }
                 if x.at == "bed" {
                     let j = max(i, lastFor(x.until ?? slot.line))
                     out[j].stop.append(x.id)
