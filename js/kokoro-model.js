@@ -6,7 +6,7 @@
  * The model is data, like the play library: fetched only when the person asks (the size shown
  * first), each file checked against the SHA-256 its manifest records, kept in Cache Storage,
  * and deletable. A manifest without a permissive license recorded for every file is refused.
- * A file too large for the site (the 326 MB fp32 model; Pages refuses files over 100 MB) is served
+ * A file too large for the site (the 211 MB w16 model; Pages refuses files over 100 MB) is served
  * in `parts` under 50 MB (tools/fetch_kokoro_model.py): each part is checked and kept on its own,
  * so a broken download resumes at the part it lost, and the whole is checked once assembled.
  *
@@ -15,7 +15,7 @@
 const KokoroModel = (() => {
   'use strict';
 
-  const CACHE = 'ed-kokoro-v1';
+  const CACHE = 'ed-kokoro-v5';
   const LICENSES = ['Apache-2.0', 'MIT', 'BSD-2-Clause', 'BSD-3-Clause'];
   const DEFAULT_MANIFEST = 'data/kokoro/manifest.json';
   const diag = (stage, data) => { if (typeof KokoroDiag !== 'undefined') KokoroDiag.mark(stage, data); };

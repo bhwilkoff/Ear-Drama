@@ -1,6 +1,6 @@
 /**
  * The high-fidelity voices on the web: whether this browser may have them, and their download
- * (Decision 086; Decision 078: WebGPU only, the fp32 model in parts, a self-test after download).
+ * (Decision 086; Decision 078: WebGPU only, the w16 model (fp16-stored weights, fp32 compute) in parts, a self-test after download).
  *
  * The Kokoro engine (js/kokoro-model.js, js/kokoro-voice.js and its worker) is loaded on demand:
  * when the person downloads in Settings > Voices, or at page start when the model is already in
@@ -12,8 +12,12 @@
 const Voices = (() => {
   'use strict';
 
-  /** Equal to KokoroModel.CACHE (js/kokoro.test.js checks): asking Cache Storage needs no engine. */
-  const CACHE = 'ed-kokoro-v1';
+  /**
+   * Equal to KokoroModel.CACHE (js/kokoro.test.js checks): asking Cache Storage needs no engine. The service worker
+   * keeps every cache under its `ed-kokoro-` prefix (tools/test_sw.mjs reads this name); OLD are deleted here.
+   */
+  const CACHE = 'ed-kokoro-v5';
+  const OLD = ['ed-kokoro-v1'];
   const OFF = 'ed.kokoro.off';
   const CHECK = 'ed.kokoro.check';
   /** Set while the model loads, cleared when it finishes, fails or the page is left: still set at page start, the tab was killed. */
@@ -70,7 +74,15 @@ const Voices = (() => {
     const listeners = new Set();
     const emit = () => listeners.forEach(fn => { try { fn(); } catch (e) { console.error(e); } });
     const off = () => killed(search, storage);
-    const checked = () => { try { return JSON.parse((storage && storage.getItem(CHECK)) || 'null'); } catch { return null; } };
+    /** The kept self-test result of THIS model's cache; one from an older model (v1, no `cache`) is no result. */
+    const checked = () => {
+      try { const c = JSON.parse((storage && storage.getItem(CHECK)) || 'null'); return c && c.cache === CACHE ? c : null; } catch { return null; }
+    };
+    /** Deletes the models this one replaces (the 326 MB fp32 v1), once this one's checksums have passed or on Delete. */
+    async function dropOld() {
+      if (!cachesImpl) return;
+      for (const name of OLD) { try { if (await cachesImpl.has(name)) { await cachesImpl.delete(name); diag('old-cache-deleted', { name }); } } catch { /* tried again next time */ } }
+    }
     const possible = () => !off() && env.gpu && env.ok;
     const keep = (k, v) => { try { if (storage) { if (v === null) storage.removeItem(k); else storage.setItem(k, v); } } catch { /* unkept */ } };
     /** The model's load, kept as it happens (kokoro-voice.js calls this). */
@@ -86,7 +98,7 @@ const Voices = (() => {
       try { at = storage && storage.getItem(BOOTING); } catch { at = null; }
       if (!at) return;
       keep(BOOTING, null);
-      keep(CHECK, JSON.stringify({ ok: false, rtf: null, reason: 'memory', at: Date.now() }));
+      keep(CHECK, JSON.stringify({ ok: false, rtf: null, reason: 'memory', at: Date.now(), cache: CACHE }));
       diag('killed-while-loading', { since: Number(at) });
     }
 
@@ -111,7 +123,7 @@ const Voices = (() => {
       const k = kokoro();
       const e = k && k.engine();
       const r = e ? await e.selfTest() : { ok: false, reason: 'no engine' };
-      try { if (storage) storage.setItem(CHECK, JSON.stringify({ ok: !!r.ok, rtf: r.rtf ?? null, reason: r.ok ? null : (r.reason || null), at: Date.now() })); } catch { /* unkept: checked again next time */ }
+      try { if (storage) storage.setItem(CHECK, JSON.stringify({ ok: !!r.ok, rtf: r.rtf ?? null, reason: r.ok ? null : (r.reason || null), at: Date.now(), cache: CACHE })); } catch { /* unkept: checked again next time */ }
       diag('selftest', { ok: !!r.ok, rtf: r.rtf ?? null, reason: r.reason || null });
       if (!r.ok) console.error('kokoro self-test', r);
       return r;
@@ -152,6 +164,7 @@ const Voices = (() => {
         try { have = await cachesImpl.has(CACHE); } catch { have = false; }
         const gpu = have && await probe();
         diag('start', { cached: have, adapter: gpu, checked: JSON.stringify(checked()) });
+        if (have) await dropOld();
         if (!gpu) return false;
         await engine();
         emit();
@@ -186,6 +199,7 @@ const Voices = (() => {
         try {
           const l = await engine();
           await l.model.download((done, all) => { progress = { done, total: all }; emit(); }, abort && abort.signal);
+          await dropOld();
           phase = 'checking';
           emit();
           await selfTest();
@@ -208,6 +222,7 @@ const Voices = (() => {
       },
       async remove() {
         if (lab) await lab.model.remove(); else if (cachesImpl) await cachesImpl.delete(CACHE);
+        await dropOld();
         try { if (storage) storage.removeItem(CHECK); } catch { /* nothing kept */ }
         phase = null;
         emit();
@@ -227,5 +242,5 @@ const Voices = (() => {
   /** The page's one instance (app.js starts it). */
   const shared = (opts) => { if (!page) page = create(opts); return page; };
 
-  return { CACHE, OFF, CHECK, BOOTING, MANIFEST, killed, create, shared };
+  return { CACHE, OLD, OFF, CHECK, BOOTING, MANIFEST, killed, create, shared };
 })();

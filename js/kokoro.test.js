@@ -21,6 +21,9 @@
  *     each part is read" (every part read, then joined), "a tap starts the AudioContext" (no context until play()),
  *     "never left hanging" (speak waited forever on a suspended context) and "a tab killed while the model loads"
  *     (no record of a load in progress) all failed.
+ *   2026-11-27 (w16, kokoro-v5-web): against the v1 code, "a browser with the v1 (fp32) model moves" (four checks: a v1
+ *     result vouched for v5, v1 never deleted) and "the worker keeps fp16-stored weights fp16" (both) failed; mutants
+ *     seen to fail: no `cache` match in checked(), no dropOld() after the download, no level 'extended'.
  * The source scan in js/plays.test.js gained the kokoro- files (a cache write in the voice file,
  * an AudioContext in the model file), each control seen caught.
  */
@@ -68,23 +71,63 @@ test('the cast lists downloaded voices only when on and ready', () => {
 
 /* ---- The gate (js/voices.js, Decision 086): no ?kokoro=1; the engine loads only on demand ---- */
 
-function gateWith({ search = '', gpu = true, adapter = true, cached = false, storage = memory(), selfTest = { ok: true, rtf: 0.2 } } = {}) {
+function gateWith({ search = '', gpu = true, adapter = true, cached = false, storage = memory(), selfTest = { ok: true, rtf: 0.2 },
+                   old = [], deleted = [] } = {}) {
   const loaded = [];
-  if (cached && !storage.getItem(Voices.CHECK)) storage.setItem(Voices.CHECK, JSON.stringify({ ok: true, rtf: 0.2, at: 1 }));
+  if (cached && !storage.getItem(Voices.CHECK)) storage.setItem(Voices.CHECK, JSON.stringify({ ok: true, rtf: 0.2, at: 1, cache: Voices.CACHE }));
+  const caches = new Set([...(cached ? [Voices.CACHE] : []), ...old]);
   const fakeModel = { ready: cached, isReady() { return this.ready; },
-                      async download(progress) { progress(5, 10); progress(10, 10); this.ready = true; }, async remove() { this.ready = false; } };
+                      async download(progress) { progress(5, 10); fakeModel.oldDuring = [...caches].filter(n => n !== Voices.CACHE); progress(10, 10); this.ready = true; caches.add(Voices.CACHE); },
+                      async remove() { this.ready = false; caches.delete(Voices.CACHE); deleted.push(Voices.CACHE); } };
   const fakeKokoro = { boot: async (o) => { fakeKokoro.opts = o; return { model: fakeModel }; },
                        engine: () => ({ selfTest: async () => selfTest }), voices: () => kok() };
   const g = Voices.create({
     search, storage,
     env: { gpu, ok: true, adapter: async () => adapter, online: () => true },
-    cachesImpl: { has: async (name) => cached && name === Voices.CACHE, delete: async () => true },
+    cachesImpl: { has: async (name) => caches.has(name), delete: async (name) => { deleted.push(name); return caches.delete(name); } },
     fetchImpl: async () => new Response(JSON.stringify({ files: [{ bytes: 300e6 }, { bytes: 40e6 }] })),
     loadScript: async (src) => { loaded.push(src); },
     kokoro: () => fakeKokoro,
   });
-  return { g, loaded, fakeKokoro, storage };
+  return { g, loaded, fakeKokoro, fakeModel, storage, caches, deleted };
 }
+
+test('a browser with the v1 (fp32) model moves to the current one: offered again, the old cache deleted once the new one is checked', async () => {
+  const storage = memory();
+  storage.setItem(Voices.CHECK, JSON.stringify({ ok: true, rtf: 0.18, at: 1 }));
+  const v1 = gateWith({ storage, old: ['ed-kokoro-v1'] });
+  eq([await v1.g.start(), v1.loaded], [false, []], 'the v1 result and cache load nothing at page start');
+  await v1.g.probe();
+  eq([v1.g.status(), v1.g.offered()], ['absent', true], 'the download is offered again');
+  eq(v1.deleted, [], 'nothing deleted before the person downloads');
+  await v1.g.download();
+  eq(v1.fakeModel.oldDuring, ['ed-kokoro-v1'], 'the old model stays while the new one downloads');
+  ok(v1.deleted.includes('ed-kokoro-v1') && !v1.caches.has('ed-kokoro-v1'), 'and is deleted once the new one is checked');
+  eq([v1.g.status(), JSON.parse(storage.getItem(Voices.CHECK)).cache], ['ready', Voices.CACHE], 'the self-test result names the cache it checked');
+  const stale = memory();
+  stale.setItem(Voices.CHECK, JSON.stringify({ ok: true, rtf: 0.18, at: 1 }));
+  const loadedStale = [];
+  const partial = Voices.create({ storage: stale, env: { gpu: true, ok: true, adapter: async () => true, online: () => true },
+    cachesImpl: { has: async (n) => n === Voices.CACHE, delete: async () => true }, loadScript: async (src) => loadedStale.push(src), kokoro: () => null });
+  eq([await partial.start(), loadedStale], [false, []], 'a v1 result does not vouch for a stopped download of the new model');
+  const killed = memory();
+  killed.setItem(Voices.CHECK, JSON.stringify({ ok: false, rtf: null, reason: 'memory', at: 1 }));
+  const k = gateWith({ storage: killed, old: ['ed-kokoro-v1'] });
+  await k.g.start(); await k.g.probe();
+  eq([k.g.status(), k.g.refusal()], ['absent', null], 'a v1 "memory" refusal does not refuse the new model');
+  const late = gateWith({ cached: true, old: ['ed-kokoro-v1'] });
+  await late.g.start();
+  ok(!late.caches.has('ed-kokoro-v1'), 'a page start with the checked new model deletes a v1 left behind');
+  const del = gateWith({ old: ['ed-kokoro-v1'] });
+  await del.g.remove();
+  ok(!del.caches.has('ed-kokoro-v1'), 'Delete removes an old model too');
+});
+
+test('the worker keeps fp16-stored weights fp16: optimization level extended and a constant-folding cap', () => {
+  const src = fs.readFileSync(path.join(__dirname, 'kokoro-worker.js'), 'utf8');
+  ok(/graphOptimizationLevel:\s*'extended'/.test(src), 'level extended (level all re-lays the weights out as fp32)');
+  ok(/constant_folding_max_output_size_in_bytes:\s*'\d+'/.test(src), 'Casts of large weights are not folded back into fp32');
+});
 
 test('nothing of the engine loads at page start when the voices are not downloaded', async () => {
   const { g, loaded } = gateWith({ cached: false });

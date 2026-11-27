@@ -3,6 +3,7 @@
 
     python3 tools/publish_kokoro_model.py WORK_DIR [--version 1] [--native q8f16|q8] [--native-only] [--no-upload]
     python3 tools/publish_kokoro_model.py WORK_DIR --coreml CONVERTED_DIR --version 3 [--no-upload]
+    python3 tools/publish_kokoro_model.py WORK_DIR --web-w16 --version 5 [--no-upload]   # needs `onnx` (pip)
 
 Fetches the pinned ONNX export from Hugging Face into WORK_DIR (or reuses files already there), checks
 every file against the SHA-256 Hugging Face records for it at that revision, builds the 28-voice table,
@@ -25,7 +26,16 @@ multifunction .mlpackages and kokoro-coreml-report.json). Each file inside a pac
 asset is a file, and iOS has no unzip API), named kokoro-vN-<its place with / as ->, and
 kokoro-vN-apple-manifest.json lists each with its role (duration, decoder, voices, vocab), the place it takes under
 the app's model folder (`dest`), bytes, SHA-256 and license, plus the buckets the functions take.
-Every asset's size and SHA-256 are read back from the Release after the upload. Stdlib only, plus `gh`.
+--web-w16 publishes the web's model alone (2026-11-27, Decision 078 update): the fp32 export with its large weights
+STORED as fp16, each followed by a Cast to fp32, so every activation and the I/O stay fp32 (never fp16 compute, which
+renders NaN). The text encoder (bert), the LSTMs and the prosody predictor keep fp32 weights: in fp16 they move the
+pitch track (worst spectral SNR 24.4 dB against fp32 on 12 lines); kept, the audio is fp32's (64 dB). The browser
+must not fold the Casts back into fp32 at session creation: js/kokoro-worker.js asks for optimization level
+'extended' and a 4 KB constant-folding cap. Parts under 50 MB, the voice table and vocabulary, and
+kokoro-vN-web-manifest.json (precision `w16`); no native files.
+
+Every asset's size and SHA-256 are read back from the Release after the upload. Stdlib only, plus `gh` (and `onnx`
+for --web-w16).
 """
 import hashlib
 import json
@@ -49,6 +59,9 @@ VOICES = ["af_heart", "af_alloy", "af_aoede", "af_bella", "af_jessica", "af_kore
 VOICE_BYTES = 510 * 256 * 4
 NATIVE = {"q8f16": "onnx/model_q8f16.onnx", "q8": "onnx/model_quantized.onnx"}
 PART = 45_000_000  # under 50 MB in either unit (Pages warns at 50 MB and refuses 100 MB)
+# --web-w16: float initializers of at least W16_MIN elements are stored fp16 unless their name matches W16_KEEP_FP32.
+W16_MIN = 1024
+W16_KEEP_FP32 = r"bert|^onnx::MatMul|LSTM|predictor|F0|/N\."
 
 
 def sha(path):
@@ -91,6 +104,77 @@ def gh(*args):
         if n == 3:
             raise SystemExit(f"gh {' '.join(args[:3])} failed: {r.stderr.strip()}")
         time.sleep(5 * (n + 1))
+
+
+def w16(src, dst):
+    """The fp32 ONNX model with large weights stored fp16 and cast back to fp32 at the top of the graph."""
+    import re
+    import numpy as np
+    import onnx
+    from onnx import TensorProto, helper, numpy_helper
+    keep = re.compile(W16_KEEP_FP32)
+    m = onnx.load(src)
+    g = m.graph
+    inits, casts = [], []
+    for init in g.initializer:
+        a = numpy_helper.to_array(init) if init.data_type == TensorProto.FLOAT else None
+        if a is None or a.size < W16_MIN or keep.search(init.name) or np.abs(a).max() > 65000:
+            inits.append(init)
+            continue
+        h = numpy_helper.from_array(a.astype(np.float16), init.name + "__w16")
+        inits.append(h)
+        casts.append(helper.make_node("Cast", [h.name], [init.name], to=TensorProto.FLOAT, name=init.name + "__w16_cast"))
+    nodes = list(g.node)
+    del g.initializer[:]
+    g.initializer.extend(inits)
+    del g.node[:]
+    g.node.extend(casts + nodes)
+    onnx.checker.check_model(m)
+    onnx.save(m, dst)
+    return len(casts)
+
+
+def web_w16(work, version):
+    """The web's w16 model in parts, the voice table, the vocabulary and the web manifest in WORK/publish."""
+    pre = f"kokoro-v{version}-"
+    onnx_tree, voices, root = hf_tree("onnx"), hf_tree("voices"), hf_tree("")
+    fp32 = fetch(work, "onnx/model.onnx", onnx_tree["onnx/model.onnx"])
+    tok = fetch(work, "tokenizer.json", root["tokenizer.json"])
+    out = os.path.join(work, "publish")
+    os.makedirs(out, exist_ok=True)
+    model = os.path.join(work, f"{pre}model-w16.onnx")
+    n = w16(fp32, model)
+    table = os.path.join(out, pre + "voices-en.bin")
+    with open(table, "wb") as t:
+        for v in VOICES:
+            b = open(fetch(work, f"voices/{v}.bin", voices[f"voices/{v}.bin"]), "rb").read()
+            assert len(b) == VOICE_BYTES, (v, len(b))
+            t.write(b)
+    dst_tok = os.path.join(out, pre + "tokenizer.json")
+    open(dst_tok, "wb").write(open(tok, "rb").read())
+    parts = []
+    with open(model, "rb") as f:
+        for i, b in enumerate(iter(lambda: f.read(PART), b"")):
+            name = f"{pre}web-model-w16.onnx.part{i:02d}"
+            open(os.path.join(out, name), "wb").write(b)
+            parts.append({"path": f"model-w16.onnx.part{i:02d}", "asset": name, "bytes": len(b),
+                          "sha256": hashlib.sha256(b).hexdigest()})
+    web = {"format": 1, "version": version, "name": "Kokoro-82M v1.0", "source": SOURCE,
+           "attribution": ATTRIBUTION + " fp16-stored weights by Ear Drama (tools/publish_kokoro_model.py --web-w16).",
+           "voices": VOICES, "voiceShape": [510, 256], "sampleRate": 24000, "precision": "w16", "backend": "webgpu",
+           "files": [
+               {"path": "model-w16.onnx", "role": "model", "bytes": os.path.getsize(model), "sha256": sha(model),
+                "license": LICENSE, "parts": parts},
+               {**entry(table, "voices-en.bin", "voices"), "asset": pre + "voices-en.bin"},
+               {**entry(dst_tok, "tokenizer.json", "vocab"), "asset": pre + "tokenizer.json"}]}
+    name = pre + "web-manifest.json"
+    with open(os.path.join(out, name), "w") as f:
+        json.dump(web, f, indent=1)
+        f.write("\n")
+    names = [p["asset"] for p in parts] + [pre + "voices-en.bin", pre + "tokenizer.json", name]
+    print(f"{n} weights stored fp16; web model {os.path.getsize(model)} bytes in {len(parts)} parts; "
+          f"{sum(x['bytes'] for x in web['files'])} bytes in all")
+    return out, names
 
 
 def coreml(work, src, version):
@@ -152,6 +236,11 @@ def main():
     if precision not in NATIVE:
         sys.exit(f"--native must be one of {sorted(NATIVE)}")
     native_only = "--native-only" in sys.argv
+    if "--web-w16" in sys.argv:
+        out, names = web_w16(work, version)
+        if "--no-upload" not in sys.argv:
+            upload(out, names)
+        return
     if "--coreml" in sys.argv:
         out, names = coreml(work, sys.argv[sys.argv.index("--coreml") + 1], version)
         if "--no-upload" not in sys.argv:

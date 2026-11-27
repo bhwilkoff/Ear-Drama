@@ -29,7 +29,7 @@ cp -R catalog/out/plays-library/. "$out/data/plays/library/"
 # The castable manifest the Worker reads (docs/WORKER.md "Castable only"): one row a play, made here from the
 # very scripts being deployed, then checked against them, so a library refresh needs no Worker deploy.
 node worker/tools/castable-manifest.mjs --library "$out/data/plays/library"
-# The web's Kokoro voice model (Decision 078): the fp32 model in parts under 50 MB, the voice table and the
+# The web's Kokoro voice model (Decision 078): the w16 model (fp16-stored weights) in parts under 50 MB, the voice table and the
 # vocabulary, from the newest kokoro-vN-web-manifest.json on the `kokoro-model` Release
 # (tools/publish_kokoro_model.py). Every file is checked against the manifest and the Release, or the build stops.
 python3 tools/fetch_kokoro_model.py "$out/data/kokoro"

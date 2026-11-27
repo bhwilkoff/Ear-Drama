@@ -4,7 +4,7 @@
     python3 tools/fetch_kokoro_model.py DEST        # tools/assemble_site.sh: DEST = <site>/data/kokoro
 
 Reads the newest `kokoro-vN-web-manifest.json` (tools/publish_kokoro_model.py), downloads every asset it
-names (the fp32 model's parts under 50 MB, the voice table, the vocabulary), and writes each at its served
+names (the model's parts under 50 MB, the voice table, the vocabulary), and writes each at its served
 path with the manifest as DEST/manifest.json, the file js/kokoro-model.js reads. Each download must match
 the size and sha256 GitHub reports for the asset AND the manifest's own size and SHA-256; the parts must
 add up to the model's size and SHA-256. Any mismatch exits 1 and leaves DEST absent: the site build stops

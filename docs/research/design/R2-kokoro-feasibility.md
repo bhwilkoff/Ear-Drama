@@ -558,6 +558,44 @@ thread. Isolation is not available: eardrama.org sends no COOP/COEP, and archive
 CORP or CORS headers, so a service worker adding `COEP: require-corp` would block the pictures, and `COOP: same-origin` cuts sign-in popups off from the page.
 A phone's two fast cores would sit near the 2-thread row anyway. The web keeps the fp32 model on WebGPU.
 
+## The web's w16 model (2026-11-27): fp16-stored weights, fp32 compute, published as kokoro-v5-web
+
+The fp32 export with each float initializer of 1,024+ elements stored fp16 and cast to fp32 at the top of the graph
+(`tools/publish_kokoro_model.py --web-w16`). Quality against fp32, ONNX Runtime 1.32 CPU, the same 12 lines and voices
+as above (durations identical in every case):
+
+| Weights stored fp16 | Size | Worst spectral SNR | Worst / mean log-spectral distance |
+|---|---|---|---|
+| all (221 tensors) | 163.4 MB | 24.4 dB | 1.67 / 0.83 dB |
+| all but the generator | 202.6 MB | 24.4 dB | 1.67 dB |
+| all but the decoder | 269.8 MB | 24.4 dB | 1.67 dB |
+| all but bert, LSTMs, predictor, F0/N (**v5**) | **211.1 MB** | **64.1 dB** | **0.01 dB** |
+| (Android's q8, for scale) | 92.4 MB | 0.5 dB | 15.0 / 9.6 dB |
+
+Bert, the LSTMs or the predictor alone kept fp32 do not help (24.3 to 26.4 dB): the three together carry the pitch
+track. On WebGPU the v5 output is 71.8 dB from the fp32 model's; the fp32 model on WebGPU is 29.2 dB from fp32 on the
+CPU, all-fp16 storage 25.9 dB.
+
+**Folding.** ONNX Runtime constant-folds `Cast(initializer)` at level basic and above: the optimized w16 graph is
+325.5 MB of fp32 again. `optimization.constant_folding_max_output_size_in_bytes` = 4096 keeps the Casts at levels basic
+and extended (163.3 MB, fp16 initializers); level all re-lays the decoder's weights out as fp32 (314 MB). The key exists
+in onnxruntime-web 1.31.1's wasm, so the worker passes `graphOptimizationLevel: 'extended'` and that cap in `extra`.
+
+**Memory, headless Chrome 157, WebGPU (Apple Metal 3), self-test and 6 lines** (footprint sampled every 0.5 s):
+
+| Model, options | Self-test RTF | Worker wasm memory | Renderer footprint peak | Page heap peak |
+|---|---|---|---|---|
+| fp32 (v1), defaults | 0.18 | 794 MB | 1,538 MB | 341 MB |
+| v5, defaults (Casts folded) | 0.18 | 754 MB | 1,362 MB | 227 MB |
+| **v5, extended + 4 KB cap (shipped)** | **0.18** | **551 MB** | **1,161 MB** | **227 MB** |
+| all-fp16 storage, extended + cap | 0.18 | 432 MB | 998 MB | 179 MB |
+
+The GPU process stayed between 1.2 and 1.4 GB in every run. On the CPU (ONNX Runtime 1.32, one thread) the unfolded
+Casts run at each render: peak RSS 437 MB against fp32's 504, RTF 0.64 against 0.61. End to end against the published
+Release: `tools/fetch_kokoro_model.py` placed v5 (225,716,003 bytes), the shipped `js/voices.js` offered it to a browser
+holding a seeded v1 cache and result, downloaded and passed the self-test (RTF 0.19), deleted `ed-kokoro-v1`, and a
+fresh page loaded it at start and read three lines through Web Audio, muted.
+
 ## Sources
 
 
