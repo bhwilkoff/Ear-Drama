@@ -38,7 +38,7 @@ final class SystemCuePlayer: ListenCuePlayer {
         let music = x.at == "bed"
         let duckDb = x.duckDb ?? (music ? SoundMix.musicDuckDb : SoundMix.effectsDuckDb)
         let level = Float(pow(10, SoundMix.clamp(x.gainDb, SoundMix.gainMinDb, SoundMix.gainMaxDb, 0) / 20)) * SpeechMute.volume
-        let handle = SystemCueHandle(player: player, soundID: x.id, isBed: music, level: level, duckDb: duckDb,
+        let handle = SystemCueHandle(player: player, soundID: x.id, isBed: music || x.loop, level: level, duckDb: duckDb,
                                      fadeOut: x.fadeOutMs / 1000)
         player.numberOfLoops = x.loop ? -1 : 0
         player.volume = x.fadeInMs > 0 ? 0 : level
