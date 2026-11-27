@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B41 mock: read together</title>
+<!-- B41 design mock, not product code. ?s=join|reader|leader|invite|states|ipad|tv|call|android &theme=light|dark &w=.
+     Every word of the play is Trifles by Susan Glaspell (Project Gutenberg 59432, gut-59432-101), lines L0026-L0050,
+     through data.js (make_data.py over the real play library). The readers' names (Ann, Lucy, Sam, Theo) stand for
+     names people type on joining; the only other words are controls' labels, facts, warnings and refusals.
+     The QR code is qrencode's for https://eardrama.org/read/K7M4QX. Fonts are the repo's. -->
+<script src="data.js"></script>
+<style>
+@font-face { font-family: "Big Shoulders"; src: url("../../../../fonts/big-shoulders.woff2") format("woff2"); font-weight: 700; }
+@font-face { font-family: "Public Sans"; src: url("../../../../fonts/public-sans.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Public Sans"; src: url("../../../../fonts/public-sans-italic.woff2") format("woff2"); font-weight: 100 900; font-style: italic; }
+:root { --bg:#FFFFFF; --surface:#F4F4F5; --alt:#E8E8EB; --text:#131316; --muted:#5C5C66; --border:#D8D8DD; --secondary:#0B6E99; --onsec:#fff;
+  --mine:#E6F1F6; --now:#131316; --record:#B0152F; --warning:#8A5300;
+  --h1:#2459A5; --h2:#864E37; --h3:#007C88; --h4:#5A3983; --h5:#2F6100;
+  --display:"Big Shoulders", "Arial Narrow", sans-serif; --body:"Public Sans", system-ui, sans-serif; }
+:root[data-theme="dark"] { --bg:#0F0F11; --surface:#19191C; --alt:#232327; --text:#F2F2F4; --muted:#C4C4CC; --border:#34343A; --secondary:#6CC0E0; --onsec:#06141B;
+  --mine:#11303D; --now:#F2F2F4; --record:#E3384B; --warning:#E8B04B;
+  --h1:#8EBBFF; --h2:#C99580; --h3:#44D5D7; --h4:#AA87DE; --h5:#7CB45A; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 var(--body); -webkit-font-smoothing: antialiased; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.lbl { font: 600 12px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.l5 { font-size: 13px; color: var(--muted); }
+.tab { font-variant-numeric: tabular-nums; }
+.screen { display: flex; flex-direction: column; height: 100vh; overflow: hidden; position: relative; }
+.top { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); gap: 8px; }
+.top .t { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top .back { color: var(--secondary); font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 2px; }
+/* The page */
+.page { flex: 1; overflow: hidden; padding: 12px 16px 0 34px; font-size: 17px; line-height: 1.5; position: relative; }
+.sp { margin: 0 0 .65em; position: relative; padding: 4px 8px; margin-left: -8px; border-radius: 6px; }
+.sp .name { font-weight: 600; letter-spacing: .02em; display: block; font-size: 14px; }
+.sp .dir { font-style: italic; color: var(--muted); }
+.sp.direction { font-style: italic; color: var(--muted); font-size: 15px; }
+.sp.mine { background: var(--mine); }
+.sp.now { box-shadow: inset 3px 0 0 var(--now); background: var(--surface); }
+.sp.mine.now { background: var(--mine); }
+.sp.past { opacity: .5; }
+.tagm { position: absolute; left: -30px; top: 6px; font: 700 10px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); width: 26px; text-align: right; }
+.tagm.you { color: var(--secondary); }
+.hidden-line { display: inline-block; background: var(--alt); color: transparent; border-radius: 4px; }
+/* The room bar */
+.bar { border-top: 1px solid var(--border); background: var(--bg); padding: 8px 16px 12px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 32px; }
+.fact { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.fact.you { color: var(--secondary); }
+.here { font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.btns { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+.b { height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid var(--border); background: none; color: var(--text); font: 600 15px var(--body); display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
+.b.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.b.sec { color: var(--secondary); border-color: var(--secondary); }
+.b.grow { flex: 1; }
+.ib { width: 44px; height: 44px; border-radius: 22px; display: grid; place-items: center; color: var(--text); border: 1px solid var(--border); }
+/* Sheets */
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.35); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 14px 14px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.2); }
+.grab { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 8px auto 0; }
+.sh { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px 4px; }
+.sh .t { font-weight: 700; font-size: 17px; }
+.sh .done { color: var(--secondary); font-weight: 600; }
+.sec { padding: 6px 16px; }
+.kv { display: flex; justify-content: space-between; align-items: center; min-height: 48px; border-top: 1px solid var(--border); font-size: 15px; gap: 10px; }
+.kv .v { color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.kv .act { color: var(--secondary); font-weight: 600; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 36px; margin: 8px 0; }
+.seg span { display: grid; place-items: center; font-size: 14px; font-weight: 600; border-left: 1px solid var(--border); }
+.seg span:first-child { border-left: 0; }
+.seg span.on { background: var(--text); color: var(--bg); }
+.toggle { width: 44px; height: 26px; border-radius: 13px; background: var(--alt); position: relative; flex: none; }
+.toggle::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.toggle.on { background: var(--secondary); } .toggle.on::after { left: 21px; }
+/* Parts list */
+.part { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center; min-height: 52px; border-top: 1px solid var(--border); }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.part .n { font-weight: 600; font-size: 15px; } .part .f { font-size: 13px; color: var(--muted); }
+.pill { height: 32px; padding: 0 14px; border-radius: 16px; border: 1px solid var(--border); font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; }
+.pill.on { background: var(--secondary); color: var(--onsec); border-color: var(--secondary); }
+.pill.held { border: 0; color: var(--muted); font-weight: 400; padding: 0; }
+.code { font: 700 44px/1 var(--display); letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+.field { height: 44px; border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; display: flex; align-items: center; font-size: 16px; background: var(--surface); }
+.field.ph { color: var(--muted); }
+.warn { color: var(--warning); font-weight: 600; font-size: 14px; display: flex; gap: 6px; align-items: center; }
+/* Frame labels for the states sheet */
+.panel { border: 1px solid var(--border); border-radius: 12px; margin: 12px 16px; overflow: hidden; }
+.panel .cap { font: 600 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 8px 12px 0; }
+/* iPad and TV */
+.split { display: grid; grid-template-columns: 1fr 340px; height: 100vh; }
+.side { border-left: 1px solid var(--border); background: var(--surface); padding: 14px 16px; overflow: hidden; }
+.tv { height: 100vh; background: #0B0B0D; color: #F2F2F4; padding: 60px 80px; display: grid; grid-template-rows: auto 1fr auto; font-family: var(--body); }
+.tv .before, .tv .after { color: #8E8E98; font-size: 34px; line-height: 1.35; margin: 0 0 28px; }
+.tv .nowline { font-size: 58px; line-height: 1.25; font-weight: 500; margin: 0 0 36px; }
+.tv .who { font-size: 30px; font-weight: 700; letter-spacing: .04em; display: block; margin-bottom: 6px; }
+.tv .castrow { display: flex; gap: 40px; align-items: flex-end; border-top: 1px solid #2A2A30; padding-top: 22px; }
+.tv .cast { font-size: 29px; }
+.tv .cast b { display: block; font-size: 24px; letter-spacing: .05em; }
+/* A call around the app */
+.pillsys { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; border-radius: 20px; height: 34px; padding: 0 14px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; z-index: 3; }
+.pip { position: absolute; right: 12px; top: 58px; width: 96px; height: 136px; border-radius: 14px; background: #2A2A30; display: grid; grid-template-rows: 1fr 1fr; gap: 2px; overflow: hidden; z-index: 3; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+.pip div { background: #3A3A42; display: grid; place-items: center; color: #fff; font: 700 22px var(--body); }
+.pip div:nth-child(2) { background: #4A3A55; }
+.status { height: 50px; flex: none; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const S = q.get('s') || 'reader';
+document.documentElement.dataset.theme = q.get('theme') || 'light';
+const HUE = { 'MRS. HALE': 'var(--h1)', 'MRS. PETERS': 'var(--h2)', 'COUNTY ATTORNEY': 'var(--h3)', 'SHERIFF': 'var(--h4)', 'HALE': 'var(--h5)' };
+const WHO = { 'MRS. HALE': 'Ann', 'MRS. PETERS': 'Lucy', 'COUNTY ATTORNEY': 'Sam', 'SHERIFF': 'Theo', 'HALE': null };
+const I = {
+  back: '<svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>',
+  next: '<svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+  people: '<svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.8-3.4 3.2-5 6-5s5.2 1.6 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.4.2 4.2 1.7 5 4.8"/></svg>',
+  share: '<svg class="i" viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 11v9h14v-9"/></svg>',
+  shareplay: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3"/><path d="M6 19c1-3 3.3-4.5 6-4.5s5 1.5 6 4.5"/><path d="M4.5 6.5a9 9 0 000 9M19.5 6.5a9 9 0 010 9"/></svg>',
+  more: '<svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>',
+  pause: '<svg class="i" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg>',
+  eye: '<svg class="i" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  wave: '<svg class="i" viewBox="0 0 24 24"><path d="M3 12h2M7 8v8M11 5v14M15 8v8M19 11v2"/></svg>',
+  warn: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>',
+  tv: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/></svg>',
+  round: '<svg class="i" viewBox="0 0 24 24"><path d="M20 12a8 8 0 11-3-6.2"/><path d="M20 4v4h-4"/></svg>',
+  scenes: '<svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+};
+const say = (l) => l.parts ? l.parts.map((p) => p.say ? p.say : `<span class="dir">${p.direction}</span>`).join(' ') : l.text;
+const plain = (l) => l.parts ? l.parts.filter((p) => p.say).map((p) => p.say).join(' ') : l.text;
+const L = DATA.lines;
+const idx = (id) => L.findIndex((l) => l.id === id);
+
+/* One page of the script: cursor `now`, my part `me`, lines from `from` to `to`. */
+function page({ from, to, now, me, hide = false, cue = true, readOpen = false }) {
+  const ni = idx(now);
+  const mineNext = L.findIndex((l, i) => i >= ni && l.part === me);
+  let cueI = -1;
+  if (cue && mineNext > ni) for (let j = mineNext - 1; j >= ni; j--) if (L[j].part !== 'direction') { cueI = j; break; }
+  return L.slice(from, to).map((l, k) => {
+    const i = from + k;
+    const cls = ['sp', l.part === 'direction' ? 'direction' : '', l.part === me ? 'mine' : '', i === ni ? 'now' : '', i < ni ? 'past' : ''].join(' ');
+    const tag = i === cueI ? '<span class="tagm">Cue</span>' : (l.part === me && i >= ni ? '<span class="tagm you">You</span>' : '');
+    const name = l.part === 'direction' ? '' : `<span class="name" style="color:${HUE[l.part]}">${l.part}${WHO[l.part] ? '' : ''}</span>`;
+    const body = hide && l.part === me && i >= ni ? `<span class="hidden-line">${plain(l)}</span>` : say(l);
+    return `<p class="${cls}">${tag}${name}${body}</p>`;
+  }).join('');
+}
+
+function bar({ fact, factCls = '', here = 5, lead = false, extra = '' }) {
+  return `<div class="bar"><div class="row"><span class="fact ${factCls}">${fact}</span><span class="here tab">${I.people}${here} here</span></div>${extra}${lead ? `<div class="btns">
+    <span class="ib" aria-label="Back">${I.back}</span><span class="b primary grow">Next ${I.next}</span><span class="ib" aria-label="Reading">${I.more}</span></div>` : ''}</div>`;
+}
+const topBar = (right = '') => `<div class="top"><span class="back">${I.back}Close</span><span class="t">${DATA.title}</span><span>${right}</span></div>`;
+
+const V = {};
+/* The reader at their cue: Ann holds MRS. HALE; the county attorney's line is the cue. */
+V.reader = () => `<div class="screen">${topBar(`<span class="lbl">Rehearse</span>`)}<div class="page">${page({ from: 13, to: 22, now: 'L0043', me: 'MRS. HALE' })}</div>
+  ${bar({ fact: 'Your cue', factCls: 'you', extra: `<div class="btns"><span class="b">${I.eye} Hide my lines</span><span class="l5" style="margin-left:auto">Sam leads</span></div>` })}</div>`;
+
+/* The leader, Sam: the Reading sheet over the page. */
+V.leader = () => `<div class="screen">${topBar(`<span class="lbl">Rehearse</span>`)}<div class="page">${page({ from: 13, to: 20, now: 'L0040', me: 'COUNTY ATTORNEY' })}</div>
+  ${bar({ fact: '<span style="color:var(--h1)">Ann</span>&nbsp;is reading', lead: true })}
+  <div class="scrim"></div><div class="sheet"><div class="grab"></div>
+  <div class="sh"><span class="t">Reading</span><span class="done">Done</span></div>
+  <div class="sec"><div class="seg"><span>Table read</span><span class="on">Rehearse</span><span>Record</span></div>
+  <div class="kv"><span>Invite</span><span class="v tab">K7M 4QX ${I.share}</span></div>
+  <div class="kv"><span>Parts</span><span class="v">4 of 5 held</span></div>
+  <div class="kv"><span>Jump to</span><span class="v">Scene start ${I.scenes}</span></div>
+  <div class="kv"><span>Go around the room</span><span class="toggle"></span></div>
+  <div class="kv"><span>Read open parts</span><span class="toggle on"></span></div>
+  <div class="kv"><span>Hold</span><span class="v">${I.pause}</span></div>
+  <div class="kv"><span>Hand the lead</span><span class="v">Ann, Lucy, Theo</span></div>
+  <div class="kv"><span>Lock joining</span><span class="toggle"></span></div>
+  <div class="kv"><span>Add a screen</span><span class="v">${I.tv}</span></div>
+  <div class="kv"><span style="font-weight:600">End the reading</span><span></span></div></div></div></div>`;
+
+/* The leader's Invite: QR, the link, and on Apple during a call, SharePlay. */
+V.invite = () => `<div class="screen">${topBar()}<div class="page">${page({ from: 0, to: 8, now: 'L0026', me: 'COUNTY ATTORNEY' })}</div>
+  <div class="scrim"></div><div class="sheet" style="padding-bottom:18px"><div class="grab"></div>
+  <div class="sh"><span class="t">Invite</span><span class="done">Done</span></div>
+  <div style="display:grid;place-items:center;padding:8px 16px 4px"><img src="qr.svg" width="196" height="196" style="image-rendering:pixelated;background:#fff;padding:10px;border-radius:10px" alt="">
+  <p class="code tab" style="margin:14px 0 2px">K7M 4QX</p><p class="l5" style="margin:0">eardrama.org/read/K7M4QX</p></div>
+  <div class="sec" style="display:grid;gap:10px;margin-top:10px"><span class="b primary">${I.share} Share link</span><span class="b sec">${I.shareplay} SharePlay</span></div></div></div>`;
+
+/* Joining from the link: the code, who leads, a name, and a part (or none). */
+V.join = () => `<div class="screen">${topBar()}<div style="padding:18px 16px;overflow:hidden">
+  <p class="lbl" style="margin:0">Read together</p>
+  <p style="font:700 30px/1.1 var(--display);margin:6px 0 2px">${DATA.title}</p><p class="l5" style="margin:0 0 12px">${DATA.author} · Sam leads · 4 here</p>
+  <p class="lbl" style="margin:14px 0 6px">Your name</p><div class="field">Ann</div>
+  <p class="lbl" style="margin:18px 0 2px">Your part</p>
+  ${DATA.roles.map(([r, n]) => {
+    const who = { 'MRS. PETERS': 'Lucy', 'COUNTY ATTORNEY': 'Sam', 'SHERIFF': 'Theo' }[r];
+    const right = r === 'MRS. HALE' ? '<span class="pill on">Mine</span>' : who ? `<span class="pill held">${who}</span>` : '<span class="pill">Take</span>';
+    return `<div class="part"><span class="dot" style="background:${HUE[r]}"></span><span><span class="n">${r}</span><br><span class="f tab">${n} lines</span></span>${right}</div>`;
+  }).join('')}
+  <div class="part"><span></span><span class="n" style="font-weight:400">Follow without a part</span><span class="pill">Choose</span></div>
+  <div style="margin-top:18px;display:grid"><span class="b primary">Join</span></div></div></div>`;
+
+/* Failure and waiting states, one panel each (essential words only). */
+V.states = () => {
+  const p = (cap, inner) => `<div class="panel"><div class="cap">${cap}</div>${inner}</div>`;
+  return `<div style="padding:6px 0 14px">
+  ${p('Record: Join a reading', `<div class="sec"><div class="field tab ph" style="letter-spacing:.2em">K7M 4Q_</div><div class="btns"><span class="b primary grow">Join</span><span class="b">Scan</span></div></div>`)}
+  ${p('The leader held the room', bar({ fact: `${I.pause} Held by Sam`, here: 5 }))}
+  ${p('Going around the room', bar({ fact: `${I.round} Your turn`, factCls: 'you', here: 18 }))}
+  ${p('A class waits for its teacher', bar({ fact: 'Waiting for Ms. Ortiz', here: 24 }))}
+  ${p('The leader, at a line whose reader is away', `<div class="bar"><div class="row"><span class="warn">${I.warn} Lucy’s phone is away</span></div><div class="btns"><span class="b">Skip</span><span class="b">Read it from here</span><span class="b">Wait</span></div></div>`)}
+  ${p('Offline', bar({ fact: 'You are offline.', here: 5 }).replace('5 here', 'Following by hand'))}
+  ${p('Slow', bar({ fact: `<span class="warn">${I.warn} Slow connection</span>` }))}
+  ${p('The SharePlay ended; the room goes on', `<div class="bar"><div class="row"><span class="fact">SharePlay ended</span><span class="b sec" style="height:36px">Stay in the reading</span></div></div>`)}
+  ${p('Full', `<div class="sec"><p style="margin:6px 0 10px;font-weight:600">This reading is full.</p></div>`)}
+  </div>`;
+};
+
+/* iPad, the director: the page, and the cast and scenes beside it. */
+V.ipad = () => `<div class="split"><div class="screen" style="height:100vh">${topBar(`<span class="lbl">Table read</span>`)}<div class="page" style="padding-left:56px;padding-right:40px;font-size:19px">${page({ from: 4, to: 16, now: 'L0036', me: 'COUNTY ATTORNEY' })}</div>
+  ${bar({ fact: 'Your line', factCls: 'you', lead: true })}</div>
+  <div class="side"><p class="lbl" style="margin:4px 0 6px">Parts</p>
+  ${DATA.roles.map(([r, n]) => `<div class="part"><span class="dot" style="background:${HUE[r]}"></span><span><span class="n">${r}</span><br><span class="f tab">${n} lines</span></span>${WHO[r] ? `<span class="pill held" style="color:var(--text);font-weight:600">${WHO[r]}</span>` : '<span class="pill">Cast</span>'}</div>`).join('')}
+  <p class="l5" style="margin:6px 0 16px">HALE is open: the screen reads it.</p>
+  <p class="lbl" style="margin:10px 0 6px">Here</p>
+  ${[['Sam', 'leads'], ['Ann', ''], ['Lucy', ''], ['Theo', ''], ['A screen', '']].map(([n, f]) => `<div class="kv"><span>${n}</span><span class="v">${f}</span></div>`).join('')}
+  <p class="lbl" style="margin:18px 0 6px">Invite</p><div style="display:flex;gap:12px;align-items:center"><img src="qr.svg" width="84" height="84" style="background:#fff;padding:5px;border-radius:6px" alt=""><span class="code tab" style="font-size:32px">K7M 4QX</span></div>
+  </div></div>`;
+
+/* The TV is the stage: the line now, one before, two after, the cast, and how to join. */
+V.tv = () => {
+  const ni = idx('L0040');
+  const b = L[ni - 2], n = L[ni], a1 = L[ni + 1], a2 = L[ni + 2];
+  const line = (l) => `<span class="who" style="color:${HUE[l.part] === 'var(--h1)' ? '#8EBBFF' : HUE[l.part] === 'var(--h3)' ? '#44D5D7' : '#C99580'}">${l.part}</span>${plain(l)}`;
+  return `<div class="tv"><div style="display:flex;justify-content:space-between;color:#8E8E98;font-size:26px"><span><b style="color:#F2F2F4;font:700 40px var(--display);letter-spacing:.04em">${DATA.title}</b>&nbsp;&nbsp;${DATA.author}</span><span class="tab">5 here</span></div>
+  <div style="align-self:center;max-width:1400px"><p class="before">${line(b)}</p><p class="nowline">${line(n)}</p><p class="after">${line(a1)}</p><p class="after">${line(a2)}</p></div>
+  <div class="castrow">${DATA.roles.map(([r]) => `<span class="cast" style="color:#C4C4CC"><b style="color:${{ 'MRS. HALE': '#8EBBFF', 'MRS. PETERS': '#C99580', 'COUNTY ATTORNEY': '#44D5D7', 'SHERIFF': '#AA87DE', 'HALE': '#7CB45A' }[r]}">${r}</b>${WHO[r] || 'Read by the screen'}</span>`).join('')}
+  <span style="margin-left:auto;display:flex;gap:20px;align-items:center"><img src="qr.svg" width="120" height="120" style="background:#fff;padding:8px;border-radius:8px" alt=""><span><span class="tab" style="font:700 54px var(--display);letter-spacing:.06em;display:block">K7M 4QX</span><span style="font-size:24px;color:#8E8E98">eardrama.org/read</span></span></span></div></div>`;
+};
+
+/* On a FaceTime call: the system's SharePlay pill, the call's picture-in-picture, and the reader under them. */
+V.call = () => `<div class="screen"><div class="status"></div><div class="pillsys">${I.shareplay} Trifles · 3</div>
+  <div class="pip"><div>L</div><div>T</div></div>
+  ${topBar(`<span class="lbl">Table read</span>`)}<div class="page" style="padding-right:118px">${page({ from: 14, to: 22, now: 'L0042', me: 'MRS. HALE' })}</div>
+  ${bar({ fact: 'Your line', factCls: 'you', here: 3, extra: `<div class="btns"><span class="b">${I.eye} Hide my lines</span><span class="l5" style="margin-left:auto">Lucy leads</span></div>` })}</div>`;
+
+/* Android, a reader in a Meet or any call: the room link carries it; the line arrives with a haptic. */
+V.android = () => `<div class="screen"><div class="status" style="height:36px"></div>${topBar(`<span class="lbl">Table read</span>`)}<div class="page">${page({ from: 12, to: 20, now: 'L0040', me: 'MRS. HALE', hide: true })}</div>
+  ${bar({ fact: `${I.wave} Your line`, factCls: 'you', here: 6, extra: `<div class="btns"><span class="b">${I.eye} Show my lines</span><span class="l5" style="margin-left:auto">Sam leads</span></div>` })}</div>`;
+
+document.getElementById('app').innerHTML = (V[S] || V.reader)();
+</script>
+</body>
+</html>
