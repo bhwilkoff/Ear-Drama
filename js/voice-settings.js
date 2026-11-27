@@ -88,7 +88,8 @@ const VoiceSettings = (() => {
     } else if (st === 'refused') {
       kids.push(el('div', { class: 'vs-hifi-row' }, name,
         el('button', { type: 'button', class: 'btn', onclick: () => h.recheck() }, 'Try again')),
-      el('p', { class: 'caption refusal' }, 'This browser can’t run Kokoro voices.'),
+      el('p', { class: 'caption refusal' }, h.refusal && h.refusal() === 'memory'
+        ? 'Kokoro voices need more memory than this browser allows.' : 'This browser can’t run Kokoro voices.'),
       el('button', { type: 'button', class: 'btn btn-ghost vs-delete', onclick: () => h.remove() }, 'Delete'));
     } else if (st === 'ready') {
       const size = await h.size();

@@ -48,6 +48,7 @@ const SHELL = [
   'js/plays-voice.js',
   'js/plays-audio.js',
   'js/plays-session.js',
+  'js/kokoro-diag.js',
   'js/voices.js',
   'js/cast-ui.js',
   'js/voice-settings.js',

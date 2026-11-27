@@ -17,6 +17,10 @@
  *   2026-11-22 (Decision 086, the gate in js/voices.js): start() loading the engine without asking
  *     Cache Storage first fails "nothing of the engine loads at page start" (three checks); start()
  *     without the kept self-test result fails "a cache from a stopped download loads nothing".
+ *   2026-11-27 (iOS Safari, owner: "don't play at all or crash the page"): against main, "copied into the whole as
+ *     each part is read" (every part read, then joined), "a tap starts the AudioContext" (no context until play()),
+ *     "never left hanging" (speak waited forever on a suspended context) and "a tab killed while the model loads"
+ *     (no record of a load in progress) all failed.
  * The source scan in js/plays.test.js gained the kokoro- files (a cache write in the voice file,
  * an AudioContext in the model file), each control seen caught.
  */
@@ -293,6 +297,108 @@ test('a model served in parts downloads part by part, is checked whole, and read
   try { await m2.download(); } catch (e) { refused = /checksum/.test(e.message); }
   eq(refused, true, 'a corrupt part is refused');
   eq(await m2.check(), false, 'and the model is not ready');
+});
+
+/* ---- iOS Safari (owner 2026-11-27: "they either don't play at all or crash the page") ---- */
+
+test('a model in parts is copied into the whole as each part is read: never every part and the whole at once', async () => {
+  const parts = [new Uint8Array(20).fill(1), new Uint8Array(20).fill(2), new Uint8Array(10).fill(3)];
+  const manifest = { format: 1, files: [{ path: 'model.onnx', role: 'model', bytes: 50, sha256: 'a'.repeat(64), license: 'Apache-2.0',
+    parts: parts.map((p, i) => ({ path: `model.onnx.part0${i}`, bytes: p.length, sha256: 'b'.repeat(64) })) }] };
+  const events = [];
+  const cache = { match: async (u) => {
+    const i = Number(u.slice(-1));
+    return { arrayBuffer: async () => { events.push(`read ${i}`); return parts[i].slice().buffer; } };
+  } };
+  const m = KokoroModel.create({ manifestURL: 'https://eardrama.org/data/kokoro/manifest.json',
+    fetchImpl: async () => new Response(JSON.stringify(manifest)), cachesImpl: { open: async () => cache } });
+  const Real = globalThis.Uint8Array;
+  globalThis.Uint8Array = class extends Real { constructor(...a) { super(...a); if (a[0] === 50) events.push('whole'); } };
+  let out;
+  try { out = await m.bytes('model'); } finally { globalThis.Uint8Array = Real; }
+  eq([...new Real(out)], [...parts[0], ...parts[1], ...parts[2]], 'the whole file, in order');
+  eq(events[0], 'whole', `the whole is made before any part is read, so each part is let go once copied (${events.join(', ')})`);
+});
+
+/** A worker that renders 0.1 s of sound per request; a model whose vocabulary knows a and b. */
+function fakeEngineEnv() {
+  const posted = [];
+  class FakeWorker {
+    constructor() { this.onmessage = null; }
+    postMessage(m) {
+      posted.push(m.type);
+      setTimeout(() => this.onmessage && this.onmessage({ data: m.type === 'load' ? { id: m.id, ok: true, ep: m.ep }
+        : { id: m.id, samples: new Float32Array(2400).fill(0.1), ms: 10 } }), 0);
+    }
+  }
+  const vocab = new TextEncoder().encode(JSON.stringify({ model: { vocab: { a: 1, b: 2 } } }));
+  const model = { bytes: async (role) => (role === 'vocab' ? vocab.slice().buffer : new ArrayBuffer(4)) };
+  const listeners = {};
+  const doc = { addEventListener: (type, fn) => { (listeners[type] = listeners[type] || []).push(fn); } };
+  const fire = (type) => (listeners[type] || []).forEach(fn => fn({ type }));
+  return { FakeWorker, model, doc, fire, posted };
+}
+function fakeAudio({ resumes = true } = {}) {
+  const made = [];
+  class Ctx {
+    constructor() { this.state = 'suspended'; this.resumed = 0; made.push(this); }
+    resume() { this.resumed++; if (resumes) this.state = 'running'; return Promise.resolve(); }
+    createBuffer(c, n) { return { copyToChannel() {}, duration: n / 24000 }; }
+    createBufferSource() {
+      const ctx = this;
+      return { playbackRate: { value: 1 }, connect: (g) => g, start() { if (ctx.state === 'running') setTimeout(() => this.onended && this.onended(), 0); }, stop() {} };
+    }
+    createGain() { return { gain: { value: 1 }, connect: (d) => d }; }
+    get destination() { return {}; }
+  }
+  return { Ctx, made };
+}
+async function withEngine(opts, fn) {
+  const env = fakeEngineEnv();
+  const saved = { Worker: globalThis.Worker, fetch: globalThis.fetch };
+  globalThis.Worker = env.FakeWorker;
+  globalThis.fetch = async () => new Response(JSON.stringify({ lines: [{ t: 'Come in.', us: 'ab' }] }));
+  try { await fn(env, KokoroVoice.create({ model: env.model, doc: env.doc, ...opts })); } finally { Object.assign(globalThis, saved); }
+}
+
+test('a tap starts the AudioContext inside the gesture, before any render, so iOS Safari lets the line sound', async () => {
+  const audio = fakeAudio();
+  await withEngine({ AudioCtx: audio.Ctx }, async (env, e) => {
+    env.fire('touchend');
+    eq(audio.made.length, 1, 'the tap made the context, synchronously');
+    eq([audio.made[0].resumed, audio.made[0].state], [1, 'running'], 'and resumed it inside the tap');
+    await e.prepare('p.json');
+    eq(await e.speak('Come in.', 'af_heart'), true, 'the line is read');
+    eq(audio.made.length, 1, 'through the one context the tap started');
+  });
+});
+
+test('a line on a context that will not start is refused, never left hanging', async () => {
+  const audio = fakeAudio({ resumes: false });
+  await withEngine({ AudioCtx: audio.Ctx }, async (env, e) => {
+    await e.prepare('p.json');
+    const r = await Promise.race([e.speak('Come in.', 'af_heart'), new Promise(res => setTimeout(() => res('hung'), 3000))]);
+    eq(r, false, 'speak resolves false (the system voice reads it) instead of waiting forever');
+  });
+});
+
+test('a tab killed while the model loads is refused on the next start, with the reason, instead of crashing again', async () => {
+  const storage = memory();
+  const first = gateWith({ cached: true, storage });
+  await first.g.start();
+  first.fakeKokoro.opts.onBoot('start');
+  // The system killed the tab here: no 'done', no pagehide. The next page start:
+  const again = gateWith({ cached: true, storage });
+  await again.g.start();
+  eq(again.g.status(), 'refused', 'refused');
+  eq(again.g.refusal(), 'memory', 'because the model did not fit');
+  const fine = gateWith({ cached: true, storage: memory() });
+  await fine.g.start();
+  fine.fakeKokoro.opts.onBoot('start');
+  fine.fakeKokoro.opts.onBoot('done');
+  const next = gateWith({ cached: true, storage: fine.storage });
+  await next.g.start();
+  eq(next.g.status(), 'ready', 'a load that finished leaves nothing behind');
 });
 
 test('long speeches render in pieces under the token limit, cut at punctuation, nothing lost', () => {

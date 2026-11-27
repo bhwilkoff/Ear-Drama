@@ -18,6 +18,7 @@ const KokoroModel = (() => {
   const CACHE = 'ed-kokoro-v1';
   const LICENSES = ['Apache-2.0', 'MIT', 'BSD-2-Clause', 'BSD-3-Clause'];
   const DEFAULT_MANIFEST = 'data/kokoro/manifest.json';
+  const diag = (stage, data) => { if (typeof KokoroDiag !== 'undefined') KokoroDiag.mark(stage, data); };
 
   /**
    * A manifest is accepted only when every file names a size, a SHA-256 and a license on the
@@ -62,14 +63,28 @@ const KokoroModel = (() => {
       for (const b of bufs) { out.set(new Uint8Array(b), at); at += b.byteLength; }
       return out;
     };
+    /**
+     * A file's bytes from the cache. A file in parts is copied into one buffer of its full size as each part is
+     * read, so only that buffer and one part are ever held: holding every part and then joining them held the
+     * 326 MB model twice on the page, the peak an iPhone's Safari tab is killed for (2026-11-27).
+     */
     async function cachedBytes(c, f) {
-      const bufs = [];
-      for (const p of piecesOf(f)) {
-        const r = await c.match(urlOf(p));
-        if (!r) return null;
-        bufs.push(await r.arrayBuffer());
+      if (!f.parts) {
+        const r = await c.match(urlOf(f));
+        return r ? new Uint8Array(await r.arrayBuffer()) : null;
       }
-      return bufs.length === 1 ? new Uint8Array(bufs[0]) : join(bufs);
+      const whole = new Uint8Array(f.bytes);
+      let at = 0;
+      for (const p of f.parts) {
+        const r = await c.match(urlOf(p));
+        if (!r) { diag('cache-miss', { part: p.path }); return null; }
+        const part = new Uint8Array(await r.arrayBuffer());
+        if (at + part.byteLength > whole.byteLength) return null;
+        whole.set(part, at);
+        at += part.byteLength;
+        diag('cache-read', { part: p.path, MB: Math.round(p.bytes / 1e6) });
+      }
+      return at === whole.byteLength ? whole : null;
     }
 
     async function loadManifest() {

@@ -16,8 +16,11 @@ const Voices = (() => {
   const CACHE = 'ed-kokoro-v1';
   const OFF = 'ed.kokoro.off';
   const CHECK = 'ed.kokoro.check';
+  /** Set while the model loads, cleared when it finishes, fails or the page is left: still set at page start, the tab was killed. */
+  const BOOTING = 'ed.kokoro.booting';
   const MANIFEST = 'data/kokoro/manifest.json';
 
+  const diag = (stage, data) => { if (typeof KokoroDiag !== 'undefined') KokoroDiag.mark(stage, data); };
   function store() { try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch { return null; } }
 
   /** Whether ?kokoro=0 has switched the voices off in this browser (kept until ?kokoro=1). */
@@ -69,6 +72,23 @@ const Voices = (() => {
     const off = () => killed(search, storage);
     const checked = () => { try { return JSON.parse((storage && storage.getItem(CHECK)) || 'null'); } catch { return null; } };
     const possible = () => !off() && env.gpu && env.ok;
+    const keep = (k, v) => { try { if (storage) { if (v === null) storage.removeItem(k); else storage.setItem(k, v); } } catch { /* unkept */ } };
+    /** The model's load, kept as it happens (kokoro-voice.js calls this). */
+    function onBoot(stage) { keep(BOOTING, stage === 'start' ? String(Date.now()) : null); }
+    if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('pagehide', () => keep(BOOTING, null));
+    /**
+     * A load that never finished: the system killed the tab while the 326 MB model loaded (an iPhone's Safari,
+     * 2026-11-27, "crash the page"). Kept as a refusal with its reason, so the next start does not load it again
+     * and crash the same way; Try again in Library > Voices may still ask.
+     */
+    function killedLoading() {
+      let at = null;
+      try { at = storage && storage.getItem(BOOTING); } catch { at = null; }
+      if (!at) return;
+      keep(BOOTING, null);
+      keep(CHECK, JSON.stringify({ ok: false, rtf: null, reason: 'memory', at: Date.now() }));
+      diag('killed-while-loading', { since: Number(at) });
+    }
 
     async function probe() {
       if (!possible()) { gpuOK = false; return false; }
@@ -80,7 +100,7 @@ const Voices = (() => {
     function engine() {
       if (!booting) {
         booting = loadScript('js/kokoro-model.js').then(() => loadScript('js/kokoro-voice.js'))
-          .then(() => kokoro().boot({ manifestURL, muted, allowed: () => status() === 'ready' }))
+          .then(() => kokoro().boot({ manifestURL, muted, allowed: () => status() === 'ready', onBoot }))
           .then((l) => { lab = l; emit(); return l; });
         booting.catch(() => { booting = null; });
       }
@@ -91,7 +111,8 @@ const Voices = (() => {
       const k = kokoro();
       const e = k && k.engine();
       const r = e ? await e.selfTest() : { ok: false, reason: 'no engine' };
-      try { if (storage) storage.setItem(CHECK, JSON.stringify({ ok: !!r.ok, rtf: r.rtf ?? null, at: Date.now() })); } catch { /* unkept: checked again next time */ }
+      try { if (storage) storage.setItem(CHECK, JSON.stringify({ ok: !!r.ok, rtf: r.rtf ?? null, reason: r.ok ? null : (r.reason || null), at: Date.now() })); } catch { /* unkept: checked again next time */ }
+      diag('selftest', { ok: !!r.ok, rtf: r.rtf ?? null, reason: r.reason || null });
       if (!r.ok) console.error('kokoro self-test', r);
       return r;
     }
@@ -113,6 +134,8 @@ const Voices = (() => {
     return {
       status,
       progress: () => ({ ...progress }),
+      /** Why a refused browser was refused: 'memory' (the tab was killed loading the model), 'slow', 'silent', or null. */
+      refusal: () => (status() === 'refused' ? ((checked() || {}).reason || null) : null),
       online: () => env.online(),
       onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
       /**
@@ -123,10 +146,13 @@ const Voices = (() => {
       /** Settles once page start has looked for a finished download (PLAYS-DESIGN §2.8 rule 13 waits on it). */
       whenStarted: () => started || Promise.resolve(false),
       async startNow() {
+        if (possible()) killedLoading();
         if (!possible() || !cachesImpl || !checked()) return false;
         let have = false;
         try { have = await cachesImpl.has(CACHE); } catch { have = false; }
-        if (!have || !(await probe())) return false;
+        const gpu = have && await probe();
+        diag('start', { cached: have, adapter: gpu, checked: JSON.stringify(checked()) });
+        if (!gpu) return false;
         await engine();
         emit();
         return true;
@@ -167,6 +193,7 @@ const Voices = (() => {
         } catch (e) {
           phase = e && e.name === 'AbortError' ? null : 'failed';
           if (phase) console.error('kokoro download', e);
+          diag('download-failed', { msg: String(e && e.message || e) });
         }
         abort = null;
         emit();
@@ -200,5 +227,5 @@ const Voices = (() => {
   /** The page's one instance (app.js starts it). */
   const shared = (opts) => { if (!page) page = create(opts); return page; };
 
-  return { CACHE, OFF, CHECK, MANIFEST, killed, create, shared };
+  return { CACHE, OFF, CHECK, BOOTING, MANIFEST, killed, create, shared };
 })();
