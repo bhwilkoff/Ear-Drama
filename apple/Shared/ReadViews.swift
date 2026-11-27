@@ -86,9 +86,9 @@ struct ReadRoomScreen: View {
             let snap = session.snapshot
             let who: OwnShare.Who? = session.code.flatMap { code in session.memberKey.map { .room(code: code, key: $0) } }
             let exact = await plays.resolved(id: id, revision: rev, who: who, fit: snap.map(OwnShare.Fit.room) ?? { _ in true })
-            if let found = exact.script { script = found }
+            if let found = exact.script { script = found.scoped(to: snap?.range) }
             else if PlayScript.isOwnID(id) { scriptFailure = OwnShare.scriptLine(exact.failure); if scriptFailure.isEmpty { scriptFailure = PlaysShare.line(exact.failure) } }
-            else { script = (try? await plays.script(id: id)) ?? nil }
+            else { script = ((try? await plays.script(id: id)) ?? nil)?.scoped(to: snap?.range) }
             makeModel()
         }
     }
@@ -258,7 +258,10 @@ enum ReadHandover {
 }
 
 nonisolated enum ReadOpening {
-    static func body(_ script: PlayScript, classID: String? = nil, productionID: String? = nil, mode: String = "read") -> [String: Any] {
+    static func body(_ script: PlayScript, classID: String? = nil, productionID: String? = nil, mode: String = "read",
+                     range: ProductionRange? = nil) -> [String: Any] {
+        let range = range ?? script.scope
+        let script = script.whole
         var o: [String: Any] = [
             "script_id": script.id, "script_revision": script.revision, "mode": mode,
             "cast": script.lines.map { ["id": $0.id, "part": $0.part.rawValue] },
@@ -266,6 +269,7 @@ nonisolated enum ReadOpening {
         if classID == nil, !ReadName.remembered.isEmpty { o["owner_name"] = String(ReadName.remembered.prefix(ReadCore.nameMax)) }
         if let classID { o["kind"] = "class"; o["class_id"] = classID }
         if let productionID { o["production_id"] = productionID }
+        if let range { o["range"] = ["from": range.from, "to": range.to] }
         return o
     }
 }

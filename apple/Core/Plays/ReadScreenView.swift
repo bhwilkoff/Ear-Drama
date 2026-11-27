@@ -201,7 +201,7 @@ struct ReadScreenBody: View {
                 script = try await OwnShare.resolve(id: id, revision: revision, who: .room(code: code, key: key), fit: OwnShare.Fit.room(snap))
                 load = .ready
             } else if let found = try await LibraryScripts.script(id: id, revision: revision) {
-                script = found
+                script = found.scoped(to: session.snapshot?.range)
                 load = .ready
             } else {
                 load = .failed(PlaysShare.line(PlaysRefusal.code(revision == nil ? "not_castable" : "revision_mismatch")))

@@ -296,14 +296,46 @@ struct ReaderOpener {
 }
 
 /// A scene for N voices (B31 §3.4): its heading as printed and its minutes, the play (not on the play's own page), the
-/// parts' names, on the play's board. It opens the reader at the scene's first line. Not on a TV.
+/// parts' names, on the play's board. It opens this scene's production (PLAYS-DESIGN §2.12), making it on the first tap;
+/// Read on its corner opens the reader at the scene's first line, and a scene with no end (a library built before it)
+/// opens the reader. Not on a TV.
 struct SceneCard: View {
     let hit: FindCore.SceneHit
     var inPlay = false
     @Environment(AppStore.self) private var app
+    @Environment(PlaysLibrary.self) private var plays
+    @Environment(AccountStore.self) private var account
+    @State private var asking = false
+    @State private var failure: String?
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #endif
+
+    private func door() async {
+        let s = hit.scene
+        guard let to = s.to else { opener(hit.row.id, line: s.line); return }
+        let range = ProductionRange(from: s.line, to: to)
+        let store = plays.store
+        if let have = store.newest(of: hit.row.id, range: range) { open(have.id); return }
+        if StudioCore.needsAccount(productions: store.productions, signedIn: account.status != .signedOut, makingNew: true) {
+            asking = true
+            return
+        }
+        do {
+            guard let whole = try await plays.script(id: hit.row.id) else { failure = "This play could not be found."; return }
+            open(try store.create(whole, range: range, heading: s.heading).id)
+        } catch {
+            failure = error.localizedDescription
+        }
+    }
+
+    private func open(_ id: String) {
+        #if os(macOS)
+        openWindow(id: ProductionWindow_macOS.id, value: id)
+        #else
+        app.push(PlayRoute.production(id))
+        #endif
+    }
 
     private var opener: ReaderOpener {
         #if os(macOS)
@@ -316,14 +348,15 @@ struct SceneCard: View {
     var body: some View {
         let s = hit.scene, ink = Color.onBoard(hit.row.hue)
         let kick = [s.heading, s.minutes > 0 ? "\(s.minutes) min" : nil].compactMap { $0 }.joined(separator: " \u{00B7} ")
-        Button { opener(hit.row.id, line: s.line) } label: {
+        ZStack(alignment: .topTrailing) {
+        Button { Task { await door() } } label: {
             VStack(alignment: .leading, spacing: Spacing.s1) {
-                Text(verbatim: kick).font(TypeRamp.caption).foregroundStyle(ink.opacity(0.8))
+                Text(verbatim: kick).font(TypeRamp.caption).foregroundStyle(ink.opacity(0.8)).padding(.trailing, s.to == nil ? 0 : 36)
                 if !inPlay {
                     Text(verbatim: hit.row.title).font(TypeRamp.bodyStrong).foregroundStyle(ink).lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text(verbatim: FindCore.names(s.parts)).font(TypeRamp.caption).foregroundStyle(ink).lineLimit(2)
+                Text(verbatim: failure ?? FindCore.names(s.parts)).font(TypeRamp.caption).foregroundStyle(ink).lineLimit(2)
                 Spacer(minLength: 0)
             }
             .padding(Spacing.s3)
@@ -336,8 +369,11 @@ struct SceneCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel([inPlay ? nil : hit.row.title, s.heading, s.minutes > 0 ? "\(s.minutes) min" : nil, FindCore.names(s.parts)]
             .compactMap { $0 }.joined(separator: ", "))
-        .accessibilityHint("Opens the reader at this scene")
+        .accessibilityHint(s.to == nil ? "Opens the reader at this scene" : "Records this scene")
         .accessibilityIdentifier("scene-card")
+        if s.to != nil { ReadTileButton(scriptID: hit.row.id, title: s.heading ?? hit.row.title, line: s.line) }
+        }
+        .sheet(isPresented: $asking) { SecondProductionSheet() }
     }
 
     #if os(macOS)

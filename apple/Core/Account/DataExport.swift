@@ -43,6 +43,8 @@ nonisolated struct DataExport: Sendable, Equatable {
         var takes: [Take]
         /// The sound board's block (B32 §5.1), nil when the production places none.
         var sound: SoundBlock? = nil
+        /// The scene this production records (PLAYS-DESIGN §2.12), nil for the whole play.
+        var range: ProductionRange? = nil
     }
 
     /// One script mark (docs/EXPORT.md `marks[]`): offsets in UTF-16 units into the line's printed words.
@@ -160,6 +162,7 @@ nonisolated struct DataExport: Sendable, Equatable {
                    let object = try? JSONSerialization.jsonObject(with: data) {
                     o["sound"] = object
                 }
+                if let range = p.range { o["range"] = ["from": range.from, "to": range.to] }
                 return o
             },
             "marks": marks.map { m in

@@ -17,14 +17,22 @@ nonisolated enum Relay {
 
     static func order(_ script: PlayScript) -> [PartID] { script.castParts.map(\.id) }
 
+    /// A range production offers only the range's parts; a whole-play one every part, as before.
+    static func inRange(_ part: PartID, _ production: Production, _ script: PlayScript) -> Bool {
+        let scoped = script.scoped(for: production)
+        return scoped.scope == nil || order(scoped).contains(part)
+    }
+
     /// The part being recorded now, if any.
     static func current(_ production: Production, _ script: PlayScript) -> PartID? {
-        order(script).first { production.state(of: $0).status == .recording }
+        let script = script.scoped(for: production)
+        return order(script).first { production.state(of: $0).status == .recording }
     }
 
     /// The suggested part: the first open part in the order, or nil while a
     /// part is recording or when every part is through.
     static func next(_ production: Production, _ script: PlayScript) -> PartID? {
+        let script = script.scoped(for: production)
         guard current(production, script) == nil else { return nil }
         return order(script).first { production.state(of: $0).status == .open }
     }
@@ -32,7 +40,7 @@ nonisolated enum Relay {
     static func take(_ part: PartID, performer: String?, in production: Production,
                      script: PlayScript) throws(Refusal) -> Production {
         if let current = current(production, script) { throw .anotherPartIsRecording(current) }
-        guard production.state(of: part).status == .open else { throw .notOpen }
+        guard inRange(part, production, script), production.state(of: part).status == .open else { throw .notOpen }
         var p = production
         let name = performer?.trimmingCharacters(in: .whitespacesAndNewlines)
         p.parts[part] = PartState(status: .recording, performer: (name?.isEmpty ?? true) ? nil : name)
@@ -42,7 +50,7 @@ nonisolated enum Relay {
     /// Lines of the part with no chosen take, or whose chosen take the bleed
     /// check flagged: that line needs a re-take with headphones.
     static func missingLines(_ part: PartID, in production: Production, script: PlayScript) -> [String] {
-        script.lines(for: part).map(\.id).filter { production.usableTake(for: $0) == nil }
+        script.scoped(for: production).lines(for: part).map(\.id).filter { production.usableTake(for: $0) == nil }
     }
 
     /// "Done with this part" (§2.5). A speaking part is done only when every one
@@ -64,7 +72,8 @@ nonisolated enum Relay {
     /// unfinished, and it never gets a stored synthetic voice.
     static func leaveSilent(_ part: PartID, in production: Production, script: PlayScript) throws(Refusal) -> Production {
         guard !part.isSpeaking else { throw .speakingPartCannotBeSilent }
-        guard [.open, .recording].contains(production.state(of: part).status) else { throw .notOpen }
+        guard [.open, .recording].contains(production.state(of: part).status),
+              inRange(part, production, script) else { throw .notOpen }
         var p = production
         p.parts[part, default: PartState()].status = .silent
         return p
@@ -73,7 +82,8 @@ nonisolated enum Relay {
     /// Back to a part that is through, to re-take a line. Still one part at a time.
     static func reopen(_ part: PartID, in production: Production, script: PlayScript) throws(Refusal) -> Production {
         if let current = current(production, script) { throw .anotherPartIsRecording(current) }
-        guard [.done, .silent].contains(production.state(of: part).status) else { throw .notOpen }
+        guard [.done, .silent].contains(production.state(of: part).status),
+              inRange(part, production, script) else { throw .notOpen }
         var p = production
         p.parts[part, default: PartState()].status = .recording
         return p
@@ -81,12 +91,12 @@ nonisolated enum Relay {
 
     /// Speaking lines with no unflagged human take.
     static func missingSpeech(_ production: Production, _ script: PlayScript) -> [String] {
-        script.speechLineIDs.filter { production.usableTake(for: $0) == nil }
+        script.scoped(for: production).speechLineIDs.filter { production.usableTake(for: $0) == nil }
     }
 
     /// Lines of any kind whose chosen take the bleed check flagged.
     static func needsRetake(_ production: Production, _ script: PlayScript) -> [String] {
-        script.lines.map(\.id).filter { production.chosenTake(for: $0)?.bleed == true }
+        script.scoped(for: production).lines.map(\.id).filter { production.chosenTake(for: $0)?.bleed == true }
     }
 
     /// Every speaking line has an unflagged human take and no chosen take is

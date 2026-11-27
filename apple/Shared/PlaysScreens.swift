@@ -489,10 +489,19 @@ struct CastSheet: View {
         let rec = shared.record(for: production, in: plays.store)
         List {
             Section {
-                HeadBoard(kicker: "Ear drama", name: script.title, genre: PlayScript.boardGenre, art: nil, first: nil,
+                HeadBoard(kicker: "Ear drama", name: production.title, genre: PlayScript.boardGenre, art: nil, first: nil,
                           last: nil, facts: PlayHead.facts(script), credits: script.authorLineWithYears, castScript: script)
                     .padding(.horizontal, Spacing.s4)
                     .plainRow()
+            }
+            if plays.store.droppedRanges.contains(production.id) {
+                Section {
+                    Text("The scene's lines changed. This production is the whole play now.")
+                        .font(TypeRamp.body)
+                        .padding(.horizontal, Spacing.s4)
+                        .plainRow()
+                }
+                .modifier(CastColumnRows(on: sizeClass == .regular))
             }
             Section {
                 ListenThrough(production: production, script: script)
@@ -537,6 +546,7 @@ struct CastSheet: View {
             .modifier(CastColumnRows(on: sizeClass == .regular))
         }
         .listStyle(.plain)
+        .onDisappear { plays.store.acknowledgeDroppedRange(production.id) }
         .repaintsOnVoiceChange(voices)
         .voicesStepAtFirstUse()
         #if os(iOS)

@@ -97,6 +97,8 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
 
     /// False for an own script, always (Decision 088); absent on a record from before.
     var publishable: Bool?
+    /// The scene this production records (PLAYS-DESIGN §2.12), absent for the whole play.
+    var range: ProductionRange?
     /// The text's state when the production carries its own script (docs/WORKER.md "Own scripts").
     var ownScript: OwnShare.Own?
     /// The class that cast it, when a teacher did.
@@ -107,7 +109,7 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
     var reviews: [String: Review] = [:]
 
     enum CodingKeys: String, CodingKey {
-        case id, scriptID, scriptRevision, title, parts, takes, chosen, director, members, next, archive, uploads, credits, reviews, publishable
+        case id, scriptID, scriptRevision, title, parts, takes, chosen, director, members, next, archive, uploads, credits, reviews, publishable, range
         case hiddenTakes = "hidden_takes", ownScript = "own_script", classID = "class_id"
     }
 
@@ -147,6 +149,7 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
         credits = try c.decodeIfPresent([Credit].self, forKey: .credits) ?? []
         reviews = try c.decodeIfPresent([String: Review].self, forKey: .reviews) ?? [:]
         publishable = try c.decodeIfPresent(Bool.self, forKey: .publishable)
+        range = try c.decodeIfPresent(ProductionRange.self, forKey: .range)
         ownScript = try c.decodeIfPresent(OwnShare.Own.self, forKey: .ownScript)
         classID = try c.decodeIfPresent(String.self, forKey: .classID)
     }
@@ -313,7 +316,7 @@ nonisolated struct PlaysRefusal: Error, Equatable, Sendable {
 /// the tests stand one in.
 protocol PlaysTransport {
     func consent() async throws -> PlaysConsent
-    func create(scriptID: String, revision: String, cast: [PlaysShare.CastLine], displayName: String?) async throws -> SharedRecord
+    func create(scriptID: String, revision: String, cast: [PlaysShare.CastLine], range: ProductionRange?, heading: String?, displayName: String?) async throws -> SharedRecord
     func list() async throws -> [RemoteProduction]
     func get(_ pid: String) async throws -> SharedRecord
     func invite(_ pid: String) async throws -> MadeInvite
@@ -397,6 +400,8 @@ struct WorkerPlays: PlaysTransport {
         let script_id: String
         let script_revision: String
         let cast: [PlaysShare.CastLine]
+        let range: ProductionRange?
+        let heading: String?
         let display_name: String?
     }
     private struct CreateOwn: Encodable {
@@ -438,9 +443,9 @@ struct WorkerPlays: PlaysTransport {
         try decode(PlaysConsent.self, try await call("GET", "\(Self.root)/consent"))
     }
 
-    func create(scriptID: String, revision: String, cast: [PlaysShare.CastLine], displayName: String?) async throws -> SharedRecord {
+    func create(scriptID: String, revision: String, cast: [PlaysShare.CastLine], range: ProductionRange?, heading: String?, displayName: String?) async throws -> SharedRecord {
         try decode(SharedRecord.self, try await call("POST", "\(Self.root)/productions",
-            json: Create(script_id: scriptID, script_revision: revision, cast: cast, display_name: displayName)))
+            json: Create(script_id: scriptID, script_revision: revision, cast: cast, range: range, heading: heading, display_name: displayName)))
     }
 
     func createOwn(_ body: OwnShare.MakeBody, displayName: String?) async throws -> SharedRecord {

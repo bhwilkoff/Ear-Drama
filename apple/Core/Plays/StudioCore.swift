@@ -45,7 +45,7 @@ nonisolated enum StudioCore {
     /// is open and no other part records; else a new one.
     static func productionFor(_ productions: [Production], isShared: (String) -> Bool, script: PlayScript,
                               part: PartID) -> Pick {
-        let own = productions.filter { $0.scriptID == script.id && !isShared($0.id) && $0.room == nil }.sorted { $0.created > $1.created }
+        let own = productions.filter { $0.scriptID == script.id && $0.range == script.scope && !isShared($0.id) && $0.room == nil }.sorted { $0.created > $1.created }
         if let going = own.first(where: { $0.state(of: part).status == .recording }) { return .resume(going.id) }
         if let open = own.first(where: { $0.state(of: part).status == .open && Relay.current($0, script) == nil }) {
             return .take(open.id)
@@ -60,8 +60,8 @@ nonisolated enum StudioCore {
     }
 
     /// The newest local, unshared production of the play with no take: Record This and Try a Line reuse it (rule 3a).
-    static func reusableEmpty(_ productions: [Production], isShared: (String) -> Bool, scriptID: String) -> Production? {
-        productions.filter { $0.scriptID == scriptID && !$0.hasTake && !isShared($0.id) && $0.room == nil }.max { $0.created < $1.created }
+    static func reusableEmpty(_ productions: [Production], isShared: (String) -> Bool, scriptID: String, range: ProductionRange? = nil) -> Production? {
+        productions.filter { $0.scriptID == scriptID && $0.range == range && !$0.hasTake && !isShared($0.id) && $0.room == nil }.max { $0.created < $1.created }
     }
 
     /// The productions to delete: local, unshared, with no take (rule 3a).

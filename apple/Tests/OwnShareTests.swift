@@ -98,7 +98,7 @@ struct OwnShareTests {
         func deleteProduction(_ pid: String) async throws { note("delete"); deleted.append(pid) }
 
         func consent() async throws -> PlaysConsent { throw PlaysRefusal.code("unused") }
-        func create(scriptID: String, revision: String, cast: [PlaysShare.CastLine], displayName: String?) async throws -> SharedRecord { throw PlaysRefusal.code("unused") }
+        func create(scriptID: String, revision: String, cast: [PlaysShare.CastLine], range: ProductionRange?, heading: String?, displayName: String?) async throws -> SharedRecord { throw PlaysRefusal.code("unused") }
         func list() async throws -> [RemoteProduction] { [] }
         func get(_ pid: String) async throws -> SharedRecord { throw PlaysRefusal.code("unused") }
         func invite(_ pid: String) async throws -> MadeInvite { throw PlaysRefusal.code("unused") }

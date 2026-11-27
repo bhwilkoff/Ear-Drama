@@ -19,7 +19,7 @@ enum PlaysShare {
     /// with no board behind it never appears. Without a record, every part.
     static func castParts(_ script: PlayScript, _ rec: SharedRecord?) -> [CastPart] {
         guard let rec else { return script.castParts }
-        return script.castParts.filter { $0.id != .sound || rec.parts[PartID.sound.rawValue] != nil }
+        return script.scoped(to: rec.range).castParts.filter { $0.id != .sound || rec.parts[PartID.sound.rawValue] != nil }
     }
 
     /// The one line shown while the Worker cannot upload to archive.org (P6).
@@ -75,7 +75,7 @@ enum PlaysShare {
 
     /// The cast sheet the Worker checks against its manifest: every line in script order.
     static func castSheet(_ script: PlayScript) -> [CastLine] {
-        script.lines.map { CastLine(id: $0.id, part: $0.part.rawValue) }
+        script.whole.lines.map { CastLine(id: $0.id, part: $0.part.rawValue) }
     }
 
     static func isMine(_ rec: SharedRecord, _ part: PartID, _ me: String?) -> Bool {
@@ -154,7 +154,7 @@ enum PlaysShare {
     static func complete(_ rec: SharedRecord, _ script: PlayScript) -> Bool {
         recordingPart(rec) == nil
             && rec.parts.values.allSatisfy { $0.status == .done || $0.status == .silent }
-            && script.speechLineIDs.allSatisfy { rec.chosen[$0] != nil }
+            && script.scoped(to: rec.range).speechLineIDs.allSatisfy { rec.chosen[$0] != nil }
     }
 
     #if os(iOS) || os(macOS)
@@ -329,7 +329,9 @@ enum PlaysShare {
                       displayName: String?, freeze: () async -> Void = {}) async throws -> (record: SharedRecord, unsent: (any Error)?) {
         let own = PlayScript.isOwnID(script.id)
         let rec = own ? try await api.createOwn(OwnShare.makeBody(script), displayName: trimmed(displayName))
-            : try await api.create(scriptID: script.id, revision: script.revision, cast: castSheet(script), displayName: trimmed(displayName))
+            : try await api.create(scriptID: script.id, revision: script.revision, cast: castSheet(script), range: local.range,
+                                   heading: local.range == nil ? nil : ProductionRange.heading(ofTitle: local.title, play: script.whole.title),
+                                   displayName: trimmed(displayName))
         try store.setShare(local.id, ProductionShare(pid: rec.id))
         guard own else { return (rec, nil) }
         guard let unsent = await OwnShare.sendOrUndo(api, pid: rec.id, script: script, freeze: freeze) else { return (rec, nil) }
@@ -340,10 +342,10 @@ enum PlaysShare {
 
     /// The production on this device for a shared one, made from the bundle's
     /// script on first open.
-    static func localFor(store: ProductionStore, pid: String, script: PlayScript?) throws -> Production {
+    static func localFor(store: ProductionStore, pid: String, script: PlayScript?, rec: SharedRecord? = nil) throws -> Production {
         if let local = store.findShared(pid) { return local }
         guard let script else { throw PlaysRefusal.code("revision_mismatch") }
-        let local = try store.create(script)
+        let local = try store.create(script, range: rec?.range, heading: rec.flatMap { ProductionRange.heading(ofTitle: $0.title, play: script.whole.title) })
         try store.setShare(local.id, ProductionShare(pid: pid))
         return local
     }
@@ -360,7 +362,7 @@ enum PlaysShare {
                      script: PlayScript?) async throws -> (SharedRecord, Production) {
         guard script != nil else { throw PlaysRefusal.code("revision_mismatch") }
         let rec = try await api.joinByInvite(token, part: part, displayName: trimmed(displayName))
-        return (rec, try localFor(store: store, pid: rec.id, script: script))
+        return (rec, try localFor(store: store, pid: rec.id, script: script, rec: rec))
     }
 
     nonisolated struct LibraryRow: Identifiable, Equatable, Sendable {

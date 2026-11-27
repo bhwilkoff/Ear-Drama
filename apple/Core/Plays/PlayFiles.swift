@@ -76,6 +76,8 @@ final class ProductionStore {
     /// `share.json` per production id: its link to the Worker (PLAYS-DESIGN §11.7 rule 1).
     private(set) var shares: [String: ProductionShare] = [:]
     private(set) var lastError: String?
+    /// Productions whose scene range a revision moved and this store dropped: the cast sheet says so once (PLAYS-DESIGN §2.12 rule 4).
+    private(set) var droppedRanges: Set<String> = []
     /// Take writes in flight per production: a production is never removed while one is pending (Decision 079).
     private var pendingTakes: [String: Int] = [:]
 
@@ -102,9 +104,14 @@ final class ProductionStore {
         let decoder = JSONDecoder()
         productions = folders.compactMap { folder in
             guard let data = try? Data(contentsOf: folder.appending(path: "production.json")) else { return nil }
-            return try? decoder.decode(Production.self, from: data)
+            return (try? decoder.decode(Production.self, from: data)).flatMap { $0.isTooNew ? nil : $0.migrated }
         }
         .sorted { $0.created > $1.created }
+        for production in productions where production.range != nil {
+            guard let whole = wholeScript(for: production), whole.rangeDrifted(production) else { continue }
+            try? save(production.droppingRange(whole: whole))
+            droppedRanges.insert(production.id)
+        }
         shares = [:]
         for production in productions {
             if let data = try? Data(contentsOf: shareURL(production.id)),
@@ -177,8 +184,16 @@ final class ProductionStore {
         try data.write(to: url, options: .withoutOverwriting)
     }
 
-    func create(_ script: PlayScript) throws -> Production {
-        let production = Production(script: script)
+    /// The newest production of `scriptID` on this device with this range that is not shared (the scene card's door, §2.12).
+    func newest(of scriptID: String, range: ProductionRange?) -> Production? {
+        productions.first { $0.scriptID == scriptID && $0.range == range && shares[$0.id] == nil && $0.room == nil }
+    }
+
+    func acknowledgeDroppedRange(_ id: String) { droppedRanges.remove(id) }
+
+    func create(_ script: PlayScript, range: ProductionRange? = nil, heading: String? = nil) throws -> Production {
+        let script = script.whole
+        let production = Production(script: script, range: range, heading: heading)
         let fm = FileManager.default
         try fm.createDirectory(at: takesFolder(production.id), withIntermediateDirectories: true)
         try fm.createDirectory(at: roomToneFolder(production.id), withIntermediateDirectories: true)
@@ -199,7 +214,7 @@ final class ProductionStore {
     func adopt(_ script: PlayScript) throws {
         for production in productions(of: script.id) where shares[production.id] == nil {
             var next = production
-            next.adopt(script, lines: self.script(for: production)?.lines.map(\.id) != script.lines.map(\.id))
+            next.adopt(script, lines: self.wholeScript(for: production)?.lines.map(\.id) != script.lines.map(\.id))
             // The record first: a script that then fails to write is found changed again when this is tried again.
             try save(next)
             try Self.encoder.encode(script).write(to: folder(production.id).appending(path: "script.json"), options: .atomic)
@@ -209,6 +224,11 @@ final class ProductionStore {
     /// The script as cast, read back from the production's own folder, so a
     /// later catalog revision never changes a play halfway through.
     func script(for production: Production) -> PlayScript? {
+        wholeScript(for: production)?.scoped(for: production)
+    }
+
+    /// The whole script as cast, whatever the production's range.
+    func wholeScript(for production: Production) -> PlayScript? {
         guard let data = try? Data(contentsOf: folder(production.id).appending(path: "script.json")) else { return nil }
         return try? JSONDecoder().decode(PlayScript.self, from: data)
     }

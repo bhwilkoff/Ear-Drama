@@ -44,13 +44,21 @@ nonisolated struct MixTimeline: Equatable, Sendable {
     static func build(script: PlayScript, production: Production, sampleRate: Double = 48_000,
                       gap: Double = defaultGap, resolveSound: ((SoundSource, SoundCue) -> SoundInfo?)? = nil,
                       withoutMissing: Bool = false) throws(Failure) -> MixTimeline {
+        let script = script.scoped(for: production)
         let missing = Relay.missingSpeech(production, script)
         guard missing.isEmpty else { throw .incomplete(missing: missing) }
         let flagged = Relay.needsRetake(production, script)
         guard flagged.isEmpty else { throw .bleed(lines: flagged) }
         let sound: (lanes: SoundLanes, slots: [SoundSlot])?
         do {
-            sound = try SoundMix.readSound(production.sound)
+            let read = try SoundMix.readSound(production.sound)
+            if let read, script.scope != nil {
+                let here = Set(script.lines.map(\.id))
+                let slots = read.slots.filter { here.contains($0.line) }
+                sound = slots.isEmpty ? nil : (read.lanes, slots)
+            } else {
+                sound = read
+            }
         } catch {
             switch error { case let .soundVersion(v): throw .soundVersion(v) }
         }
