@@ -86,6 +86,22 @@ for (const f of faces) {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
+// Activate deletes older shell caches but never a download the person asked for: the sound pack's and the Kokoro
+// voices' (js/voices.js CACHE). Until 2026-11-27 the voices' cache was not kept, so every deploy deleted the
+// downloaded model and Library > Voices offered the download again.
+{
+  const voicesCache = /const CACHE = '([^']+)'/.exec(fs.readFileSync(path.join(ROOT, 'js/voices.js'), 'utf8'))[1];
+  const deleted = [];
+  ctx.caches.keys = async () => ['ed-shell-v1', 'ed-data-v0', SHELL_VERSION, DATA_VERSION, 'ed-sounds-1', voicesCache];
+  ctx.caches.delete = async (k) => { deleted.push(k); return true; };
+  let done = null;
+  handlers.activate({ waitUntil: (p) => { done = p; } });
+  await done;
+  ok('activate deletes older shell and data caches', deleted.includes('ed-shell-v1') && deleted.includes('ed-data-v0'), deleted.join());
+  ok(`activate keeps the downloaded voices (${voicesCache})`, !deleted.includes(voicesCache), deleted.join());
+  ok('activate keeps the sound pack', !deleted.includes('ed-sounds-1'), deleted.join());
+}
+
 function answered(url, { destination = '', mode = 'no-cors', method = 'GET', headers = {} } = {}) {
   let responded = false;
   handlers.fetch({
