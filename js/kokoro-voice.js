@@ -86,13 +86,16 @@ const KokoroVoice = (() => {
   /* ---- The engine (browser only) ---- */
 
   let shared = null;
+  const diag = (stage, data) => { if (typeof KokoroDiag !== 'undefined') KokoroDiag.mark(stage, data); };
 
   /**
    * The engine StandInVoice hands a Kokoro part to. `model` is a KokoroModel instance, ready.
    * speak() resolves true when the line was read, false when Kokoro cannot read it (no phonemes,
    * no model), so the caller can read it with the system voice instead.
    */
-  function create({ model, workerURL = 'js/kokoro-worker.js', muted = false, AudioCtx = (typeof AudioContext !== 'undefined' ? AudioContext : null) }) {
+  function create({ model, workerURL = 'js/kokoro-worker.js', muted = false, onBoot = () => {},
+                    AudioCtx = (typeof AudioContext !== 'undefined' ? AudioContext : (typeof webkitAudioContext !== 'undefined' ? webkitAudioContext : null)), // eslint-disable-line no-undef
+                    doc = (typeof document !== 'undefined' ? document : null) }) {
     let worker = null;
     let loading = null;
     let ctx = null;
@@ -103,14 +106,36 @@ const KokoroVoice = (() => {
     const phonemes = new Map();
     const loads = new Map();
 
+    /**
+     * Makes and starts the AudioContext. iOS Safari starts one only inside a user gesture, and a line reaches play()
+     * after the renders' awaits, outside any gesture: a context made there stayed 'suspended', nothing sounded, and
+     * its onended never fired, so the read hung (2026-11-27). So every tap or key on the page starts it, whatever
+     * control began the read (the reader, the studio, a cast sheet, Hear in Library > Voices).
+     */
+    function unlock() {
+      if (!AudioCtx) return;
+      try {
+        if (!ctx) ctx = new AudioCtx();
+        if (ctx.state !== 'running') ctx.resume().catch(() => {});
+      } catch (e) { diag('unlock-failed', { msg: String(e && e.message || e) }); }
+    }
+    if (doc && doc.addEventListener) {
+      for (const type of ['touchend', 'pointerup', 'click', 'keydown']) doc.addEventListener(type, unlock, { capture: true, passive: true });
+    }
+
     async function boot() {
       if (loading) return loading;
       loading = (async () => {
+        onBoot('start');
+        diag('boot-read-start');
         const [onnx, table, tok] = await Promise.all([model.bytes('model'), model.bytes('voices'), model.bytes('vocab')]);
         if (!onnx || !table || !tok) throw new Error('model not downloaded');
+        diag('boot-read-done', { modelMB: Math.round(onnx.byteLength / 1e6) });
         vocab = JSON.parse(new TextDecoder().decode(tok)).model.vocab;
         worker = new Worker(workerURL);
+        worker.onerror = (e) => diag('worker-error', { msg: String(e && e.message || 'error') });
         worker.onmessage = (e) => {
+          if (e.data && e.data.diag) { diag(e.data.diag, e.data.data); return; }
           const p = pending.get(e.data.id);
           if (!p) return;
           pending.delete(e.data.id);
@@ -118,8 +143,12 @@ const KokoroVoice = (() => {
         };
         // WebGPU where present (the only measured web path faster than real time, with the fp32 model).
         const ep = typeof navigator !== 'undefined' && navigator.gpu ? 'webgpu' : 'wasm';
-        await call({ type: 'load', model: onnx, voices: table, ep }, [onnx, table]);
+        diag('worker-load', { ep });
+        const r = await call({ type: 'load', model: onnx, voices: table, ep }, [onnx, table]);
+        diag('worker-ready', { ep: r.ep });
+        onBoot('done');
       })();
+      loading.catch((e) => { onBoot('failed'); diag('boot-failed', { msg: String(e && e.message || e) }); });
       return loading;
     }
     function call(msg, transfer = []) {
@@ -152,8 +181,22 @@ const KokoroVoice = (() => {
       return null;
     }
 
-    function play(samples, playbackRate) {
-      if (!ctx) ctx = new AudioCtx();
+    /** Whether the context runs: one started by a tap does; a resume is tried once more, briefly, then given up. */
+    async function running() {
+      if (!ctx) unlock();
+      if (!ctx) return false;
+      if (ctx.state !== 'running') {
+        try { await Promise.race([ctx.resume(), new Promise(r => setTimeout(r, 400))]); } catch { /* refused */ }
+      }
+      return ctx.state === 'running';
+    }
+
+    /** Plays one rendered piece; resolves true when it ended, false when the context would not start. */
+    async function play(samples, playbackRate) {
+      const state = ctx ? ctx.state : 'none';
+      const ok = await running();
+      diag('play', { ctx: state, after: ctx ? ctx.state : 'none', sec: Math.round(samples.length / 240) / 100 });
+      if (!ok) return false;
       const buf = ctx.createBuffer(1, samples.length, 24000);
       buf.copyToChannel(samples, 0);
       const src = ctx.createBufferSource();
@@ -164,7 +207,18 @@ const KokoroVoice = (() => {
       src.connect(gain).connect(ctx.destination);
       return new Promise((resolve) => {
         current = src;
-        src.onended = () => { if (current === src) current = null; resolve(true); };
+        let settled = false;
+        // An end that never comes (the context stopped mid-line: a call, the screen locked) must not hold the read.
+        const guard = setTimeout(() => finish(ctx.state === 'running'), (samples.length / 24000 / playbackRate) * 1000 + 1500);
+        function finish(result) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(guard);
+          diag('played', { ctx: ctx.state, result });
+          if (current === src) current = null;
+          resolve(result);
+        }
+        src.onended = () => finish(true);
         src.start();
       });
     }
@@ -188,6 +242,7 @@ const KokoroVoice = (() => {
           for (let k = 0; k < s.length; k++) sum += s[k] * s[k];
           if (!s.length || Math.sqrt(sum / s.length) < 1e-4) return { ok: false, reason: 'silent' };
           rtf = out.ms / ((s.length / 24000) * 1000);
+          diag('selftest-render', { i, ms: Math.round(out.ms), rtf });
         }
         return { ok: rtf < 0.7, rtf: Math.round(rtf * 100) / 100, reason: rtf < 0.7 ? null : 'slow' };
       },
@@ -207,9 +262,11 @@ const KokoroVoice = (() => {
         for (let i = 0; i < pieces.length; i++) {
           let out;
           // A refused render (non-finite samples) before anything played: the system voice reads the line.
-          try { out = await next; } catch { if (i === 0) return false; break; }
+          try { out = await next; } catch (e) { diag('synth-refused', { i, msg: String(e && e.message || e) }); if (i === 0) return false; break; }
+          diag('synth', { i, of: pieces.length, ms: Math.round(out.ms), rtf: out.ms / ((out.samples.length / 24000) * 1000) });
           if (i + 1 < pieces.length) next = call({ type: 'synth', tokens: Int32Array.from(pieces[i + 1]), voice: v.index, speed });
-          await play(out.samples, pitch);
+          // A context that will not start (no tap has reached the page yet): the system voice reads the line instead.
+          if (!(await play(out.samples, pitch))) return i > 0;
         }
         return true;
       },
@@ -228,14 +285,15 @@ const KokoroVoice = (() => {
   let lab = null;
   /**
    * Makes the model and the engine; resolves when it is known whether the model is downloaded.
-   * `allowed()` is js/voices.js's gate (WebGPU, not switched off, the self-test passed); `muted` is ?mute=1.
+   * `allowed()` is js/voices.js's gate (WebGPU, not switched off, the self-test passed); `muted` is ?mute=1;
+   * `onBoot(stage)` hears the model's load start, finish or fail ('start', 'done', 'failed').
    */
-  async function boot({ manifestURL, phonemesBase = 'data/plays/library/phonemes/', muted = false, allowed = () => true } = {}) {
+  async function boot({ manifestURL, phonemesBase = 'data/plays/library/phonemes/', muted = false, allowed = () => true, onBoot } = {}) {
     if (lab) return lab;
     const model = KokoroModel.create(manifestURL ? { manifestURL } : {});
     lab = { model, phonemesBase, allowed };
     await model.check();
-    engine({ model, muted });
+    engine({ model, muted, onBoot });
     return lab;
   }
   const ready = () => !!(lab && lab.model.isReady());

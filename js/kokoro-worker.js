@@ -14,6 +14,7 @@ let session = null;
 let table = null;
 const STYLE = 256;
 const ROWS = 510;
+const diag = (stage, data) => self.postMessage({ diag: stage, data });
 
 self.onmessage = async (e) => {
   const m = e.data;
@@ -21,10 +22,13 @@ self.onmessage = async (e) => {
     if (m.type === 'load') {
       // WebGPU where the browser has it and the caller asks (the spike measures both); else WASM.
       const gpu = !!(m.ep === 'webgpu' && self.navigator && navigator.gpu);
+      diag('worker-got-model', { MB: Math.round(m.model.byteLength / 1e6), gpu });
       importScripts(`${ORT}${gpu ? 'ort.webgpu.min.js' : 'ort.wasm.min.js'}`);
+      diag('worker-runtime-loaded');
       ort.env.wasm.wasmPaths = ORT;
       ort.env.wasm.numThreads = 1;
       session = await ort.InferenceSession.create(new Uint8Array(m.model), { executionProviders: gpu ? ['webgpu', 'wasm'] : ['wasm'] });
+      diag('worker-session-created');
       table = new Float32Array(m.voices);
       self.postMessage({ id: m.id, ok: true, ep: gpu ? 'webgpu' : 'wasm' });
       return;
