@@ -227,7 +227,8 @@ const PlaysCore = (() => {
    * Speaking parts largest first (by lines, then first appearance), then Sound on every script (its count the
    * cue rows, B32 §3.1 item 1), then directions when there are any.
    */
-  function castParts(script) {
+  function castParts(script, range = null) {
+    if (range && !script.range) { const cut = cutTo(script, range); if (cut) script = cut; }
     const counts = new Map();
     const first = new Map();
     script.lines.forEach((line, i) => {
@@ -244,14 +245,95 @@ const PlaysCore = (() => {
     return [...speaking, ...others].map(id => ({ id, lineCount: counts.get(id), title: partTitle(id), ...(reg.has(id) ? { register: reg.get(id) } : {}) }));
   }
 
+  /* ---- A scene's range (B31 §3.4; PLAYS-DESIGN §2.12) ----
+     A production may carry `range: {from, to}`, two line ids of its script: it records, listens to and
+     exports only those lines and the ones between. Every seam reads the range through `scoped`, the
+     script cut to it; a production with no range is its whole script, as before. */
+
+  /** The record's format: 2 since a range may stand in it (a record without `format` is 1, read as it is). */
+  const PRODUCTION_FORMAT = 2;
+
+  /** The indexes [a, z] a range spans in `script`, or null when either bound is gone or they are out of order. */
+  function rangeSpan(script, range) {
+    if (!range || !Array.isArray(script.lines)) return null;
+    const a = script.lines.findIndex(l => l.id === range.from);
+    const z = script.lines.findIndex(l => l.id === range.to);
+    return a >= 0 && z >= a ? [a, z] : null;
+  }
+
+  const scopeCache = new WeakMap();
+  /** `script` cut to `range`: its lines, its sections there, and each role speaking there with its lines and words
+   *  there, so voices and minutes are the range's. `whole` (not enumerable) is the script it was cut from. */
+  function cutTo(script, range) {
+    const span = rangeSpan(script, range);
+    if (!span) return null;
+    const key = `${range.from}\u0000${range.to}`;
+    let byKey = scopeCache.get(script);
+    if (!byKey) { byKey = new Map(); scopeCache.set(script, byKey); }
+    if (byKey.has(key)) return byKey.get(key);
+    const lines = script.lines.slice(span[0], span[1] + 1);
+    const ids = new Set(lines.map(l => l.id));
+    const said = new Map();
+    for (const l of lines) {
+      if (l.kind !== 'speech' || !l.role) continue;
+      const s = said.get(l.role) || { lines: 0, words: 0 };
+      s.lines += 1;
+      s.words += (Array.isArray(l.parts) ? l.parts : []).reduce((n, pc) => n + (typeof pc.say === 'string' ? pc.say.split(/\s+/).filter(Boolean).length : 0), 0);
+      said.set(l.role, s);
+    }
+    const roles = (Array.isArray(script.roles) ? script.roles : []).filter(r => r && said.has(r.name))
+      .map(r => ({ ...r, ...said.get(r.name) }));
+    const out = { ...script, lines, roles, range: { from: range.from, to: range.to } };
+    delete out.voices; delete out.minutes; delete out.cast;
+    if (Array.isArray(script.sections)) out.sections = script.sections.filter(s => ids.has(s.line));
+    Object.defineProperty(out, 'whole', { value: script, enumerable: false });
+    byKey.set(key, out);
+    return out;
+  }
+
+  /** The script a production records: cut to its range, else whole. A range whose bounds are gone reads whole (`rangeDrifted`). */
+  function scoped(p, script) {
+    if (!script || script.range || !p || !p.range) return script;
+    return cutTo(script, p.range) || script;
+  }
+  /** The whole script behind a scoped one. */
+  const wholeOf = (script) => (script && script.whole) || script;
+  /** True when the production's range no longer resolves in this script (rule 4: a revision moved a bound). */
+  const rangeDrifted = (p, script) => !!(p && p.range && script && !script.range && !rangeSpan(script, p.range));
+  /** The production with its range dropped: the whole play, under the play's title, to be listened through again. */
+  function dropRange(p, script) {
+    const next = clone(p);
+    delete next.range;
+    next.title = wholeOf(script).title;
+    for (const part of castParts(wholeOf(script))) if (!next.parts[part.id]) next.parts[part.id] = { status: 'open' };
+    next.listenedThrough = false;
+    delete next.mixedFrom;
+    return next;
+  }
+  /** "Adelphi, Scene II": a range production's title, the play's with the scene's heading as printed. */
+  const rangeTitle = (title, heading) => (heading ? `${title}, ${heading}` : title);
+  const sameRange = (a, b) => (!a && !b) || (!!a && !!b && a.from === b.from && a.to === b.to);
+
+  /** Reads an older record as the current format: nothing but `format` changes, so no fingerprint moves. */
+  function migrateProduction(p) {
+    if (!p || typeof p !== 'object' || p.format === PRODUCTION_FORMAT) return p;
+    if (typeof p.format === 'number' && p.format > PRODUCTION_FORMAT) return p;
+    return { ...p, format: PRODUCTION_FORMAT };
+  }
+  /** A record a newer version of the app wrote: kept, never listed or rewritten here. */
+  const productionTooNew = (p) => !!p && typeof p.format === 'number' && p.format > PRODUCTION_FORMAT;
+
   /* ---- The production record ---- */
 
-  function newProduction(script, { id = uuid(), created = now() } = {}) {
+  /** `range` ({from, to}) and the scene's `heading` make a production of one scene (rule 1); a range that does not resolve makes none. */
+  function newProduction(script, { id = uuid(), created = now(), range = null, heading = null } = {}) {
+    const cut = range ? cutTo(script, range) : null;
     const parts = {};
-    for (const p of castParts(script)) parts[p.id] = { status: 'open' };
+    for (const p of castParts(cut || script)) parts[p.id] = { status: 'open' };
     return {
-      id, scriptID: script.id, scriptRevision: script.revision, title: script.title, created,
-      parts, takes: [], chosen: {}, roomTone: [], listenedThrough: false,
+      id, scriptID: script.id, scriptRevision: script.revision, title: cut ? rangeTitle(script.title, heading) : script.title, created,
+      parts, takes: [], chosen: {}, roomTone: [], listenedThrough: false, format: PRODUCTION_FORMAT,
+      ...(cut ? { range: { from: range.from, to: range.to } } : {}),
     };
   }
 
@@ -352,12 +434,12 @@ const PlaysCore = (() => {
     constructor(kind, detail) { super(kind); this.kind = kind; this.detail = detail; }
   }
 
-  const order = (script) => castParts(script).map(p => p.id);
-  const current = (p, script) => order(script).find(id => stateOf(p, id).status === 'recording') || null;
+  const order = (script, p = null) => castParts(scoped(p, script)).map(x => x.id);
+  const current = (p, script) => order(script, p).find(id => stateOf(p, id).status === 'recording') || null;
   /** The suggested part: the largest open one, or null while a part records. */
   function next(p, script) {
     if (current(p, script)) return null;
-    return order(script).find(id => stateOf(p, id).status === 'open') || null;
+    return order(script, p).find(id => stateOf(p, id).status === 'open') || null;
   }
 
   function withState(p, part, state) {
@@ -369,13 +451,13 @@ const PlaysCore = (() => {
   function take(p, script, part, performer) {
     const cur = current(p, script);
     if (cur) throw new Refusal('anotherPartIsRecording', cur);
-    if (!order(script).includes(part) || stateOf(p, part).status !== 'open') throw new Refusal('notOpen', part);
+    if (!order(script, p).includes(part) || stateOf(p, part).status !== 'open') throw new Refusal('notOpen', part);
     const name = (performer || '').trim();
     return withState(p, part, name ? { status: 'recording', performer: name } : { status: 'recording' });
   }
 
   /** Lines of the part with no chosen take, or whose chosen take the bleed check flagged. */
-  const missingLines = (p, script, part) => linesFor(script, part).map(l => l.id).filter(id => !usableTake(p, id));
+  const missingLines = (p, script, part) => linesFor(scoped(p, script), part).map(l => l.id).filter(id => !usableTake(p, id));
 
   /** "Done with this part": a speaking part is done only when every one of its lines has a take (§5 rule 4). */
   function finish(p, script, part) {
@@ -393,7 +475,7 @@ const PlaysCore = (() => {
     if (st !== 'recording') {
       const cur = current(p, script);
       if (cur) throw new Refusal('anotherPartIsRecording', cur);
-      if (st !== 'open' || !order(script).includes(part)) throw new Refusal('notOpen', part);
+      if (st !== 'open' || !order(script, p).includes(part)) throw new Refusal('notOpen', part);
     }
     return withState(p, part, { ...stateOf(p, part), status: 'silent' });
   }
@@ -406,9 +488,9 @@ const PlaysCore = (() => {
   }
 
   /** Speaking lines with no unflagged human take. */
-  const missingSpeech = (p, script) => speechLineIDs(script).filter(id => !usableTake(p, id));
+  const missingSpeech = (p, script) => speechLineIDs(scoped(p, script)).filter(id => !usableTake(p, id));
   /** Lines of any kind whose chosen take the bleed check flagged. */
-  const needsRetake = (p, script) => script.lines.map(l => l.id).filter(id => chosenTake(p, id)?.bleed === true);
+  const needsRetake = (p, script) => scoped(p, script).lines.map(l => l.id).filter(id => chosenTake(p, id)?.bleed === true);
   /** Only when every speaking line has an unflagged take and no chosen take is flagged can the play be mixed. */
   const isComplete = (p, script) => missingSpeech(p, script).length === 0 && needsRetake(p, script).length === 0;
 
@@ -419,6 +501,7 @@ const PlaysCore = (() => {
    * words only, never audio, so nothing of it can be stored, mixed, or exported (§5).
    */
   function listenPlan(p, script, reads = null) {
+    script = scoped(p, script);
     const plan = [];
     for (const line of script.lines) {
       const part = linePart(line);
@@ -438,6 +521,7 @@ const PlaysCore = (() => {
    * skipped, as in the listen plan.
    */
   function runPlan(p, script, part, fromLineID) {
+    script = scoped(p, script);
     const at = script.lines.findIndex(l => l.id === fromLineID);
     if (at < 0) return [];
     const cue = cueLines(script, fromLineID)[0];
@@ -682,7 +766,7 @@ const PlaysCore = (() => {
 
   /** The speaking parts of a production still open (never sound effects or stage directions). */
   function openSpeakingParts(p, script) {
-    const parts = script ? castParts(script).map(x => x.id) : Object.keys(p.parts || {});
+    const parts = script ? castParts(scoped(p, script)).map(x => x.id) : Object.keys(p.parts || {});
     return parts.filter(id => isSpeaking(id) && stateOf(p, id).status === 'open');
   }
 
@@ -743,11 +827,18 @@ const PlaysCore = (() => {
   }
 
   function buildTimeline(script, p, { sampleRate = TAKE_RATE, gap = DEFAULT_GAP, resolveSound = null, withoutMissing = false } = {}) {
+    script = scoped(p, script);
     const missing = missingSpeech(p, script);
     if (missing.length) throw new MixFailure('incomplete', missing);
     const flagged = needsRetake(p, script);
     if (flagged.length) throw new MixFailure('bleed', flagged);
-    const sound = readSound(p.sound);
+    let sound = readSound(p.sound);
+    // A range production's mix holds only the cues on its lines (Decision 091): the rest are out of it, never missing.
+    if (sound && script.range) {
+      const here = new Set(script.lines.map(l => l.id));
+      const slots = sound.slots.filter(s => here.has(s.line));
+      sound = slots.length ? { ...sound, slots } : null;
+    }
     const D = SOUND_DEFAULTS;
 
     // Each sound with what it needs from its source; a source not on this device is named, never dropped silently.
@@ -1225,6 +1316,7 @@ const PlaysCore = (() => {
     role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, CUE_WORDS, cueRows, spokenText, displayName, authorName, authorLine,
     WORDS_PER_MINUTE, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, pickList, fnv1a64, todaysPlay, scenePool, todaysScene, openingOf,
     linesFor, speechLineIDs, castParts,
+    PRODUCTION_FORMAT, rangeSpan, scoped, wholeOf, rangeDrifted, dropRange, rangeTitle, sameRange, migrateProduction, productionTooNew,
     newProduction, isEmptyProduction, secondProductionNeedsAccount, madeHereLeads, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, soundTakeIDs, discardUnused, deleteTake,
     fingerprint, isFinished, stableStringify,
     Refusal, order, current, next, take, finish, leaveSilent, reopen, missingLines, missingSpeech, needsRetake, isComplete,

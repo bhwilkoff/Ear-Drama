@@ -260,7 +260,7 @@ test('a re-take is chosen, and the old take stays until discarded (§8 rule 5)',
   eq((await reloaded.script(kept)).lines.length, script.lines.length, 'the script as cast is stored with it');
   const record = JSON.parse(await backend.get(`${p.id}/production.json`));
   eq(Object.keys(record), Object.keys(record).slice().sort(), 'production.json is written with sorted keys');
-  eq(Object.keys(record).sort(), ['chosen', 'created', 'id', 'listenedThrough', 'parts', 'roomTone', 'scriptID',
+  eq(Object.keys(record).sort(), ['chosen', 'created', 'format', 'id', 'listenedThrough', 'parts', 'roomTone', 'scriptID',
                                   'scriptRevision', 'takes', 'title'], 'the fields of Apple\'s production.json');
   eq(Object.keys(record.takes[0]).sort(), ['bleed', 'capture', 'created', 'file', 'frames', 'heard', 'id', 'lineID',
                                            'loudness', 'part', 'peak', 'sampleRate'], 'a take has Apple\'s fields');
@@ -1157,6 +1157,90 @@ test('the store mixes a performed cue from its own takes, and names a pack cue i
   let kind = null, detail = null;
   try { await store.renderMix(q.id, fakeOffline); } catch (e) { kind = e.kind; detail = e.detail; }
   eq([kind, detail], ['missingSounds', ['C2']], 'a pack cue with no pack is named');
+});
+
+/* ---- A scene's range (B31 §3.4, PLAYS-DESIGN §2.12): catalog/tests/golden/production_range.json, shared with Swift and Kotlin ---- */
+
+const RANGE = JSON.parse(fs.readFileSync(path.join(ROOT, 'catalog/tests/golden/production_range.json'), 'utf8'));
+const pairs = (cast) => cast.map(x => [x.id, x.lineCount]);
+function rangeProduction(core, chosen, { sound = null } = {}) {
+  const g = RANGE;
+  const p = core.newProduction(g.script, { range: g.range, heading: g.heading });
+  p.takes = g.takes.map(t => ({ ...take(t.id, t.lineID, t.part, t.frames, t.loudness, t.peak), ...(t.cue ? { cue: t.cue } : {}) }));
+  p.chosen = { ...chosen };
+  if (sound) p.sound = JSON.parse(JSON.stringify(sound));
+  return p;
+}
+/** The golden's answers for one core; `core` is PlaysCore or a mutant of it. Returns what failed. */
+function rangeAnswers(core) {
+  const g = RANGE, e = g.expect, bad = [];
+  const want = (got, exp, name) => { if (JSON.stringify(got) !== JSON.stringify(exp)) bad.push(`${name}: got ${JSON.stringify(got)}, want ${JSON.stringify(exp)}`); };
+  const p0 = core.newProduction(g.script, { range: g.range, heading: g.heading });
+  want(p0.title, e.title, 'title');
+  want(p0.format, e.format, 'format');
+  want(p0.range, g.range, 'range stored');
+  want(Object.keys(p0.parts).sort(), e.parts.slice().sort(), 'parts of the range only');
+  const s = core.scoped(p0, g.script);
+  want(s.lines.map(l => l.id), e.lineIDs, 'line ids');
+  want(pairs(core.castParts(g.script, g.range)), e.cast, 'castParts(script, range)');
+  want(pairs(core.castParts(s)), e.cast, 'cast of the scoped script');
+  want(pairs(core.castParts(g.script)), e.wholeCast, 'whole cast unchanged');
+  want([core.voicesOf(s), core.minutesOf(s)], [e.voices, e.minutes], 'voices and minutes are the range\'s');
+  want(core.listenPlan(p0, g.script).map(x => x.lineID), e.listenBeforeAnyTake, 'listen before any take');
+  for (const k of ['before', 'after']) {
+    const d = g.done[k];
+    const p = rangeProduction(core, d.chosen);
+    want(core.isComplete(p, g.script), d.complete, `${k}: Done`);
+    want(core.missingSpeech(p, g.script), d.missing, `${k}: missing`);
+    for (const part of Object.keys(d.partMissing)) want(core.missingLines(p, g.script, part), d.partMissing[part], `${k}: ${part} missing`);
+    if (d.wholeMissing) want(core.missingSpeech({ ...p, range: undefined }, g.script), d.wholeMissing, `${k}: the whole play is not done`);
+  }
+  const done = rangeProduction(core, g.done.after.chosen, { sound: g.sound });
+  want(core.listenPlan(done, g.script).map(x => [x.lineID, x.source]), g.listenAfter, 'listen through after');
+  try {
+    const t = core.buildTimeline(g.script, done);
+    want(t.placements.map(x => x.lineID), g.export.voice, 'export voice lines');
+    want((t.sounds || []).map(x => x.soundID), g.export.sounds, 'export sounds');
+    want((t.sounds || []).map(x => x.lineID), g.export.soundLines, 'export sound lines');
+  } catch (err) { bad.push(`export threw ${err.kind || err.message}`); }
+  let rec = core.take(rangeProduction(core, g.done.after.chosen), g.script, 'role:DEMEA', '');
+  try { rec = core.finish(rec, g.script, 'role:DEMEA'); want(rec.parts['role:DEMEA'].status, 'done', 'finish in range'); } catch (err) { bad.push(`finish threw ${err.kind}`); }
+  try { core.take(p0, g.script, 'role:SYRUS', ''); bad.push('a part outside the range was taken'); } catch (err) { want(err.kind, 'notOpen', 'a part outside the range'); }
+  for (const c of g.drift) {
+    const script = { ...g.script, revision: 'r2', lines: g.script.lines.filter(l => !(c.remove || []).includes(l.id)) };
+    want(core.rangeDrifted({ ...p0, range: c.range || g.range }, script), c.drifted, c.name);
+  }
+  const dropped = core.dropRange({ ...p0, listenedThrough: true, mixedFrom: 'x' }, g.script);
+  want([dropped.title, dropped.range || null, dropped.listenedThrough, Object.keys(dropped.parts).sort()],
+    [g.dropped.title, g.dropped.range, g.dropped.listenedThrough, g.dropped.parts], 'dropped range');
+  const old = g.old.record;
+  const migrated = core.migrateProduction(JSON.parse(JSON.stringify(old)));
+  want([core.fingerprint(old), core.fingerprint(migrated), migrated.format, core.isFinished(migrated)], [g.old.fingerprint, g.old.fingerprint, 2, true], 'old record migrated, fingerprint unchanged');
+  want(pairs(core.castParts(core.scoped(migrated, g.script))), g.old.cast, 'an old production is the whole play');
+  want(core.listenPlan(migrated, g.script).length, g.script.lines.filter(l => l.kind === 'speech').length, 'an old production listens through the whole play');
+  want(core.productionTooNew({ ...old, ...g.tooNew }), true, 'a newer format is refused');
+  want(core.productionTooNew(migrated), false, 'control: the current format is read');
+  return bad;
+}
+
+test('a scene\'s range: the golden every platform runs (production_range.json)', () => {
+  const bad = rangeAnswers(C);
+  bad.forEach(b => ok(false, b));
+  ok(!bad.length, 'every answer of the golden');
+});
+
+test('a scene\'s range: each mutant of the core breaks the golden', () => {
+  const mutants = {
+    'scoped ignores the range': { scoped: (p, s) => s, castParts: (s) => C.castParts(s) },
+    'the mix keeps cues outside the range': { buildTimeline: (s, p, o) => C.buildTimeline({ ...C.scoped(p, s), range: undefined }, { ...p, range: undefined }, o) },
+    'Done reads the whole play': { isComplete: (p, s) => C.isComplete({ ...p, range: undefined }, s) },
+    'a range is not dropped on drift': { rangeDrifted: () => false },
+    'migration rewrites the takes': { migrateProduction: (p) => ({ ...p, format: 2, chosen: {} }) },
+    'title without the heading': { newProduction: (s, o) => ({ ...C.newProduction(s, o), title: s.title }) },
+  };
+  for (const [name, patch] of Object.entries(mutants)) {
+    ok(rangeAnswers({ ...C, ...patch }).length > 0, `mutant caught: ${name}`);
+  }
 });
 
 (async () => {

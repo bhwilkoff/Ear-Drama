@@ -17,7 +17,7 @@ Every value is a rule a person can be shown, never a judgment:
             on seven fixed cells; LoCC PA (Greek and Latin literature) is Antiquity when undated.
   balance   the largest part's share of the spoken lines: ensemble at most a quarter, lead at least half with
             three or more parts.
-  scenes    a printed section with 2 to 4 speaking parts and 1 to 12 minutes.
+  scenes    a printed section with 2 to 4 speaking parts and 1 to 12 minutes, from `line` to `to`.
 """
 import collections
 import json
@@ -162,7 +162,8 @@ def full_names(entry):
 
 def scenes_of(entry, wpm=WORDS_PER_MINUTE):
     """Each printed section with 2 to 4 speaking parts and 1 to 12 minutes, in text order, at most six:
-    {line, heading, voices, minutes, parts} with parts largest first (the order a cast sheet reads), each named
+    {line, to, heading, voices, minutes, parts}, `to` the last line before the next section (a production's range,
+    B31 §3.4), with parts largest first (the order a cast sheet reads), each named
     in full where the print gives the name (`full_names`)."""
     lines = entry.get("lines") or []
     pos = {l["id"]: i for i, l in enumerate(lines)}
@@ -180,7 +181,7 @@ def scenes_of(entry, wpm=WORDS_PER_MINUTE):
         minutes = round(words / wpm)
         heading = heading_of(s.get("source"))
         if heading and SCENE_VOICES[0] <= len(parts) <= SCENE_VOICES[1] and SCENE_MINUTES[0] <= minutes <= SCENE_MINUTES[1]:
-            out.append({"line": s["line"], "heading": heading, "voices": len(parts), "minutes": minutes,
+            out.append({"line": s["line"], "to": lines[z - 1]["id"], "heading": heading, "voices": len(parts), "minutes": minutes,
                         "parts": [named.get(r, r) for r, _n in sorted(parts.items(), key=lambda kv: (-kv[1], kv[0]))]})
         if len(out) == SCENES_KEPT:
             break

@@ -116,8 +116,10 @@ Mac uses the same Core, so the same code holds them:
   field is the window's toolbar field (`.searchable`, "Titles, authors, characters, lines"); **the facets are toolbar
   menus** (Voices, Length, Form, Era, Sort, Filters; each value with its count; Filters a 420 by 520 sheet), so the
   page under them is the ways in and the grid alone, the grid a page of 60 tiles at a time with Show more; a scene
-  card and a found line open the script's own window at that line (`ReaderWindow_macOS.value`, the script id and
-  "#line"). *Replaced* 2026-11-26: "the plays under the chip bar". "Record This" beside Play on a play's page, or on an episode
+  card opens **that scene's production** window, made on the first click (*Replaced* 2026-11-26: it opened the script's
+  window at its line), its Read button and a found line open the script's own window at that line; the four rules of a scene's production (PLAYS-DESIGN §2.12, binding here): (1) its cast sheet lists only the parts with a line in the range, and its voices and minutes are the range's; (2) Done means every line of those parts in the range has a chosen take, never the whole play; (3) Listen Through, export, Read together and Share hold only the range, a cue outside it is out of the mix, and its title is the play's with the heading ("Adelphi, Scene II"); (4) a revision that moves either bound drops the range and says so ("The scene's lines changed. This production is the whole play now."). A production without a range is unchanged.
+  The script window is `ReaderWindow_macOS.value`, the script id and
+  "#line". *Replaced* 2026-11-26: "the plays under the chip bar". "Record This" beside Play on a play's page, or on an episode
   whose `script` is set, opens the production's window; Library still
   lists Ear dramas. A new section amends this rule first.
   - **Today's Scene and Made Here leading** (Decision 079): Home and Record

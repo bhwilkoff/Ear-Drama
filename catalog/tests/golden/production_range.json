@@ -1,0 +1,80 @@
+{
+ "about": "B31 §3.4, PLAYS-DESIGN §2.12: a production of one scene, `range: {from, to}`. A ten-line script, range L0003..L0006. js/plays.test.js, apple/Tests/ProductionRangeTests.swift and android ProductionRangeTest.kt run this file and each breaks a mutant of it. Takes are 48 kHz; `cue` marks a performed cue (B32 §3.1 item 6). Expected answers are written by hand from the four rules, not computed by any client.",
+ "script": {
+  "id": "golden-range",
+  "revision": "r1",
+  "kind": "stage",
+  "title": "Adelphi",
+  "authors": [],
+  "source": {"name": "Fixture", "url": "https://example.org"},
+  "rights": {"bucket": "script_source_cleared", "evidence": []},
+  "roles": [
+   {"name": "DEMEA", "lines": 3, "words": 9},
+   {"name": "SYRUS", "lines": 2, "words": 5},
+   {"name": "MICIO", "lines": 2, "words": 6}
+  ],
+  "sections": [{"line": "L0003", "source": "SCENE II."}, {"line": "L0007", "source": "SCENE III."}],
+  "lines": [
+   {"id": "L0001", "kind": "speech", "role": "DEMEA", "parts": [{"say": "Where is my son?"}]},
+   {"id": "L0002", "kind": "speech", "role": "SYRUS", "parts": [{"say": "Gone to town."}]},
+   {"id": "L0003", "kind": "speech", "role": "DEMEA", "parts": [{"say": "Brother, a word."}]},
+   {"id": "L0004", "kind": "sound", "source": "SOUND: A DOOR OPENS"},
+   {"id": "L0005", "kind": "speech", "role": "MICIO", "parts": [{"say": "Speak, then, brother."}]},
+   {"id": "L0006", "kind": "speech", "role": "DEMEA", "parts": [{"say": "He is ruined."}]},
+   {"id": "L0007", "kind": "direction", "source": "_Exit DEMEA._"},
+   {"id": "L0008", "kind": "music", "source": "MUSIC: A FLUTE"},
+   {"id": "L0009", "kind": "speech", "role": "SYRUS", "parts": [{"say": "Poor old man."}]},
+   {"id": "L0010", "kind": "speech", "role": "MICIO", "parts": [{"say": "Let him go."}]}
+  ]
+ },
+ "range": {"from": "L0003", "to": "L0006"},
+ "heading": "Scene II",
+ "expect": {
+  "title": "Adelphi, Scene II",
+  "format": 2,
+  "lineIDs": ["L0003", "L0004", "L0005", "L0006"],
+  "wholeCast": [["role:DEMEA", 3], ["role:SYRUS", 2], ["role:MICIO", 2], ["sound", 2], ["directions", 1]],
+  "cast": [["role:DEMEA", 2], ["role:MICIO", 1], ["sound", 1]],
+  "parts": ["role:DEMEA", "role:MICIO", "sound"],
+  "voices": 2,
+  "minutes": 1,
+  "listenBeforeAnyTake": ["L0003", "L0005", "L0006"]
+ },
+ "takes": [
+  {"id": "T3", "lineID": "L0003", "part": "role:DEMEA", "frames": 24000, "loudness": -16, "peak": 0.5},
+  {"id": "T5", "lineID": "L0005", "part": "role:MICIO", "frames": 24000, "loudness": -16, "peak": 0.5},
+  {"id": "T6", "lineID": "L0006", "part": "role:DEMEA", "frames": 24000, "loudness": -16, "peak": 0.5},
+  {"id": "TD", "lineID": "L0004", "part": "sound", "frames": 4800, "loudness": -16, "peak": 0.5, "cue": "S1"}
+ ],
+ "done": {
+  "before": {"chosen": {"L0003": "T3", "L0005": "T5"}, "complete": false, "missing": ["L0006"],
+             "partMissing": {"role:DEMEA": ["L0006"], "role:MICIO": []}},
+  "after": {"chosen": {"L0003": "T3", "L0005": "T5", "L0006": "T6"}, "complete": true, "missing": [],
+            "partMissing": {"role:DEMEA": [], "role:MICIO": []},
+            "wholeMissing": ["L0001", "L0002", "L0009", "L0010"]}
+ },
+ "listenAfter": [["L0003", "take"], ["L0005", "take"], ["L0006", "take"]],
+ "sound": {
+  "v": 1,
+  "slots": [
+   {"id": "S1", "line": "L0004", "piece": null, "added": false, "silent": false, "sounds": [{"id": "D1", "src": {"take": "TD"}, "at": "before", "startMs": 0, "gainDb": 0, "fadeInMs": 0, "fadeOutMs": 0, "loop": false, "duckDb": null}]},
+   {"id": "S2", "line": "L0008", "piece": null, "added": false, "silent": false, "sounds": [{"id": "F1", "src": {"take": "T-NOT-HERE"}, "at": "before", "startMs": 0, "gainDb": 0, "fadeInMs": 0, "fadeOutMs": 0, "loop": false, "duckDb": null}]}
+  ]
+ },
+ "export": {"voice": ["L0003", "L0005", "L0006"], "sounds": ["D1"], "soundLines": ["L0004"]},
+ "drift": [
+  {"name": "a revision without the range's last line drops the range", "remove": ["L0006"], "drifted": true},
+  {"name": "a revision without the range's first line drops the range", "remove": ["L0003"], "drifted": true},
+  {"name": "a revision that changes lines outside the range keeps it", "remove": ["L0009"], "drifted": false},
+  {"name": "bounds out of order never resolve", "range": {"from": "L0006", "to": "L0003"}, "drifted": true}
+ ],
+ "dropped": {"title": "Adelphi", "range": null, "listenedThrough": false,
+             "parts": ["directions", "role:DEMEA", "role:MICIO", "role:SYRUS", "sound"]},
+ "old": {
+  "record": {"id": "OLD-1", "scriptID": "golden-range", "scriptRevision": "r1", "title": "Adelphi", "created": 700000000,
+             "parts": {"role:DEMEA": {"status": "open"}}, "takes": [], "chosen": {"L0003": "T3"}, "roomTone": [], "listenedThrough": true, "mixedFrom": "L0003=T3"},
+  "fingerprint": "L0003=T3",
+  "cast": [["role:DEMEA", 3], ["role:SYRUS", 2], ["role:MICIO", 2], ["sound", 2], ["directions", 1]]
+ },
+ "tooNew": {"format": 3}
+}

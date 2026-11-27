@@ -81,7 +81,10 @@ check("row: era and life from the record's author", (row.get("era"), row.get("li
 check("row: one act from the shelf, LoCC, the topic", (row.get("oneAct"), row.get("locc"), row.get("subjects")), (True, "PR", ["Man-woman relationships"]))
 check("row: balance from the cast", row.get("balance"), "mixed")
 check("row: a scene for two voices, cut at its first punctuation", row.get("scenes"),
-      [{"line": "L0001", "heading": "Scene I", "voices": 2, "minutes": 8, "parts": ["HE", "HER"]}])
+      [{"line": "L0001", "to": "L0040", "heading": "Scene I", "voices": 2, "minutes": 8, "parts": ["HE", "HER"]}])
+check("a scene's range ends on the play's last line when no section follows",
+      PF.scenes_of(dict(ENTRY, sections=ENTRY["sections"][:1], lines=ENTRY["lines"][:40]))[0]["to"], "L0040")
+check("control: a scene's `to` is never the next section's first line", row["scenes"][0]["to"] != "L0041", True)
 check("control: a one-voice section is no scene", [s["line"] for s in row["scenes"]], ["L0001"])
 check("LoCC from the catalog's class number when the record lists none", PF.facet_row(dict(ROW), ENTRY, dict(REC, subjects=["Comedies"]), {"LoCC": "E201"}).get("locc"), "E")
 bare = PF.facet_row(dict(ROW, id="gut-8"), dict(ENTRY, id="gut-8"), None)

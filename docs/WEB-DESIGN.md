@@ -798,7 +798,10 @@ web app follows today.
        collections `ten-minutes`, `two-voices`, `star-part`, `one-act` under the catalog's own titles. A play appears
        once on the screen: a rail drops a play a rail above it holds, and a rail left with none is absent. A **scene
        card** (B31 §3.4) is its heading as printed and minutes ("Act II · 4 min"), the play's name, the parts' names;
-       it opens the reader at the scene's first line. Not on a TV.
+       *Replaced* 2026-11-26 ("it opens the reader at the scene's first line"): the card opens **that scene's
+       production**, made on the first tap (`?production=`, its cast sheet), and **Read**, a book icon on the card's
+       corner outside the link, opens the reader at the scene's first line; a scene with no `to` opens the reader as
+       before. the four rules of a scene's production (PLAYS-DESIGN §2.12, binding here): (1) its cast sheet lists only the parts with a line in the range, and its voices and minutes are the range's; (2) Done means every line of those parts in the range has a chosen take, never the whole play; (3) Listen Through, export, Read together and Share hold only the range, a cue outside it is out of the mix, and its title is the play's with the heading ("Adelphi, Scene II"); (4) a revision that moves either bound drops the range and says so ("The scene's lines changed. This production is the whole play now."). A production without a range is unchanged. Not on a TV.
      - **The grid** under the sort's name with the count beside it ("Fewest voices 1,194"); with a facet chosen it is
        the only thing below the facets, and with `&collection=` it is that collection, in its own order, under its
        title and credit. Sorts: Fewest voices (ties shortest, then A to Z), Shortest, A to Z.
