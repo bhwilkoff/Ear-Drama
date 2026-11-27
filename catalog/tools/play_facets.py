@@ -137,12 +137,37 @@ def heading_of(source):
     return h
 
 
+def full_names(entry):
+    """A speech label the print abbreviates ("DEM", "ÆSCH", "CLE") named in full as the play's own text prints the
+    part: another role of the play that it begins, else the one capitalized word of a stage direction ("Enter
+    DEMEA.") it begins. Two candidates, a word with no longer print, or an English function word keep the label."""
+    import play_layouts as PL
+    import play_roles as R
+    skip = PL.NEVER | R.NOT_NAMES
+    names = [r["name"] for r in entry.get("roles") or []]
+    printed = collections.Counter()
+    for l in entry.get("lines") or []:
+        if l.get("kind") == "direction":
+            printed.update(re.findall(r"\b[A-ZÀ-Þ]{3,}\b", (l.get("source") or "").replace("_", "")))
+    out = {}
+    for n in names:
+        if " " in n or len(n) < 2 or n.lower() in skip:
+            continue
+        own = {x for x in names if x != n and " " not in x and x.startswith(n) and len(x) >= len(n) + 2}
+        cands = own or {w for w in printed if w.startswith(n) and len(w) >= len(n) + 2 and w.lower() not in skip and w not in names}
+        if len(cands) == 1 and n not in printed:
+            out[n] = next(iter(cands))
+    return out
+
+
 def scenes_of(entry, wpm=WORDS_PER_MINUTE):
     """Each printed section with 2 to 4 speaking parts and 1 to 12 minutes, in text order, at most six:
-    {line, heading, voices, minutes, parts} with parts largest first (the order a cast sheet reads)."""
+    {line, heading, voices, minutes, parts} with parts largest first (the order a cast sheet reads), each named
+    in full where the print gives the name (`full_names`)."""
     lines = entry.get("lines") or []
     pos = {l["id"]: i for i, l in enumerate(lines)}
     secs = [s for s in entry.get("sections") or [] if s.get("line") in pos]
+    named = full_names(entry)
     out = []
     for i, s in enumerate(secs):
         a = pos[s["line"]]
@@ -156,7 +181,7 @@ def scenes_of(entry, wpm=WORDS_PER_MINUTE):
         heading = heading_of(s.get("source"))
         if heading and SCENE_VOICES[0] <= len(parts) <= SCENE_VOICES[1] and SCENE_MINUTES[0] <= minutes <= SCENE_MINUTES[1]:
             out.append({"line": s["line"], "heading": heading, "voices": len(parts), "minutes": minutes,
-                        "parts": [r for r, _n in sorted(parts.items(), key=lambda kv: (-kv[1], kv[0]))]})
+                        "parts": [named.get(r, r) for r, _n in sorted(parts.items(), key=lambda kv: (-kv[1], kv[0]))]})
         if len(out) == SCENES_KEPT:
             break
     return out
