@@ -27,7 +27,14 @@ self.onmessage = async (e) => {
       diag('worker-runtime-loaded');
       ort.env.wasm.wasmPaths = ORT;
       ort.env.wasm.numThreads = 1;
-      session = await ort.InferenceSession.create(new Uint8Array(m.model), { executionProviders: gpu ? ['webgpu', 'wasm'] : ['wasm'] });
+      // The model stores its large weights fp16, each cast to fp32 in the graph (w16, Decision 078 update 2026-11-27).
+      // Level 'all' and unlimited constant folding turn those Casts back into fp32 weights at session creation (the
+      // worker's wasm memory 754 MB against 551 MB, measured); 'extended' with a 4 KB folding cap keeps them fp16.
+      session = await ort.InferenceSession.create(new Uint8Array(m.model), {
+        executionProviders: gpu ? ['webgpu', 'wasm'] : ['wasm'],
+        graphOptimizationLevel: 'extended',
+        extra: { optimization: { constant_folding_max_output_size_in_bytes: '4096' } },
+      });
       diag('worker-session-created');
       table = new Float32Array(m.voices);
       self.postMessage({ id: m.id, ok: true, ep: gpu ? 'webgpu' : 'wasm' });

@@ -83,14 +83,14 @@ STUB = r"""(() => {
   };
   try {
     localStorage.removeItem('ed.kokoro.off');
-    if (mode === 'ready') localStorage.setItem('ed.kokoro.check', JSON.stringify({ ok: true, rtf: 0.2, at: 1 }));
+    if (mode === 'ready') localStorage.setItem('ed.kokoro.check', JSON.stringify({ ok: true, rtf: 0.2, at: 1, cache: 'ed-kokoro-v5' }));
     else localStorage.removeItem('ed.kokoro.check');
   } catch (e) { window.__errors.push(String(e)); }
   if (mode === 'ready') {
     const real = window.caches;
     const fake = { match: async () => new Response(new Uint8Array(1)), put: async () => {}, delete: async () => true };
     Object.defineProperty(window, 'caches', { configurable: true, value: {
-      has: async (n) => n === 'ed-kokoro-v1' || real.has(n), open: async (n) => (n === 'ed-kokoro-v1' ? fake : real.open(n)),
+      has: async (n) => n === 'ed-kokoro-v5' || real.has(n), open: async (n) => (n === 'ed-kokoro-v5' ? fake : real.open(n)),
       delete: (n) => real.delete(n), keys: () => real.keys(), match: (...a) => real.match(...a) } });
   }
 })();"""

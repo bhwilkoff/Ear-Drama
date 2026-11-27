@@ -141,7 +141,7 @@ const KokoroVoice = (() => {
           pending.delete(e.data.id);
           if (e.data.error) p.reject(new Error(e.data.error)); else p.resolve(e.data);
         };
-        // WebGPU where present (the only measured web path faster than real time, with the fp32 model).
+        // WebGPU where present (the only measured web path faster than real time; one thread of WASM is RTF 1.3).
         const ep = typeof navigator !== 'undefined' && navigator.gpu ? 'webgpu' : 'wasm';
         diag('worker-load', { ep });
         const r = await call({ type: 'load', model: onnx, voices: table, ep }, [onnx, table]);

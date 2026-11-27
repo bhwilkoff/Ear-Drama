@@ -90,9 +90,11 @@ for (const f of faces) {
 // voices' (js/voices.js CACHE). Until 2026-11-27 the voices' cache was not kept, so every deploy deleted the
 // downloaded model and Library > Voices offered the download again.
 {
-  const voicesCache = /const CACHE = '([^']+)'/.exec(fs.readFileSync(path.join(ROOT, 'js/voices.js'), 'utf8'))[1];
+  const voicesSrc = fs.readFileSync(path.join(ROOT, 'js/voices.js'), 'utf8');
+  const voicesCache = /const CACHE = '([^']+)'/.exec(voicesSrc)[1];
+  const oldCaches = [...(/const OLD = \[([^\]]*)\]/.exec(voicesSrc) || ['', ''])[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
   const deleted = [];
-  ctx.caches.keys = async () => ['ed-shell-v1', 'ed-data-v0', SHELL_VERSION, DATA_VERSION, 'ed-sounds-1', voicesCache];
+  ctx.caches.keys = async () => ['ed-shell-v1', 'ed-data-v0', SHELL_VERSION, DATA_VERSION, 'ed-sounds-1', voicesCache, ...oldCaches];
   ctx.caches.delete = async (k) => { deleted.push(k); return true; };
   let done = null;
   handlers.activate({ waitUntil: (p) => { done = p; } });
@@ -100,6 +102,8 @@ for (const f of faces) {
   ok('activate deletes older shell and data caches', deleted.includes('ed-shell-v1') && deleted.includes('ed-data-v0'), deleted.join());
   ok(`activate keeps the downloaded voices (${voicesCache})`, !deleted.includes(voicesCache), deleted.join());
   ok('activate keeps the sound pack', !deleted.includes('ed-sounds-1'), deleted.join());
+  // A replaced model (js/voices.js OLD) stays until the new one is checked; the page deletes it, never a deploy.
+  ok(`activate keeps a replaced model for the page to delete (${oldCaches.join()})`, oldCaches.length > 0 && !oldCaches.some((c) => deleted.includes(c)), deleted.join());
 }
 
 function answered(url, { destination = '', mode = 'no-cors', method = 'GET', headers = {} } = {}) {

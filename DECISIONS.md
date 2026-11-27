@@ -656,6 +656,29 @@ answers it, and a download that is sure to be refused is worse than not offering
 phones needs a different export (an fp16-weight model with fp32 compute on WebGPU, or a
 smaller model), measured against the same self-test before it ships.
 
+*Update, the web's w16 model (2026-11-27, later)*: the web reads `kokoro-v5-web` (211 MB
+in 5 parts, `tools/publish_kokoro_model.py --web-w16`): the fp32 export with the
+decoder's weights stored fp16, each cast to fp32 inside the graph, activations and I/O
+fp32. The text encoder, LSTMs and prosody predictor keep fp32 weights: in fp16 they
+move the pitch track (all-fp16 storage, 163 MB: worst spectral SNR 24.4 dB, log-spectral
+distance 1.67 dB on 12 lines); kept, it matches fp32 (64 dB native, 71.8 dB on WebGPU;
+the shipped fp32 on WebGPU is itself 29.2 dB from fp32 on the CPU). ONNX Runtime folds
+the Casts back into fp32 at session creation unless asked not to, so the worker uses
+level `extended` and a 4 KB constant-folding cap (level `all` re-lays the decoder's
+weights out as fp32). Headless Chrome, WebGPU on Metal, 6 lines: self-test RTF 0.18 as
+before; the worker's wasm memory 794 MB (fp32) to 551 MB, the renderer's footprint
+1,538 to 1,161 MB, the page's heap while the model is read 341 to 227 MB. The site
+switches by itself: the newest web manifest wins. A v1 cache and its self-test result
+are no longer read; the v1 cache is deleted once v5's checksums pass (or on Delete),
+and the service worker keeps every `ed-kokoro-` cache so a deploy never deletes one.
+**Why**: the iPhone's Safari tab was killed loading the fp32 model; weight storage is
+most of what the tab holds, and the voices must sound the same.
+**How to apply**: a web model is judged by the self-test on the device and by the
+spectral check against fp32 (`--web-w16` keeps the fp32 groups in `W16_KEEP_FP32`);
+never fp16 compute. If the Duo's Safari still refuses or is killed, the all-fp16-storage
+163 MB variant is the next step (24.4 dB worst), then nothing smaller without a new
+export.
+
 ## 079: A first take needs no account; empty productions stay out of sight; Today's scene everywhere (answered 2026-11-15)
 
 **Rule**: a newcomer can record without signing in; takes stay on the device, and

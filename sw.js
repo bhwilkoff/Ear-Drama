@@ -17,9 +17,10 @@ const SHELL_VERSION = 'ed-shell-v71';
 const DATA_VERSION = 'ed-data-v1';
 // The sound pack's downloaded categories (js/sound-store.js, B32 §5.2): kept through every shell version.
 const SOUNDS_CACHE = 'ed-sounds-1';
-// The downloaded Kokoro voices (js/voices.js CACHE, Decision 078): the person's download, kept through every shell version.
-const KOKORO_CACHE = 'ed-kokoro-v1';
-const KEEP = [SHELL_VERSION, DATA_VERSION, SOUNDS_CACHE, KOKORO_CACHE];
+// The downloaded Kokoro voices (js/voices.js CACHE, Decision 078): the person's download, kept through every shell
+// version. Every model's cache is kept; js/voices.js deletes a replaced one once the new one is checked.
+const KOKORO_PREFIX = 'ed-kokoro-';
+const KEEP = [SHELL_VERSION, DATA_VERSION, SOUNDS_CACHE];
 
 const SHELL = [
   './',
@@ -110,7 +111,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('ed-') && !KEEP.includes(k)).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('ed-') && !KEEP.includes(k) && !k.startsWith(KOKORO_PREFIX)).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
