@@ -11,6 +11,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 
 /**
@@ -85,7 +86,23 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
 
     /** The script a production was cast from, as stored with it, read once off the main thread. */
     suspend fun castScript(productionId: String): PlayScript? = cast[productionId]
-        ?: withContext(Dispatchers.IO) { store.production(productionId)?.let(store::script) }?.also { cast[productionId] = it }
+        ?: withContext(Dispatchers.IO) { store.production(productionId)?.let(::scopedScript) }?.also { cast[productionId] = it }
+
+    private val _drifted = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Productions whose range a revision moved, dropped to the whole play: the cast sheet says so once (PLAYS-DESIGN §2.12 rule 4). */
+    val drifted: StateFlow<Set<String>> = _drifted
+
+    fun acknowledgeDrift(productionId: String) { _drifted.update { it - productionId } }
+
+    /** The script of [production]: cut to its range; a range that no longer resolves is dropped and saved first. */
+    private fun scopedScript(production: Production): PlayScript? {
+        val whole = store.wholeScript(production) ?: return null
+        if (!production.rangeDrifted(whole)) return production.scoped(whole)
+        store.save(production.dropRange(whole))
+        _drifted.update { it + production.id }
+        return whole
+    }
 
     fun cachedCastScript(productionId: String): PlayScript? = cast[productionId]
 
@@ -108,8 +125,8 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
         }
     }
 
-    suspend fun create(script: PlayScript): Production = withContext(Dispatchers.IO) {
-        store.create(script).also { cast[it.id] = script }
+    suspend fun create(script: PlayScript, range: ProductionRange? = null, heading: String? = null): Production = withContext(Dispatchers.IO) {
+        store.create(script, range, heading).also { cast[it.id] = it.scoped(script.wholeScript) }
     }
 
     suspend fun delete(productionId: String) = withContext(Dispatchers.IO) {

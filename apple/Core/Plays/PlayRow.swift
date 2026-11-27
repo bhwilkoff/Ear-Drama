@@ -60,14 +60,17 @@ nonisolated struct PlayRow: Codable, Hashable, Sendable, Identifiable, PlayListi
         let voices: Int
         var minutes: Int = 0
         var parts: [String] = []
+        /// The scene's last line (contract §4.1), absent in a library built before it: such a scene opens the reader.
+        var to: String? = nil
 
-        init(line: String, heading: String? = nil, voices: Int, minutes: Int = 0, parts: [String] = []) {
-            (self.line, self.heading, self.voices, self.minutes, self.parts) = (line, heading, voices, minutes, parts)
+        init(line: String, to: String? = nil, heading: String? = nil, voices: Int, minutes: Int = 0, parts: [String] = []) {
+            (self.line, self.to, self.heading, self.voices, self.minutes, self.parts) = (line, to, heading, voices, minutes, parts)
         }
 
         init(from decoder: any Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             line = try c.decode(String.self, forKey: .line)
+            to = (try? c.decodeIfPresent(String.self, forKey: .to)) ?? nil
             heading = try? c.decodeIfPresent(String.self, forKey: .heading)
             voices = try c.decode(Int.self, forKey: .voices)
             minutes = (try? c.decodeIfPresent(Int.self, forKey: .minutes)) ?? 0

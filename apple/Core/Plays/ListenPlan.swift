@@ -22,7 +22,7 @@ extension Relay {
     /// take is skipped, unless `reads` says its part has been given a voice (§2.8 rule 7).
     nonisolated static func listenPlan(_ production: Production, _ script: PlayScript,
                                        reads: ((PartID) -> Bool)? = nil) -> [ListenEntry] {
-        script.lines.compactMap { line in
+        script.scoped(for: production).lines.compactMap { line in
             if let take = production.usableTake(for: line.id) {
                 return .take(lineID: line.id, part: line.part, take: take)
             }

@@ -81,14 +81,49 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
     var roomOutbox: [String]?
     /// The sound board's cues placed against lines (B32 §5.1); absent from the record until a sound is placed.
     var sound: SoundBlock?
+    /// The scene this production records (PLAYS-DESIGN §2.12), absent for the whole play. Never in the fingerprint.
+    private(set) var range: ProductionRange?
+    /// The record's format: 2 since a range may stand in it; a record without one is format 1, read as it is.
+    private(set) var format: Int?
 
-    init(id: String = UUID().uuidString, script: PlayScript, created: Date = .now) {
+    static let currentFormat = 2
+
+    /// `range` and the scene's `heading` make a production of one scene: its parts the range's, its title "Adelphi, Scene II".
+    /// A range that does not resolve makes a whole-play production.
+    init(id: String = UUID().uuidString, script: PlayScript, range: ProductionRange? = nil, heading: String? = nil, created: Date = .now) {
+        let whole = script.whole
+        let cut = whole.scoped(to: range)
         self.id = id
-        scriptID = script.id
-        scriptRevision = script.revision
-        title = script.title
+        scriptID = whole.id
+        scriptRevision = whole.revision
+        title = cut.scope == nil ? whole.title : ProductionRange.title(whole.title, heading: heading)
         self.created = created
-        for part in script.castParts { parts[part.id] = PartState() }
+        self.range = cut.scope
+        format = Self.currentFormat
+        for part in cut.castParts { parts[part.id] = PartState() }
+    }
+
+    /// A record a newer app wrote: kept on disk, never listed or rewritten here.
+    var isTooNew: Bool { (format ?? 1) > Self.currentFormat }
+
+    /// Reads an older record as the current format: nothing but `format` changes, so no fingerprint moves.
+    var migrated: Production {
+        guard format == nil else { return self }
+        var p = self
+        p.format = Self.currentFormat
+        return p
+    }
+
+    /// The scene's range gone (rule 4): the whole play under the play's title, its takes kept, to be listened through again.
+    func droppingRange(whole script: PlayScript) -> Production {
+        var p = self
+        let whole = script.whole
+        p.range = nil
+        p.title = whole.title
+        for part in whole.castParts where p.parts[part.id] == nil { p.parts[part.id] = PartState() }
+        p.listenedThrough = false
+        p.mixedFrom = nil
+        return p
     }
 
     func state(of part: PartID) -> PartState { parts[part] ?? PartState() }

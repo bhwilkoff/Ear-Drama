@@ -45,5 +45,17 @@ object StudioOpen {
         return plays.create(script).id
     }
 
+    /** A scene card's door: this scene's production, made on the first tap; null when a second production needs an account or the scene cannot be cut. */
+    suspend fun recordScene(plays: PlaysLibrary, script: PlayScript, range: ProductionRange, heading: String?): String? {
+        val store = plays.store
+        if (script.rangeSpan(range) == null) return null
+        StudioCore.sceneProduction(store.all(), { store.share(it) != null }, script.id, range)?.let { return it }
+        if (Production.secondNeedsAccount(store.all(), plays.signedIn())) {
+            plays.accountAsk.value = SECOND_PRODUCTION
+            return null
+        }
+        return plays.create(script, range, heading).id
+    }
+
     const val SECOND_PRODUCTION = "A second production needs an account."
 }

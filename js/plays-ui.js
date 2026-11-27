@@ -291,7 +291,7 @@ const PlaysUI = (() => {
     try {
       const rec = await API.plays.get(remote.id);
       const script = await memberScript(rec);
-      const local = await S.localFor(store, rec.id, script);
+      const local = await S.localFor(store, rec.id, script, rec);
       h.navigate(`?production=${encodeURIComponent(local.id)}`);
     } catch (err) { console.error(err); status.textContent = S.line(err); }
   }
@@ -387,6 +387,26 @@ const PlaysUI = (() => {
       actions && actions.childNodes.length ? actions : h.el('span', { class: 'pl-part-hold' }));
   }
 
+  /**
+   * A scene card's door (PLAYS-DESIGN §2.12): this scene's production, the newest one here of the same play and
+   * range that is not shared, else a new one; then its cast sheet. Rejects with `account` set when making one would
+   * be a signed-out person's second (Decision 079).
+   */
+  async function recordScene(row, scene) {
+    await openStore();
+    const range = { from: scene.line, to: scene.to };
+    const have = store.productions.filter(p => p.scriptID === row.id && !store.share(p.id) && C.sameRange(p.range, range))
+      .sort((a, b) => b.created - a.created)[0];
+    if (have) return have.id;
+    const whole = await API.playScript(row.id);
+    if (!whole) throw new Error('script not found');
+    if (C.secondProductionNeedsAccount(store.productions, API.account.signedIn())) {
+      throw Object.assign(new Error('A second production needs an account.'), { account: true });
+    }
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    return (await store.create(whole, { range, heading: scene.heading })).id;
+  }
+
   /* ---- Start an ear drama (§2.1): a play's page and Surprise both offer it ---- */
 
   function startButton(script, helpers, { primary = false } = {}) {
@@ -420,9 +440,9 @@ const PlaysUI = (() => {
   }
 
   /** Read (WEB-DESIGN §4.16, Decision 076): the reader, for anyone, no account. `icon` is the tile's corner button. */
-  function readLink(id, { icon = false } = {}) {
+  function readLink(id, { icon = false, line = null } = {}) {
     const a = document.createElement('a');
-    a.href = `?read=${encodeURIComponent(id)}`;
+    a.href = `?read=${encodeURIComponent(id)}${line ? `&line=${encodeURIComponent(line)}` : ''}`;
     if (!icon) {
       a.className = 'btn btn-ghost ear-drama-only';
       a.textContent = 'Read';
@@ -512,6 +532,9 @@ const PlaysUI = (() => {
   }
 
   /* ---- The cast sheet (§2.2-2.5) ---- */
+
+  /** Rule 4 of PLAYS-DESIGN §2.12, said once on the cast sheet when a revision moved a scene's bound. */
+  const RANGE_DROPPED = 'The scene\u2019s lines changed. This production is the whole play now.';
 
   async function production(my, id) {
     await openStore();
@@ -631,6 +654,7 @@ const PlaysUI = (() => {
 
     body.replaceChildren(...[
       playBoard(script, p.title, 'Ear drama', [progressLine(p, script)]),
+      store.takeDropped(id) ? h.el('p', { class: 'caption refusal', role: 'status' }, RANGE_DROPPED) : null,
       listenThrough(p, script, rerender),
       recording ? null : h.el('label', { class: 'pl-as', for: 'pl-performer' }, h.el('span', { class: 'body' }, 'Recording as'), performer),
       h.el('ul', { class: 'pl-grid', 'aria-label': 'Parts' }, cards),
@@ -1758,7 +1782,7 @@ const PlaysUI = (() => {
       acts.append(h.el('button', { type: 'button', class: 'btn btn-way', onclick: async () => {
         try {
           await openStore();
-          const local = await S.localFor(store, inv.id, script);
+          const local = await S.localFor(store, inv.id, script, inv);
           S.holdInvite(null);
           h.navigate(`?production=${encodeURIComponent(local.id)}`, true);
         } catch (err) { console.error(err); line.textContent = S.line(err); }
@@ -1820,5 +1844,5 @@ const PlaysUI = (() => {
     return renderScript(body, my, r.p.get('play'));
   }
 
-  return { openStore, render, renderInvite, renderDrama, dramaAlongFor, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, making, classDoor, CLASS_READERS, openShared: openRemote, startButton, readLink, leave, fingerprint, BOARD };
+  return { openStore, render, renderInvite, renderDrama, dramaAlongFor, renderDramas, newDramas, openParts, recordScene, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, making, classDoor, CLASS_READERS, openShared: openRemote, startButton, readLink, leave, fingerprint, BOARD };
 })();

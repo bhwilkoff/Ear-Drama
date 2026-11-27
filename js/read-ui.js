@@ -55,7 +55,10 @@ const ReadUI = (() => {
   async function start(script, mode = 'read', extra = {}, helpers = null) {
     if (helpers) h = helpers;
     if (!Array.isArray(script.lines)) script = await API.playScript(script.id);
-    const body = { script_id: script.id, script_revision: script.revision, cast: script.lines.map((l) => ({ id: l.id, part: C.linePart(l) })), mode, ...extra };
+    // A scene's room (PLAYS-DESIGN §2.12): the whole cast sheet, which the Worker hashes, and the range it keeps.
+    const whole = C.wholeOf(script);
+    const body = { script_id: whole.id, script_revision: whole.revision, cast: whole.lines.map((l) => ({ id: l.id, part: C.linePart(l) })), mode,
+      ...(script.range ? { range: { from: script.range.from, to: script.range.to } } : {}), ...extra };
     const snap = await session.open(body);
     h.navigate(`?read-room=${snap.code}`);
     return snap;
@@ -228,6 +231,8 @@ const ReadUI = (() => {
       const store = await PlaysUI.openStore().catch(() => null);
       script = await PlaysShare.scriptOf({ api: API, store, id: snap.script_id, revision: snap.script_revision,
         who: { room: snap.code, key: session.state().key, pid: snap.production_id || null }, fit: PlaysShare.fits.room(snap) });
+      // A room of one scene reads only the scene (PLAYS-DESIGN §2.12).
+      if (script && snap.range) script = C.scoped({ range: snap.range }, script);
     } catch (err) {
       if (my !== token) return;
       console.error(err);

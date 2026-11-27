@@ -790,6 +790,44 @@ range onto the printed word, the printed words, Kokoro's word starts and the ref
 speed steps; a finished drama's file-to-line mapping against the same fixtures (`reader.test.js`,
 `FinishedDramasTests`, `OpenPlaysViewTest`) and the Worker's file-number contract (`worker/test/archive.test.js`).
 
+### §2.12 Recording one scene (B31 §3.4, 2026-11-26; binding on every platform that records)
+
+The owner, 2026-11-26: *"I'd love to see themes and collections for plays and different ways of finding plays to read
+or record."* A scene for two voices is the newcomer's invitation, so a scene card leads to recording that scene, never
+the whole play. A production may carry **`range: {from, to}`**, two line ids of its script: `from` is the scene's
+first line (the catalog's `scenes[].line`), `to` the last line before the next section (`scenes[].to`, CATALOG-CONTRACT
+§4.1). The production records, listens to and exports those lines and the ones between, and nothing else.
+
+1. **The cast sheet is the range's.** A range production lists only the parts with a line inside the range (Sound
+   when a cue row is there, Stage directions when a direction is); its voice count and minutes are the range's.
+2. **Done is the range's.** A part is done when each of its lines in the range has a chosen take, and the play is
+   complete when every speaking line in the range has one: never the whole play.
+3. **Listen Through, the mix and export hold only the range**, and so do Read together and Share (the Worker keeps
+   the range and the range's cast sheet, docs/WORKER.md). A sound cue placed on a line outside the range is out of
+   the mix, never missing (Decision 091). A range production's title is the play's with the scene's heading as
+   printed: **"Adelphi, Scene II"**.
+4. **A revision that moves either bound drops the range and says so**: "The scene's lines changed. This production
+   is the whole play now." Its takes stay; it is listened through again.
+
+- **The door.** A scene card (B31 §3.4) opens this scene's production, making it on the first tap: the newest of
+  this device's productions of the play with the same range and not shared, else a new one (a signed-out person's
+  second production asks for an account, §2.3). A scene with no `to` (a library built before it) opens the reader at
+  its line, as before. Read (the book icon on the card's corner) opens the reader at the scene's first line. Not on a
+  TV.
+- **The record.** `format: 2` on every production written from now on; a record with no `format` is format 1 and is
+  read as it is (migrating adds `format` and nothing else, so no fingerprint moves); a record with a higher
+  `format` is a newer app's: kept, never listed or rewritten. `range` is absent on a whole-play production, and an old
+  production is unchanged. `fingerprint` never includes the range.
+- **One seam.** `scoped(p, script)` is the script cut to the range (its lines, its sections there, and each role
+  speaking there with its lines and words there); `castParts(script, range)`, `missingLines`, Done, Listen Through,
+  the run plan and the timeline read it, and `rangeDrifted` / `dropRange` are rule 4. JS `PlaysCore`, Swift
+  `PlayScript.scoped(to:)` and `Production.range`, Kotlin `PlayScript.scoped` and `Production.range`.
+- **Shared proof**: `catalog/tests/golden/production_range.json` (a ten-line script, range L0003..L0006: the cast,
+  Done before and after the last take, the Listen Through and export line ids, a cue outside the range, the drift
+  cases, an old record and a newer one), run by `js/plays.test.js`, `apple/Tests/ProductionRangeTests.swift` and
+  `android` `ProductionRangeTest`, each with mutants that must fail it.
+- **Export my data** carries `range` on a production's row (docs/EXPORT.md).
+
 ### The platform idioms
 
 Same verbs, native idioms (`cross-platform-parity-discipline`).

@@ -251,11 +251,21 @@ const PlaysShare = (() => {
     return api.publish(pid);
   }
 
-  /** What makes a production on the Worker (`POST /productions`, `POST /classes/:id/productions`): an own script's carries its title and source. */
-  const makeBody = (script) => ({
-    script_id: script.id, script_revision: script.revision, cast: castSheet(script),
-    ...(isOwnId(script.id) ? { own: true, title: script.title, ...(script.episode ? { episode_id: script.episode } : {}) } : {}),
-  });
+  /**
+   * What makes a production on the Worker (`POST /productions`, `POST /classes/:id/productions`): an own script's carries
+   * its title and source. A scene's (`local.range`, PLAYS-DESIGN §2.12) sends the whole script's cast sheet, which the
+   * Worker hashes, with the range and the scene's heading; the Worker keeps the range's cast sheet.
+   */
+  function makeBody(script, local = null) {
+    const whole = C.wholeOf(script);
+    const range = (local && local.range) || script.range || null;
+    const heading = range && local && local.title.startsWith(`${whole.title}, `) ? local.title.slice(whole.title.length + 2) : null;
+    return {
+      script_id: whole.id, script_revision: whole.revision, cast: castSheet(whole),
+      ...(range ? { range: { from: range.from, to: range.to }, ...(heading ? { heading } : {}) } : {}),
+      ...(isOwnId(whole.id) ? { own: true, title: whole.title, ...(whole.episode ? { episode_id: whole.episode } : {}) } : {}),
+    };
+  }
 
   /**
    * "Share this production": the Worker makes the record; the caller directs it. An own script's lines
@@ -264,7 +274,7 @@ const PlaysShare = (() => {
    */
   async function share({ api, store, local, script, displayName, scripts = ownScripts() }) {
     const name = (displayName || '').trim();
-    const rec = await api.create({ ...makeBody(script), ...(name ? { display_name: name } : {}) });
+    const rec = await api.create({ ...makeBody(script, local), ...(name ? { display_name: name } : {}) });
     await store.setShare(local.id, { pid: rec.id });
     if (!isOwnId(script.id)) return rec;
     const unsent = await sendOrUndo({ api, pid: rec.id, script, scripts });
@@ -419,11 +429,14 @@ const PlaysShare = (() => {
   const forgetFetched = () => fetched.clear();
 
   /** The production in this browser for a shared one, made from the bundle's script on first open. */
-  async function localFor(store, pid, script) {
+  async function localFor(store, pid, script, rec = null) {
     let local = store.findShared(pid);
     if (!local) {
       if (!script) throw Object.assign(new Error('revision_mismatch'), { code: 'revision_mismatch' });
-      local = await store.create(script);
+      // A scene's production (PLAYS-DESIGN §2.12) is made here as the Worker keeps it: its range and its title.
+      const range = rec && rec.range ? { from: rec.range.from, to: rec.range.to } : null;
+      local = await store.create(C.wholeOf(script), range ? { range } : {});
+      if (range && rec.title && local.title !== rec.title) { local = { ...local, title: rec.title }; await store.save(local); }
       await store.setShare(local.id, { pid });
     }
     return local;
@@ -437,7 +450,7 @@ const PlaysShare = (() => {
   async function join({ api, store, token, part, displayName, script }) {
     const name = (displayName || '').trim();
     const rec = await api.joinByInvite(token, part, name || undefined);
-    return { rec, local: await localFor(store, rec.id, script) };
+    return { rec, local: await localFor(store, rec.id, script, rec) };
   }
 
   /**

@@ -79,18 +79,21 @@ data class MixTimeline(
         const val DEFAULT_GAP = 0.4
 
         fun build(
-            script: PlayScript,
+            whole: PlayScript,
             production: Production,
             sampleRate: Double = TakeAudio.SAMPLE_RATE.toDouble(),
             gap: Double = DEFAULT_GAP,
             resolveSound: ((SoundSource, SoundCue) -> SoundInfo?)? = null,
             withoutMissing: Boolean = false,
         ): MixTimeline {
+            val script = production.scoped(whole)
             val missing = Relay.missingSpeech(production, script)
             if (missing.isNotEmpty()) throw Incomplete(missing)
             val flagged = Relay.needsRetake(production, script)
             if (flagged.isNotEmpty()) throw Bleed(flagged)
-            val sound = MixSound.readSound(production.sound)
+            val read = MixSound.readSound(production.sound)
+            val here = if (script.scopedTo != null) script.lines.map { it.id }.toSet() else null
+            val sound = if (read == null || here == null) read else read.slots.filter { it.line in here }.takeIf { it.isNotEmpty() }?.let { MixSound.Read(read.lanes, it) }
             val d = MixSound.Defaults
 
             val entries = ArrayList<Entry>()

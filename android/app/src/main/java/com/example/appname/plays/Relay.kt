@@ -29,28 +29,28 @@ object Relay {
             }
     }
 
-    fun order(script: PlayScript): List<PartID> = script.castParts.map { it.id }
+    fun order(script: PlayScript, production: Production? = null): List<PartID> = (production?.scoped(script) ?: script).castParts.map { it.id }
 
     /** The part being recorded now, if any. */
     fun current(production: Production, script: PlayScript): PartID? =
-        order(script).firstOrNull { production.state(it).status == PartState.Status.Recording }
+        order(script, production).firstOrNull { production.state(it).status == PartState.Status.Recording }
 
     /** The part the relay suggests: the first open part in cast order, or null while a part records or when all are through. */
     fun next(production: Production, script: PlayScript): PartID? {
         if (current(production, script) != null) return null
-        return order(script).firstOrNull { production.state(it).status == PartState.Status.Open }
+        return order(script, production).firstOrNull { production.state(it).status == PartState.Status.Open }
     }
 
     fun take(part: PartID, performer: String?, production: Production, script: PlayScript): Production {
         current(production, script)?.let { throw Refusal.AnotherPartIsRecording(it) }
-        if (production.state(part).status != PartState.Status.Open) throw Refusal.NotOpen(part)
+        if (part !in order(script, production) || production.state(part).status != PartState.Status.Open) throw Refusal.NotOpen(part)
         val name = performer?.trim()?.takeIf { it.isNotEmpty() }
         return production.withPart(part, PartState(PartState.Status.Recording, name))
     }
 
     /** Lines of the part with no chosen take, or whose chosen take the bleed check flagged. */
     fun missingLines(part: PartID, production: Production, script: PlayScript): List<String> =
-        script.lines(part).map { it.id }.filter { production.usableTake(it) == null }
+        production.scoped(script).lines(part).map { it.id }.filter { production.usableTake(it) == null }
 
     /**
      * "Done with this part" (§2.5). A speaking part is done only when every one
@@ -75,6 +75,7 @@ object Relay {
         if (part.isSpeaking) throw Refusal.SpeakingPartCannotBeSilent
         val status = production.state(part).status
         if (status != PartState.Status.Recording && status != PartState.Status.Open) throw Refusal.NotOpen(part)
+        if (status == PartState.Status.Open && part !in order(script, production)) throw Refusal.NotOpen(part)
         return production.withPart(part, production.state(part).copy(status = PartState.Status.Silent))
     }
 
@@ -103,7 +104,7 @@ object Relay {
      * device voice; silent sound and direction lines are left out, unless [reads] says their part has a
      * voice (Decision 076 S2: directions and sound are Not read until given one). Null keeps the old plan.
      */
-    fun listenPlan(production: Production, script: PlayScript, reads: ((PartID) -> Boolean)? = null): List<ListenEntry> = script.lines.mapNotNull { line ->
+    fun listenPlan(production: Production, script: PlayScript, reads: ((PartID) -> Boolean)? = null): List<ListenEntry> = production.scoped(script).lines.mapNotNull { line ->
         val usable = production.usableTake(line.id)
         when {
             usable != null -> ListenEntry.TakeEntry(line.id, line.part, usable)
@@ -115,11 +116,11 @@ object Relay {
 
     /** Speaking lines with no unflagged human take. */
     fun missingSpeech(production: Production, script: PlayScript): List<String> =
-        script.speechLineIDs.filter { production.usableTake(it) == null }
+        production.scoped(script).speechLineIDs.filter { production.usableTake(it) == null }
 
     /** Lines of any kind whose chosen take the bleed check flagged. */
     fun needsRetake(production: Production, script: PlayScript): List<String> =
-        script.lines.map { it.id }.filter { production.chosenTake(it)?.bleed == true }
+        production.scoped(script).lines.map { it.id }.filter { production.chosenTake(it)?.bleed == true }
 
     /** Every speaking line has an unflagged human take and no chosen take is flagged: only then can the play be mixed. */
     fun isComplete(production: Production, script: PlayScript): Boolean =
@@ -158,7 +159,8 @@ object Relay {
      * where another part speaks it, as [cueLines]) to the part's last line, nothing after it.
      * Unrecorded directions and sound are skipped, as in the listen plan.
      */
-    fun runPlan(production: Production, script: PlayScript, part: PartID, fromLineID: String): List<RunEntry> {
+    fun runPlan(production: Production, whole: PlayScript, part: PartID, fromLineID: String): List<RunEntry> {
+        val script = production.scoped(whole)
         val at = script.lines.indexOfFirst { it.id == fromLineID }
         if (at < 0) return emptyList()
         val cue = cueLines(fromLineID, script, runUp = false).firstOrNull()

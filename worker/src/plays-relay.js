@@ -143,3 +143,21 @@ export function incomplete(cast, rows, chosenLines, now) {
   const lines = cast.filter(([id, part]) => isSpeaking(part) && !chosenLines.has(id)).map(([id]) => id);
   return parts.length || lines.length ? { parts, lines: lines.slice(0, 50) } : null;
 }
+
+export const MAX_HEADING = 80;
+
+/**
+ * A scene range `{ from, to }` over the full cast sheet: `{ range, slice }`, or null when it
+ * is malformed, names a line outside the cast, or ends before it starts.
+ */
+export function cutRange(raw, cast) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (typeof raw.from !== "string" || typeof raw.to !== "string") return null;
+  const i = cast.findIndex(([id]) => id === raw.from);
+  const j = cast.findIndex(([id]) => id === raw.to);
+  if (i < 0 || j < 0 || i > j) return null;
+  return { range: { from: raw.from, to: raw.to }, slice: cast.slice(i, j + 1) };
+}
+
+/** A production row's range as `{ from, to }`, or null for a whole play. */
+export const rangeOf = (p) => (p.scene_range ? JSON.parse(p.scene_range) : null);

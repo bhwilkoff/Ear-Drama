@@ -29,10 +29,12 @@ const StudioCore = (() => {
   /**
    * Where the reader's Record records (§2.9 rule 1): this device's newest unshared production of the
    * play in which the part is recording; else the newest where it is open and no other part records
-   * (the part is taken); else a new production.
+   * (the part is taken); else a new production. Only a production of the same `range` (none: the whole play,
+   * PLAYS-DESIGN §2.12) is ever picked.
    */
-  function productionFor(productions, isShared, script, part) {
-    const own = productions.filter(p => p.scriptID === script.id && !isShared(p.id)).sort((a, b) => b.created - a.created);
+  function productionFor(productions, isShared, script, part, range = null) {
+    const own = productions.filter(p => p.scriptID === script.id && !isShared(p.id) && C.sameRange(p.range, range))
+      .sort((a, b) => b.created - a.created);
     const going = own.find(p => C.stateOf(p, part).status === 'recording');
     if (going) return { id: going.id, take: false };
     const open = own.find(p => C.stateOf(p, part).status === 'open' && !C.current(p, script));

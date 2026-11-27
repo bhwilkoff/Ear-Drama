@@ -297,6 +297,24 @@ test('joining makes the production here once, from the bundle\'s script at its r
   eq(S.line({ code }), 'This play has changed since it was cast.', 'and says so');
 });
 
+test('a scene\'s production shares as the Worker keeps it: the whole cast sheet, the range, the heading (PLAYS-DESIGN §2.12)', async () => {
+  const store = await freshStore();
+  const script = fixtureScript();
+  const range = { from: 'L0003', to: 'L0005' };
+  const p = await store.create(script, { range, heading: 'Scene II' });
+  const scoped = await store.script(p);
+  eq(scoped.lines.map(l => l.id), ['L0003', 'L0004', 'L0005'], 'the store reads the scene');
+  const body = S.makeBody(scoped, p);
+  eq(body.cast, S.castSheet(script), 'the whole cast sheet, which the Worker hashes');
+  eq([body.range, body.heading], [range, 'Scene II'], 'the range and the heading');
+  eq('range' in S.makeBody(script), false, 'control: a whole play sends no range');
+  const local = await S.localFor(store, 'pid-scene', script, { range, title: 'Good Grammar, Scene II' });
+  eq([local.range, local.title], [range, 'Good Grammar, Scene II'], 'a member\'s copy keeps the range and the title');
+  eq(Object.keys(local.parts).sort(), C.castParts(script, range).map(x => x.id).sort(), 'and only the scene\'s parts');
+  const plain = await S.localFor(store, 'pid-whole', script, { title: 'Good Grammar' });
+  eq('range' in plain, false, 'control: a whole production joins whole');
+});
+
 test('Library\'s Ear dramas: this browser\'s, then the shared ones not opened here', async () => {
   const { store, local } = await sharedLocal();
   const solo = await store.create(fixtureScript());

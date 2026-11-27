@@ -1106,12 +1106,33 @@
   function sceneTile({ row, scene }, { inPlay = false } = {}) {
     const parts = (scene.parts || []).map(p => titleCase(p));
     const names = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts.join('');
-    return el('li', { class: 'pl-scard-li' },
-      el('a', { class: 'pl-scard', href: `?read=${encodeURIComponent(row.id)}&line=${encodeURIComponent(scene.line)}`,
-                'aria-label': [row.title, scene.heading, `${scene.minutes} min`, names].filter(Boolean).join(', ') },
-        el('span', { class: 'pl-scard-kick caption' }, [scene.heading, `${num.format(scene.minutes)} min`].filter(Boolean).join(' · ')),
-        inPlay ? null : el('span', { class: 'pl-scard-title' }, row.title),
-        names ? el('span', { class: 'pl-scard-parts caption' }, names) : null));
+    const label = [row.title, scene.heading, `${scene.minutes} min`, names].filter(Boolean).join(', ');
+    const kids = [
+      el('span', { class: 'pl-scard-kick caption' }, [scene.heading, `${num.format(scene.minutes)} min`].filter(Boolean).join(' · ')),
+      inPlay ? null : el('span', { class: 'pl-scard-title' }, row.title),
+      names ? el('span', { class: 'pl-scard-parts caption' }, names) : null];
+    const readAt = `?read=${encodeURIComponent(row.id)}&line=${encodeURIComponent(scene.line)}`;
+    // A library built before `to` has no range to record: the card opens the reader at the scene, as it did.
+    if (!scene.to || document.documentElement.classList.contains('tv')) {
+      return el('li', { class: 'pl-scard-li' }, el('a', { class: 'pl-scard', href: readAt, 'aria-label': label }, ...kids));
+    }
+    // The card records this scene (PLAYS-DESIGN §2.12): its production's cast sheet; Read on the corner opens the reader there.
+    const card = el('button', { type: 'button', class: 'pl-scard pl-scard-rec', 'aria-label': `Record ${label}` },
+      ...kids);
+    kids[0].prepend(el('span', { class: 'pl-scard-mic' }, icon('mic')));
+    card.addEventListener('click', async () => {
+      card.disabled = true;
+      try {
+        const id = await PlaysUI.recordScene(row, scene);
+        navigate(`?production=${encodeURIComponent(id)}`);
+      } catch (err) {
+        card.disabled = false;
+        if (Studio.askAccount(err)) return;
+        console.error(err);
+        announce('This browser could not save a production.');
+      }
+    });
+    return el('li', { class: 'pl-scard-li' }, card, PlaysUI.readLink(row.id, { icon: true, line: scene.line }));
   }
   /** A role's printed name in capitals read as a name: "LADY BRACKNELL" is "Lady Bracknell". */
   const titleCase = (name) => (String(name || '') === String(name || '').toUpperCase()

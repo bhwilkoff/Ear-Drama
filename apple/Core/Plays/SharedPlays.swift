@@ -224,7 +224,7 @@ final class SharedPlays {
             records[pid] = rec
             let got = await plays.resolved(id: rec.scriptID, revision: rec.scriptRevision, who: .member(pid: pid), fit: OwnShare.Fit.record(rec))
             if PlayScript.isOwnID(rec.scriptID), let why = got.failure { throw why }
-            let local = try PlaysShare.localFor(store: plays.store, pid: pid, script: got.script)
+            let local = try PlaysShare.localFor(store: plays.store, pid: pid, script: got.script, rec: rec)
             try PlaysShare.follow(plays.store, localID: local.id, rec: rec, me: me())
             invitationRefusal = nil
             return local

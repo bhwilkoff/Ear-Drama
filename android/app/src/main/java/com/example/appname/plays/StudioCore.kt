@@ -64,6 +64,10 @@ object StudioCore {
     fun asksAccount(pick: Pick, productions: List<Production>, signedIn: Boolean): Boolean =
         pick == Pick.Make && Production.secondNeedsAccount(productions, signedIn)
 
+    /** The scene's door (PLAYS-DESIGN §2.12): this device's newest unshared production of the play with this very range, or null. */
+    fun sceneProduction(productions: List<Production>, isShared: (String) -> Boolean, scriptID: String, range: ProductionRange): String? =
+        productions.filter { it.scriptID == scriptID && it.range == range && !isShared(it.id) }.maxByOrNull { it.created }?.id
+
     /** The play's newest unshared production with no take, which Record this reuses while it lasts (§2.3 rule 3a). */
     fun reusable(productions: List<Production>, isShared: (String) -> Boolean, scriptID: String): String? =
         productions.filter { it.scriptID == scriptID && it.isEmpty && !isShared(it.id) }.maxByOrNull { it.created }?.id

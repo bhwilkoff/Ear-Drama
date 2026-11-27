@@ -192,7 +192,8 @@ object ReadClass {
         put("script_id", script.id)
         put("script_revision", script.revision)
         put("mode", mode)
-        put("cast", JsonArray(script.lines.map { l -> buildJsonObject { put("id", l.id); put("part", l.part.raw) } }))
+        put("cast", JsonArray(script.wholeScript.lines.map { l -> buildJsonObject { put("id", l.id); put("part", l.part.raw) } }))
+        script.scopedTo?.let { r -> put("range", buildJsonObject { put("from", r.from); put("to", r.to) }) }
         if (classId != null) { put("kind", "class"); put("class_id", classId) }
         if (productionId != null) put("production_id", productionId)
     }

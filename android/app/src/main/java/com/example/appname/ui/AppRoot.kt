@@ -234,6 +234,7 @@ fun AppRoot(
     CompositionLocalProvider(
         LocalPlayerMuted provides muted,
         LocalAppContainer provides container,
+        com.example.appname.ui.screens.LocalOpenProduction provides (if (container.isTelevision) null else openProduction),
         LocalOnline provides online,
         com.example.appname.ui.screens.LocalReadNav provides com.example.appname.ui.screens.ReadNav(
             openClass = { id -> stack.navigateTo(Route.ClassPage(id)) },

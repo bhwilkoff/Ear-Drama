@@ -120,7 +120,7 @@ private final class StubWorker: PlaysTransport {
     func choose(_ pid: String, takeID: String) async throws -> SharedRecord { rec }
 
     private var unused: PlaysRefusal { .code("unused_in_test") }
-    func create(scriptID: String, revision: String, cast: [PlaysShare.CastLine], displayName: String?) async throws -> SharedRecord { rec }
+    func create(scriptID: String, revision: String, cast: [PlaysShare.CastLine], range: ProductionRange?, heading: String?, displayName: String?) async throws -> SharedRecord { rec }
     func list() async throws -> [RemoteProduction] { [] }
     func invite(_ pid: String) async throws -> MadeInvite { throw unused }
     func viewInvite(_ token: String) async throws -> InviteView {

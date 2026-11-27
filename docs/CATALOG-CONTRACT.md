@@ -974,10 +974,10 @@ offline floor.
     `lead`: one part of three or more speaks at least half; else `mixed`), `subjects` (the topics of the record's
     "X -- Drama" headings that five or more plays share), `locc` (the record's LoCC class), `translated` (true
     when a subject says "Translations into English"), `attributed` (true when the author shown is the catalog's
-    "Dubious author": a client says "attributed to"), `scenes` (at most six, text order: `{line, heading, voices,
-    minutes, parts}`, a printed section with 2 to 4 speaking parts and 1 to 12 minutes; `heading` cut at its first
+    "Dubious author": a client says "attributed to"), `scenes` (at most six, text order: `{line, to, heading, voices,
+    minutes, parts}`, `to` the last line before the next section, since 2026-11-26, a printed section with 2 to 4 speaking parts and 1 to 12 minutes; `heading` cut at its first
     punctuation and cased like a title when printed in capitals; `parts` largest first, each named as the play's print names the part (a direction's "Enter DEMEA" for the label "DEM"; the label when the print is not unique); it opens the reader at
-    `line` and records only to the next section).
+    `line`, and a production of the scene carries `range: {from: line, to}`, PLAYS-DESIGN §2.12).
   - `picture.kind` is `work`, `production`, `book` (C2, a plate from the book; not yet built), `titlePage` or
     `author`. **A tile, row, rail or TV window leads only with `work`, `production` or `book`**
     (`play_art.WINDOW_KINDS`); a title page or an author's portrait leads only on the play's own page header

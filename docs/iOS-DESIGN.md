@@ -680,8 +680,9 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   anything is chosen. With nothing chosen, **the ways in**: each a section whose heading is the rule that fills it, the
   count and **All** at its right (pushing `PlayRoute.collection` or `PlayRoute.scenes`), the editor's collections
   first (its credit under the heading; absent while the file is empty), **Scenes for two voices** (scene cards: the
-  heading as printed and minutes, the play, the parts' names, on the play's board; a card opens the reader at its
-  line), then `ten-minutes`, `two-voices`, `star-part`, `one-act` under the catalog's titles; a play appears once on
+  heading as printed and minutes, the play, the parts' names, on the play's board; a card opens **that scene's
+  production**, made on the first tap, as Record This opens a play's, and a Read button on its corner opens the reader at
+  its line; *Replaced* 2026-11-26: "a card opens the reader at its line"; the four rules of a scene's production (PLAYS-DESIGN §2.12, binding here): (1) its cast sheet lists only the parts with a line in the range, and its voices and minutes are the range's; (2) Done means every line of those parts in the range has a chosen take, never the whole play; (3) Listen Through, export, Read together and Share hold only the range, a cue outside it is out of the mix, and its title is the play's with the heading ("Adelphi, Scene II"); (4) a revision that moves either bound drops the range and says so ("The scene's lines changed. This production is the whole play now."). A production without a range is unchanged.), then `ten-minutes`, `two-voices`, `star-part`, `one-act` under the catalog's titles; a play appears once on
   the screen. Then **the grid** under the sort's name with its count. Each play a tile in the show tile's grammar on
   the form's board (else neutral): the window holds a picture of the play, else its label (§6.r); the cast fingerprint
   in the strip slot; "N voices · About M min"; Read on the window's corner. The four states: loading is the spinner

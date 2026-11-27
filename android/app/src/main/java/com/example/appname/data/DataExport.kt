@@ -41,7 +41,7 @@ data class DataExport(
     data class Follow(val series: String, val name: String?)
     data class Queued(val episode: String, val title: String?, val seriesName: String?, val airDate: String?)
     data class Take(val id: String, val line: String, val part: String, val createdMs: Long, val seconds: Double, val chosen: Boolean)
-    data class Production(val id: String, val title: String, val createdMs: Long, val takes: List<Take>, val sound: JsonElement? = null)
+    data class Production(val id: String, val title: String, val createdMs: Long, val takes: List<Take>, val sound: JsonElement? = null, val range: Pair<String, String>? = null)
 
     fun json(): String {
         fun obj(vararg pairs: Pair<String, JsonElement>) = JsonObject(mapOf(*pairs))
@@ -75,6 +75,7 @@ data class DataExport(
                         )
                     }))
                     p.sound?.let { put("sound", it) }
+                    p.range?.let { (from, to) -> put("range", obj("from" to text(from), "to" to text(to))) }
                 })
             }))
             put("scripts", JsonArray(scripts))

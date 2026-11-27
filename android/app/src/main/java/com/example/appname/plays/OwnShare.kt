@@ -69,10 +69,14 @@ object OwnShare {
     fun canonical(script: PlayScript): String = OwnScript.canonicalLines(linesOf(script))
 
     /** What makes a production on the Worker: an own script's carries its title and, for a transcript, its episode. */
-    fun makeBody(script: PlayScript): JsonObject = buildJsonObject {
+    fun makeBody(script: PlayScript, range: ProductionRange? = null, heading: String? = null): JsonObject = buildJsonObject {
         put("script_id", script.id)
         put("script_revision", script.revision)
-        put("cast", JsonArray(PlaysShare.castSheet(script).map { (id, part) -> buildJsonObject { put("id", id); put("part", part) } }))
+        put("cast", JsonArray(PlaysShare.castSheet(script.wholeScript).map { (id, part) -> buildJsonObject { put("id", id); put("part", part) } }))
+        if (range != null) {
+            put("range", buildJsonObject { put("from", range.from); put("to", range.to) })
+            if (!heading.isNullOrBlank()) put("heading", heading)
+        }
         if (isOwn(script.id)) {
             put("own", true)
             put("title", script.title)

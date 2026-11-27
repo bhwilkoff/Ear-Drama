@@ -40,6 +40,8 @@ assert.ok(!('sound' in data.takes[0]), 'a production with no sound has no sound 
 const sound = { v: 1, lanes: { effects: { duckDb: -6 } }, slots: [{ id: 'S1', line: 'l1', piece: null, added: true, silent: false,
   sounds: [{ id: 'C1', src: { pack: 'eardrama-sounds-1', cue: 'thunder-close' }, at: 'after', startMs: 0, gainDb: 0, fadeInMs: 0, fadeOutMs: 0, loop: false, duckDb: null }] }] };
 assert.deepStrictEqual(DataExport.build(Store, [{ ...productions[0], sound }]).takes[0].sound, sound, 'the sound cues travel with their production (B32 §5.1)');
+assert.ok(!('range' in data.takes[0]), 'a whole-play production has no range key');
+assert.deepStrictEqual(DataExport.build(Store, [{ ...productions[0], range: { from: 'l1', to: 'l2' } }]).takes[0].range, { from: 'l1', to: 'l2' }, 'a scene\'s production carries its range (PLAYS-DESIGN §2.12)');
 
 const scripts = [{ id: 'own-1', title: 'Mine', source: 'Added by you', created: '2026-11-24T12:00:00.000Z', done: true, lines: [] }];
 assert.deepStrictEqual(DataExport.build(Store, [], 0, [], scripts).scripts, scripts, 'the scripts the person added travel as given (OwnScripts.exportRows)');

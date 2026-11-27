@@ -3,6 +3,7 @@ package com.example.appname.plays
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.serialDescriptor
 import kotlinx.serialization.encoding.Decoder
@@ -132,7 +133,47 @@ data class PlayScript(
     val created: Long? = null,
     val episode: String? = null,
     val edits: Map<String, List<ScriptEdit>> = emptyMap(),
+    /** Set on a script cut to a production's range (PLAYS-DESIGN §2.12): the range, and the whole script it was cut from. Never stored. */
+    @Transient val scopedTo: ProductionRange? = null,
+    @Transient val whole: PlayScript? = null,
 ) : PlayListing {
+    /** The whole script behind a scoped one. */
+    val wholeScript: PlayScript get() = whole ?: this
+
+    /** The indexes a range spans in this script, or null when either bound is gone or they are out of order. */
+    fun rangeSpan(range: ProductionRange?): IntRange? {
+        if (range == null) return null
+        val a = lines.indexOfFirst { it.id == range.from }
+        val z = lines.indexOfFirst { it.id == range.to }
+        return if (a >= 0 && z >= a) a..z else null
+    }
+
+    /**
+     * This script cut to [range]: its lines, its sections there, and each role speaking there with its lines and words
+     * there, so voices and minutes are the range's. Idempotent: a script already cut, a null range, or a range that no
+     * longer resolves answers this script.
+     */
+    fun scoped(range: ProductionRange?): PlayScript {
+        if (scopedTo != null) return this
+        val span = rangeSpan(range) ?: return this
+        val cut = lines.slice(span)
+        val ids = cut.map { it.id }.toSet()
+        val said = LinkedHashMap<String, IntArray>()
+        for (l in cut) {
+            val who = l.role
+            if (l.kind != ScriptLine.Kind.Speech || who == null) continue
+            val at = said.getOrPut(who) { IntArray(2) }
+            at[0] += 1
+            at[1] += l.parts.orEmpty().filterIsInstance<LinePart.Say>().sumOf { it.text.split(Regex("\\s+")).count(String::isNotEmpty) }
+        }
+        val kept = roles.filter { it.name in said }.map { it.copy(lines = said.getValue(it.name)[0], words = said.getValue(it.name)[1]) }
+        return copy(lines = cut, roles = kept, sections = sections.filter { it.line in ids }, scopedTo = range, whole = this)
+    }
+
+    /** The cast sheet for [range]: only the parts with a line there. */
+    fun castParts(range: ProductionRange?): List<CastPart> = scoped(range).castParts
+
+
     /** Added by a person or cast by ear: never published, shared or read together from here. */
     val isOwn: Boolean get() = kind == "own"
 

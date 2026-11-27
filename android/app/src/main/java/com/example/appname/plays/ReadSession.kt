@@ -45,6 +45,7 @@ data class ReadSnapshot(
     @SerialName("script_revision") val scriptRevision: String? = null,
     @SerialName("production_id") val productionId: String? = null,
     @SerialName("class_id") val classId: String? = null,
+    val range: ProductionRange? = null,
     val cursor: String,
     @SerialName("cursor_gen") val cursorGen: Int = 0,
     val generation: Int = 0,

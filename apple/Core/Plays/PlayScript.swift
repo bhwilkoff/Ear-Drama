@@ -164,12 +164,15 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
     var year: Int? = nil
     let source: Source
     let rights: Rights
-    let roles: [Role]
-    let lines: [ScriptLine]
+    private(set) var roles: [Role]
+    private(set) var lines: [ScriptLine]
     /// The key the A to Z order sorts on (`sort_name`), when the record has one.
     var sortName: String? = nil
     /// The printed act and scene headings the parser set aside (contract §4.1), for the reader's contents.
-    var sections: [ScriptSection]? = nil
+    private(set) var sections: [ScriptSection]? = nil
+    /// The range this script is cut to (PLAYS-DESIGN §2.12), nil for the whole play; never stored or sent.
+    private(set) var scope: ProductionRange? = nil
+    private(set) var wholeBox: WholeScript? = nil
     /// An own script cast by ear: the episode it came from (PLAYS-DESIGN §13 item 10).
     var episode: String? = nil
     /// An own script: what a line with a take said before its words changed, oldest first (§13 item 4).
@@ -285,6 +288,76 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
         for r in roles { if let g = r.register, g == "high" || g == "low" { out[.role(r.name)] = g } }
         return out
     }
+}
+
+/// The script a scoped one was cut from (a box, so a script can hold its own whole).
+nonisolated final class WholeScript: Sendable {
+    let script: PlayScript
+    init(_ script: PlayScript) { self.script = script }
+}
+
+/// A scene's production range (B31 §3.4, PLAYS-DESIGN §2.12): two line ids of its script, the scene's first line and its
+/// last. Both are in the production record, the Worker's record and the export, and never in the fingerprint.
+nonisolated struct ProductionRange: Codable, Hashable, Sendable {
+    let from: String
+    let to: String
+
+    /// The scene's heading as a range production's title prints it: "Adelphi, Scene II" gives "Scene II".
+    static func heading(ofTitle title: String, play: String) -> String? {
+        title.hasPrefix(play + ", ") ? String(title.dropFirst(play.count + 2)) : nil
+    }
+
+    static func title(_ play: String, heading: String?) -> String {
+        guard let heading, !heading.isEmpty else { return play }
+        return "\(play), \(heading)"
+    }
+}
+
+/// A scene's range (PLAYS-DESIGN §2.12): every seam that pairs a production with its script reads `scoped(for:)`.
+nonisolated extension PlayScript {
+    /// The indexes the range spans, or nil when either bound is gone or they are out of order.
+    func span(of range: ProductionRange) -> ClosedRange<Int>? {
+        guard let a = lines.firstIndex(where: { $0.id == range.from }),
+              let z = lines.firstIndex(where: { $0.id == range.to }), z >= a else { return nil }
+        return a...z
+    }
+
+    /// The script cut to `range`: its lines, its sections there, and each role speaking there with its lines and words
+    /// there, so voices and minutes are the range's. A script already cut, or a range that does not resolve, is returned as is.
+    func scoped(to range: ProductionRange?) -> PlayScript {
+        guard let range, scope == nil, let span = span(of: range) else { return self }
+        let cut = Array(lines[span])
+        let ids = Set(cut.map(\.id))
+        var said: [String: (lines: Int, words: Int)] = [:]
+        for line in cut where line.kind == .speech {
+            guard let role = line.role else { continue }
+            let words = (line.parts ?? []).filter(\.isSaid).reduce(0) { $0 + $1.text.split(whereSeparator: \.isWhitespace).count }
+            said[role, default: (0, 0)].lines += 1
+            said[role, default: (0, 0)].words += words
+        }
+        var out = self
+        out.lines = cut
+        out.roles = roles.compactMap { r in said[r.name].map { Role(name: r.name, lines: $0.lines, words: $0.words, register: r.register) } }
+        out.sections = sections?.filter { ids.contains($0.line) }
+        out.scope = range
+        out.wholeBox = WholeScript(self)
+        return out
+    }
+
+    /// The script a production records: cut to its range, else whole.
+    func scoped(for production: Production) -> PlayScript { scoped(to: production.range) }
+
+    /// The whole script behind a scoped one.
+    var whole: PlayScript { wholeBox?.script ?? self }
+
+    /// True when the production's range no longer resolves in this script (rule 4).
+    func rangeDrifted(_ production: Production) -> Bool {
+        guard let range = production.range, scope == nil else { return false }
+        return span(of: range) == nil
+    }
+
+    /// The parts a range's cast sheet lists; the whole play's when `range` is nil or does not resolve.
+    func castParts(for range: ProductionRange?) -> [CastPart] { scoped(to: range).castParts }
 }
 
 /// A play stands on the drama board and its parts take the part marks

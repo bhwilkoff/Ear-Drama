@@ -65,7 +65,11 @@ data class PlayRow(
         val voices: Int,
         val minutes: Int = 0,
         val parts: List<String> = emptyList(),
-    )
+        /** The last line before the next section (contract 4.1); absent in a library built before it, which keeps the old door. */
+        val to: String? = null,
+    ) {
+        val range: ProductionRange? get() = to?.takeIf { it.isNotEmpty() && line.isNotEmpty() }?.let { ProductionRange(line, it) }
+    }
 
     /** The first author's display name, or "". */
     val firstAuthor: String get() = authors.firstOrNull { it.isNotBlank() }.orEmpty()

@@ -23,6 +23,7 @@ extension Relay {
     /// plan. An unknown line plans nothing.
     nonisolated static func runPlan(_ production: Production, _ script: PlayScript, part: PartID,
                                     from lineID: String) -> [RunStep] {
+        let script = script.scoped(for: production)
         guard let at = script.lines.firstIndex(where: { $0.id == lineID }) else { return [] }
         let start = cueLines(before: lineID, in: script, runUp: false).first
             .flatMap { cue in script.lines.firstIndex { $0.id == cue.id } } ?? at

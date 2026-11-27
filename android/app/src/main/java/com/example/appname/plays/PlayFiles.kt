@@ -227,28 +227,33 @@ class ProductionStore(val root: File) : ShareStore {
         val read = (root.listFiles() ?: emptyArray()).sortedBy { it.name }.mapNotNull { dir ->
             val record = File(dir, "production.json")
             if (!record.isFile) null else runCatching { json.decodeFromString(Production.serializer(), record.readText()) }.getOrNull()
-        }
+        }.filter { !it.tooNew }.map { it.migrated() }
         val gone = Production.abandoned(read) { it in madeHere || holds.containsKey(it) || pendingTakes.containsKey(it) || share(it) != null }.toSet()
         gone.forEach { folder(it).deleteRecursively() }
         _productions.value = read.filter { it.id !in gone }.sortedByDescending { it.created }
     }
 
-    override fun create(script: PlayScript): Production {
-        val production = Production.create(script)
+    override fun create(script: PlayScript): Production = create(script, null, null)
+
+    override fun create(script: PlayScript, range: ProductionRange?, heading: String?): Production {
+        val production = Production.create(script, range = range, heading = heading)
         madeHere += production.id
         takesFolder(production.id).mkdirs()
         roomToneFolder(production.id).mkdirs()
-        writeAtomically(File(folder(production.id), "script.json"), json.encodeToString(PlayScript.serializer(), script))
+        writeAtomically(File(folder(production.id), "script.json"), json.encodeToString(PlayScript.serializer(), script.wholeScript))
         save(production)
         return production
     }
 
-    /** The script as cast, read back from the production's own folder, so a later catalog revision never changes a play halfway through. */
-    fun script(production: Production): PlayScript? {
+    /** The whole script as cast, read back from the production's own folder, so a later catalog revision never changes a play halfway through. */
+    fun wholeScript(production: Production): PlayScript? {
         val file = File(folder(production.id), "script.json")
         if (!file.isFile) return null
         return runCatching { json.decodeFromString(PlayScript.serializer(), file.readText()) }.getOrNull()
     }
+
+    /** The script this production records: the one as cast, cut to the production's range. */
+    fun script(production: Production): PlayScript? = wholeScript(production)?.let(production::scoped)
 
     /** The lines of [scriptID] with a take in any of its productions (PLAYS-DESIGN §13 item 4): chosen or not, they may not move. */
     fun takenLines(scriptID: String): Set<String> = productionsOf(scriptID).flatMap { p -> p.takes.map { it.lineID } }.toSet()
@@ -261,7 +266,7 @@ class ProductionStore(val root: File) : ShareStore {
      */
     fun adopt(script: PlayScript): List<String> = productionsOf(script.id).filter { share(it.id) == null }.map { found ->
         val p = production(found.id) ?: found
-        val was = script(p)?.lines?.map { it.id }.orEmpty()
+        val was = wholeScript(p)?.lines?.map { it.id }.orEmpty()
         val moved = was != script.lines.map { it.id }
         writeAtomically(File(folder(p.id), "script.json"), json.encodeToString(PlayScript.serializer(), script))
         save(
@@ -418,11 +423,12 @@ class ProductionStore(val root: File) : ShareStore {
 
     companion object {
         val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+        private val OPTIONAL = setOf("sound", "range", "format")
 
         /** `production.json` as written: a record with no sound block has no `sound` key, as before the block existed. */
         fun encodeRecord(production: Production): String {
             val element = json.encodeToJsonElement(Production.serializer(), production).jsonObject
-            return JsonObject(element.filterNot { it.key == "sound" && it.value is JsonNull }).toString()
+            return JsonObject(element.filterNot { it.key in OPTIONAL && it.value is JsonNull }).toString()
         }
     }
 }

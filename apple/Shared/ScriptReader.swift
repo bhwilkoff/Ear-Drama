@@ -1834,6 +1834,7 @@ struct ReadButton: View {
 struct ReadTileButton: View {
     let scriptID: String
     let title: String
+    var line: String? = nil
     @Environment(AppStore.self) private var app
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
@@ -1842,9 +1843,9 @@ struct ReadTileButton: View {
     var body: some View {
         Button {
             #if os(macOS)
-            openWindow(id: ReaderWindow_macOS.id, value: scriptID)
+            openWindow(id: ReaderWindow_macOS.id, value: ReaderWindow_macOS.value(scriptID, line: line))
             #else
-            app.reading = ReaderTarget(scriptID: scriptID)
+            app.reading = ReaderTarget(scriptID: scriptID, line: line)
             #endif
         } label: {
             Image(systemName: "book.fill")
