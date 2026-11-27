@@ -103,6 +103,18 @@ nonisolated struct DataExport: Sendable, Equatable {
         }
     }
 
+    /// One of the person's own sounds (docs/EXPORT.md `ownSounds[]`, B32 §3.4 item 4): the sound itself as a base64
+    /// 16-bit 48 kHz mono WAV, so the export is a whole copy of the person's own work.
+    struct OwnSoundRow: Sendable, Equatable {
+        var id: String
+        var name: String
+        var created: Date
+        var from: String
+        var seconds: Double
+        var bytes: Int
+        var wav: String
+    }
+
     var exportedAt: Date
     var history: [History]
     var following: [Follow]
@@ -111,6 +123,7 @@ nonisolated struct DataExport: Sendable, Equatable {
     var marks: [MarkRow] = []
     var ink: [InkRow] = []
     var scripts: [Script] = []
+    var ownSounds: [OwnSoundRow] = []
 
     static let historyColumns = ["episode", "title", "seriesName", "airDate", "listenedAt", "positionSeconds", "durationSeconds"]
 
@@ -163,6 +176,10 @@ nonisolated struct DataExport: Sendable, Equatable {
                               ("lines", s.lines.map(\.object))])
                 if let episode = s.episode { o["episode"] = episode }
                 return o
+            },
+            "ownSounds": ownSounds.map { o in
+                drop([("id", o.id), ("name", o.name), ("created", Self.iso(o.created)), ("from", o.from), ("seconds", o.seconds),
+                      ("bytes", o.bytes), ("wav", o.wav)])
             },
         ]
         return try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])

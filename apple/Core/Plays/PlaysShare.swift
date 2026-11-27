@@ -14,6 +14,14 @@ import Foundation
 /// comes before Publish, which waits for the Worker to reach archive.org. The Apple TV
 /// compiles only the parts that read a record (§11.7 rule 12).
 enum PlaysShare {
+    /// A cast sheet's parts for a shared production: the Worker's cast lists Sound only where the script prints a sound
+    /// line, so Sound shows only where the record holds it (B32: the board's Sound part stays on this device). A Sound row
+    /// with no board behind it never appears. Without a record, every part.
+    static func castParts(_ script: PlayScript, _ rec: SharedRecord?) -> [CastPart] {
+        guard let rec else { return script.castParts }
+        return script.castParts.filter { $0.id != .sound || rec.parts[PartID.sound.rawValue] != nil }
+    }
+
     /// The one line shown while the Worker cannot upload to archive.org (P6).
     static let publishWaits = "Publishing opens when the Ear Drama archive account is connected."
 

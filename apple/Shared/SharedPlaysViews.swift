@@ -64,7 +64,7 @@ struct SharedProductionSection: View {
             .task { consent = await shared.consent() }
             .sheet(isPresented: $asking) {
                 if let consent {
-                    ConsentSheet(consent: consent) {
+                    ConsentSheet(consent: consent, ownSounds: !SoundBoard.sources(production).own.isEmpty) {
                         Task { await shared.publish(production.id, store: plays.store, script: script, consent: consent) }
                     }
                 }
@@ -636,15 +636,26 @@ struct ConsentWords: View {
 /// The Worker's words exactly as served, then the agreement or Not Now.
 struct ConsentSheet: View {
     let consent: PlaysConsent
+    /// The production places the person's own sounds, which never leave the device (B32 §3.4 item 3): said first.
+    var ownSounds = false
     let onAgree: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                ConsentWords(text: consent.text)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
+                VStack(alignment: .leading, spacing: Spacing.s3) {
+                    if ownSounds {
+                        Label("Your own sounds stay on this device. The published play leaves them out.",
+                              systemImage: "exclamationmark.triangle")
+                            .font(TypeRamp.body)
+                            .foregroundStyle(Color.semanticWarning)
+                            .accessibilityIdentifier("publish-own-sounds")
+                    }
+                    ConsentWords(text: consent.text)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
             }
             .navigationTitle("Publish")
             .toolbar {

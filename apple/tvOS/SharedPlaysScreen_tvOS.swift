@@ -130,7 +130,7 @@ struct SharedPlayScreen_tvOS: View {
             }
             if let script {
                 Section("Parts") {
-                    ForEach(script.castParts) { part in
+                    ForEach(PlaysShare.castParts(script, rec)) { part in
                         VStack(alignment: .leading, spacing: Spacing.s1) {
                             Text(part.title).font(TypeRamp.bodyStrong)
                             Text(SharedListen.status(rec, part)).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)

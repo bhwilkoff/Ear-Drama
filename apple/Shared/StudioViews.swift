@@ -41,8 +41,12 @@ final class StudioModel {
     @ObservationIgnored private var doorTaken = false
     @ObservationIgnored private var ended = false
     @ObservationIgnored private let audio: LiveAudio
-    @ObservationIgnored private let store: ProductionStore
+    @ObservationIgnored let store: ProductionStore
     @ObservationIgnored let stubbed: Bool
+    /// The Sound part's slots and board (B32 §3), when this studio records Sound.
+    private(set) var sound: SoundStudio?
+    @ObservationIgnored let ownSounds: OwnSoundStore
+    @ObservationIgnored let soundPack: SoundPackStore
 
     init?(target: StudioTarget, plays: PlaysLibrary, line: String?) {
         guard let production = plays.store.production(target.production), let script = plays.castScript(for: production) else {
@@ -52,6 +56,8 @@ final class StudioModel {
         part = target.partID
         self.script = script
         store = plays.store
+        ownSounds = plays.ownSounds
+        soundPack = plays.soundPack
         let door = StudioDoor.current
         stubbed = door.stub
         audio = door.stub ? StubLiveAudio() : EngineLiveAudio()
@@ -62,6 +68,7 @@ final class StudioModel {
         studio = StudioController(session: session, store: plays.store, line: line)
         listen = .system(cast: .production(production.id, script: script))
         ProductionPresence.appear(production.id)
+        if target.partID == .sound { sound = SoundStudio(model: self, own: plays.ownSounds, pack: plays.soundPack) }
     }
 
     var shared: Bool { store.share(target.production) != nil }
@@ -131,14 +138,35 @@ final class StudioModel {
     func listenFromHere() {
         if listen.isRunning { listen.stop(); return }
         let production = session.production
-        let at = script.lines.firstIndex { $0.id == studio.current } ?? 0
+        let at = (sound?.current).flatMap { c in script.lines.firstIndex { $0.id == c.line } }
+            ?? script.lines.firstIndex { $0.id == studio.current } ?? 0
         let ids = Set(script.lines[at...].map(\.id))
-        let plan = Relay.listenPlan(production, script, reads: listen.reads).filter { ids.contains($0.lineID) }
+        let whole = Relay.listenPlan(production, script, reads: listen.reads)
+        let plan = whole.filter { ids.contains($0.lineID) }
         let store = store
-        Task { await listen.run(plan) { store.takeURL(production, $0) } }
+        // The Sound part's cues play at their lines, ducked under each voice (B32 §4.4).
+        let cues = SoundMix.hasSound(production.sound) ? (sound?.cues(for: plan) ?? soundCues(plan)) : nil
+        Task { await listen.run(plan, takeURL: { store.takeURL(production, $0) }, cues: cues) }
+    }
+
+    private func soundCues(_ plan: [ListenEntry]) -> ListenCues {
+        let sources = SoundSources(own: ownSounds, pack: soundPack)
+        let p = session.production, store = store
+        return ListenCues(entries: SoundBoard.listenCues(script, p, plan: plan), url: { src in
+            if case let .take(id) = src { return p.take(id).map { store.takeURL(p, $0) } }
+            return sources.url(src)
+        }, player: SystemCuePlayer())
     }
 
     var missing: Int { Relay.missingLines(part, in: session.production, script: script).count }
+
+    /// Done With This Part: a speaking part waits for every line; Stage directions only for a first take, the rest
+    /// silent (B32 §2 item 3); Sound never blocks (§3.1 item 4).
+    var doneBlocked: Bool {
+        if part.isSpeaking { return missing > 0 }
+        if part == .directions { return studio.kept == 0 }
+        return false
+    }
 
     func finish() {
         guard let production = store.production(target.production) else { return }
@@ -325,6 +353,14 @@ struct StudioControls: View {
     @Environment(CatalogStore.self) private var catalog
 
     var body: some View {
+        if let sound = model.sound {
+            SoundControls(model: model, sound: sound, compact: compact)
+        } else {
+            lineControls
+        }
+    }
+
+    private var lineControls: some View {
         Group {
             if model.started {
                 Picker("Mode", selection: Binding(get: { model.session.mode }, set: { model.setMode($0) })) {
@@ -337,7 +373,7 @@ struct StudioControls: View {
                 StudioStatus(model: model, compact: compact)
                 StudioTransport(model: model)
             } else {
-                gate
+                StudioGate(model: model)
             }
         }
         #if os(iOS)
@@ -345,8 +381,16 @@ struct StudioControls: View {
         #endif
         .task { await model.openDoor(player: player) }
     }
+}
 
-    @ViewBuilder private var gate: some View {
+/// Before the first take: room tone, the account a second production needs, Start Recording and the headphones gate.
+struct StudioGate: View {
+    let model: StudioModel
+    @Environment(AccountStore.self) private var account
+    @Environment(AudioPlayer.self) private var player
+    @Environment(CatalogStore.self) private var catalog
+
+    var body: some View {
         VStack(spacing: Spacing.s2) {
             if case let .roomTone(seconds) = model.session.phase {
                 HStack(spacing: Spacing.s3) {
@@ -364,7 +408,7 @@ struct StudioControls: View {
                 }
             } else {
                 switch model.gate {
-                case .ready:
+                case .ready where model.sound == nil:
                     Button {
                         Task { await model.begin(echoCancelled: false, player: player) }
                     } label: {
@@ -391,6 +435,8 @@ struct StudioControls: View {
                     Text("AirPlay delays sound too much to record. Choose headphones.").foregroundStyle(Color.semanticError)
                     Button("Check Again") { Task { await model.begin(echoCancelled: false, player: player) } }
                         .buttonStyle(.play(.way))
+                case .ready:
+                    EmptyView()
                 }
             }
             if case let .failed(message) = model.session.phase {
@@ -639,8 +685,16 @@ struct StudioPanel: View {
     #endif
 
     var body: some View {
+        if let sound = model.sound {
+            SoundBoardView(model: model, sound: sound, full: full, close: close)
+        } else {
+            linePanel
+        }
+    }
+
+    private var linePanel: some View {
         let studio = model.studio
-        List {
+        return List {
             Section {
                 HStack(alignment: .firstTextBaseline) {
                     Text(verbatim: model.part.title).font(TypeRamp.sectionHeader).foregroundStyle(model.hue)
@@ -689,10 +743,12 @@ struct StudioPanel: View {
                 }
                 if !model.shared {
                     Button("Done With This Part") { model.finish() }
-                        .disabled(studio.locked || model.missing > 0)
-                    if model.missing > 0 {
+                        .disabled(studio.locked || model.doneBlocked)
+                    if model.missing > 0, model.part.isSpeaking {
                         Text(model.missing == 1 ? "1 line to go" : "\(model.missing) lines to go")
                             .font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
+                    } else if model.missing > 0, studio.kept > 0 {
+                        Text("The rest silent").font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
                     }
                 }
                 if let refusal = model.refusal {
@@ -940,7 +996,40 @@ struct StudioInspector: ViewModifier {
 struct StudioCommandItems: View {
     let studio: StudioModel
 
+    @Environment(AudioPlayer.self) private var player
+
     var body: some View {
+        if let sound = studio.sound {
+            soundItems(sound)
+        } else {
+            lineItems
+        }
+    }
+
+    /// The Sound part's keys (B32 §3.1 item 5): Space records the cue, J / K the next and previous slot, S the board, L hears
+    /// the slot in place.
+    @ViewBuilder private func soundItems(_ sound: SoundStudio) -> some View {
+        Button(studio.isListening ? "Stop" : studio.isCue ? "Cancel" : "Record This Cue") { sound.recordCue(player: player) }
+            .keyboardShortcut(.space, modifiers: [])
+            .disabled(sound.current == nil)
+        Divider()
+        Button("Next Cue") { sound.move(1) }
+            .keyboardShortcut("j", modifiers: [])
+        Button("Previous Cue") { sound.move(-1) }
+            .keyboardShortcut("k", modifiers: [])
+        Button("Add a Sound Here") { if let line = studio.studio.current ?? sound.current?.line { sound.addHere(line) } }
+            .disabled(sound.current == nil)
+        Divider()
+        Button("Hear It in Place") { sound.hearInPlace() }
+            .keyboardShortcut("l", modifiers: [])
+            .disabled(sound.current == nil)
+        Button(studio.inspector ? "Hide Sounds" : "Show Sounds") { studio.inspector.toggle() }
+            .keyboardShortcut("s", modifiers: [])
+        Button(studio.inspector ? "Hide Studio" : "Show Studio") { studio.inspector.toggle() }
+            .keyboardShortcut("i", modifiers: [.command, .option])
+    }
+
+    @ViewBuilder private var lineItems: some View {
         let session = studio.session
         Button(studio.isListening ? "Stop" : session.run != nil ? "Pause" : studio.isCue ? "Cancel" : "Record") { studio.primary() }
             .keyboardShortcut(.space, modifiers: [])

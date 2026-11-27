@@ -47,7 +47,7 @@ nonisolated enum SharedListen {
         case .recording: "Recording\(name)"
         case .done: "Recorded\(name)"
         case .silent: "Left silent"
-        case .open: part.lineCount == 1 ? "1 line" : "\(part.lineCount) lines"
+        case .open: part.lengthText
         }
     }
 }

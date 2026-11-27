@@ -171,9 +171,14 @@ nonisolated enum OwnShare {
 
     // What each door knows of the cast sheet, for a script to be held against.
 
-    private static func sameParts(_ script: PlayScript, _ want: [(id: String, lines: Int?)]) -> Bool {
-        let have = script.castParts
-        return have.count == want.count && want.allSatisfy { w in have.contains { $0.id.rawValue == w.id && (w.lines == nil || $0.lineCount == w.lines) } }
+    static func sameParts(_ script: PlayScript, _ want: [(id: String, lines: Int?)]) -> Bool {
+        // The Worker's cast lists Sound only where the script prints a sound line, and counts those lines; the cast sheet
+        // lists Sound on every script and counts its cue rows (B32 §3.1 item 1), so Sound is held only by its presence.
+        let workerSound = want.contains { $0.id == PartID.sound.rawValue }
+        let have = script.castParts.filter { $0.id != .sound || workerSound }
+        return have.count == want.count && want.allSatisfy { w in
+            have.contains { $0.id.rawValue == w.id && (w.lines == nil || $0.id == .sound || $0.lineCount == w.lines) }
+        }
     }
 
     private static func holdsLines(_ script: PlayScript, _ ids: [String?]) -> Bool {

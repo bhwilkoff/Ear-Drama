@@ -502,7 +502,7 @@ struct CastSheet: View {
                 .modifier(CastColumnRows(on: sizeClass == .regular))
             Section {
                 PartGrid {
-                    ForEach(script.castParts) { part in
+                    ForEach(PlaysShare.castParts(script, rec)) { part in
                         if let rec {
                             SharedPartRow(production: production, script: script, part: part, rec: rec, open: open)
                         } else {
@@ -649,7 +649,12 @@ struct LocalPartCard: View {
     }
 
     private func who(_ state: PartState) -> String {
-        switch state.status {
+        // Sound counts cues and beds; Stage directions what is recorded, the rest silent (B32 §2, §3.1 item 1).
+        if state.status == .recording || state.status == .done, !part.id.isSpeaking {
+            let line = part.id == .sound ? SoundBoard.partLine(script, production, taken: true) : SoundBoard.directionsLine(script, production)
+            return (state.performer.map { "\($0) \u{00B7} " } ?? "") + line
+        }
+        return switch state.status {
         case .open: "Open"
         case .recording:
             "\(state.performer ?? "You") \u{00B7} \(part.lineCount - Relay.missingLines(part.id, in: production, script: script).count) of \(part.lineCount)"
@@ -811,6 +816,9 @@ struct ListenThrough: View {
     @State private var mixing = false
     @State private var error: String?
     @State private var listenedFrom: String?
+    /// Sounds this device lacks, named before a mix or an export (B32 §7); `without` once the person said Export Without Them.
+    @State private var lacking: [String] = []
+    @State private var without = false
 
     init(production: Production, script: PlayScript) {
         self.production = production
@@ -851,10 +859,18 @@ struct ListenThrough: View {
                 Text(retake == 1 ? "1 line needs a re-take with headphones." : "\(retake) lines need a re-take with headphones.")
                     .foregroundStyle(Color.brandTextMuted)
             }
+            if complete, !lacking.isEmpty, !without {
+                Label(SoundBoard.missingLine(lacking), systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticWarning)
+                HStack {
+                    Button("Export Without Them") { without = true }.buttonStyle(.play(.way))
+                    Button("Cancel") { lacking = [] }.buttonStyle(.play(.way))
+                }
+            }
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
             }
         }
+        .task(id: production.chosenFingerprint) { lacking = missingSounds() }
         .onChange(of: mix.reachedEnd) { _, ended in
             guard ended, !mix.skipped, let from = listenedFrom else { return }
             plays.store.markListenedThrough(production.id, fingerprint: from)
@@ -869,10 +885,30 @@ struct ListenThrough: View {
         }
     }
 
-    private var export: some View {
-        ShareLink(item: MixExport(store: plays.store, productionID: production.id),
-                  preview: SharePreview(production.title)) {
-            ActionLabel(title: "Export", systemImage: "square.and.arrow.up")
+    private var sources: SoundSources? {
+        SoundMix.hasSound(production.sound) ? SoundSources(own: plays.ownSounds, pack: plays.soundPack) : nil
+    }
+
+    /// The names of the sounds the mix would need that this device lacks (an own sound made elsewhere, a pack file not
+    /// downloaded): the mix and the export refuse them by name, never drop them silently.
+    private func missingSounds() -> [String] {
+        guard let sources else { return [] }
+        do {
+            _ = try MixTimeline.build(script: script, production: production, resolveSound: { sources.info($0, $1) })
+            return []
+        } catch let MixTimeline.Failure.missingSounds(ids) {
+            return MissingSounds.names(ids, in: production, plays: plays)
+        } catch {
+            return []
+        }
+    }
+
+    @ViewBuilder private var export: some View {
+        if lacking.isEmpty || without {
+            ShareLink(item: MixExport(store: plays.store, productionID: production.id, sources: sources, withoutMissing: without),
+                      preview: SharePreview(production.title)) {
+                ActionLabel(title: "Export", systemImage: "square.and.arrow.up")
+            }
         }
     }
 
@@ -929,7 +965,10 @@ struct ListenThrough: View {
         mixing = true
         defer { mixing = false }
         do {
-            let url = try await plays.store.renderMix(production.id)
+            let sources = sources
+            if !lacking.isEmpty, !without { return }
+            let url = try await plays.store.renderMix(production.id, resolveSound: sources?.resolver,
+                                                      loadSound: sources?.loader, withoutMissing: without)
             listenedFrom = plays.store.production(production.id)?.chosenFingerprint
             try mix.load(url)
             error = nil
@@ -947,7 +986,15 @@ struct ListenThrough: View {
         error = nil
         let store = plays.store
         let reads: (PartID) -> Bool = { [live] part in !part.isSpeaking && live.reads(part) }
-        await live.run(Relay.listenPlan(latest, script, reads: reads)) { store.takeURL(latest, $0) }
+        let plan = Relay.listenPlan(latest, script, reads: reads)
+        // The Sound part's cues at their lines, ducked under each voice (B32 §4.4).
+        let cues = sources.map { sources in
+            ListenCues(entries: SoundBoard.listenCues(script, latest, plan: plan), url: { src in
+                if case let .take(id) = src { return latest.take(id).map { store.takeURL(latest, $0) } }
+                return sources.url(src)
+            }, player: SystemCuePlayer())
+        }
+        await live.run(plan, takeURL: { store.takeURL(latest, $0) }, cues: cues)
     }
 }
 
@@ -980,10 +1027,16 @@ private struct PersonalVoiceToggle: View {
 nonisolated struct MixExport: Transferable {
     let store: ProductionStore
     let productionID: String
+    /// Where the Sound part's pack and own sounds are read from (B32), nil for a production with no sound.
+    var sources: SoundSources? = nil
+    var withoutMissing = false
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .mpeg4Audio) { export in
-            SentTransferredFile(try await export.store.exportMix(export.productionID))
+            let s = export.sources
+            return SentTransferredFile(try await export.store.exportMix(
+                export.productionID, resolveSound: s?.resolver,
+                loadSound: s?.loader, withoutMissing: export.withoutMissing))
         }
     }
 }

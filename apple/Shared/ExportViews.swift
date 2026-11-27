@@ -107,7 +107,7 @@ struct ExportRow: View {
                                     chosen: p.chosen[t.lineID] == t.id)
                 }, sound: p.sound)
             },
-            marks: MarkStore().exportRows(), ink: InkStore().exportRows(), scripts: plays.own.exportRows())
+            marks: MarkStore().exportRows(), ink: InkStore().exportRows(), scripts: plays.own.exportRows(), ownSounds: plays.ownSounds.exportRows())
     }
 }
 #endif

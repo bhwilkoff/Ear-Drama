@@ -837,6 +837,92 @@ device. Audit frames: `build/qa/duo-audit/` (local).
       §4.12's, shown in the dock; no account line ever stands beside the record
       control (Decision 079, F11). Leaving the studio with no take deletes a
       local, unshared production (PLAYS-DESIGN §2.3 rule 3a).
+  - **Stage directions and Sound as parts; the sound board** (B32, 2026-11-26;
+    `docs/research/design/B32-sound-board.md` §2-§3 and §7 binding on the verbs,
+    Decision 091 on the mix; web sibling WEB-DESIGN §4.16 item 14a, whose rules
+    this mirrors; owner 2026-11-26: *"I'd like to add the ability to record both
+    stage direction (as a character) and foley sounds within a well-designed
+    foley (or sound effects, depending on the need of the play)
+    soundboard/interface that would allow someone to add sounds in the
+    backgrounds of a recording."*). Core: `SoundBoard` (slots, edits, the
+    manifest reader and its rights gate, search, the live listen's schedule),
+    `OwnSoundStore` and `SoundPackStore` (`SoundStore.swift`), `LiveCues`;
+    views: `apple/Shared/SoundStudioViews.swift`; tests `SoundBoardTests`.
+    - **The cast sheet** lists **Sound** after the speaking parts on every
+      script (`castParts` always ends Sound, then Stage directions when there are
+      any): "N cues" (the reader's cue rows), "Add sounds" with none; taken,
+      "9 of 12 cues · 2 beds". Stage directions keep their voice chip ("Not
+      read" until cast); taken, "6 of 22 recorded · the rest silent". A shared
+      production lists Sound only where its record holds the part
+      (`PlaysShare.castParts`): a Sound row with no board behind it never
+      appears, and the TV lists none.
+    - **Stage directions** in the studio: each direction carries its take state
+      at the line's end (`circle`, `circle.fill` and the count, the warning),
+      a tap there opens its takes, a tap on the line makes it current; **Done
+      With This Part** is enabled from the first take: an unrecorded direction
+      is silent and never blocks.
+    - **The Sound part's studio**: each cue row is a **slot**, its mark at the
+      line's end (an empty `circle`, `speaker.wave.2.circle.fill` with the count
+      past one, `minus.circle` for Leave Silent); the current slot's line is
+      outlined in ink; a bed draws a 3 pt rule in the left margin from its first
+      line to its last. A tap on a line with slots selects its slot (the next one
+      on the same line when one is current). **Add a Sound Here** is the first
+      item of the edit menu a long press opens (`UIEditMenuInteraction`) and of
+      the Mac's context menu; the slot it makes is removed when left empty. The
+      dock: no mode control; one status row, "Cue 13 of 34 · Thunder, close ·
+      After"; the transport is Sounds (`speaker.wave.2`, opens the board),
+      Previous Cue, the round record control (a performed cue: a take of the
+      Sound part on the slot, never a line's chosen take; the headphones gate and
+      room tone are asked at the first press), Next Cue, Listen From Here. Keys
+      (iPad keyboard): Space records, J / K next and previous slot, S the board,
+      L Hear It in Place.
+    - **The board**: a `.sheet` with `.presentationDetents([.medium, .large])` and
+      background interaction up to medium on compact width; the 860 pt pane at
+      regular width (it replaces the studio panel there); the Mac inspector.
+      Top to bottom: the slot (caps "CUE 13 OF 34 · URIAH" and the cue's words)
+      and **Leave Silent** while it is empty; **In This Cue** (each sound: play,
+      title, its length and placement, Remove by button, swipe and context menu;
+      the selected one shows Before · Under · After · Bed as
+      `Picker(.segmented)`, **Start** a `Stepper` of 0.1 s down to −2 s,
+      **Level and Fades** a `DisclosureGroup` (level −12 to +6 dB, fade in and
+      out None, 0.2, 0.5, 1, 2 s, Under's length Whole or Loop to the End of the
+      Line, Under Voices the lane's, Off, or −3 to −18 dB), a Bed's **Until** (a
+      tap on a line of the page; the sheet drops to medium while it waits), and
+      **Hear It in Place**); `.searchable` (opened holding the cue's first word
+      that is a tag in the pack); one row of category chips (single select);
+      the results (audition, title, "0:06 · OpenGameArt · CC0", Add / In Cue;
+      the title opens its record: source page, license, evidence, date
+      checked); a category not downloaded heads its rows with "Weather · 1.3 MB"
+      and Download, its rows dimmed. The macOS board's search is a field at the
+      top of the inspector (`.searchable` would land in the window's toolbar).
+    - **The pack is a source that may be absent**: `SoundPackStore.manifestURL`
+      is nil until the owner rules on its archive.org item, and the library then
+      shows nothing: the board is Mine, performed cues and Leave Silent. Read
+      through `APIClient.soundPackData`; a row without a license in {CC0-1.0,
+      PDM-1.0, US-pre-1926}, an evidence URL and a checked date, or from a
+      refused host, is never listed; each file checked against its sha256.
+    - **Mine** (own sounds): `Application Support/Sounds/mine/` (FLAC, the take
+      format, and `index.json`), never synced, uploaded, shared or published; the
+      production stores the id and the name. **Record a Sound** (up to 30 s;
+      nothing plays, so no headphones gate) and **Bring a File**
+      (`.fileImporter(allowedContentTypes: [.audio])`, up to 10 minutes and
+      50 MB, decoded to mono 48 kHz). A slot whose own sound is not on this
+      device reads "On another device". Export my data carries each one whole
+      (docs/EXPORT.md `ownSounds[]`). Publish says first, as a warning: "Your
+      own sounds stay on this device. The published play leaves them out."
+    - **Listening**: Listen Through, Listen From Here and Hear It in Place play
+      the cues at their lines (`SystemCuePlayer`, an `AVAudioPlayer` per cue),
+      ducked while a voice entry sounds; a complete play renders the mix with
+      the duck (`MixRenderer`, Decision 091). A sound this device lacks is named
+      before the mix and the export: "2 sounds are on another device: Owl at
+      night, Gate creak." with **Export Without Them** and Cancel; a mix without
+      them is never recorded as current.
+    - **States** (B32 §7): the manifest loading, three skeleton rows; no match,
+      "No sound called “zeppelin”." with **Record It**; Mine empty, "No sounds of
+      your own yet."; unreachable, "The sounds could not be reached." with Try
+      Again; a failed category download, Try Again in its header. No hint
+      banner, no walkthrough. On the open Duo (§4.20) the board is the pane;
+      folding during an audition changes the layout only.
   - **Marks** (Decision 076 S5; PLAYS-DESIGN §2.10 binding; web sibling WEB-DESIGN
     §4.16 item 15; port spec `docs/research/design/R2-marks-port-brief.md`). Core
     gains `MarksCore` (the anchor, `snapWords`, `pointAfter`, the overlap rules,

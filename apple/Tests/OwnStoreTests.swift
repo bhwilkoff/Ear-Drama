@@ -145,7 +145,7 @@ private func speech(_ rec: OwnRecord, _ role: String, _ n: Int = 0) -> OwnLine {
         #expect(s.lines.prefix(3).map(\.id) == ["L0001", "L0002", "L0003"])
         let directions: [String] = s.lines.filter { $0.kind == .direction }.compactMap(\.source)
         #expect(directions == ["A LITTLE PLAY", "Somebody knocks twice."])
-        #expect(s.castParts.map(\.title) == ["ANNA", "BEN", "Sound effects", "Stage directions"])
+        #expect(s.castParts.map(\.title) == ["ANNA", "BEN", "Sound", "Stage directions"])
         let lines = OwnScript.toScript(rec.doc, rec.meta)["lines"]!
         #expect(s.revision == OwnScript.revisionOf(lines), "the revision is its lines'")
         #expect(env.own.rows.first?.done == true)
