@@ -206,6 +206,27 @@ the heading as printed, cut at its first punctuation ("Scene III", never "SCENE 
 the play, the two parts' names. It opens the reader at that line and records only that range (Today's scene
 already does). Not on a TV.
 
+**Part names (2026-11-26).** A scene's `parts` are the names the print gives, not the speech labels: "DEM" is
+Demea when a direction prints "Enter DEMEA" or another role begins with it (`play_facets.full_names`; unique
+candidate only, else the label stays). 373 of 1,226 scene cards (101 plays) changed. The cast sheet and the
+`roles` list still carry the label (a role's name is the id of its part and of every take, so it is not renamed
+for a card); mending the role names themselves belongs to `play_roles`, with a migration for saved productions.
+
+**Recording only a scene's range: the plan (not built).** A production may carry `range: {from, to}`, two line
+ids of its script, `to` the last line before the next section (the scene facet has `line` for `from`; add `to`
+to `scenes` in the catalog, same build, contract 4.1). Rules to stamp into WEB-/iOS-/macOS-/ANDROID-DESIGN and
+PLAYS-DESIGN before code: (1) a range production's cast sheet lists only parts with a speech inside the range, and
+its voice count and minutes are the range's; (2) Done means every one of those parts has a chosen take for every
+line in the range, never the whole play; (3) Listen Through and export mix only the range, and a range
+production's title is the play's with the heading ("Adelphi, Scene II"); (4) a script revision that moves either
+bound drops the range and says so. Smallest change per platform: `newProduction(script, {range})` stores the
+field and `castParts(script, range)` filters by it; `linesFor` and the Done, Listen Through and export seams read
+`p.range` through one `inRange(p, lineID)`; the scene card's Record door passes `{from: scene.line, to: scene.to}`.
+Shared proof: `catalog/tests/golden/production_range.json` (a ten-line script, range L0003..L0006: expected cast,
+Done before and after the last take, Listen Through line ids, export line ids, a revision-drift case) run by
+`js/plays.test.js`, the Apple Core tests and `android` `testDebugUnitTest`. Too large for the same batch as the
+names: it touches the production schema, sync (`ProductionShare`), export and three UIs.
+
 ### 3.5 A play's page (WEB-DESIGN 4.10, 6.4g)
 
 Head board on the form's board (or neutral) with the window (picture by 1.4, else the label), kicker "STAGE PLAY ·

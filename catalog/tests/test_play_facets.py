@@ -87,6 +87,24 @@ check("LoCC from the catalog's class number when the record lists none", PF.face
 bare = PF.facet_row(dict(ROW, id="gut-8"), dict(ENTRY, id="gut-8"), None)
 check("a row with no record keeps only what its script says", sorted(k for k in bare if k not in ROW), ["balance", "era", "life", "scenes"])
 
+# --- scene parts are named as the play prints them (B31 leftover) ---------------------------------------------
+def scene_of(roles, directions, pairs):
+    lines = [{"id": "L0001", "kind": "direction", "source": directions}] + \
+        [speech(i + 2, r) for i in range(25) for r in pairs]
+    return PF.scenes_of({"roles": [{"name": r, "lines": 25} for r in roles], "lines": lines,
+                         "sections": [{"line": "L0001", "source": "SCENE I."}]})
+
+
+check("scene: an abbreviated label is named as a direction prints it (Adelphi)",
+      scene_of(["DEM", "MIC"], "_Enter MICIO. Enter DEMEA._", ["DEM", "MIC"])[0]["parts"], ["DEMEA", "MICIO"])
+check("scene: a role another role begins is named by that role (Phormio)",
+      scene_of(["ANT", "ANTIPHO"], "_Enter._", ["ANT", "ANTIPHO"])[0]["parts"], ["ANTIPHO", "ANTIPHO"])
+check("control: two printed names keep the label",
+      scene_of(["CLE", "ZED"], "_Enter CLEON and CLEANTHES._", ["CLE", "ZED"])[0]["parts"], ["CLE", "ZED"])
+check("control: a label the print never lengthens stays", scene_of(["GETA", "DAV"], "_Enter GETA._", ["GETA", "DAV"])[0]["parts"], ["DAV", "GETA"])
+check("control: a label that is printed as it stands is not lengthened",
+      scene_of(["SIM", "SOS"], "_Enter SIM. Enter SIMO._", ["SIM", "SOS"])[0]["parts"], ["SIM", "SOS"])
+
 # --- facets_meta, collections, characters, words said -------------------------------------------------
 rows = [dict(ROW, id=f"gut-{k}", sort_name=f"play {k:02d}", voices=2 + k % 3, minutes=5 + 10 * k, balance="ensemble" if k % 2 else "lead",
              form="comedy" if k < 6 else None) for k in range(10)]

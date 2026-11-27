@@ -1843,3 +1843,9 @@ refusal in `tests/test_play_facets.py`; read 30 random rows it changes before ke
 anything but A to Z or length. An editor collection is the owner's; no agent writes one. A held title is mended by an
 editor, never repaired by a guessed title. Play numbers in `characters.json` and `search/said/` are places in the same
 build's `index.plays`: ship them only in one archive with it.
+
+**Scene part names (2026-11-26)**: a scene's `parts` carry the name the play's print gives the part, not the speech
+label ("DEMEA", not "DEM"): another role it begins, else the one capitalized word of a stage direction it begins
+(`play_facets.full_names`). **Why:** the scene cards read "Dem and Mic", "Ana and Tri". 373 of 1,226 cards (101 plays)
+change; a label with two candidates or none keeps the label. **How to apply:** `parts` is display text only; a role's
+`name` stays the id of its part and its takes.
