@@ -211,6 +211,10 @@ hosted by us, credited; the old Release assets need not be deleted (item closed)
 - [ ] **B41 Read together, far better.** Research then build: same room, many devices, one synced reading/rehearsal
   (who reads which part, cursor, cues, a leader, late joiners, offline-tolerant); on a call: SharePlay (FaceTime) on
   Apple, Google Meet Live Sharing / Android, web via the room link alongside any call; one protocol over transports.
+  Designed 2026-11-27 (`B41-read-together.md` §10: B41a protocol v2 Worker, b web, c Apple + SharePlay door, d TV stage,
+  e Android, f bench, g SharePlay messenger deferred). Decided (recommendations taken): no Meet add-on now; going around
+  the room = each speech; page turns by the teacher in a class, by each reader among adults. Owner needed once: a second
+  Apple ID in FaceTime on the iPad or Duo, answering the first calls.
 - [ ] **B42 Listening pass** of the sound board's duck depths (audible: ask the owner first).
 
 ## Waiting on the owner (never blocks the loop)
@@ -425,3 +429,4 @@ GRW request sent or not.
 - 2026-11-26 21:00: B35 merged (scene range on web/Apple/Android/Worker; D1 0014 applied, Worker b0c4b9ba). Cast sheet overflow at 375 fixed. Library refresh running for scenes[].to, then push + deploy. Watch: two Apple tests fail only in the full run under load (OwnScript timing, PlaysLibrary cache) - make deterministic.
 - 2026-11-26 21:10: scene range live (plays-library-2026-11-27-2: all 1,226 scenes carry to; web_fit_scene passes; Worker b0c4b9ba, D1 0014). Next: ship 1.1.8 with scene range on Apple/Android; B32 K1 pack waits on the owner; Android Hear it in place.
 - 2026-11-26 22:00: leftovers merged (Android Hear it in place + partial listen with cues + direction marks, unseen on device; Apple cache/time tests deterministic; Google TV cold load 13.5 s on debug: fetch now from cache, decode 7-10 s of the 1.8 MB index remains -> slimmer TV index or baseline profile). 1.1.8 TestFlight rerun after a pip network blip.
+- 2026-11-27 09:45: B41 designed and merged. B36 TV, B37/B40, B42 listening pass running.
