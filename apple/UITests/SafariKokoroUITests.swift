@@ -8,8 +8,12 @@ final class SafariKokoroUITests: XCTestCase {
     let site = "https://eardrama.org/"
     let play = "gut-59770-105"
 
+    /// On the Duo XCUIScreen.main is the outer display (black while open) and the inactive screen cannot be
+    /// captured at all, so a two-screen phone takes Safari's own window.
     private func shot(_ name: String) {
-        let a = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        let image = XCUIScreen.screens.count > 1 ? safari.screenshot() : XCUIScreen.main.screenshot()
+        let a = XCTAttachment(screenshot: image)
         a.name = name
         a.lifetime = .keepAlways
         add(a)
@@ -32,8 +36,13 @@ final class SafariKokoroUITests: XCTestCase {
         shot("01-library")
 
         // The step sheet shows once; after that the download lives in Library > Voices.
+        // The ?diag overlay covers the lower third: bring the Voices row above it before tapping.
         let voices = button(safari, "label BEGINSWITH %@", "Voices")
-        if voices.waitForExistence(timeout: 20) { voices.tap(); sleep(2) }
+        if voices.waitForExistence(timeout: 20) {
+            if voices.frame.midY > safari.frame.height * 0.6 { safari.webViews.firstMatch.swipeUp(); sleep(2) }
+            voices.tap(); sleep(2)
+            if voices.frame.midY > safari.frame.height * 0.6 { safari.webViews.firstMatch.swipeUp(); sleep(2) }
+        }
         shot("01b-voices-open")
         let download = button(safari, "label BEGINSWITH %@", "Download (")
         if download.waitForExistence(timeout: 20) {
@@ -64,6 +73,8 @@ final class SafariKokoroUITests: XCTestCase {
             sleep(6)
             shot(String(format: "06-reading-%02d", i))
         }
+        let stop = button(safari, "label == %@", "Stop")
+        if stop.exists { stop.tap() }
         XCTAssertEqual(safari.state, .runningForeground, "Safari still up (a killed tab reloads, a crashed Safari leaves)")
     }
 }
