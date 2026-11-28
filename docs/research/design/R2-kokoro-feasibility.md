@@ -596,6 +596,32 @@ Release: `tools/fetch_kokoro_model.py` placed v5 (225,716,003 bytes), the shippe
 holding a seeded v1 cache and result, downloaded and passed the self-test (RTF 0.19), deleted `ed-kokoro-v1`, and a
 fresh page loaded it at start and read three lines through Web Audio, muted.
 
+## The first render on WebGPU (2026-11-27, night): memory follows the piece's length
+
+The iPhone 12 (4 GB, iOS 27.2.1) in Safari loaded v5 (download ~40 s, worker ready at 45.3 s) and its tab was killed
+inside the self-test's first render. Headless Chrome 158, WebGPU (Apple Metal 3), v5, footprints sampled every 0.2 s
+(`footprint`), peaks reset between steps; one browser renders each length three times after load and self-test:
+
+| Piece (symbols) | Audio | Render | GPU process peak | Renderer |
+|---|---|---|---|---|
+| 46 | 3.1 s | 0.56 s | 1,219 MB | 952 MB |
+| 92 | 5.7 s | 1.03 s | 1,465 MB | 966 MB |
+| 149 | 9.0 s | 1.63 s | 1,337 MB | 966 MB |
+| 220 | 12.7 s | 2.4 s | 1,854 MB | 790 MB |
+| 295 | 16.5 s | 10.7 s first, then 4.3 | 4,495 MB | 785 MB |
+| 399 | 20.3 s | 4.6 s first, then 3.7 | 3,812 MB | 767 MB |
+
+Load and the 144-symbol self-test: GPU process 1,213 MB, renderer 1,181 MB (fp32 v1: 1,310 and 1,683; the 163 MB
+all-fp16-storage variant: 1,140 and 1,156, its renderer 70 to 140 MB lower through the reads, the GPU process the
+same). Over whole lines (6 to 8 longest of a play): 400-symbol pieces 3,235 MB in the GPU process, 150 1,417 MB, 200
+1,894 MB. ONNX Runtime's WebGPU buffer cache (`ep.webgpuexecutionprovider.storageBufferCacheMode` through the session's
+`extra`): `disabled` fails a Conv on a zero-size input; `lazyRelease` holds 390 MB after load instead of 650 but peaks
+at 4.3 to 5.4 GB on lines and slows (RTF p95 up to 2.1); `simple` keeps 8.9 GB. An ORT-format model with
+`use_ort_model_bytes_directly` hung the session; not pursued. Seams: each render carries ~0.4 s of silence at both
+ends, so a junction was 0.74 to 0.86 s (41 junctions in 30 long lines), where a pause inside one render is 65 to 528
+ms (median 187); seams now keep 200 ms after a comma or colon and 410 ms after a stop. Pieces of at most 150 that run on
+to the next stop up to 225: 1 of 1,713 cuts at a bare space over 3,682 lines of 10 plays (400: 0 of 237).
+
 ## Sources
 
 

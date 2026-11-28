@@ -679,6 +679,27 @@ never fp16 compute. If the Duo's Safari still refuses or is killed, the all-fp16
 163 MB variant is the next step (24.4 dB worst), then nothing smaller without a new
 export.
 
+*Update, the first render on WebGPU (2026-11-27, night)*: the iPhone 12's Safari
+loaded v5 (worker ready at 45 s) and its tab was killed inside the self-test's first
+render; the next start offered Kokoro again, because the load was marked finished at
+worker-ready. Now (1) the load counts as finished only when a render comes back, so a
+kill there is the `memory` refusal on the next start (Library > Voices: the memory
+sentence, Try again, Delete; the system voice reads); (2) renders are at most 150
+symbols, running on to the next stop up to 225 rather than cutting inside a phrase (10
+plays: 1 of 1,713 cuts at a bare space); (3) the self-test renders a 144-symbol piece,
+so a read's peak is reached while the load is still watched; (4) each seam keeps the
+pause its punctuation asks for (200 ms after a comma, 410 ms after a stop), where two
+renders' edges had added up to 0.74 to 0.86 s. Headless Chrome, WebGPU on Metal, v5,
+the GPU process's footprint peak by piece length: 46 symbols 1.2 GB, 92 to 149 1.3 to
+1.5 GB, 220 1.9 GB, 295 4.5 GB, 399 3.8 GB (first render at 295: 10.7 s, a recompile);
+RTF 0.18 throughout. ONNX Runtime's `storageBufferCacheMode` `disabled` breaks a Conv
+(a zero-size buffer), `lazyRelease` and `simple` peak higher or hold more; the default
+stays. The 163 MB variant cuts the renderer by 70 to 140 MB and not the GPU process.
+**Why**: a tab killed before its first sound must not be offered the same load again,
+and memory on WebGPU follows the render's length, not the download's size.
+**How to apply**: keep `MAX_TOKENS` where the footprint is flat (150) and the self-test
+at that length; a kill before the first render back is a refusal, never a retry loop.
+
 ## 079: A first take needs no account; empty productions stay out of sight; Today's scene everywhere (answered 2026-11-15)
 
 **Rule**: a newcomer can record without signing in; takes stay on the device, and

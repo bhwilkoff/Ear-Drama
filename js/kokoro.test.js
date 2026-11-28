@@ -24,6 +24,9 @@
  *   2026-11-27 (w16, kokoro-v5-web): against the v1 code, "a browser with the v1 (fp32) model moves" (four checks: a v1
  *     result vouched for v5, v1 never deleted) and "the worker keeps fp16-stored weights fp16" (both) failed; mutants
  *     seen to fail: no `cache` match in checked(), no dropOld() after the download, no level 'extended'.
+ *   2026-11-27 (the iPhone 12's kill after worker-ready): against main, "a kill during the first render" (done at
+ *     worker-ready), "renders are short on WebGPU" (four checks: 400, a cut inside a phrase), "a seam between pieces"
+ *     (no edges) and "the self-test renders a full-length piece" (30 tokens) all failed.
  * The source scan in js/plays.test.js gained the kokoro- files (a cache write in the voice file,
  * an AudioContext in the model file), each control seen caught.
  */
@@ -444,6 +447,29 @@ test('a tab killed while the model loads is refused on the next start, with the 
   eq(next.g.status(), 'ready', 'a load that finished leaves nothing behind');
 });
 
+test('a kill during the first render (after the worker is ready) still counts as the model not fitting', async () => {
+  // The iPhone 12, 2026-11-27: worker-ready at 45.3 s, then the tab was killed inside the self-test's first render.
+  const stages = [];
+  const env = fakeEngineEnv();
+  const saved = globalThis.Worker;
+  let renders = 0;
+  class Hangs extends env.FakeWorker {
+    postMessage(m) { if (m.type === 'synth' && renders++ === 0) return; super.postMessage(m); }
+  }
+  globalThis.Worker = Hangs;
+  try {
+    const e = KokoroVoice.create({ model: env.model, doc: env.doc, onBoot: (s) => stages.push(s) });
+    const t = e.selfTest();
+    await new Promise(r => setTimeout(r, 50));
+    eq(stages, ['start'], 'the worker is ready but no render has come back: the load is still in progress');
+    void t;
+    const ok2 = KokoroVoice.create({ model: env.model, doc: env.doc, onBoot: (s) => stages.push(s) });
+    stages.length = 0;
+    const r = await ok2.selfTest();
+    eq([stages, r.ok], [['start', 'done'], true], 'done once a render has come back');
+  } finally { globalThis.Worker = saved; }
+});
+
 test('long speeches render in pieces under the token limit, cut at punctuation, nothing lost', () => {
   const ps = 'ðə kwˈɑləɾi ʌv mˈɜɹsi ɪz nˌɑt stɹˈAnd. '.repeat(30);
   const parts = KokoroVoice.chunks(ps, 400);
@@ -452,6 +478,52 @@ test('long speeches render in pieces under the token limit, cut at punctuation, 
   eq(parts.join(''), ps, 'joined, the whole speech');
   ok(parts.slice(0, -1).every(p => /[.!?;,] ?$|\s$/.test(p) || p.endsWith('.')), 'cut at a stop');
   eq(KokoroVoice.chunks('ˈAbəl', 400), ['ˈAbəl'], 'a short line is one piece');
+});
+
+test('renders are short on WebGPU (150 symbols), and a piece ends at a phrase, never inside one', () => {
+  // GPU process peak in headless Chrome, 2026-11-27: 3,235 MB at 400-symbol pieces, 1,417 MB at 150 (R2-kokoro-feasibility).
+  eq(KokoroVoice.MAX_TOKENS, 150, 'pieces of at most 150 symbols');
+  const long = 'wˌɛn ðə ɡˈʊd kˈɪŋ kˈAm hˈOm frʌm ðə wˈɔɹz ænd fˈWnd ðə kˈæsəl ˈɛmpti ænd ðə ɡˈeɪts ˈOpən ænd ðə hˈɔɹsᵻz ɡˈɔn ' +
+    'ænd nˈO wˈʌn lˈɛft æt ˈɔl ɪn ðə hˈɔl tə ɡɹˈit hˌɪm, hi sˈæt dˈWn.';
+  ok(long.indexOf(',') > 150 && long.indexOf(',') < 225, 'fixture: the only comma lies past 150');
+  const parts = KokoroVoice.chunks(long);
+  eq(parts.join(''), long, 'nothing lost');
+  ok(parts[0].trimEnd().endsWith(','), `the first piece runs on to the comma instead of cutting at a space (${JSON.stringify(parts[0].slice(-12))})`);
+  ok(parts.every(p => p.length <= 225), 'never past half again the limit');
+  const bare = 'ə '.repeat(200);
+  ok(KokoroVoice.chunks(bare).every(p => p.length <= 150), 'with no stop at all in reach, a space within the limit');
+});
+
+test('a seam between pieces is the pause its punctuation asks for, never the two renders\' edges added up', () => {
+  // Measured 2026-11-27: each render carries ~0.4 s of silence at both ends, so a junction was 0.74 to 0.86 s;
+  // inside one render a pause is 65 to 528 ms (median 187).
+  const sec = (s) => Math.round(s * 24000);
+  const piece = () => { const x = new Float32Array(sec(1.3)); for (let i = sec(0.4); i < sec(0.9); i++) x[i] = 0.3 * Math.sin(i / 7); return x; };
+  const ms = (x) => Math.round(x.length / 24);
+  const { edges, seamMs } = KokoroVoice;
+  eq(ms(edges(piece(), null, null)), 1300, 'a line in one piece keeps its own edges');
+  const first = edges(piece(), null, seamMs(','));
+  const next = edges(piece(), 'join', null);
+  ok(Math.abs(ms(first) - (900 + seamMs(',').tail)) <= 2 && Math.abs(ms(next) - (seamMs(',').head + 900)) <= 2, `trimmed to the pause (${ms(first)}, ${ms(next)})`);
+  const after = (c) => seamMs(c).tail + seamMs(c).head;
+  ok(after(',') >= 150 && after(',') <= 300, `a comma's seam is a short pause (${after(',')} ms)`);
+  ok(after('.') >= 350 && after('.') <= 550, `a full stop's is a sentence pause (${after('.')} ms)`);
+  const loud = piece().fill(0.3);
+  eq(ms(edges(loud, 'join', seamMs('.'))), 1300, 'speech is never cut, only silence');
+});
+
+test('the self-test renders a full-length piece, so the peak a read reaches is reached while the load is watched', async () => {
+  const env = fakeEngineEnv();
+  const saved = globalThis.Worker;
+  const lengths = [];
+  class Records extends env.FakeWorker { postMessage(m) { if (m.type === 'synth') lengths.push(m.tokens.length); super.postMessage(m); } }
+  globalThis.Worker = Records;
+  const vocab = new TextEncoder().encode(JSON.stringify({ model: { vocab: Object.fromEntries([...'ðɪs zətˈɛʌvYᵻ.'].map((c, i) => [c, i + 1])) } }));
+  try {
+    const e = KokoroVoice.create({ model: { bytes: async (role) => (role === 'vocab' ? vocab.slice().buffer : new ArrayBuffer(4)) }, doc: env.doc });
+    await e.selfTest();
+    ok(lengths.length === 2 && lengths.every(n => n >= KokoroVoice.MAX_TOKENS * 0.9 && n <= KokoroVoice.MAX_TOKENS + 2), `two renders near the limit (${lengths})`);
+  } finally { globalThis.Worker = saved; }
 });
 
 test('tokenize maps phonemes through the vocabulary and pads both ends', () => {
