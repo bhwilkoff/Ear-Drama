@@ -35,8 +35,11 @@ const KokoroVoice = (() => {
   const GRADES = ['A', 'A-', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F+'];
   /** Grades under C- start out of the auto-cast pool (Settings > Voices can tick them back in). */
   const LOW = (g) => GRADES.indexOf(g) > GRADES.indexOf('C-');
-  /** Tokens per render: Kokoro rushes past ~400 (VOICES.md) and stops at 510. */
-  const MAX_TOKENS = 400;
+  /**
+   * Symbols per render. Memory on WebGPU grows with the render's length: the GPU process peaked at 3,235 MB with
+   * 400-symbol pieces and 1,417 MB with 150 in headless Chrome (2026-11-27); Android passed its gate with 100.
+   */
+  const MAX_TOKENS = 150;
 
   /** The voices the cast may use: none unless they are allowed (js/voices.js) AND downloaded. Best grade first. */
   function castable({ enabled, ready }) {
@@ -47,16 +50,24 @@ const KokoroVoice = (() => {
   }
 
   /**
-   * Splits a phoneme string into renders of at most `max` symbols, at the last sentence
-   * punctuation, else the last comma, else the last space before the limit. Joined, they are the input.
+   * Splits a phoneme string into renders of at most `max` symbols, at the last sentence punctuation, else the last
+   * comma; with neither in reach, it runs on to the next stop up to half again the limit (a seam inside a phrase is
+   * heard), and only then cuts at the last space. Joined, they are the input.
    */
+  const STOPS = ['. ', '! ', '? ', '; ', ': ', ', '];
   function chunks(ps, max = MAX_TOKENS) {
     const out = [];
+    const hard = Math.floor(max * 1.5);
     let rest = ps || '';
     while (rest.length > max) {
       const head = rest.slice(0, max);
       let cut = Math.max(head.lastIndexOf('. '), head.lastIndexOf('! '), head.lastIndexOf('? '), head.lastIndexOf('; '));
       if (cut < max / 4) cut = head.lastIndexOf(', ');
+      if (cut < max / 4) {
+        const ahead = STOPS.map(s => rest.indexOf(s, max)).filter(i => i >= 0 && i < hard);
+        if (ahead.length) cut = Math.min(...ahead);
+        else if (rest.length <= hard && /[.!?;:,]\W*$/.test(rest)) cut = rest.length - 1;
+      }
       if (cut < max / 4) cut = head.lastIndexOf(' ');
       if (cut <= 0) cut = max - 1;
       out.push(rest.slice(0, cut + 1));
@@ -64,6 +75,31 @@ const KokoroVoice = (() => {
     }
     if (rest) out.push(rest);
     return out;
+  }
+
+  /**
+   * The pause a seam between two pieces keeps, by the punctuation the first ends at: each render carries ~0.4 s of
+   * silence at both ends, so joined untrimmed a comma read as a 0.8 s stop (measured 2026-11-27; a pause inside one
+   * render is 65 to 528 ms, median 187). `tail` is kept after the first piece, `head` before the next.
+   */
+  function seamMs(stop) {
+    return /[,:]/.test(stop || '') ? { tail: 120, head: 80 } : { tail: 330, head: 80 };
+  }
+  /**
+   * A piece with the silence at its edges cut to `keepHead`/`keepTail` (ms; null keeps the edge, 'join' the seam's
+   * head). Only samples under -45 dBFS before the first or after the last sound are cut; speech never is.
+   */
+  function edges(samples, keepHead, keepTail) {
+    const thr = 0.0056;
+    let a = 0;
+    let b = samples.length;
+    while (a < b && Math.abs(samples[a]) < thr) a++;
+    while (b > a && Math.abs(samples[b - 1]) < thr) b--;
+    if (a >= b) return samples;
+    const head = keepHead === 'join' ? seamMs('').head : keepHead;
+    const start = head === null ? 0 : Math.max(0, a - Math.round(head * 24));
+    const end = keepTail === null ? samples.length : Math.min(samples.length, b + Math.round(keepTail.tail * 24));
+    return samples.subarray(start, end);
   }
 
   /** Phonemes to Kokoro's token ids (its tokenizer.json vocab), padded with 0 at both ends; unknown symbols dropped. */
@@ -146,14 +182,23 @@ const KokoroVoice = (() => {
         diag('worker-load', { ep });
         const r = await call({ type: 'load', model: onnx, voices: table, ep }, [onnx, table]);
         diag('worker-ready', { ep: r.ep });
-        onBoot('done');
       })();
       loading.catch((e) => { onBoot('failed'); diag('boot-failed', { msg: String(e && e.message || e) }); });
       return loading;
     }
+    /**
+     * The load counts as finished only when a render has come back: the first render is the peak (the iPhone 12's tab
+     * was killed inside it, after worker-ready, 2026-11-27), and a kill before then must read as 'memory' next start.
+     */
+    let rendered = false;
     function call(msg, transfer = []) {
       const id = ++seq;
-      return new Promise((resolve, reject) => { pending.set(id, { resolve, reject }); worker.postMessage({ ...msg, id }, transfer); });
+      const p = new Promise((resolve, reject) => { pending.set(id, { resolve, reject }); worker.postMessage({ ...msg, id }, transfer); });
+      if (msg.type === 'synth' && !rendered) {
+        const settled = () => { if (!rendered) { rendered = true; onBoot('done'); } };
+        p.then(settled, settled);
+      }
+      return p;
     }
 
     /** A play's published phonemes (the catalog's per-play file), fetched once; keyed by the words. */
@@ -232,7 +277,9 @@ const KokoroVoice = (() => {
        */
       async selfTest() {
         try { await boot(); } catch (e) { return { ok: false, reason: String(e && e.message || e) }; }
-        const tokens = Int32Array.from(tokenize('ðɪs ɪz ə tˈɛst ʌv ðə vˈYsᵻz.', vocab));
+        // A piece as long as a read's longest, so its peak is reached while the load is still watched (js/voices.js).
+        const phrase = 'ðɪs ɪz ə tˈɛst ʌv ðə vˈYsᵻz. ';
+        const tokens = Int32Array.from(tokenize(phrase.repeat(Math.floor(MAX_TOKENS / phrase.length)).trim(), vocab));
         let rtf = Infinity;
         for (let i = 0; i < 2; i++) {
           let out;
@@ -257,7 +304,8 @@ const KokoroVoice = (() => {
         try { await boot(); } catch { return false; }
         const speed = Math.min(2, Math.max(0.5, rate / pitch));
         // Render the next piece while this one plays, so a long speech never waits between pieces.
-        const pieces = chunks(ps).map(c => tokenize(c, vocab));
+        const texts = chunks(ps);
+        const pieces = texts.map(c => tokenize(c, vocab));
         let next = call({ type: 'synth', tokens: Int32Array.from(pieces[0]), voice: v.index, speed });
         for (let i = 0; i < pieces.length; i++) {
           let out;
@@ -266,7 +314,9 @@ const KokoroVoice = (() => {
           diag('synth', { i, of: pieces.length, ms: Math.round(out.ms), rtf: out.ms / ((out.samples.length / 24000) * 1000) });
           if (i + 1 < pieces.length) next = call({ type: 'synth', tokens: Int32Array.from(pieces[i + 1]), voice: v.index, speed });
           // A context that will not start (no tap has reached the page yet): the system voice reads the line instead.
-          if (!(await play(out.samples, pitch))) return i > 0;
+          const last = i + 1 === pieces.length;
+          const samples = edges(out.samples, i > 0 ? 'join' : null, last ? null : seamMs(texts[i].trimEnd().slice(-1)));
+          if (!(await play(samples, pitch))) return i > 0;
         }
         return true;
       },
@@ -286,7 +336,7 @@ const KokoroVoice = (() => {
   /**
    * Makes the model and the engine; resolves when it is known whether the model is downloaded.
    * `allowed()` is js/voices.js's gate (WebGPU, not switched off, the self-test passed); `muted` is ?mute=1;
-   * `onBoot(stage)` hears the model's load start, finish or fail ('start', 'done', 'failed').
+   * `onBoot(stage)` hears the model's load start, its first render back ('done': the peak is past) or a failure ('start', 'done', 'failed').
    */
   async function boot({ manifestURL, phonemesBase = 'data/plays/library/phonemes/', muted = false, allowed = () => true, onBoot } = {}) {
     if (lab) return lab;
@@ -308,5 +358,5 @@ const KokoroVoice = (() => {
   }
   const model = () => (lab ? lab.model : null);
 
-  return { VOICES, GRADES, MAX_TOKENS, castable, chunks, tokenize, keyOf, create, engine, boot, available, voices, prepare, model };
+  return { VOICES, GRADES, MAX_TOKENS, castable, chunks, edges, seamMs, tokenize, keyOf, create, engine, boot, available, voices, prepare, model };
 })();

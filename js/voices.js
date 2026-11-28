@@ -20,7 +20,7 @@ const Voices = (() => {
   const OLD = ['ed-kokoro-v1'];
   const OFF = 'ed.kokoro.off';
   const CHECK = 'ed.kokoro.check';
-  /** Set while the model loads, cleared when it finishes, fails or the page is left: still set at page start, the tab was killed. */
+  /** Set while the model loads and until its first render comes back, cleared then, on a failure or when the page is left: still set at page start, the tab was killed. */
   const BOOTING = 'ed.kokoro.booting';
   const MANIFEST = 'data/kokoro/manifest.json';
 
